@@ -1,6 +1,9 @@
 import { Measurer } from "mesurer";
 import InstallCommand from "./components/install-command";
 import CodeBlock from "./components/code-block";
+import { getPackageVersion } from "./utils/get-package-version";
+
+const version = getPackageVersion();
 
 export function App() {
   return (
@@ -10,11 +13,12 @@ export function App() {
         <div className="flex flex-col gap-4">
           <div className="flex items-end gap-2">
             <h1 className="font-medium leading-tight text-strong">Mesurer</h1>
+            <span className="text-sm text-muted">v{version}</span>
             <a
-              href="https://github.com/ibelick/mesurer"
+              href="https://www.npmjs.com/package/mesurer"
               target="_blank"
               rel="noreferrer"
-              aria-label="GitHub repository"
+              aria-label="NPM package"
               className="mb-0.5 inline-flex h-4 w-4 items-center justify-center text-muted transition-colors hover:text-strong"
             >
               <svg
@@ -46,7 +50,7 @@ export default function RootLayout({ children }) {
     <html>
       <head>
         {process.env.NODE_ENV === "development" && (
-          <Mesurer />
+          <Measurer />
         )}
       </head>
       <body>{children}</body>
@@ -60,23 +64,38 @@ export default function RootLayout({ children }) {
           <div className="flex flex-col border-t border-border -mx-2">
             <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
               <div className="font-mono text-strong">
-                <code className="code">enabled</code>
+                <code className="code">highlightColor</code>
               </div>
-              <div className="text-muted">Toggles the overlay on and off.</div>
-            </div>
-            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-              <div className="font-mono text-strong">
-                <code className="code">unit</code>
-              </div>
-              <div className="text-muted">
-                Sets the display unit for measurements.
+              <div className="max-w-[60%] text-right text-muted">
+                Base color for selection/hover overlays (defaults to{" "}
+                <code className="code">oklch(0.62 0.18 255)</code>)
               </div>
             </div>
             <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
               <div className="font-mono text-strong">
-                <code className="code">color</code>
+                <code className="code">guideColor</code>
               </div>
-              <div className="text-muted">Customizes the overlay tint.</div>
+              <div className="max-w-[60%] text-right text-muted">
+                Base color for guides (defaults to{" "}
+                <code className="code">oklch(0.63 0.26 29.23)</code>)
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">hoverHighlightEnabled</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Disables hover highlight and deselects on click
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">persistOnReload</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Persists state in <code className="code">localStorage</code> as{" "}
+                <code className="code">mesurer-state</code>
+              </div>
             </div>
           </div>
         </div>
@@ -86,33 +105,84 @@ export default function RootLayout({ children }) {
           <div className="flex flex-col border-t border-border -mx-2">
             <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
               <div className="font-mono text-strong">
-                <code className="code">mesurer toggle</code>
+                <code className="code">M</code>
               </div>
-              <div className="text-muted">
-                Show or hide the measurement overlay.
-              </div>
-            </div>
-            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-              <div className="font-mono text-strong">
-                <code className="code">mesurer align</code>
-              </div>
-              <div className="text-muted">
-                Align selected elements to edges or centers.
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Toggle measurer on/off
               </div>
             </div>
             <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
               <div className="font-mono text-strong">
-                <code className="code">mesurer snap</code>
+                <code className="code">S</code>
               </div>
-              <div className="text-muted">
-                Snap measurements to the nearest grid step.
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Toggle Select mode
               </div>
             </div>
             <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
               <div className="font-mono text-strong">
-                <code className="code">mesurer guide</code>
+                <code className="code">G</code>
               </div>
-              <div className="text-muted">Toggle layout guides and rulers.</div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Toggle Guides mode
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">H</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Set guide orientation to horizontal
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">V</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Set guide orientation to vertical
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">Alt</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Temporarily enable option/guide measurement overlays
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">Esc</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Clear all measurements and guides
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">Backspace</code> /
+                <code className="code">Delete</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Remove selected guides
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">Cmd/Ctrl + Z</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Undo
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+              <div className="font-mono text-strong">
+                <code className="code">Cmd/Ctrl + Shift + Z</code>
+              </div>
+              <div className="max-w-[60%] text-right text-balance text-muted">
+                Redo
+              </div>
             </div>
           </div>
         </div>
