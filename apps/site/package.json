@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "pnpm --filter mesurer build && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

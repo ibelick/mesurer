@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter mesurer build && pnpm --filter mesurer-site build",
     "build:site": "pnpm --filter mesurer-site build",
     "build:pkg": "pnpm --filter mesurer build",
     "dev": "pnpm -r dev",
