@@ -9,11 +9,11 @@
   ],
   "scripts": {
     "build": "pnpm -r build",
-    "build:site": "pnpm --filter easing-gradients-site build",
-    "build:pkg": "pnpm --filter easing-gradients build",
+    "build:site": "pnpm --filter mesurer-site build",
+    "build:pkg": "pnpm --filter mesurer build",
     "dev": "pnpm -r dev",
-    "dev:site": "pnpm --filter easing-gradients-site dev",
-    "dev:pkg": "pnpm --filter easing-gradients dev",
+    "dev:site": "pnpm --filter mesurer-site dev",
+    "dev:pkg": "pnpm --filter mesurer dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test"
   }
