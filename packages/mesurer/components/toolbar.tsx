@@ -26,6 +26,7 @@ type Point = {
 };
 
 type ToolbarProps = {
+  visible?: boolean;
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
@@ -256,6 +257,7 @@ function useToolbarDrag(initialPosition: Point) {
 
 function ToolbarComponent(
   {
+    visible = true,
     toolMode,
     setEnabled,
     setToolMode,
@@ -362,7 +364,10 @@ function ToolbarComponent(
   return (
     <div
       ref={ref}
-      className="mesurer-toolbar-surface msr:pointer-events-auto msr:absolute msr:z-[90] msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-[#fff] msr:p-1 msr:outline msr:outline-transparent"
+      className={cn(
+        "mesurer-toolbar-surface msr:absolute msr:z-[90] msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-[#fff] msr:p-1 msr:outline msr:outline-transparent msr:transition-opacity msr:duration-150",
+        visible ? "msr:pointer-events-auto msr:opacity-100" : "msr:pointer-events-none msr:opacity-0",
+      )}
       style={{ left: position.x, top: position.y }}
       onPointerDown={(event) => {
         onInteract();

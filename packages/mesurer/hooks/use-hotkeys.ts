@@ -3,7 +3,7 @@ import { useEffect } from "react"
 import type { ToolMode } from "../types"
 
 type HotkeyOptions = {
-  clearAll: () => void
+  handleEscape: () => void
   removeSelectedGuides: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
@@ -25,7 +25,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (isEditableTarget(event.target)) return
 
       if (event.key === "Escape") {
-        options.clearAll()
+        options.handleEscape()
         return
       }
 

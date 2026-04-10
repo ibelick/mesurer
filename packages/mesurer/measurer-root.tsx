@@ -316,12 +316,15 @@ function MeasurerClient({
 
       const command = event.detail?.type;
       if (command === "toggle") {
+        setToolbarActive(!enabled);
         setEnabledWithHistory((prev) => !prev);
       }
       if (command === "enable") {
+        setToolbarActive(true);
         setEnabledWithHistory(true);
       }
       if (command === "disable") {
+        setToolbarActive(false);
         setEnabledWithHistory(false);
       }
     };
@@ -337,7 +340,7 @@ function MeasurerClient({
         handleCommand as EventListener,
       );
     };
-  }, [commandTarget, setEnabledWithHistory]);
+  }, [commandTarget, enabled, setEnabledWithHistory]);
 
   const clearAll = useCallback(() => {
     recordSnapshot();
@@ -375,6 +378,63 @@ function MeasurerClient({
     setStart,
   ]);
 
+  const dismissTool = useCallback(() => {
+    clearGuideDragHold();
+    setStart(null);
+    setEnd(null);
+    setIsDragging(false);
+    setAltPressed(false);
+    clearSelectionRect();
+    setHoverRect(null);
+    setHoverElement(null);
+    setHoverPointer(null);
+    setToolbarActive(false);
+    setEnabledWithHistory(false);
+  }, [
+    clearGuideDragHold,
+    clearSelectionRect,
+    setAltPressed,
+    setEnabledWithHistory,
+    setEnd,
+    setHoverElement,
+    setHoverPointer,
+    setHoverRect,
+    setIsDragging,
+    setStart,
+  ]);
+
+  const handleEscape = useCallback(() => {
+    const hasSelectionState =
+      !!activeMeasurement ||
+      measurements.length > 0 ||
+      !!selectedMeasurement ||
+      selectedMeasurements.length > 0 ||
+      guides.length > 0 ||
+      selectedGuideIds.length > 0 ||
+      heldDistances.length > 0 ||
+      !!selectionOriginRect ||
+      !!hoverRect;
+
+    if (hasSelectionState) {
+      clearAll();
+      return;
+    }
+
+    dismissTool();
+  }, [
+    activeMeasurement,
+    clearAll,
+    dismissTool,
+    guides.length,
+    heldDistances.length,
+    hoverRect,
+    measurements.length,
+    selectedGuideIds.length,
+    selectedMeasurement,
+    selectedMeasurements.length,
+    selectionOriginRect,
+  ]);
+
   const removeSelectedGuides = useCallback(() => {
     if (selectedGuideIds.length === 0) return false;
     recordSnapshot();
@@ -386,7 +446,7 @@ function MeasurerClient({
   }, [recordSnapshot, selectedGuideIds, setGuides, setSelectedGuideIds]);
 
   useHotkeys({
-    clearAll,
+    handleEscape,
     removeSelectedGuides,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
@@ -686,6 +746,7 @@ function MeasurerClient({
 
       <Toolbar
         ref={toolbarRef}
+        visible={enabled || toolbarActive}
         toolMode={toolMode}
         setEnabled={setEnabledWithHistory}
         setToolMode={setToolModeWithHistory}
