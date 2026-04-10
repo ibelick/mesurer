@@ -33,6 +33,26 @@ function App() {
 }
 ```
 
+No additional CSS import is required.
+
+## Imperative Mount
+
+You can also mount Mesurer outside a React tree:
+
+```ts
+import { mountMeasurer } from "mesurer";
+
+const controller = mountMeasurer({
+  mountTarget: document.body,
+  enabled: true,
+});
+
+controller.toggle();
+```
+
+This is useful for browser extensions or custom overlays where you want to
+control the mount target, style target, or activation flow yourself.
+
 ## Props
 
 | Prop                    | Description                                                                   |

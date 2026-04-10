@@ -169,7 +169,11 @@ export const useMeasurerPointer = ({
 
   const updateHoverTarget = useCallback(
     (point: Point) => {
-      const target = getTargetElement(point, overlayRef.current)
+      const target = getSnappedClickTarget(
+        point,
+        overlayRef.current,
+        snapEnabled
+      )
       if (target) {
         const rect = target.getBoundingClientRect()
         setHoverRect({
@@ -184,15 +188,19 @@ export const useMeasurerPointer = ({
         setHoverElement(null)
       }
     },
-    [overlayRef, setHoverElement, setHoverRect]
+    [overlayRef, setHoverElement, setHoverRect, snapEnabled]
   )
 
   const updateHoverElement = useCallback(
     (point: Point) => {
-      const target = getTargetElement(point, overlayRef.current)
+      const target = getSnappedClickTarget(
+        point,
+        overlayRef.current,
+        snapEnabled
+      )
       setHoverElement(target)
     },
-    [overlayRef, setHoverElement]
+    [overlayRef, setHoverElement, snapEnabled]
   )
 
   const handlePointerDown = useCallback(

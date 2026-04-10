@@ -20,7 +20,10 @@ export function MeasureTag({
         "msr:pointer-events-none msr:absolute msr:rounded msr:px-1 msr:py-0.5 msr:text-[10px] msr:text-ink-50 msr:tabular-nums msr:select-none",
         className
       )}
-      style={style}
+      style={{
+        backgroundColor: "rgba(15, 23, 42, 0.9)",
+        ...style,
+      }}
     >
       {children}
     </div>

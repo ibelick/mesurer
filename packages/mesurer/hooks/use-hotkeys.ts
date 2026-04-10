@@ -13,9 +13,17 @@ type HotkeyOptions = {
   onInteract: () => void
 }
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  return target.closest("input, textarea, select, [contenteditable=''], [contenteditable='true']") !== null
+}
+
 export const useHotkeys = (options: HotkeyOptions) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+
       if (event.key === "Escape") {
         options.clearAll()
         return
@@ -61,6 +69,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+
       if (event.key === "Alt") {
         options.setAltPressed(false)
       }

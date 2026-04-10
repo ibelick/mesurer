@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Mesurer",
+  "version": "0.0.3",
+  "description": "Measure and align any website from the Chrome toolbar.",
+  "permissions": ["activeTab", "scripting"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Toggle Mesurer",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}

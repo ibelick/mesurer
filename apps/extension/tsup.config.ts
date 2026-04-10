@@ -3,7 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: {
     background: "src/background.ts",
-    content: "src/content.tsx",
+    content: "src/content.ts",
   },
   outDir: "dist",
   format: ["iife"],
