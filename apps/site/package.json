@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm --filter mesurer build && vite build",
+    "deploy:pages": "npx wrangler pages deploy dist --project-name mesurer",
     "preview": "vite preview"
   },
   "dependencies": {

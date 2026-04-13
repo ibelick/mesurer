@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "pnpm --filter mesurer build && pnpm --filter mesurer-site build",
+    "deploy:site": "pnpm --filter mesurer-site deploy:pages",
     "build:site": "pnpm --filter mesurer-site build",
     "build:pkg": "pnpm --filter mesurer build",
     "dev": "pnpm -r dev",
