@@ -27,7 +27,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://mesurer.ibelick.com",
+  "homepage": "https://mesurer.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/ibelick/mesurer.git"
