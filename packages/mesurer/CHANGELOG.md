@@ -1,5 +1,10 @@
 # mesurer
 
+## 0.0.8
+
+- restore precise element targeting with top-layer extension host
+- normalize Mesurer spacing to 4px across host sites
+
 ## 0.0.7
 
 - restore toolbar/menu shadow rendering with stable surface CSS classes
