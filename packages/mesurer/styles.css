@@ -1,5 +1,5 @@
 @source "./**/*.{ts,tsx,js,jsx}";
-@import "tailwindcss";
+@import "tailwindcss" prefix(msr);
 
 @theme {
   --color-ink-50: var(--color-ink-50);
@@ -9,7 +9,8 @@
   --color-ink-900: var(--color-ink-900);
 }
 
-:root {
+:root,
+:host {
   --color-ink-50: #f8fafc;
   --color-ink-200: #e2e8f0;
   --color-ink-500: #64748b;

@@ -1,6 +1,6 @@
 {
   "name": "mesurer",
-  "description": "Measure and align everything on localhost.",
+  "description": "Measure and align elements on any website.",
   "license": "MIT",
   "private": true,
   "workspaces": [
@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "pnpm --filter mesurer build && pnpm --filter mesurer-site build",
+    "build:extension": "pnpm --filter mesurer-extension build",
     "deploy:site": "pnpm --filter mesurer-site deploy:pages",
     "build:site": "pnpm --filter mesurer-site build",
     "build:pkg": "pnpm --filter mesurer build",

@@ -36,6 +36,8 @@ type ToolbarProps = {
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
 const TOOLBAR_DRAG_SLOP = 6;
+const GUIDE_MENU_WIDTH = 176;
+const VIEWPORT_PADDING = 8;
 
 type ToolbarButtonProps = {
   id: string;
@@ -64,7 +66,7 @@ function ToolbarButton({
 }: ToolbarButtonProps) {
   return (
     <div
-      className="relative"
+      className="msr:relative"
       onMouseEnter={() => onTooltipEnter(id)}
       onMouseLeave={() => onTooltipLeave(id)}
     >
@@ -73,10 +75,10 @@ function ToolbarButton({
         aria-label={`${label} (${shortcut})`}
         title={`${label} (${shortcut})`}
         className={cn(
-          "flex size-8 items-center justify-center rounded-[8px] outline-none",
+          "msr:flex msr:size-8 msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
           active
-            ? "bg-[#0d99ff] text-white"
-            : "bg-transparent text-black hover:bg-black/4",
+            ? "msr:bg-[#0d99ff] msr:text-white"
+            : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
         )}
         onClick={onClick}
       >
@@ -84,12 +86,14 @@ function ToolbarButton({
       </button>
       <span
         className={cn(
-          "pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-[11px] text-white transition-opacity duration-150 select-none",
-          tooltipSide === "top" ? "bottom-full mb-2" : "top-full mt-2",
-          tooltipVisible ? "opacity-100" : "opacity-0",
+          "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+          tooltipSide === "top"
+            ? "msr:bottom-full msr:mb-2"
+            : "msr:top-full msr:mt-2",
+          tooltipVisible ? "msr:opacity-100" : "msr:opacity-0",
         )}
       >
-        {label} <kbd className="text-white/60">{shortcut}</kbd>
+        {label} <kbd className="msr:text-white/60">{shortcut}</kbd>
       </span>
     </div>
   );
@@ -269,9 +273,28 @@ function ToolbarComponent(
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
-  const guideMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
+
+  const updateMenuAlign = useCallback(() => {
+    const anchorRect = guideMenuRef.current?.getBoundingClientRect();
+    if (!anchorRect) return;
+
+    const rightAlignedLeft = anchorRect.right - GUIDE_MENU_WIDTH;
+    const leftAlignedRight = anchorRect.left + GUIDE_MENU_WIDTH;
+
+    if (rightAlignedLeft < VIEWPORT_PADDING) {
+      setMenuAlign("left");
+      return;
+    }
+
+    if (leftAlignedRight > window.innerWidth - VIEWPORT_PADDING) {
+      setMenuAlign("right");
+      return;
+    }
+
+    setMenuAlign("right");
+  }, []);
 
   const viewportHeight =
     typeof window === "undefined" ? 0 : window.innerHeight || 0;
@@ -311,35 +334,20 @@ function ToolbarComponent(
       guideMenuRef.current
         ?.querySelector<HTMLElement>("[role='menu']")
         ?.focus();
-      const panel = guideMenuPanelRef.current;
-      if (!panel) return;
-      const rect = panel.getBoundingClientRect();
-      if (rect.left < 8) {
-        setMenuAlign("left");
-        return;
-      }
-      if (rect.right > window.innerWidth - 8) {
-        setMenuAlign("right");
-      }
     });
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!guideMenuRef.current) return;
-      if (guideMenuRef.current.contains(event.target as Node)) return;
+      const menu = guideMenuRef.current;
+      if (!menu) return;
+
+      const path = event.composedPath();
+      if (path.includes(menu)) return;
+
       setGuideMenuOpen(false);
     };
 
     const handleResize = () => {
-      const panel = guideMenuPanelRef.current;
-      if (!panel) return;
-      const rect = panel.getBoundingClientRect();
-      if (rect.left < 8) {
-        setMenuAlign("left");
-        return;
-      }
-      if (rect.right > window.innerWidth - 8) {
-        setMenuAlign("right");
-      }
+      updateMenuAlign();
     };
 
     window.addEventListener("pointerdown", handlePointerDown);
@@ -349,12 +357,12 @@ function ToolbarComponent(
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("resize", handleResize);
     };
-  }, [guideMenuOpen, guideOrientation]);
+  }, [guideMenuOpen, guideOrientation, updateMenuAlign]);
 
   return (
     <div
       ref={ref}
-      className="pointer-events-auto absolute z-[90] flex items-center gap-1 rounded-[12px] bg-[#fff] p-1 outline outline-transparent shadow-[0px_0px_.5px_rgba(0,0,0,.18),0px_3px_8px_rgba(0,0,0,.1),0px_1px_3px_rgba(0,0,0,.1)]"
+      className="msr:pointer-events-auto msr:absolute msr:z-[90] msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-[#fff] msr:p-1 msr:outline msr:outline-transparent msr:shadow-[0px_0px_.5px_rgba(0,0,0,.18),0px_3px_8px_rgba(0,0,0,.1),0px_1px_3px_rgba(0,0,0,.1)]"
       style={{ left: position.x, top: position.y }}
       onPointerDown={(event) => {
         onInteract();
@@ -391,13 +399,13 @@ function ToolbarComponent(
           size={20}
           className={cn(
             guideOrientation === "vertical"
-              ? "rotate-[135deg]"
-              : "rotate-[45deg]",
+              ? "msr:rotate-[135deg]"
+              : "msr:rotate-[45deg]",
           )}
         />
       </ToolbarButton>
       <div
-        className="group relative -ml-1 flex items-stretch"
+        className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
         ref={guideMenuRef}
         onMouseEnter={() => onTooltipEnter("guide-menu")}
         onMouseLeave={() => onTooltipLeave("guide-menu")}
@@ -407,14 +415,17 @@ function ToolbarComponent(
           aria-label="Guide orientation menu"
           title="Guide orientation"
           className={cn(
-            "flex h-8 w-4 items-center justify-center rounded-[6px] outline-none hover:bg-black/10",
-            guideMenuOpen ? "bg-black/10 text-black" : "text-black",
+            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
+            guideMenuOpen
+              ? "msr:bg-black/10 msr:text-black"
+              : "msr:text-black",
           )}
           onClick={() => {
             onInteract();
             setGuideMenuOpen((prev) => {
               if (!prev) {
                 setActiveMenuIndex(guideOrientation === "horizontal" ? 0 : 1);
+                updateMenuAlign();
               }
               return !prev;
             });
@@ -424,11 +435,13 @@ function ToolbarComponent(
         </button>
         <span
           className={cn(
-            "pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-[11px] text-white transition-opacity duration-150 select-none",
-            tooltipSide === "top" ? "bottom-full mb-2" : "top-full mt-2",
+            "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+            tooltipSide === "top"
+              ? "msr:bottom-full msr:mb-2"
+              : "msr:top-full msr:mt-2",
             visibleTooltipId === "guide-menu" && !guideMenuOpen
-              ? "opacity-100"
-              : "opacity-0",
+              ? "msr:opacity-100"
+              : "msr:opacity-0",
           )}
         >
           Orientation Guide
@@ -436,12 +449,13 @@ function ToolbarComponent(
         {guideMenuOpen ? (
           <div
             className={cn(
-              "absolute z-[70] w-44 rounded-lg border border-ink-200 bg-white p-1 shadow-[0px_10px_30px_rgba(0,0,0,0.08)] outline-none focus:outline-none",
-              "flex flex-col gap-px",
-              menuSide === "bottom" ? "top-full mt-2" : "bottom-full mb-2",
-              menuAlign === "left" ? "left-0" : "right-0",
+              "msr:absolute msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-[0px_10px_30px_rgba(0,0,0,0.08)] msr:outline-none msr:focus:outline-none",
+              "msr:flex msr:flex-col msr:gap-px",
+              menuSide === "bottom"
+                ? "msr:top-full msr:mt-2"
+                : "msr:bottom-full msr:mb-2",
+              menuAlign === "left" ? "msr:left-0" : "msr:right-0",
             )}
-            ref={guideMenuPanelRef}
             role="menu"
             tabIndex={0}
             onKeyDown={(event) => {
@@ -477,10 +491,10 @@ function ToolbarComponent(
             <button
               type="button"
               className={cn(
-                "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
                 activeMenuIndex === 0 || guideOrientation === "horizontal"
-                  ? "bg-[#0d99ff] text-white"
-                  : "text-ink-700 hover:bg-[#0d99ff] hover:text-white",
+                  ? "msr:bg-[#0d99ff] msr:text-white"
+                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
               )}
               onClick={() => selectGuideOrientation("horizontal")}
             >
@@ -488,32 +502,34 @@ function ToolbarComponent(
                 size={12}
                 className={cn(
                   guideOrientation === "horizontal"
-                    ? "opacity-100"
-                    : "opacity-0",
+                    ? "msr:opacity-100"
+                    : "msr:opacity-0",
                 )}
               />
               <MinusIcon size={12} />
-              <span className="flex-1">Horizontal</span>
+              <span className="msr:flex-1">Horizontal</span>
               <span>H</span>
             </button>
             <button
               type="button"
               className={cn(
-                "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
                 activeMenuIndex === 1 || guideOrientation === "vertical"
-                  ? "bg-[#0d99ff] text-white"
-                  : "text-ink-700 hover:bg-[#0d99ff] hover:text-white",
+                  ? "msr:bg-[#0d99ff] msr:text-white"
+                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
               )}
               onClick={() => selectGuideOrientation("vertical")}
             >
               <CheckIcon
                 size={12}
                 className={cn(
-                  guideOrientation === "vertical" ? "opacity-100" : "opacity-0",
+                  guideOrientation === "vertical"
+                    ? "msr:opacity-100"
+                    : "msr:opacity-0",
                 )}
               />
-              <MinusIcon size={12} className="rotate-90" />
-              <span className="flex-1">Vertical</span>
+              <MinusIcon size={12} className="msr:rotate-90" />
+              <span className="msr:flex-1">Vertical</span>
               <span>V</span>
             </button>
           </div>

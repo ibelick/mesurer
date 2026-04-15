@@ -56,9 +56,9 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
   const fillColor = "color-mix(in oklch, oklch(0.62 0.18 255) 8%, transparent)"
 
   return (
-    <div className="pointer-events-none">
+    <div className="msr:pointer-events-none">
       <div
-        className="absolute"
+        className="msr:absolute"
         style={{
           left: displayRect.left,
           top: displayRect.top,
@@ -72,31 +72,31 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
       >
         {edges.top ? (
           <div
-            className="absolute left-0 top-0 h-px w-full"
+            className="msr:absolute msr:left-0 msr:top-0 msr:h-px msr:w-full"
             style={{ backgroundColor: outlineColor }}
           />
         ) : null}
         {edges.right ? (
           <div
-            className="absolute right-0 top-0 h-full w-px"
+            className="msr:absolute msr:right-0 msr:top-0 msr:h-full msr:w-px"
             style={{ backgroundColor: outlineColor }}
           />
         ) : null}
         {edges.bottom ? (
           <div
-            className="absolute bottom-0 left-0 h-px w-full"
+            className="msr:absolute msr:bottom-0 msr:left-0 msr:h-px msr:w-full"
             style={{ backgroundColor: outlineColor }}
           />
         ) : null}
         {edges.left ? (
           <div
-            className="absolute left-0 top-0 h-full w-px"
+            className="msr:absolute msr:left-0 msr:top-0 msr:h-full msr:w-px"
             style={{ backgroundColor: outlineColor }}
           />
         ) : null}
       </div>
       <MeasureTag
-        className="-translate-x-1/2 bg-ink-900/90"
+        className="msr:-translate-x-1/2 msr:bg-ink-900/90"
         style={{
           left: displayRect.left + displayRect.width / 2,
           top: displayRect.top + displayRect.height + labelOffset,

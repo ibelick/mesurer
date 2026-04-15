@@ -1,0 +1,20 @@
+{
+  "name": "mesurer-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup && node scripts/generate-manifest.mjs"
+  },
+  "dependencies": {
+    "mesurer": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.24",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.2",
+    "tsup": "^8.5.0"
+  }
+}

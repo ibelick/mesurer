@@ -125,16 +125,16 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 }: MeasurerOverlayProps) {
   return (
     <div
-      className={`absolute inset-0 ${
+      className={`msr:absolute msr:inset-0 ${
         enabled && toolMode !== "none"
-          ? `pointer-events-auto ${
+          ? `msr:pointer-events-auto ${
               guidesEnabled
                 ? hoverGuide || draggingGuideId
-                  ? "cursor-default"
-                  : "cursor-crosshair"
-                : "cursor-default"
-            } opacity-100`
-          : "pointer-events-none opacity-0"
+                  ? "msr:cursor-default"
+                  : "msr:cursor-crosshair"
+                : "msr:cursor-default"
+            } msr:opacity-100`
+          : "msr:pointer-events-none msr:opacity-0"
       }`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -156,7 +156,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
       {!guidesEnabled && activeRect && isDragging ? (
         <>
           <div
-            className="pointer-events-none absolute"
+            className="msr:pointer-events-none msr:absolute"
             style={{
               left: activeRect.left,
               top: activeRect.top,
@@ -166,24 +166,24 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
             }}
           >
             <div
-              className="absolute left-0 top-0 h-px w-full"
+              className="msr:absolute msr:left-0 msr:top-0 msr:h-px msr:w-full"
               style={{ backgroundColor: outlineColor }}
             />
             <div
-              className="absolute right-0 top-0 h-full w-px"
+              className="msr:absolute msr:right-0 msr:top-0 msr:h-full msr:w-px"
               style={{ backgroundColor: outlineColor }}
             />
             <div
-              className="absolute bottom-0 left-0 h-px w-full"
+              className="msr:absolute msr:bottom-0 msr:left-0 msr:h-px msr:w-full"
               style={{ backgroundColor: outlineColor }}
             />
             <div
-              className="absolute left-0 top-0 h-full w-px"
+              className="msr:absolute msr:left-0 msr:top-0 msr:h-full msr:w-px"
               style={{ backgroundColor: outlineColor }}
             />
           </div>
           <MeasureTag
-            className="-translate-x-1/2 bg-ink-900/90"
+            className="msr:-translate-x-1/2 msr:bg-ink-900/90"
             style={{
               left: activeRect.left + activeRect.width / 2,
               top: activeRect.top + activeRect.height + MEASURE_LABEL_OFFSET,
@@ -196,7 +196,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 
       {!guidesEnabled && hoverRectToShow ? (
         <div
-          className="pointer-events-none absolute"
+          className="msr:pointer-events-none msr:absolute"
           style={{
             left: hoverRectToShow.left,
             top: hoverRectToShow.top,
@@ -207,25 +207,25 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         >
           {hoverEdgeVisibility?.top ? (
             <div
-              className="absolute left-0 top-0 h-px w-full"
+               className="msr:absolute msr:left-0 msr:top-0 msr:h-px msr:w-full"
               style={{ backgroundColor: outlineColor }}
             />
           ) : null}
           {hoverEdgeVisibility?.right ? (
             <div
-              className="absolute right-0 top-0 h-full w-px"
+               className="msr:absolute msr:right-0 msr:top-0 msr:h-full msr:w-px"
               style={{ backgroundColor: outlineColor }}
             />
           ) : null}
           {hoverEdgeVisibility?.bottom ? (
             <div
-              className="absolute bottom-0 left-0 h-px w-full"
+               className="msr:absolute msr:bottom-0 msr:left-0 msr:h-px msr:w-full"
               style={{ backgroundColor: outlineColor }}
             />
           ) : null}
           {hoverEdgeVisibility?.left ? (
             <div
-              className="absolute left-0 top-0 h-full w-px"
+               className="msr:absolute msr:left-0 msr:top-0 msr:h-full msr:w-px"
               style={{ backgroundColor: outlineColor }}
             />
           ) : null}
@@ -234,7 +234,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 
       {guidesEnabled && guidePreview ? (
         <div
-          className="pointer-events-none absolute"
+          className="msr:pointer-events-none msr:absolute"
           style={
             guidePreview.orientation === "vertical"
               ? {
@@ -252,7 +252,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           }
         >
           <div
-            className="absolute"
+            className="msr:absolute"
             style={
               guidePreview.orientation === "vertical"
                 ? {
@@ -316,7 +316,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           {optionContainerLines.top.value > 0 ? (
             <>
               <div
-                className="absolute w-px bg-[#2563eb]"
+                className="msr:absolute msr:w-px msr:bg-[#2563eb]"
                 style={{
                   top: optionContainerLines.top.y1,
                   height:
@@ -325,7 +325,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                 }}
               />
               <MeasureTag
-                className="-translate-y-1/2 bg-ink-900/90"
+                className="msr:-translate-y-1/2 msr:bg-ink-900/90"
                 style={{
                   left: optionContainerLines.top.x + MEASURE_LABEL_OFFSET,
                   top:
@@ -342,7 +342,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           {optionContainerLines.bottom.value > 0 ? (
             <>
               <div
-                className="absolute w-px bg-[#2563eb]"
+                className="msr:absolute msr:w-px msr:bg-[#2563eb]"
                 style={{
                   top: optionContainerLines.bottom.y1,
                   height:
@@ -352,7 +352,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                 }}
               />
               <MeasureTag
-                className="-translate-y-1/2 bg-ink-900/90"
+                className="msr:-translate-y-1/2 msr:bg-ink-900/90"
                 style={{
                   left: optionContainerLines.bottom.x + MEASURE_LABEL_OFFSET,
                   top:
@@ -369,7 +369,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           {optionContainerLines.left.value > 0 ? (
             <>
               <div
-                className="absolute h-px bg-[#2563eb]"
+                className="msr:absolute msr:h-px msr:bg-[#2563eb]"
                 style={{
                   left: optionContainerLines.left.x1,
                   width:
@@ -378,7 +378,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                 }}
               />
               <MeasureTag
-                className="-translate-x-1/2 bg-ink-900/90"
+                className="msr:-translate-x-1/2 msr:bg-ink-900/90"
                 style={{
                   left:
                     (optionContainerLines.left.x1 +
@@ -395,7 +395,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           {optionContainerLines.right.value > 0 ? (
             <>
               <div
-                className="absolute h-px bg-[#2563eb]"
+                className="msr:absolute msr:h-px msr:bg-[#2563eb]"
                 style={{
                   left: optionContainerLines.right.x1,
                   width:
@@ -405,7 +405,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                 }}
               />
               <MeasureTag
-                className="-translate-x-1/2 bg-ink-900/90"
+                className="msr:-translate-x-1/2 msr:bg-ink-900/90"
                 style={{
                   left:
                     (optionContainerLines.right.x1 +
@@ -434,7 +434,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         return (
           <div
             key={guide.id}
-            className="absolute"
+            className="msr:absolute"
             style={
               guide.orientation === "vertical"
                 ? {
@@ -455,7 +455,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
             onPointerCancel={(event) => onGuidePointerCancel(guide, event)}
           >
             <div
-              className="absolute"
+              className="msr:absolute"
               style={
                 guide.orientation === "vertical"
                   ? {

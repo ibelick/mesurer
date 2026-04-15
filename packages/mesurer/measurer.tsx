@@ -11,6 +11,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { MEASURE_TRANSITION_MS } from "./constants";
+import { ensureMeasurerStyles } from "./style-inject";
+import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
 import { useDragState } from "./hooks/use-drag-state";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
@@ -39,6 +41,7 @@ type MeasurerProps = {
   guideColor?: string;
   hoverHighlightEnabled?: boolean;
   persistOnReload?: boolean;
+  portalTarget?: HTMLElement | ShadowRoot;
 };
 
 const subscribeHydration = () => () => {};
@@ -65,6 +68,7 @@ function MeasurerClient({
   guideColor,
   hoverHighlightEnabled,
   persistOnReload,
+  portalTarget,
 }: Required<MeasurerProps>) {
   const selectionRectRef = useRef<Rect | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -566,7 +570,10 @@ function MeasurerClient({
   );
 
   return createPortal(
-    <div ref={overlayRef} className="pointer-events-none fixed inset-0 z-50">
+    <div
+      ref={overlayRef}
+      className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
+    >
       <MeasurerOverlay
         enabled={enabled}
         toolMode={toolMode}
@@ -617,7 +624,7 @@ function MeasurerClient({
         onInteract={() => setToolbarActive(true)}
       />
     </div>,
-    document.body,
+    portalTarget,
   );
 }
 
@@ -626,15 +633,22 @@ export default function Measurer({
   guideColor = "oklch(0.63 0.26 29.23)",
   hoverHighlightEnabled = true,
   persistOnReload = false,
+  portalTarget,
 }: MeasurerProps) {
+  if (typeof document !== "undefined") {
+    ensureMeasurerStyles(MESURER_STYLES, portalTarget);
+  }
+
   const hydrated = useHydrated();
   if (!hydrated) return null;
+
   return (
     <MeasurerClient
       highlightColor={highlightColor}
       guideColor={guideColor}
       hoverHighlightEnabled={hoverHighlightEnabled}
       persistOnReload={persistOnReload}
+      portalTarget={portalTarget ?? document.body}
     />
   );
 }

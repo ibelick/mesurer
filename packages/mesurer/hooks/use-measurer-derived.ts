@@ -173,7 +173,20 @@ export const useMeasurerDerived = ({
   ])
 
   const guideDistanceOverlay = useMemo(() => {
-    if (!altPressed || !guidesEnabled || !guidePreview) return null
+    if (!altPressed || !guidesEnabled) return null
+
+    if (
+      selectedGuide &&
+      hoverGuide &&
+      selectedGuide.id !== hoverGuide.id
+    ) {
+      return getDistanceOverlay(
+        getGuideRect(selectedGuide),
+        getGuideRect(hoverGuide)
+      )
+    }
+
+    if (!guidePreview) return null
 
     const previewGuide = {
       id: "preview",
@@ -202,7 +215,14 @@ export const useMeasurerDerived = ({
       getGuideRect(previewGuide),
       getGuideRect(nearest.guide)
     )
-  }, [altPressed, guidePreview, guides, guidesEnabled])
+  }, [
+    altPressed,
+    guidePreview,
+    guides,
+    guidesEnabled,
+    hoverGuide,
+    selectedGuide,
+  ])
 
   const {
     outlineColor,

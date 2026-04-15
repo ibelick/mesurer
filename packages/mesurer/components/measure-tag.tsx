@@ -17,7 +17,7 @@ export function MeasureTag({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute rounded px-1 py-0.5 text-[10px] text-ink-50 tabular-nums select-none",
+        "msr:pointer-events-none msr:absolute msr:rounded msr:px-1 msr:py-0.5 msr:text-[10px] msr:text-ink-50 msr:tabular-nums msr:select-none",
         className
       )}
       style={style}
