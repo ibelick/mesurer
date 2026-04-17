@@ -1,4 +1,12 @@
 import { Measurer } from "mesurer";
+import {
+  ArrowsCounterClockwiseIcon,
+  CalculatorIcon,
+  CursorIcon,
+  LockKeyIcon,
+  RulerIcon,
+  ToggleLeftIcon,
+} from "@phosphor-icons/react";
 import InstallCommand from "./components/install-command";
 import CodeBlock from "./components/code-block";
 import { getPackageVersion } from "./utils/get-package-version";
@@ -14,7 +22,7 @@ const isDocsPage = isChangelogPage || isPrivacyPage;
 
 function Header({
   showDescription,
-  linkToHome
+  linkToHome,
 }: {
   showDescription: boolean;
   linkToHome: boolean;
@@ -86,9 +94,100 @@ function Header({
 }
 
 function HomeContent() {
+  const features = [
+    {
+      icon: <ToggleLeftIcon size={16} weight="light" />,
+      title: "Toggle on/off",
+      description: "Enable the overlay with a single shortcut",
+    },
+    {
+      icon: <CursorIcon size={16} weight="light" />,
+      title: "Select mode",
+      description: "Click elements to measure their bounds",
+    },
+    {
+      icon: <RulerIcon size={16} weight="light" />,
+      title: "Guides mode",
+      description: "Add vertical or horizontal guides",
+    },
+    {
+      icon: <CalculatorIcon size={16} weight="light" />,
+      title: "Distance overlays",
+      description: "Hold Alt for quick spacing checks",
+    },
+    {
+      icon: <ArrowsCounterClockwiseIcon size={16} weight="light" />,
+      title: "Undo/redo",
+      description: "Command history for guide and measurement changes",
+    },
+    {
+      icon: <LockKeyIcon size={16} weight="light" />,
+      title: "Persist state",
+      description: "Keep guides and measurements on reload",
+    },
+  ];
+
   return (
     <>
       <div className="flex flex-col gap-4">
+        <p className="font-[450] text-strong">Features</p>
+        <div className="flex flex-col gap-2">
+          {features.map((feature) => (
+            <div key={feature.title} className="flex items-center gap-1">
+              <span className="text-medium text-strong">{feature.icon}</span>
+              <p>
+                <span className="font-[450] text-strong">{feature.title}</span>{" "}
+                <span className="text-muted">- {feature.description}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <p className="font-[450] text-strong">How to use</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-[2px] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[2px] text-strong">
+              <img src="/chrome.svg" alt="" className="h-6 w-6" />
+            </div>
+            <p className="mt-3 text-[15px] font-medium text-strong">
+              Chrome extension
+            </p>
+            <p className="mt-1 text-[15px] font-normal text-muted">
+              Best for fast and easy inspection of any page on the web.
+            </p>
+            <a
+              href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
+            >
+              Add to chrome
+            </a>
+          </div>
+          <div className="rounded-[2px] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[2px] text-strong">
+              <img src="/npm.svg" alt="" className="h-5 w-5" />
+            </div>
+            <p className="mt-3 text-[15px] font-medium text-strong">
+              Package
+            </p>
+            <p className="mt-1 text-[15px] font-normal text-muted">
+              Best for developers wanting to handle spacing seamlessly on
+              localhost.
+            </p>
+            <a
+              href="#installation"
+              className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
+            >
+              Install package
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div id="installation" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Installation</p>
         <InstallCommand>npm install mesurer</InstallCommand>
         <p>
@@ -151,7 +250,7 @@ export default function RootLayout({ children }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div id="commands" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Commands</p>
         <div className="flex flex-col border-t border-border -mx-2">
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
@@ -270,10 +369,7 @@ export function App() {
     <main className="min-h-screen px-5 py-20">
       <Measurer />
       <div className="mx-auto flex max-w-2xl flex-col gap-14">
-        <Header
-          showDescription={!isDocsPage}
-          linkToHome={isDocsPage}
-        />
+        <Header showDescription={!isDocsPage} linkToHome={isDocsPage} />
         {isChangelogPage ? (
           <ChangelogContent />
         ) : isPrivacyPage ? (
@@ -283,7 +379,10 @@ export function App() {
         )}
         {!isDocsPage && (
           <div className="pt-6 text-muted">
-            <a href="/changelog" className="transition-colors hover:text-strong">
+            <a
+              href="/changelog"
+              className="transition-colors hover:text-strong"
+            >
               Changelog
             </a>
             <span className="px-2">·</span>
