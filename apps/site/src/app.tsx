@@ -158,7 +158,9 @@ function HomeContent() {
               Best for fast and easy inspection of any page on the web.
             </p>
             <a
-              href="#installation"
+              href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
+              target="_blank"
+              rel="noreferrer"
               className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
             >
               Add to chrome
