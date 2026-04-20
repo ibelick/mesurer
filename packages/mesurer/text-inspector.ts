@@ -722,10 +722,40 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   // -------- event handlers --------
 
+  // The extension host (`#mesurer-extension-host`) is a fixed, inset-0 div
+  // that sits above the page and — with `pointer-events: auto` — ends up as
+  // `event.target` for virtually every mouse event. Bailing on
+  // `isExtensionOwnedNode(target)` therefore suppresses inspection
+  // everywhere. Instead, check whether the pointer is over an element inside
+  // the extension's shadow DOM that is actually interactive. The mesurer
+  // overlay inside that shadow is `pointer-events: none`, so when the
+  // cursor is over empty host space, `shadow.elementFromPoint()` returns
+  // null / a non-interactive wrapper — we treat that as "page" and inspect.
+  // When it's over the toolbar (the only interactive shadow subtree), we
+  // skip the card and let the click through so the user can toggle the
+  // mode back off.
+  const isPointerOverExtensionUI = (x: number, y: number): boolean => {
+    if (typeof document === "undefined") return false;
+    const host = document.getElementById(EXTENSION_HOST_ID) as
+      | HTMLElement
+      | null;
+    const shadow = host?.shadowRoot;
+    if (!shadow) return false;
+    const el = shadow.elementFromPoint(x, y);
+    if (!el) return false;
+    // `.mesurer-root` is the pointer-events:none overlay wrapper. Only
+    // descendants that opt back in to pointer events (the toolbar) count
+    // as "extension UI" for our purposes.
+    let node: Element | null = el;
+    while (node) {
+      if (node.classList?.contains("mesurer-toolbar-surface")) return true;
+      node = node.parentElement;
+    }
+    return false;
+  };
+
   const onMouseMove = (ev: MouseEvent) => {
-    const target = ev.target as Node | null;
-    if (target && isExtensionOwnedNode(target)) {
-      // Over the extension's own UI — clear hover state but don't show card.
+    if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) {
       setHoverTarget(null);
       if (hoverCard) {
         hoverCard.remove();
@@ -768,10 +798,17 @@ export const TextInspector: TextInspectorAPI = (() => {
   };
 
   const onClickCapture = (ev: MouseEvent) => {
-    const target = ev.target as Node | null;
-    if (target && isExtensionOwnedNode(target)) return;
+    // Don't swallow clicks aimed at our own pinned-card UI (close button,
+    // header drag, etc.) — those are `pointer-events: auto` divs appended
+    // to our document-level overlay.
+    const target = ev.target as Element | null;
+    if (target?.closest?.(`#${OVERLAY_ID}`)) return;
 
-    // Swallow page navigation / interaction.
+    // Let clicks on the toolbar (shadow-DOM hit test) through so the user
+    // can toggle the mode back off.
+    if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) return;
+
+    // Swallow page navigation / interaction so links don't fire.
     ev.preventDefault();
     ev.stopImmediatePropagation();
 
@@ -782,8 +819,9 @@ export const TextInspector: TextInspectorAPI = (() => {
   };
 
   const onAuxClickCapture = (ev: MouseEvent) => {
-    const target = ev.target as Node | null;
-    if (target && isExtensionOwnedNode(target)) return;
+    const target = ev.target as Element | null;
+    if (target?.closest?.(`#${OVERLAY_ID}`)) return;
+    if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) return;
     ev.preventDefault();
     ev.stopImmediatePropagation();
   };
