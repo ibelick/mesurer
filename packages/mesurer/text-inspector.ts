@@ -3,17 +3,45 @@
 // Exposes `enable()`, `disable()`, `isEnabled()`, and `cleanup()` from a
 // single module-scoped IIFE (`TextInspector`). Pure DOM — no React.
 //
-// Visual language mirrors the measurer's inspect overlay:
-//   - Highlight: absolute-positioned box sized to `getBoundingClientRect()`,
-//     with a 8%-tint fill and 4 hairline (1px) edges in the measurer blue.
-//     No classes ever touch the page element itself, so layout / repaint /
-//     overflow-clip never interacts with the target.
-//   - Label: small dark pill (ink-900/90 bg, ink-50 text, tabular nums),
-//     positioned under the box like the measurement tag.
+// ─────────────────────────────────────────────────────────────
+// ANIMATION STORYBOARD
 //
-// Updates are rAF-throttled so mousemove never triggers more than one DOM
-// write per frame — that's what made the previous implementation feel
-// glitchy when tracking small or densely-nested text.
+//   First hover (nothing visible yet):
+//     0ms    box fades in + scales 0.98 → 1            (160ms, ease-out)
+//     60ms   card fades in + translateY 4px → 0 +
+//            scales 0.97 → 1                           (180ms, ease-out)
+//
+//   Retarget (card already visible, pointer moves to another element):
+//     0ms    box + card snap to new position instantly
+//            no re-entrance. Sonner principle: the second
+//            tooltip feels instant.
+//
+//   Pin (click):
+//     0ms    pinned box fades in
+//     0ms    pinned card pops: scale 0.96 → 1 +
+//            translateY(2px) → 0 + opacity 0 → 1       (220ms, ease-out)
+//
+//   Pin close (× or disable):
+//     0ms    card + box collapse: scale 1 → 0.97 +
+//            opacity 1 → 0                             (140ms, ease-out)
+//
+//   Close button press:
+//     scale(0.92) on :active                           (80ms, ease-out)
+//
+//   Continuous updates (mousemove, scroll, resize, pin sync):
+//     No transition — pointer tracking must land on the
+//     exact frame. rAF-throttled so we write once per tick.
+//
+//   prefers-reduced-motion: all transitions collapse to opacity
+//     only, no transform.
+// ─────────────────────────────────────────────────────────────
+//
+// Visual language mirrors the measurer's menu surface:
+//   - Card: solid white, ink-200 (#e2e8f0) 1px border, 8px radius,
+//     matching `.mesurer-menu-surface` shadow.
+//   - Highlight: fill + 4 hairline edges in the measurer blue.
+//   - Dark tag badge + truncated snippet + close button in header.
+//   - Two-column grid (label | monospace value · var-ref) for rows.
 
 const EXTENSION_HOST_ID = "mesurer-extension-host";
 const OVERLAY_ID = "mesurer-text-inspector-overlay";
@@ -56,8 +84,34 @@ const FILL_PINNED =
 const OUTLINE_PINNED =
   "color-mix(in oklch, oklch(0.62 0.18 255) 35%, transparent)";
 
-// Minimal page-scoped styles. We lean mostly on inline styles so nothing
-// leaks into the page.
+// Ink tokens mirror `styles.css` so the card reads as first-party mesurer.
+const INK_50 = "#f8fafc";
+const INK_200 = "#e2e8f0";
+const INK_500 = "#64748b";
+const INK_900 = "#0f172a";
+
+// --- Motion system (see storyboard at the top of the file). -------------
+//
+// Named timing + easing so the whole animation system is readable at the
+// top of the file. Durations stay under the 300ms ceiling Emil recommends
+// for UI; easing is a "strong ease-out" curve from easing.dev that punches
+// more than the stock CSS `ease-out`.
+const TIMING = {
+  boxEnter: 160, // hover box appears
+  tagEnter: 180, // hover card appears (60ms lag after the box)
+  tagEnterDelay: 60,
+  pinEnter: 220, // pinned card pops in
+  exitFast: 140, // pin close / mode disable
+  closeTap: 80, // close-button press feedback
+} as const;
+
+const EASE = {
+  out: "cubic-bezier(0.23, 1, 0.32, 1)",
+  inOut: "cubic-bezier(0.77, 0, 0.175, 1)",
+} as const;
+
+// Minimal page-scoped styles. Transitions (not keyframes) so any hover
+// retarget or rapid close interrupts smoothly.
 const INSPECTOR_STYLES = `
 .${BODY_MODE_CLASS},
 .${BODY_MODE_CLASS} * {
@@ -77,14 +131,72 @@ const INSPECTOR_STYLES = `
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close {
   cursor: pointer;
+  transition: background-color 120ms ${EASE.out}, color 120ms ${EASE.out}, transform ${TIMING.closeTap}ms ${EASE.out};
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close:hover {
-  background: rgba(15, 23, 42, 0.06) !important;
-  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.06);
+  color: ${INK_900};
 }
-@keyframes mesurer-ti-pop {
-  from { transform: translateX(-50%) scale(0.94); opacity: 0; }
-  to   { transform: translateX(-50%) scale(1);    opacity: 1; }
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close:active {
+  transform: scale(0.92);
+}
+
+/* Entrance / exit state classes — CSS transitions, not keyframes, so a
+   rapid retarget or close can interrupt smoothly. */
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box {
+  transition: opacity ${TIMING.boxEnter}ms ${EASE.out}, transform ${TIMING.boxEnter}ms ${EASE.out};
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-state="hidden"] {
+  opacity: 0;
+  transform: scale(0.98);
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-state="visible"] {
+  opacity: 1;
+  transform: scale(1);
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card {
+  transform-origin: top center;
+  transition:
+    opacity ${TIMING.tagEnter}ms ${EASE.out},
+    transform ${TIMING.tagEnter}ms ${EASE.out};
+  will-change: transform, opacity;
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-state="hidden"] {
+  opacity: 0;
+  transform: translate(-50%, 4px) scale(0.97);
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-state="visible"] {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned {
+  transition:
+    opacity ${TIMING.pinEnter}ms ${EASE.out},
+    transform ${TIMING.pinEnter}ms ${EASE.out};
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned[data-state="hidden"] {
+  opacity: 0;
+  transform: translate(-50%, 2px) scale(0.96);
+}
+
+/* Retarget: when the card is already visible and the pointer moves to a
+   new element, disable the entrance transition for a single frame so the
+   card snaps rather than re-animating. */
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-instant],
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-instant] {
+  transition-duration: 0ms !important;
+}
+
+/* Respect reduced-motion: keep the fade for comprehension, drop transform. */
+@media (prefers-reduced-motion: reduce) {
+  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box,
+  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card {
+    transition: opacity 120ms linear !important;
+    transform: translate(-50%, 0) scale(1) !important;
+  }
+  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box {
+    transform: scale(1) !important;
+  }
 }
 `;
 
@@ -473,6 +585,8 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   const makeBox = (fill: string, outline: string): HTMLDivElement => {
     const box = document.createElement("div");
+    box.className = "mesurer-ti-box";
+    box.dataset.state = "hidden";
     box.style.position = "fixed";
     box.style.pointerEvents = "none";
     box.style.backgroundColor = fill;
@@ -493,16 +607,19 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   const makeTag = (pinned: boolean): HTMLDivElement => {
     const tag = document.createElement("div");
-    tag.className = pinned ? "mesurer-ti-card mesurer-ti-card--pinned" : "mesurer-ti-card";
+    tag.className = pinned
+      ? "mesurer-ti-card mesurer-ti-card--pinned"
+      : "mesurer-ti-card";
+    tag.dataset.state = "hidden";
     tag.style.position = "fixed";
     tag.style.pointerEvents = pinned ? "auto" : "none";
-    tag.style.background = "rgba(255, 255, 255, 0.96)";
-    tag.style.backdropFilter = "blur(12px) saturate(1.2)";
-    // @ts-expect-error — vendor prefix
-    tag.style.webkitBackdropFilter = "blur(12px) saturate(1.2)";
-    tag.style.color = "#0f172a";
-    tag.style.border = "1px solid rgba(15, 23, 42, 0.1)";
-    tag.style.borderRadius = "10px";
+    // Match `.mesurer-menu-surface` — solid white + ink-200 border, soft
+    // drop shadow. Reads as a first-party mesurer surface rather than a
+    // floating OS tooltip.
+    tag.style.background = "#ffffff";
+    tag.style.color = INK_900;
+    tag.style.border = `1px solid ${INK_200}`;
+    tag.style.borderRadius = "8px";
     tag.style.padding = "10px 12px";
     tag.style.fontSize = "11px";
     tag.style.lineHeight = "1.5";
@@ -513,10 +630,8 @@ export const TextInspector: TextInspectorAPI = (() => {
     tag.style.whiteSpace = "nowrap";
     tag.style.minWidth = "220px";
     tag.style.maxWidth = "320px";
-    tag.style.transform = "translateX(-50%)";
-    tag.style.boxShadow =
-      "0 8px 24px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06)";
-    if (!pinned) tag.style.transition = "opacity 100ms ease";
+    // Shadow matches `.mesurer-menu-surface`.
+    tag.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.08)";
     return tag;
   };
 
@@ -530,11 +645,11 @@ export const TextInspector: TextInspectorAPI = (() => {
     header.style.gap = "8px";
     header.style.marginBottom = "8px";
     header.style.paddingBottom = "6px";
-    header.style.borderBottom = "1px solid rgba(15, 23, 42, 0.08)";
+    header.style.borderBottom = `1px solid ${INK_200}`;
 
     const tagName = document.createElement("span");
-    tagName.style.color = "#f8fafc";
-    tagName.style.background = "#0f172a";
+    tagName.style.color = INK_50;
+    tagName.style.background = INK_900;
     tagName.style.borderRadius = "4px";
     tagName.style.padding = "1px 5px";
     tagName.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
@@ -545,7 +660,7 @@ export const TextInspector: TextInspectorAPI = (() => {
 
     if (info.textSnippet) {
       const snippet = document.createElement("span");
-      snippet.style.color = "rgba(15, 23, 42, 0.6)";
+      snippet.style.color = INK_500;
       snippet.style.overflow = "hidden";
       snippet.style.textOverflow = "ellipsis";
       snippet.style.whiteSpace = "nowrap";
@@ -571,10 +686,8 @@ export const TextInspector: TextInspectorAPI = (() => {
         lineHeight: "14px",
         textAlign: "center",
         borderRadius: "4px",
-        color: "rgba(15, 23, 42, 0.5)",
+        color: INK_500,
         fontSize: "14px",
-        cursor: "pointer",
-        transition: "background 120ms ease, color 120ms ease",
       } satisfies Partial<CSSStyleDeclaration>);
       header.appendChild(close);
     }
@@ -591,14 +704,14 @@ export const TextInspector: TextInspectorAPI = (() => {
 
     for (const row of info.rows) {
       const l = document.createElement("span");
-      l.style.color = "rgba(15, 23, 42, 0.5)";
+      l.style.color = INK_500;
       l.style.fontSize = "11px";
       l.textContent = row.label;
 
       const v = document.createElement("span");
       v.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
       v.style.fontSize = "11px";
-      v.style.color = "#0f172a";
+      v.style.color = INK_900;
       v.style.overflow = "hidden";
       v.style.textOverflow = "ellipsis";
       v.style.whiteSpace = "nowrap";
@@ -608,7 +721,7 @@ export const TextInspector: TextInspectorAPI = (() => {
         val.textContent = row.value;
         v.appendChild(val);
         const sep = document.createElement("span");
-        sep.style.color = "rgba(15, 23, 42, 0.3)";
+        sep.style.color = INK_200;
         sep.style.margin = "0 6px";
         sep.textContent = "·";
         v.appendChild(sep);
@@ -690,13 +803,10 @@ export const TextInspector: TextInspectorAPI = (() => {
     const root = ensureOverlay();
     if (!hoverBox) {
       hoverBox = makeBox(FILL_HOVER, OUTLINE_HOVER);
-      hoverBox.style.opacity = "0";
-      hoverBox.style.transition = "opacity 80ms ease";
       root.appendChild(hoverBox);
     }
     if (!hoverTag) {
       hoverTag = makeTag(false);
-      hoverTag.style.opacity = "0";
       root.appendChild(hoverTag);
     }
   };
@@ -721,11 +831,12 @@ export const TextInspector: TextInspectorAPI = (() => {
     ensureHoverElements();
     const rect = el.getBoundingClientRect();
 
+    // If the card was already visible and we're just retargeting to a new
+    // element, this is a "subsequent tooltip" — no re-animation. Position
+    // writes to `left/top/width/height` aren't transitioned, so it snaps
+    // naturally. The only thing we need to do is swap content + position.
     if (el !== hoveredEl) {
       hoveredEl = el;
-      // Fast: prefer cached full info, otherwise compute just the values
-      // and enrich var refs asynchronously. This keeps the hover feedback
-      // at 60fps even on pages with thousands of stylesheet rules.
       const cached = typographyCache.get(el);
       if (cached) {
         populateTag(hoverTag!, cached, false);
@@ -737,14 +848,18 @@ export const TextInspector: TextInspectorAPI = (() => {
 
     positionBox(hoverBox!, rect);
     positionTagFor(hoverTag!, rect);
-    hoverBox!.style.opacity = "1";
-    hoverTag!.style.opacity = "1";
+
+    // First reveal (coming from hidden) runs the 160/180ms entrance
+    // transition. Retargets are already visible — setting state="visible"
+    // again is a no-op.
+    hoverBox!.dataset.state = "visible";
+    hoverTag!.dataset.state = "visible";
   };
 
   const hideHover = () => {
     hoveredEl = null;
-    if (hoverBox) hoverBox.style.opacity = "0";
-    if (hoverTag) hoverTag.style.opacity = "0";
+    if (hoverBox) hoverBox.dataset.state = "hidden";
+    if (hoverTag) hoverTag.dataset.state = "hidden";
   };
 
   // -------- pinned cards --------
@@ -760,13 +875,23 @@ export const TextInspector: TextInspectorAPI = (() => {
     const box = makeBox(FILL_PINNED, OUTLINE_PINNED);
     const tag = makeTag(true);
     populateTag(tag, info, true);
-    tag.style.animation = "mesurer-ti-pop 180ms ease-out";
     root.appendChild(box);
     root.appendChild(tag);
 
     const rect = sourceEl.getBoundingClientRect();
     positionBox(box, rect);
     positionTagFor(tag, rect);
+
+    // Force a style flush so the first paint lands in the hidden state,
+    // then flip to visible on the next frame — CSS transitions take it
+    // from there. Using transitions (not keyframes) means a rapid close
+    // interrupts the pop smoothly instead of restarting from zero.
+    void box.offsetHeight;
+    void tag.offsetHeight;
+    requestAnimationFrame(() => {
+      box.dataset.state = "visible";
+      tag.dataset.state = "visible";
+    });
 
     const entry: Pinned = {
       sourceEl,
@@ -871,8 +996,24 @@ export const TextInspector: TextInspectorAPI = (() => {
     if (i === -1) return;
     pinned.splice(i, 1);
     entry.detach();
-    entry.box.remove();
-    entry.tag.remove();
+
+    // Asymmetric exit: faster than enter. Override transition inline
+    // before flipping to hidden so the enter-duration class doesn't
+    // apply. After the fade completes, remove from the DOM.
+    const fast = `opacity ${TIMING.exitFast}ms ${EASE.out}, transform ${TIMING.exitFast}ms ${EASE.out}`;
+    entry.box.style.transition = fast;
+    entry.tag.style.transition = fast;
+    entry.box.dataset.state = "hidden";
+    entry.tag.dataset.state = "hidden";
+
+    const cleanup = () => {
+      entry.box.remove();
+      entry.tag.remove();
+    };
+    // transitionend fires per property — the first one is enough.
+    entry.tag.addEventListener("transitionend", cleanup, { once: true });
+    // Safety net if the node is disconnected before the transition fires.
+    window.setTimeout(cleanup, TIMING.exitFast + 60);
   };
 
   const removeAllPinned = () => {
