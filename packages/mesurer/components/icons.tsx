@@ -44,3 +44,28 @@ export const MinusIcon = ({ size = 12, ...props }: IconProps) => (
     <path d="M228,128a12,12,0,0,1-12,12H40a12,12,0,0,1,0-24H216A12,12,0,0,1,228,128Z" />
   </IconBase>
 )
+
+// "Aa" glyph for the text-style inspector toggle. Rendered as text inside
+// the icon's viewBox so it visually matches sibling SVG toolbar icons.
+export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 256 256"
+    fill="currentColor"
+    {...props}
+  >
+    <text
+      x="50%"
+      y="54%"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+      fontWeight={600}
+      fontSize={160}
+    >
+      Aa
+    </text>
+  </svg>
+)

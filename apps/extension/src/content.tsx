@@ -1,5 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
-import { Measurer } from "mesurer";
+import { Measurer, TextInspector } from "mesurer";
 
 const HOST_ID = "mesurer-extension-host";
 const ROOT_ID = "mesurer-extension-root";
@@ -70,6 +70,11 @@ const unmount = () => {
   state.root.unmount();
   state.root = null;
   state.mounted = false;
+
+  // Belt-and-suspenders: the Measurer's own useEffect cleanup calls this
+  // on unmount, but calling it again here guarantees nothing leaks if the
+  // React tree tears down out of order (SPA re-injection, etc.).
+  TextInspector.cleanup();
 
   const host = document.getElementById(HOST_ID);
   if (host) {

@@ -28,6 +28,7 @@ import { useMeasurerPointer } from "./hooks/use-measurer-pointer";
 import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
+import { TextInspector } from "./text-inspector";
 import type {
   DistanceOverlay,
   Guide,
@@ -366,6 +367,24 @@ function MeasurerClient({
     if (hoverHighlightEnabled) return;
     setHoverRect(null);
   }, [hoverHighlightEnabled, setHoverRect]);
+
+  // Drive the vanilla-DOM text-inspector IIFE from the React tool mode.
+  // The module owns its own listeners / DOM / styles; React only tells it
+  // when to turn on and off. `cleanup()` wipes everything on unmount so
+  // nothing leaks on SPA re-init or extension teardown.
+  useEffect(() => {
+    if (toolMode === "text-inspector") {
+      TextInspector.enable();
+    } else {
+      TextInspector.disable();
+    }
+  }, [toolMode]);
+
+  useEffect(() => {
+    return () => {
+      TextInspector.cleanup();
+    };
+  }, []);
 
   useEffect(() => {
     const hasSelectionAnimationState =
