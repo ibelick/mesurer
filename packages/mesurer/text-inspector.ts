@@ -1,166 +1,24 @@
 // Text-style inspector ("Aa" mode) for the mesurer overlay.
 //
 // Exposes `enable()`, `disable()`, `isEnabled()`, and `cleanup()` from a
-// single module-scoped IIFE (`TextInspector`). The module is pure DOM — no
-// React — so it can be toggled from a React toolbar button but owns its own
-// lifecycle and event listeners.
+// single module-scoped IIFE (`TextInspector`). Pure DOM — no React.
 //
-// Non-goals: not a DevTools clone. Only the 5 typography properties plus
-// any CSS custom-property (`var(--x)`) references backing them.
+// Visual language mirrors the measurer's inspect overlay:
+//   - Highlight: absolute-positioned box sized to `getBoundingClientRect()`,
+//     with a 8%-tint fill and 4 hairline (1px) edges in the measurer blue.
+//     No classes ever touch the page element itself, so layout / repaint /
+//     overflow-clip never interacts with the target.
+//   - Label: small dark pill (ink-900/90 bg, ink-50 text, tabular nums),
+//     positioned under the box like the measurement tag.
+//
+// Updates are rAF-throttled so mousemove never triggers more than one DOM
+// write per frame — that's what made the previous implementation feel
+// glitchy when tracking small or densely-nested text.
 
 const EXTENSION_HOST_ID = "mesurer-extension-host";
-
 const OVERLAY_ID = "mesurer-text-inspector-overlay";
 const STYLE_ID = "mesurer-text-inspector-styles";
 const BODY_MODE_CLASS = "mesurer-text-inspect-mode";
-const HOVER_OUTLINE_CLASS = "mesurer-text-inspect-hover";
-const PINNED_OUTLINE_CLASS = "mesurer-text-inspect-pinned";
-
-// Self-contained CSS. Lives in `document.head` because the hover outline is
-// applied to page elements (document scope) and cards are appended to
-// `document.body` (also document scope) — the mesurer shadow-DOM stylesheet
-// would not reach either. Matches the mesurer toolbar tokens where possible:
-// surface bg #fff, border ink-200 (#e2e8f0), text ink-700 (#334155), active
-// accent #0d99ff.
-const INSPECTOR_STYLES = `
-.${BODY_MODE_CLASS},
-.${BODY_MODE_CLASS} * {
-  cursor: help !important;
-}
-.${BODY_MODE_CLASS} #${EXTENSION_HOST_ID},
-.${BODY_MODE_CLASS} #${EXTENSION_HOST_ID} * {
-  cursor: auto !important;
-}
-.${BODY_MODE_CLASS} #${OVERLAY_ID},
-.${BODY_MODE_CLASS} #${OVERLAY_ID} * {
-  cursor: auto !important;
-}
-
-.${HOVER_OUTLINE_CLASS} {
-  box-shadow:
-    0 0 0 1px rgba(13, 153, 255, 0.5),
-    0 0 0 4px rgba(13, 153, 255, 0.12) !important;
-  background-color: rgba(13, 153, 255, 0.05) !important;
-  transition:
-    box-shadow 120ms ease,
-    background-color 120ms ease;
-}
-
-.${PINNED_OUTLINE_CLASS} {
-  box-shadow:
-    0 0 0 1px rgba(13, 153, 255, 0.28),
-    0 0 0 3px rgba(13, 153, 255, 0.06) !important;
-}
-
-.mesurer-text-inspect-card {
-  position: fixed;
-  left: 0;
-  top: 0;
-  min-width: 220px;
-  max-width: 320px;
-  padding: 8px 10px 10px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  color: #334155;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    sans-serif;
-  font-size: 11px;
-  line-height: 1.35;
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  pointer-events: auto;
-  z-index: 2147483646;
-  user-select: none;
-}
-.mesurer-text-inspect-card--hover {
-  pointer-events: none;
-}
-.mesurer-text-inspect-card--pop {
-  animation: mesurer-text-inspect-pop 180ms ease-out;
-}
-@keyframes mesurer-text-inspect-pop {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-.mesurer-text-inspect-card__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid #e2e8f0;
-}
-.mesurer-text-inspect-card__header--drag {
-  cursor: grab;
-}
-.mesurer-text-inspect-card__header--drag:active {
-  cursor: grabbing;
-}
-.mesurer-text-inspect-card__tag {
-  display: inline-block;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: #0d99ff;
-  color: #fff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-.mesurer-text-inspect-card__snippet {
-  flex: 1;
-  color: #64748b;
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mesurer-text-inspect-card__close {
-  all: unset;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.mesurer-text-inspect-card__close:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-.mesurer-text-inspect-card__grid {
-  display: grid;
-  grid-template-columns: 60px 1fr;
-  column-gap: 10px;
-  row-gap: 4px;
-}
-.mesurer-text-inspect-card__label {
-  color: #64748b;
-  font-size: 11px;
-}
-.mesurer-text-inspect-card__value {
-  color: #0f172a;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  word-break: break-word;
-}
-.mesurer-text-inspect-card__var {
-  margin-top: 1px;
-  color: #0d99ff;
-  font-size: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-`;
 
 const SKIP_TAGS = new Set([
   "HTML",
@@ -188,6 +46,44 @@ const FONT_WEIGHT_KEYWORD: Record<string, string> = {
   "900": "black",
 };
 
+// Measurer tokens — matched 1:1 with `MeasurementBox`.
+const FILL_HOVER =
+  "color-mix(in oklch, oklch(0.62 0.18 255) 8%, transparent)";
+const OUTLINE_HOVER =
+  "color-mix(in oklch, oklch(0.62 0.18 255) 80%, transparent)";
+const FILL_PINNED =
+  "color-mix(in oklch, oklch(0.62 0.18 255) 4%, transparent)";
+const OUTLINE_PINNED =
+  "color-mix(in oklch, oklch(0.62 0.18 255) 35%, transparent)";
+
+// Minimal page-scoped styles. We lean mostly on inline styles so nothing
+// leaks into the page.
+const INSPECTOR_STYLES = `
+.${BODY_MODE_CLASS},
+.${BODY_MODE_CLASS} * {
+  cursor: help !important;
+}
+.${BODY_MODE_CLASS} #${EXTENSION_HOST_ID},
+.${BODY_MODE_CLASS} #${EXTENSION_HOST_ID} *,
+.${BODY_MODE_CLASS} #${OVERLAY_ID},
+.${BODY_MODE_CLASS} #${OVERLAY_ID} * {
+  cursor: auto !important;
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-tag--pinned {
+  cursor: grab;
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-tag--pinned:active {
+  cursor: grabbing;
+}
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close {
+  cursor: pointer;
+}
+@keyframes mesurer-ti-pop {
+  from { transform: translateX(-50%) scale(0.92); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1);     opacity: 1; }
+}
+`;
+
 type TypographyRow = {
   label: string;
   value: string;
@@ -200,9 +96,14 @@ type TypographyInfo = {
   textSnippet: string;
 };
 
-type PinnedCard = {
-  card: HTMLDivElement;
+type Pinned = {
   sourceEl: HTMLElement;
+  box: HTMLDivElement;
+  tag: HTMLDivElement;
+  dragOffsetX: number; // tag left - box center (0 until user drags)
+  dragOffsetY: number; // tag top - box bottom (0 until user drags)
+  userPlaced: boolean;
+  detach: () => void;
 };
 
 export type TextInspectorAPI = {
@@ -215,62 +116,78 @@ export type TextInspectorAPI = {
 export const TextInspector: TextInspectorAPI = (() => {
   let enabled = false;
   let overlay: HTMLDivElement | null = null;
-  let hoverCard: HTMLDivElement | null = null;
+  let hoverBox: HTMLDivElement | null = null;
+  let hoverTag: HTMLDivElement | null = null;
   let hoveredEl: HTMLElement | null = null;
-  const pinnedCards: PinnedCard[] = [];
-  // Map sourceEl -> number of pinned cards referencing it.
-  const pinRefCounts = new WeakMap<HTMLElement, number>();
+  const pinned: Pinned[] = [];
+
+  // Pointer tracking + rAF throttle.
+  let pointerX = 0;
+  let pointerY = 0;
+  let frameScheduled = false;
 
   // -------- helpers --------
-
-  const isExtensionOwnedNode = (node: Node | null): boolean => {
-    if (!node) return false;
-    // Walk up through assigned slots / shadow roots.
-    let current: Node | null = node;
-    while (current) {
-      if (current instanceof HTMLElement) {
-        if (current.id === EXTENSION_HOST_ID) return true;
-        if (current.id === OVERLAY_ID) return true;
-      }
-      const root: Node | null = (current as Node).getRootNode?.() ?? null;
-      if (root instanceof ShadowRoot) {
-        const host: Element = root.host;
-        if (host && host.id === EXTENSION_HOST_ID) return true;
-        current = host;
-        continue;
-      }
-      current = current.parentNode;
-    }
-    return false;
-  };
-
-  const hasDirectTextContent = (el: Element): boolean => {
-    for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType === Node.TEXT_NODE) {
-        const text = child.nodeValue ?? "";
-        if (text.trim().length > 0) return true;
-      }
-    }
-    return false;
-  };
 
   const isInspectable = (el: Element | null): el is HTMLElement => {
     if (!el) return false;
     if (!(el instanceof HTMLElement)) return false;
     if (SKIP_TAGS.has(el.tagName)) return false;
     if (el instanceof SVGElement) return false;
-    if (isExtensionOwnedNode(el)) return false;
     if (!hasDirectTextContent(el)) return false;
     return true;
+  };
+
+  const hasDirectTextContent = (el: Element): boolean => {
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const t = child.nodeValue ?? "";
+        if (t.trim().length > 0) return true;
+      }
+    }
+    return false;
+  };
+
+  const isOverlayChild = (node: Node | null): boolean => {
+    if (!node) return false;
+    let current: Node | null = node;
+    while (current) {
+      if (current instanceof HTMLElement) {
+        if (current.id === OVERLAY_ID) return true;
+        if (current.id === EXTENSION_HOST_ID) return true;
+      }
+      current = current.parentNode;
+    }
+    return false;
   };
 
   const pickElementAt = (x: number, y: number): HTMLElement | null => {
     const stack = document.elementsFromPoint(x, y);
     for (const el of stack) {
-      if (isExtensionOwnedNode(el)) continue;
+      if (isOverlayChild(el)) continue;
+      if (el.id === EXTENSION_HOST_ID) continue;
       if (isInspectable(el)) return el;
     }
     return null;
+  };
+
+  // True only when the pointer is over an actually-interactive element
+  // inside the extension's shadow DOM (the mesurer toolbar). Empty host
+  // space returns null from `shadowRoot.elementFromPoint`, so we treat
+  // that as "over page" and inspect normally.
+  const isPointerOverExtensionUI = (x: number, y: number): boolean => {
+    const host = document.getElementById(EXTENSION_HOST_ID) as
+      | HTMLElement
+      | null;
+    const shadow = host?.shadowRoot;
+    if (!shadow) return false;
+    const el = shadow.elementFromPoint(x, y);
+    if (!el) return false;
+    let node: Element | null = el;
+    while (node) {
+      if (node.classList?.contains("mesurer-toolbar-surface")) return true;
+      node = node.parentElement;
+    }
+    return false;
   };
 
   const formatPx = (raw: string): string => {
@@ -291,23 +208,18 @@ export const TextInspector: TextInspectorAPI = (() => {
     return kw ? `${weight} / ${kw}` : weight;
   };
 
-  // Extract a `var(--name)` reference from a CSS declaration value.
   const extractVarName = (value: string | null | undefined): string | null => {
     if (!value) return null;
     const match = /var\(\s*(--[a-zA-Z0-9_-]+)/.exec(value);
     return match ? match[1] : null;
   };
 
-  // Walk inline style + all matching CSS rules on the element and its
-  // ancestors (respecting @media matches, skipping cross-origin sheets) to
-  // find the most-specific declaration for `prop` that uses a CSS variable.
   const findVarReference = (
     el: HTMLElement,
     prop: string,
   ): string | null => {
     let node: HTMLElement | null = el;
     while (node) {
-      // Inline style first (highest specificity after !important).
       const inline = node.style.getPropertyValue(prop);
       const inlineVar = extractVarName(inline);
       if (inlineVar) return inlineVar;
@@ -318,13 +230,11 @@ export const TextInspector: TextInspectorAPI = (() => {
         try {
           rules = sheet.cssRules;
         } catch {
-          // Cross-origin stylesheet — skip.
           continue;
         }
         if (!rules) continue;
-
-        const varFromRules = scanRulesForVar(rules, node, prop);
-        if (varFromRules) return varFromRules;
+        const found = scanRulesForVar(rules, node, prop);
+        if (found) return found;
       }
 
       node = node.parentElement;
@@ -339,26 +249,22 @@ export const TextInspector: TextInspectorAPI = (() => {
   ): string | null => {
     for (let i = 0; i < rules.length; i++) {
       const rule = rules[i];
-
       if (rule instanceof CSSMediaRule) {
         try {
           if (!window.matchMedia(rule.media.mediaText).matches) continue;
         } catch {
           continue;
         }
-        const nested = scanRulesForVar(rule.cssRules, el, prop);
-        if (nested) return nested;
+        const found = scanRulesForVar(rule.cssRules, el, prop);
+        if (found) return found;
         continue;
       }
-
       if (rule instanceof CSSSupportsRule) {
-        const nested = scanRulesForVar(rule.cssRules, el, prop);
-        if (nested) return nested;
+        const found = scanRulesForVar(rule.cssRules, el, prop);
+        if (found) return found;
         continue;
       }
-
       if (!(rule instanceof CSSStyleRule)) continue;
-
       let matches = false;
       try {
         matches = el.matches(rule.selectorText);
@@ -366,9 +272,8 @@ export const TextInspector: TextInspectorAPI = (() => {
         matches = false;
       }
       if (!matches) continue;
-
-      const value = rule.style.getPropertyValue(prop);
-      const varName = extractVarName(value);
+      const val = rule.style.getPropertyValue(prop);
+      const varName = extractVarName(val);
       if (varName) return varName;
     }
     return null;
@@ -376,75 +281,225 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   const getTypographyInfo = (el: HTMLElement): TypographyInfo => {
     const cs = window.getComputedStyle(el);
-
-    const familyRaw = cs.fontFamily || "";
-    const family = firstFontFamily(familyRaw);
+    const family = firstFontFamily(cs.fontFamily || "");
     const size = formatPx(cs.fontSize);
     const weight = weightWithKeyword(cs.fontWeight);
-    const line =
-      cs.lineHeight === "normal" ? "normal" : formatPx(cs.lineHeight);
+    const line = cs.lineHeight === "normal" ? "normal" : formatPx(cs.lineHeight);
     const tracking =
-      cs.letterSpacing === "normal"
-        ? "normal"
-        : formatPx(cs.letterSpacing);
+      cs.letterSpacing === "normal" ? "normal" : formatPx(cs.letterSpacing);
 
     const rows: TypographyRow[] = [
-      {
-        label: "Family",
-        value: family,
-        varName: findVarReference(el, "font-family"),
-      },
-      {
-        label: "Size",
-        value: size,
-        varName: findVarReference(el, "font-size"),
-      },
-      {
-        label: "Weight",
-        value: weight,
-        varName: findVarReference(el, "font-weight"),
-      },
-      {
-        label: "Line",
-        value: line,
-        varName: findVarReference(el, "line-height"),
-      },
-      {
-        label: "Tracking",
-        value: tracking,
-        varName: findVarReference(el, "letter-spacing"),
-      },
+      { label: "Family", value: family, varName: findVarReference(el, "font-family") },
+      { label: "Size", value: size, varName: findVarReference(el, "font-size") },
+      { label: "Weight", value: weight, varName: findVarReference(el, "font-weight") },
+      { label: "Line", value: line, varName: findVarReference(el, "line-height") },
+      { label: "Tracking", value: tracking, varName: findVarReference(el, "letter-spacing") },
     ];
 
-    const directText = Array.from(el.childNodes)
+    const direct = Array.from(el.childNodes)
       .filter((n) => n.nodeType === Node.TEXT_NODE)
       .map((n) => (n.nodeValue ?? "").trim())
       .filter(Boolean)
       .join(" ")
       .replace(/\s+/g, " ");
-    const textSnippet =
-      directText.length > 40 ? `${directText.slice(0, 40)}…` : directText;
+    const textSnippet = direct.length > 40 ? `${direct.slice(0, 40)}…` : direct;
 
-    return {
-      rows,
-      tagName: el.tagName.toLowerCase(),
-      textSnippet,
-    };
+    return { rows, tagName: el.tagName.toLowerCase(), textSnippet };
   };
 
-  // -------- DOM building --------
+  // -------- DOM primitives (match measurer MeasurementBox) --------
+
+  const makeEdge = (
+    side: "top" | "right" | "bottom" | "left",
+    color: string,
+  ): HTMLDivElement => {
+    const edge = document.createElement("div");
+    edge.style.position = "absolute";
+    edge.style.backgroundColor = color;
+    if (side === "top" || side === "bottom") {
+      edge.style.left = "0";
+      edge.style[side] = "0";
+      edge.style.width = "100%";
+      edge.style.height = "1px";
+    } else {
+      edge.style.top = "0";
+      edge.style[side] = "0";
+      edge.style.width = "1px";
+      edge.style.height = "100%";
+    }
+    return edge;
+  };
+
+  const makeBox = (fill: string, outline: string): HTMLDivElement => {
+    const box = document.createElement("div");
+    box.style.position = "fixed";
+    box.style.pointerEvents = "none";
+    box.style.backgroundColor = fill;
+    box.style.boxSizing = "border-box";
+    box.appendChild(makeEdge("top", outline));
+    box.appendChild(makeEdge("right", outline));
+    box.appendChild(makeEdge("bottom", outline));
+    box.appendChild(makeEdge("left", outline));
+    return box;
+  };
+
+  const positionBox = (box: HTMLDivElement, rect: DOMRect) => {
+    box.style.left = `${rect.left}px`;
+    box.style.top = `${rect.top}px`;
+    box.style.width = `${rect.width}px`;
+    box.style.height = `${rect.height}px`;
+  };
+
+  const makeTag = (pinned: boolean): HTMLDivElement => {
+    const tag = document.createElement("div");
+    tag.className = pinned ? "mesurer-ti-tag mesurer-ti-tag--pinned" : "mesurer-ti-tag";
+    tag.style.position = "fixed";
+    tag.style.pointerEvents = pinned ? "auto" : "none";
+    tag.style.background = "rgba(15, 23, 42, 0.9)";
+    tag.style.color = "#f8fafc";
+    tag.style.borderRadius = "4px";
+    tag.style.padding = "4px 6px";
+    tag.style.fontSize = "10px";
+    tag.style.lineHeight = "1.4";
+    tag.style.fontFamily =
+      "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    tag.style.fontVariantNumeric = "tabular-nums";
+    tag.style.userSelect = "none";
+    tag.style.whiteSpace = "nowrap";
+    tag.style.transform = "translateX(-50%)";
+    tag.style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
+    if (!pinned) tag.style.transition = "opacity 120ms ease";
+    return tag;
+  };
+
+  const populateTag = (tag: HTMLDivElement, info: TypographyInfo, pinned: boolean) => {
+    tag.innerHTML = "";
+
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.alignItems = "center";
+    header.style.gap = "6px";
+    header.style.marginBottom = "3px";
+
+    const tagName = document.createElement("span");
+    tagName.style.opacity = "0.9";
+    tagName.style.color = "#0f172a";
+    tagName.style.background = "#f8fafc";
+    tagName.style.borderRadius = "3px";
+    tagName.style.padding = "0 4px";
+    tagName.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
+    tagName.style.fontSize = "9px";
+    tagName.textContent = info.tagName;
+    header.appendChild(tagName);
+
+    if (info.textSnippet) {
+      const snippet = document.createElement("span");
+      snippet.style.opacity = "0.75";
+      snippet.style.overflow = "hidden";
+      snippet.style.textOverflow = "ellipsis";
+      snippet.style.maxWidth = "220px";
+      snippet.style.whiteSpace = "nowrap";
+      snippet.textContent = info.textSnippet;
+      header.appendChild(snippet);
+    }
+
+    if (pinned) {
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "mesurer-ti-close";
+      close.setAttribute("aria-label", "Close");
+      close.textContent = "×";
+      Object.assign(close.style, {
+        all: "unset",
+        marginLeft: "auto",
+        width: "14px",
+        height: "14px",
+        lineHeight: "12px",
+        textAlign: "center",
+        borderRadius: "3px",
+        color: "#cbd5e1",
+        fontSize: "14px",
+        cursor: "pointer",
+      } satisfies Partial<CSSStyleDeclaration>);
+      header.appendChild(close);
+    }
+
+    tag.appendChild(header);
+
+    for (const row of info.rows) {
+      const line = document.createElement("div");
+      line.style.display = "grid";
+      line.style.gridTemplateColumns = "52px 1fr auto";
+      line.style.columnGap = "8px";
+      line.style.alignItems = "baseline";
+
+      const l = document.createElement("span");
+      l.style.opacity = "0.55";
+      l.textContent = row.label;
+
+      const v = document.createElement("span");
+      v.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
+      v.style.overflow = "hidden";
+      v.style.textOverflow = "ellipsis";
+      v.textContent = row.value;
+
+      line.appendChild(l);
+      line.appendChild(v);
+
+      if (row.varName) {
+        const varEl = document.createElement("span");
+        varEl.style.opacity = "0.55";
+        varEl.style.fontFamily =
+          "ui-monospace, SFMono-Regular, Menlo, monospace";
+        varEl.style.color = "#7dd3fc";
+        varEl.textContent = row.varName;
+        line.appendChild(varEl);
+      }
+
+      tag.appendChild(line);
+    }
+  };
+
+  // Position the tag just below the box, centered; fall back above if it'd
+  // run off the bottom. Clamp horizontally.
+  const positionTagFor = (
+    tag: HTMLDivElement,
+    rect: DOMRect,
+    offsetX = 0,
+    offsetY = 0,
+  ) => {
+    // Center below box by default.
+    const cx = rect.left + rect.width / 2 + offsetX;
+    tag.style.left = `${cx}px`;
+    // Measure first so we can flip / clamp.
+    const size = tag.getBoundingClientRect();
+    let top = rect.bottom + 4 + offsetY;
+    if (top + size.height > window.innerHeight - 8) {
+      top = rect.top - size.height - 4 + offsetY;
+    }
+    if (top < 8) top = 8;
+    tag.style.top = `${top}px`;
+
+    // Horizontal clamp (after layout).
+    const half = size.width / 2;
+    const minLeft = 8 + half;
+    const maxLeft = window.innerWidth - 8 - half;
+    if (cx < minLeft) tag.style.left = `${minLeft}px`;
+    else if (cx > maxLeft) tag.style.left = `${maxLeft}px`;
+  };
+
+  // -------- overlay + styles --------
 
   const ensureStyles = () => {
     if (typeof document === "undefined") return;
     if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = INSPECTOR_STYLES;
-    document.head.appendChild(style);
+    const s = document.createElement("style");
+    s.id = STYLE_ID;
+    s.textContent = INSPECTOR_STYLES;
+    document.head.appendChild(s);
   };
 
   const removeStyles = () => {
-    if (typeof document === "undefined") return;
     document.getElementById(STYLE_ID)?.remove();
   };
 
@@ -455,197 +510,152 @@ export const TextInspector: TextInspectorAPI = (() => {
     el.style.position = "fixed";
     el.style.inset = "0";
     el.style.pointerEvents = "none";
-    // Just below the extension host (which sits at max int z-index) so the
-    // mesurer toolbar still paints on top; the host itself is transparent
-    // so our cards remain visible across the page.
+    // One notch below the extension host (max-int z-index) so the mesurer
+    // toolbar stays painted on top. The host is transparent, so our cards
+    // and boxes remain visible across the page underneath the toolbar.
     el.style.zIndex = "2147483646";
     document.body.appendChild(el);
     overlay = el;
     return el;
   };
 
-  const buildCard = (
-    info: TypographyInfo,
-    pinned: boolean,
-  ): HTMLDivElement => {
-    const card = document.createElement("div");
-    card.className = `mesurer-text-inspect-card${
-      pinned ? " mesurer-text-inspect-card--pinned" : ""
-    }`;
-
-    const header = document.createElement("div");
-    header.className = "mesurer-text-inspect-card__header";
-    if (pinned) header.classList.add("mesurer-text-inspect-card__header--drag");
-
-    const tag = document.createElement("span");
-    tag.className = "mesurer-text-inspect-card__tag";
-    tag.textContent = info.tagName;
-    header.appendChild(tag);
-
-    const snippet = document.createElement("span");
-    snippet.className = "mesurer-text-inspect-card__snippet";
-    snippet.textContent = info.textSnippet;
-    header.appendChild(snippet);
-
-    if (pinned) {
-      const close = document.createElement("button");
-      close.type = "button";
-      close.className = "mesurer-text-inspect-card__close";
-      close.setAttribute("aria-label", "Close pinned inspector");
-      close.textContent = "×";
-      header.appendChild(close);
+  const ensureHoverElements = () => {
+    const root = ensureOverlay();
+    if (!hoverBox) {
+      hoverBox = makeBox(FILL_HOVER, OUTLINE_HOVER);
+      hoverBox.style.opacity = "0";
+      hoverBox.style.transition = "opacity 80ms ease";
+      root.appendChild(hoverBox);
     }
-
-    card.appendChild(header);
-
-    const grid = document.createElement("div");
-    grid.className = "mesurer-text-inspect-card__grid";
-
-    for (const row of info.rows) {
-      const label = document.createElement("div");
-      label.className = "mesurer-text-inspect-card__label";
-      label.textContent = row.label;
-
-      const valueWrap = document.createElement("div");
-      valueWrap.className = "mesurer-text-inspect-card__value";
-      const val = document.createElement("div");
-      val.textContent = row.value;
-      valueWrap.appendChild(val);
-      if (row.varName) {
-        const varEl = document.createElement("div");
-        varEl.className = "mesurer-text-inspect-card__var";
-        varEl.textContent = row.varName;
-        valueWrap.appendChild(varEl);
-      }
-
-      grid.appendChild(label);
-      grid.appendChild(valueWrap);
-    }
-
-    card.appendChild(grid);
-    return card;
-  };
-
-  const clampCardToViewport = (
-    card: HTMLDivElement,
-    x: number,
-    y: number,
-  ) => {
-    const PAD = 8;
-    const OFFSET = 16;
-    const rect = card.getBoundingClientRect();
-    const maxX = window.innerWidth - rect.width - PAD;
-    const maxY = window.innerHeight - rect.height - PAD;
-    let left = x + OFFSET;
-    let top = y + OFFSET;
-    if (left > maxX) left = Math.max(PAD, x - rect.width - OFFSET);
-    if (top > maxY) top = Math.max(PAD, y - rect.height - OFFSET);
-    if (left < PAD) left = PAD;
-    if (top < PAD) top = PAD;
-    card.style.left = `${left}px`;
-    card.style.top = `${top}px`;
-  };
-
-  // -------- hover state --------
-
-  const setHoverTarget = (el: HTMLElement | null) => {
-    if (hoveredEl === el) return;
-    if (hoveredEl) {
-      hoveredEl.classList.remove(HOVER_OUTLINE_CLASS);
-    }
-    hoveredEl = el;
-    if (hoveredEl) {
-      hoveredEl.classList.add(HOVER_OUTLINE_CLASS);
+    if (!hoverTag) {
+      hoverTag = makeTag(false);
+      hoverTag.style.opacity = "0";
+      root.appendChild(hoverTag);
     }
   };
 
-  const showHoverCard = (el: HTMLElement, x: number, y: number) => {
-    const parent = ensureOverlay();
-    const info = getTypographyInfo(el);
-    if (hoverCard) hoverCard.remove();
-    hoverCard = buildCard(info, false);
-    hoverCard.classList.add("mesurer-text-inspect-card--hover");
-    parent.appendChild(hoverCard);
-    clampCardToViewport(hoverCard, x, y);
-  };
+  // -------- hover tracking --------
 
-  const moveHoverCard = (x: number, y: number) => {
-    if (!hoverCard) return;
-    clampCardToViewport(hoverCard, x, y);
-  };
+  const updateHover = () => {
+    if (!enabled) return;
 
-  const clearHoverCard = () => {
-    if (hoverCard) {
-      hoverCard.remove();
-      hoverCard = null;
+    // If pointer is over the toolbar, hide hover UI but keep the mode on.
+    if (isPointerOverExtensionUI(pointerX, pointerY)) {
+      hideHover();
+      return;
     }
-    setHoverTarget(null);
+
+    const el = pickElementAt(pointerX, pointerY);
+    if (!el) {
+      hideHover();
+      return;
+    }
+
+    ensureHoverElements();
+    const rect = el.getBoundingClientRect();
+
+    if (el !== hoveredEl) {
+      hoveredEl = el;
+      const info = getTypographyInfo(el);
+      populateTag(hoverTag!, info, false);
+    }
+
+    positionBox(hoverBox!, rect);
+    positionTagFor(hoverTag!, rect);
+    hoverBox!.style.opacity = "1";
+    hoverTag!.style.opacity = "1";
+  };
+
+  const hideHover = () => {
+    hoveredEl = null;
+    if (hoverBox) hoverBox.style.opacity = "0";
+    if (hoverTag) hoverTag.style.opacity = "0";
   };
 
   // -------- pinned cards --------
 
-  const incrementPin = (el: HTMLElement) => {
-    const count = (pinRefCounts.get(el) ?? 0) + 1;
-    pinRefCounts.set(el, count);
-    el.classList.add(PINNED_OUTLINE_CLASS);
+  const pinCurrent = (x: number, y: number) => {
+    const sourceEl = pickElementAt(x, y);
+    if (!sourceEl) return;
+
+    const root = ensureOverlay();
+    const info = getTypographyInfo(sourceEl);
+    const box = makeBox(FILL_PINNED, OUTLINE_PINNED);
+    const tag = makeTag(true);
+    populateTag(tag, info, true);
+    tag.style.animation = "mesurer-ti-pop 180ms ease-out";
+    root.appendChild(box);
+    root.appendChild(tag);
+
+    const rect = sourceEl.getBoundingClientRect();
+    positionBox(box, rect);
+    positionTagFor(tag, rect);
+
+    const entry: Pinned = {
+      sourceEl,
+      box,
+      tag,
+      dragOffsetX: 0,
+      dragOffsetY: 0,
+      userPlaced: false,
+      detach: () => {},
+    };
+    pinned.push(entry);
+
+    const close = tag.querySelector<HTMLButtonElement>(".mesurer-ti-close");
+    close?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      removePinned(entry);
+    });
+
+    entry.detach = attachDrag(entry);
+
+    // Clear the pop class after animation so re-pins retrigger it.
+    window.setTimeout(() => {
+      tag.style.animation = "";
+    }, 220);
   };
 
-  const decrementPin = (el: HTMLElement) => {
-    const count = (pinRefCounts.get(el) ?? 1) - 1;
-    if (count <= 0) {
-      pinRefCounts.delete(el);
-      el.classList.remove(PINNED_OUTLINE_CLASS);
-    } else {
-      pinRefCounts.set(el, count);
-    }
-  };
-
-  const attachPinnedDrag = (card: HTMLDivElement) => {
-    const header = card.querySelector<HTMLDivElement>(
-      ".mesurer-text-inspect-card__header",
-    );
-    if (!header) return;
-
+  const attachDrag = (entry: Pinned): (() => void) => {
     const SLOP = 6;
-    let active = false;
-    let didDrag = false;
     let pointerId = -1;
     let startX = 0;
     let startY = 0;
-    let originX = 0;
-    let originY = 0;
-    let width = 0;
-    let height = 0;
+    let originLeft = 0;
+    let originTop = 0;
+    let didDrag = false;
+    let active = false;
 
-    const move = (ev: PointerEvent) => {
+    const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
-      if (!active) {
-        active = Math.abs(dx) > SLOP || Math.abs(dy) > SLOP;
-      }
+      if (!active) active = Math.abs(dx) > SLOP || Math.abs(dy) > SLOP;
       if (!active) return;
       didDrag = true;
-      const maxX = Math.max(8, window.innerWidth - width - 8);
-      const maxY = Math.max(8, window.innerHeight - height - 8);
-      const nx = Math.min(maxX, Math.max(8, originX + dx));
-      const ny = Math.min(maxY, Math.max(8, originY + dy));
-      card.style.left = `${nx}px`;
-      card.style.top = `${ny}px`;
+      const maxX = Math.max(8, window.innerWidth - 8);
+      const maxY = Math.max(8, window.innerHeight - 8);
+      const nx = Math.min(maxX, Math.max(8, originLeft + dx));
+      const ny = Math.min(maxY, Math.max(8, originTop + dy));
+      entry.tag.style.left = `${nx}px`;
+      entry.tag.style.top = `${ny}px`;
+      entry.userPlaced = true;
     };
 
-    const end = (ev: PointerEvent) => {
+    const onEnd = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId && pointerId !== -1) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
       pointerId = -1;
       active = false;
       if (didDrag) {
-        // Swallow the click that fires after a drag-end.
-        const swallow = (clickEv: Event) => {
-          clickEv.preventDefault();
-          clickEv.stopPropagation();
+        // Swallow the follow-up click so the close button / drag don't
+        // both fire after release.
+        const swallow = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
           window.removeEventListener("click", swallow, true);
         };
         window.addEventListener("click", swallow, true);
@@ -653,169 +663,107 @@ export const TextInspector: TextInspectorAPI = (() => {
       didDrag = false;
     };
 
-    header.addEventListener("pointerdown", (ev) => {
+    const onDown = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       const target = ev.target as HTMLElement | null;
-      if (target?.classList.contains("mesurer-text-inspect-card__close")) {
-        return;
-      }
-      const rect = card.getBoundingClientRect();
-      originX = rect.left;
-      originY = rect.top;
-      width = rect.width;
-      height = rect.height;
+      if (target?.classList.contains("mesurer-ti-close")) return;
+      const rect = entry.tag.getBoundingClientRect();
+      originLeft = rect.left + rect.width / 2; // because transform is translateX(-50%)
+      originTop = rect.top;
       startX = ev.clientX;
       startY = ev.clientY;
       pointerId = ev.pointerId;
-      active = false;
       didDrag = false;
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", end);
-      window.addEventListener("pointercancel", end);
-    });
+      active = false;
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onEnd);
+      window.addEventListener("pointercancel", onEnd);
+    };
+
+    entry.tag.addEventListener("pointerdown", onDown);
+    return () => {
+      entry.tag.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
   };
 
-  const pinCard = (sourceEl: HTMLElement, x: number, y: number) => {
-    const parent = ensureOverlay();
-    const info = getTypographyInfo(sourceEl);
-    const card = buildCard(info, true);
-    card.classList.add("mesurer-text-inspect-card--pop");
-    parent.appendChild(card);
-    clampCardToViewport(card, x, y);
-
-    const entry: PinnedCard = { card, sourceEl };
-    pinnedCards.push(entry);
-    incrementPin(sourceEl);
-
-    const close = card.querySelector<HTMLButtonElement>(
-      ".mesurer-text-inspect-card__close",
-    );
-    close?.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      removePinned(entry);
-    });
-
-    attachPinnedDrag(card);
-
-    // Drop the scale-pop class after animation runs so re-adds retrigger it.
-    window.setTimeout(() => {
-      card.classList.remove("mesurer-text-inspect-card--pop");
-    }, 220);
-  };
-
-  const removePinned = (entry: PinnedCard) => {
-    const idx = pinnedCards.indexOf(entry);
-    if (idx === -1) return;
-    pinnedCards.splice(idx, 1);
-    entry.card.remove();
-    decrementPin(entry.sourceEl);
+  const removePinned = (entry: Pinned) => {
+    const i = pinned.indexOf(entry);
+    if (i === -1) return;
+    pinned.splice(i, 1);
+    entry.detach();
+    entry.box.remove();
+    entry.tag.remove();
   };
 
   const removeAllPinned = () => {
-    while (pinnedCards.length > 0) {
-      const entry = pinnedCards.pop()!;
-      entry.card.remove();
-      decrementPin(entry.sourceEl);
+    while (pinned.length > 0) {
+      const entry = pinned.pop()!;
+      entry.detach();
+      entry.box.remove();
+      entry.tag.remove();
     }
+  };
+
+  // Keep pinned boxes (and non-user-placed tags) in sync with their source
+  // elements on scroll / resize / layout change. Runs on the same rAF tick
+  // as hover updates so we only touch the DOM once per frame.
+  const syncPinned = () => {
+    for (const entry of pinned) {
+      if (!entry.sourceEl.isConnected) {
+        removePinned(entry);
+        continue;
+      }
+      const rect = entry.sourceEl.getBoundingClientRect();
+      positionBox(entry.box, rect);
+      if (!entry.userPlaced) positionTagFor(entry.tag, rect);
+    }
+  };
+
+  // -------- rAF throttle --------
+
+  const scheduleFrame = () => {
+    if (frameScheduled) return;
+    frameScheduled = true;
+    requestAnimationFrame(() => {
+      frameScheduled = false;
+      if (!enabled) return;
+      updateHover();
+      syncPinned();
+    });
   };
 
   // -------- event handlers --------
 
-  // The extension host (`#mesurer-extension-host`) is a fixed, inset-0 div
-  // that sits above the page and — with `pointer-events: auto` — ends up as
-  // `event.target` for virtually every mouse event. Bailing on
-  // `isExtensionOwnedNode(target)` therefore suppresses inspection
-  // everywhere. Instead, check whether the pointer is over an element inside
-  // the extension's shadow DOM that is actually interactive. The mesurer
-  // overlay inside that shadow is `pointer-events: none`, so when the
-  // cursor is over empty host space, `shadow.elementFromPoint()` returns
-  // null / a non-interactive wrapper — we treat that as "page" and inspect.
-  // When it's over the toolbar (the only interactive shadow subtree), we
-  // skip the card and let the click through so the user can toggle the
-  // mode back off.
-  const isPointerOverExtensionUI = (x: number, y: number): boolean => {
-    if (typeof document === "undefined") return false;
-    const host = document.getElementById(EXTENSION_HOST_ID) as
-      | HTMLElement
-      | null;
-    const shadow = host?.shadowRoot;
-    if (!shadow) return false;
-    const el = shadow.elementFromPoint(x, y);
-    if (!el) return false;
-    // `.mesurer-root` is the pointer-events:none overlay wrapper. Only
-    // descendants that opt back in to pointer events (the toolbar) count
-    // as "extension UI" for our purposes.
-    let node: Element | null = el;
-    while (node) {
-      if (node.classList?.contains("mesurer-toolbar-surface")) return true;
-      node = node.parentElement;
-    }
-    return false;
-  };
-
   const onMouseMove = (ev: MouseEvent) => {
-    if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) {
-      setHoverTarget(null);
-      if (hoverCard) {
-        hoverCard.remove();
-        hoverCard = null;
-      }
-      return;
-    }
-
-    const el = pickElementAt(ev.clientX, ev.clientY);
-    if (!el) {
-      clearHoverCard();
-      return;
-    }
-
-    setHoverTarget(el);
-    if (!hoverCard) {
-      showHoverCard(el, ev.clientX, ev.clientY);
-    } else {
-      // Re-render if the hovered element changed identity (cheap string diff
-      // on tagName + snippet avoids rebuilding on every mouse wiggle).
-      const existingTag = hoverCard.dataset.tag;
-      const info = getTypographyInfo(el);
-      const key = `${info.tagName}|${info.textSnippet}|${info.rows
-        .map((r) => `${r.label}:${r.value}:${r.varName ?? ""}`)
-        .join("|")}`;
-      if (existingTag !== key) {
-        hoverCard.remove();
-        hoverCard = buildCard(info, false);
-        hoverCard.classList.add("mesurer-text-inspect-card--hover");
-        hoverCard.dataset.tag = key;
-        ensureOverlay().appendChild(hoverCard);
-      }
-      moveHoverCard(ev.clientX, ev.clientY);
-    }
+    pointerX = ev.clientX;
+    pointerY = ev.clientY;
+    scheduleFrame();
   };
 
-  const onMouseOut = (ev: MouseEvent) => {
-    const related = ev.relatedTarget as Node | null;
-    if (!related) clearHoverCard();
+  const onMouseLeaveWindow = (ev: MouseEvent) => {
+    if (!ev.relatedTarget) hideHover();
+  };
+
+  const onScrollOrResize = () => {
+    scheduleFrame();
   };
 
   const onClickCapture = (ev: MouseEvent) => {
-    // Don't swallow clicks aimed at our own pinned-card UI (close button,
-    // header drag, etc.) — those are `pointer-events: auto` divs appended
-    // to our document-level overlay.
+    // Don't interfere with our own overlay (close button, tag drag, etc.).
     const target = ev.target as Element | null;
     if (target?.closest?.(`#${OVERLAY_ID}`)) return;
-
-    // Let clicks on the toolbar (shadow-DOM hit test) through so the user
-    // can toggle the mode back off.
+    // Allow clicks on the mesurer toolbar through so the user can toggle
+    // the mode back off.
     if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) return;
 
-    // Swallow page navigation / interaction so links don't fire.
     ev.preventDefault();
     ev.stopImmediatePropagation();
 
     if (ev.button !== 0) return;
-    const el = pickElementAt(ev.clientX, ev.clientY);
-    if (!el) return;
-    pinCard(el, ev.clientX, ev.clientY);
+    pinCurrent(ev.clientX, ev.clientY);
   };
 
   const onAuxClickCapture = (ev: MouseEvent) => {
@@ -836,19 +784,31 @@ export const TextInspector: TextInspectorAPI = (() => {
     ensureOverlay();
     document.body.classList.add(BODY_MODE_CLASS);
     window.addEventListener("mousemove", onMouseMove, true);
-    window.addEventListener("mouseout", onMouseOut, true);
+    window.addEventListener("mouseout", onMouseLeaveWindow, true);
     window.addEventListener("click", onClickCapture, true);
     window.addEventListener("auxclick", onAuxClickCapture, true);
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize, true);
   };
 
   const disable = () => {
     if (!enabled) return;
     enabled = false;
     window.removeEventListener("mousemove", onMouseMove, true);
-    window.removeEventListener("mouseout", onMouseOut, true);
+    window.removeEventListener("mouseout", onMouseLeaveWindow, true);
     window.removeEventListener("click", onClickCapture, true);
     window.removeEventListener("auxclick", onAuxClickCapture, true);
-    clearHoverCard();
+    window.removeEventListener("scroll", onScrollOrResize, true);
+    window.removeEventListener("resize", onScrollOrResize, true);
+    hideHover();
+    if (hoverBox) {
+      hoverBox.remove();
+      hoverBox = null;
+    }
+    if (hoverTag) {
+      hoverTag.remove();
+      hoverTag = null;
+    }
     removeAllPinned();
     if (typeof document !== "undefined") {
       document.body.classList.remove(BODY_MODE_CLASS);
