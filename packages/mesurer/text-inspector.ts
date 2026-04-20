@@ -1069,10 +1069,32 @@ export const TextInspector: TextInspectorAPI = (() => {
     scheduleFrame();
   };
 
+  // Robust "is this event from our UI?" check. We can't rely on
+  // `target.closest(...)` because some pages re-target events across
+  // shadow-root boundaries, causing the close button's click to be
+  // retargeted above our overlay. `composedPath()` walks the full event
+  // path including any shadow trees, so the overlay is always found.
+  const eventIsFromInspectorUI = (ev: Event): boolean => {
+    const path = ev.composedPath?.() ?? [];
+    for (const node of path) {
+      if (!(node instanceof HTMLElement)) continue;
+      if (node.id === OVERLAY_ID) return true;
+      const cls = node.classList;
+      if (!cls) continue;
+      if (
+        cls.contains("mesurer-ti-card") ||
+        cls.contains("mesurer-ti-box") ||
+        cls.contains("mesurer-ti-close")
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const onClickCapture = (ev: MouseEvent) => {
     // Don't interfere with our own overlay (close button, tag drag, etc.).
-    const target = ev.target as Element | null;
-    if (target?.closest?.(`#${OVERLAY_ID}`)) return;
+    if (eventIsFromInspectorUI(ev)) return;
     // Allow clicks on the mesurer toolbar through so the user can toggle
     // the mode back off.
     if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) return;
@@ -1085,8 +1107,7 @@ export const TextInspector: TextInspectorAPI = (() => {
   };
 
   const onAuxClickCapture = (ev: MouseEvent) => {
-    const target = ev.target as Element | null;
-    if (target?.closest?.(`#${OVERLAY_ID}`)) return;
+    if (eventIsFromInspectorUI(ev)) return;
     if (isPointerOverExtensionUI(ev.clientX, ev.clientY)) return;
     ev.preventDefault();
     ev.stopImmediatePropagation();
