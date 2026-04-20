@@ -69,18 +69,22 @@ const INSPECTOR_STYLES = `
 .${BODY_MODE_CLASS} #${OVERLAY_ID} * {
   cursor: auto !important;
 }
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-tag--pinned {
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned {
   cursor: grab;
 }
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-tag--pinned:active {
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned:active {
   cursor: grabbing;
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close {
   cursor: pointer;
 }
+.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close:hover {
+  background: rgba(15, 23, 42, 0.06) !important;
+  color: #0f172a !important;
+}
 @keyframes mesurer-ti-pop {
-  from { transform: translateX(-50%) scale(0.92); opacity: 0; }
-  to   { transform: translateX(-50%) scale(1);     opacity: 1; }
+  from { transform: translateX(-50%) scale(0.94); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1);    opacity: 1; }
 }
 `;
 
@@ -214,72 +218,137 @@ export const TextInspector: TextInspectorAPI = (() => {
     return match ? match[1] : null;
   };
 
-  const findVarReference = (
-    el: HTMLElement,
-    prop: string,
-  ): string | null => {
-    let node: HTMLElement | null = el;
-    while (node) {
-      const inline = node.style.getPropertyValue(prop);
-      const inlineVar = extractVarName(inline);
-      if (inlineVar) return inlineVar;
+  const TYPO_PROPS = [
+    "font-family",
+    "font-size",
+    "font-weight",
+    "line-height",
+    "letter-spacing",
+  ] as const;
+  type TypoProp = (typeof TYPO_PROPS)[number];
 
-      const sheets = Array.from(document.styleSheets);
-      for (const sheet of sheets) {
-        let rules: CSSRuleList | null = null;
+  // Cache of typography info per element. Live across hovers so mousing
+  // back over a previously-seen element is O(1). A WeakMap lets the GC
+  // drop entries if the page swaps DOM.
+  const typographyCache = new WeakMap<HTMLElement, TypographyInfo>();
+
+  // Accessible stylesheet rule cache. Computing the accessible rules list
+  // once per enable() is dramatically cheaper than re-reading
+  // `document.styleSheets[i].cssRules` on every hover target switch.
+  // Invalidated whenever the total sheet count changes.
+  type FlatRule = { rule: CSSStyleRule; mediaOk: boolean };
+  let ruleCache: FlatRule[] | null = null;
+  let ruleCacheSheetCount = -1;
+
+  const buildRuleCache = (): FlatRule[] => {
+    const out: FlatRule[] = [];
+    const sheets = document.styleSheets;
+    for (let i = 0; i < sheets.length; i++) {
+      const sheet = sheets[i];
+      let rules: CSSRuleList | null = null;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      if (!rules) continue;
+      collectRules(rules, out, true);
+    }
+    return out;
+  };
+
+  const collectRules = (
+    rules: CSSRuleList,
+    out: FlatRule[],
+    mediaOk: boolean,
+  ) => {
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      if (rule instanceof CSSMediaRule) {
+        let inner = mediaOk;
         try {
-          rules = sheet.cssRules;
+          inner = mediaOk && window.matchMedia(rule.media.mediaText).matches;
         } catch {
-          continue;
+          inner = false;
         }
-        if (!rules) continue;
-        const found = scanRulesForVar(rules, node, prop);
-        if (found) return found;
+        collectRules(rule.cssRules, out, inner);
+        continue;
+      }
+      if (rule instanceof CSSSupportsRule) {
+        collectRules(rule.cssRules, out, mediaOk);
+        continue;
+      }
+      if (rule instanceof CSSStyleRule) out.push({ rule, mediaOk });
+    }
+  };
+
+  const getRuleCache = (): FlatRule[] => {
+    const count = document.styleSheets.length;
+    if (!ruleCache || count !== ruleCacheSheetCount) {
+      ruleCache = buildRuleCache();
+      ruleCacheSheetCount = count;
+    }
+    return ruleCache;
+  };
+
+  // One pass up the ancestor chain, one pass through all cached rules,
+  // resolving var refs for all 5 typography properties at once.
+  const findVarReferencesBatch = (
+    el: HTMLElement,
+  ): Record<TypoProp, string | null> => {
+    const out: Record<string, string | null> = {
+      "font-family": null,
+      "font-size": null,
+      "font-weight": null,
+      "line-height": null,
+      "letter-spacing": null,
+    };
+    let remaining: number = TYPO_PROPS.length;
+
+    const tryAssign = (prop: TypoProp, val: string | null | undefined) => {
+      if (out[prop] !== null) return;
+      const name = extractVarName(val);
+      if (!name) return;
+      out[prop] = name;
+      remaining--;
+    };
+
+    const rules = getRuleCache();
+
+    let node: HTMLElement | null = el;
+    while (node && remaining > 0) {
+      // 1. Inline styles win.
+      for (const prop of TYPO_PROPS) {
+        if (out[prop] !== null) continue;
+        tryAssign(prop, node.style.getPropertyValue(prop));
+      }
+      if (remaining === 0) break;
+
+      // 2. Matching stylesheet rules.
+      for (let i = 0; i < rules.length && remaining > 0; i++) {
+        const { rule, mediaOk } = rules[i];
+        if (!mediaOk) continue;
+        let matches = false;
+        try {
+          matches = node.matches(rule.selectorText);
+        } catch {
+          matches = false;
+        }
+        if (!matches) continue;
+        for (const prop of TYPO_PROPS) {
+          if (out[prop] !== null) continue;
+          tryAssign(prop, rule.style.getPropertyValue(prop));
+        }
       }
 
       node = node.parentElement;
     }
-    return null;
+
+    return out as Record<TypoProp, string | null>;
   };
 
-  const scanRulesForVar = (
-    rules: CSSRuleList,
-    el: HTMLElement,
-    prop: string,
-  ): string | null => {
-    for (let i = 0; i < rules.length; i++) {
-      const rule = rules[i];
-      if (rule instanceof CSSMediaRule) {
-        try {
-          if (!window.matchMedia(rule.media.mediaText).matches) continue;
-        } catch {
-          continue;
-        }
-        const found = scanRulesForVar(rule.cssRules, el, prop);
-        if (found) return found;
-        continue;
-      }
-      if (rule instanceof CSSSupportsRule) {
-        const found = scanRulesForVar(rule.cssRules, el, prop);
-        if (found) return found;
-        continue;
-      }
-      if (!(rule instanceof CSSStyleRule)) continue;
-      let matches = false;
-      try {
-        matches = el.matches(rule.selectorText);
-      } catch {
-        matches = false;
-      }
-      if (!matches) continue;
-      const val = rule.style.getPropertyValue(prop);
-      const varName = extractVarName(val);
-      if (varName) return varName;
-    }
-    return null;
-  };
-
-  const getTypographyInfo = (el: HTMLElement): TypographyInfo => {
+  // Fast path: just computed styles + snippet. No stylesheet walk.
+  const getFastTypographyInfo = (el: HTMLElement): TypographyInfo => {
     const cs = window.getComputedStyle(el);
     const family = firstFontFamily(cs.fontFamily || "");
     const size = formatPx(cs.fontSize);
@@ -289,11 +358,11 @@ export const TextInspector: TextInspectorAPI = (() => {
       cs.letterSpacing === "normal" ? "normal" : formatPx(cs.letterSpacing);
 
     const rows: TypographyRow[] = [
-      { label: "Family", value: family, varName: findVarReference(el, "font-family") },
-      { label: "Size", value: size, varName: findVarReference(el, "font-size") },
-      { label: "Weight", value: weight, varName: findVarReference(el, "font-weight") },
-      { label: "Line", value: line, varName: findVarReference(el, "line-height") },
-      { label: "Tracking", value: tracking, varName: findVarReference(el, "letter-spacing") },
+      { label: "Family", value: family, varName: null },
+      { label: "Size", value: size, varName: null },
+      { label: "Weight", value: weight, varName: null },
+      { label: "Line", value: line, varName: null },
+      { label: "Tracking", value: tracking, varName: null },
     ];
 
     const direct = Array.from(el.childNodes)
@@ -305,6 +374,78 @@ export const TextInspector: TextInspectorAPI = (() => {
     const textSnippet = direct.length > 40 ? `${direct.slice(0, 40)}…` : direct;
 
     return { rows, tagName: el.tagName.toLowerCase(), textSnippet };
+  };
+
+  // Full info = fast info + var-reference enrichment. Cached per element.
+  const getFullTypographyInfo = (el: HTMLElement): TypographyInfo => {
+    const cached = typographyCache.get(el);
+    if (cached && cached.rows.every((r) => r.varName !== undefined)) return cached;
+    const base = cached ?? getFastTypographyInfo(el);
+    const vars = findVarReferencesBatch(el);
+    const rows = base.rows.map((r) => ({
+      ...r,
+      varName:
+        r.label === "Family"
+          ? vars["font-family"]
+          : r.label === "Size"
+          ? vars["font-size"]
+          : r.label === "Weight"
+          ? vars["font-weight"]
+          : r.label === "Line"
+          ? vars["line-height"]
+          : vars["letter-spacing"],
+    }));
+    const full: TypographyInfo = { ...base, rows };
+    typographyCache.set(el, full);
+    return full;
+  };
+
+  // Schedule the expensive var-ref enrichment out-of-band. If the user is
+  // still hovering the same element when we finish, patch the tag in place.
+  type IdleCb = (handle: { didTimeout: boolean; timeRemaining: () => number }) => void;
+  const idleApi: {
+    request: (cb: IdleCb) => number;
+    cancel: (id: number) => void;
+  } = (() => {
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: IdleCb, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      return {
+        request: (cb: IdleCb) => w.requestIdleCallback!(cb, { timeout: 250 }),
+        cancel: (id: number) => w.cancelIdleCallback?.(id),
+      };
+    }
+    return {
+      request: (cb: IdleCb) =>
+        window.setTimeout(
+          () => cb({ didTimeout: true, timeRemaining: () => 0 }),
+          32,
+        ) as unknown as number,
+      cancel: (id: number) => window.clearTimeout(id),
+    };
+  })();
+
+  let pendingEnrichEl: HTMLElement | null = null;
+  let pendingEnrichId = -1;
+
+  const scheduleEnrichment = (el: HTMLElement) => {
+    if (pendingEnrichEl === el) return;
+    if (pendingEnrichId !== -1) idleApi.cancel(pendingEnrichId);
+    pendingEnrichEl = el;
+    pendingEnrichId = idleApi.request(() => {
+      pendingEnrichId = -1;
+      pendingEnrichEl = null;
+      if (!enabled) return;
+      const full = getFullTypographyInfo(el);
+      if (hoveredEl === el && hoverTag) {
+        populateTag(hoverTag, full, false);
+        // Re-position because enriched content may be a little wider.
+        const rect = el.getBoundingClientRect();
+        if (hoverBox) positionTagFor(hoverTag, rect);
+      }
+    });
   };
 
   // -------- DOM primitives (match measurer MeasurementBox) --------
@@ -352,53 +493,65 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   const makeTag = (pinned: boolean): HTMLDivElement => {
     const tag = document.createElement("div");
-    tag.className = pinned ? "mesurer-ti-tag mesurer-ti-tag--pinned" : "mesurer-ti-tag";
+    tag.className = pinned ? "mesurer-ti-card mesurer-ti-card--pinned" : "mesurer-ti-card";
     tag.style.position = "fixed";
     tag.style.pointerEvents = pinned ? "auto" : "none";
-    tag.style.background = "rgba(15, 23, 42, 0.9)";
-    tag.style.color = "#f8fafc";
-    tag.style.borderRadius = "4px";
-    tag.style.padding = "4px 6px";
-    tag.style.fontSize = "10px";
-    tag.style.lineHeight = "1.4";
+    tag.style.background = "rgba(255, 255, 255, 0.96)";
+    tag.style.backdropFilter = "blur(12px) saturate(1.2)";
+    // @ts-expect-error — vendor prefix
+    tag.style.webkitBackdropFilter = "blur(12px) saturate(1.2)";
+    tag.style.color = "#0f172a";
+    tag.style.border = "1px solid rgba(15, 23, 42, 0.1)";
+    tag.style.borderRadius = "10px";
+    tag.style.padding = "10px 12px";
+    tag.style.fontSize = "11px";
+    tag.style.lineHeight = "1.5";
     tag.style.fontFamily =
       "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     tag.style.fontVariantNumeric = "tabular-nums";
     tag.style.userSelect = "none";
     tag.style.whiteSpace = "nowrap";
+    tag.style.minWidth = "220px";
+    tag.style.maxWidth = "320px";
     tag.style.transform = "translateX(-50%)";
-    tag.style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
-    if (!pinned) tag.style.transition = "opacity 120ms ease";
+    tag.style.boxShadow =
+      "0 8px 24px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06)";
+    if (!pinned) tag.style.transition = "opacity 100ms ease";
     return tag;
   };
 
   const populateTag = (tag: HTMLDivElement, info: TypographyInfo, pinned: boolean) => {
     tag.innerHTML = "";
 
+    // Header: <tag> badge + snippet + (close if pinned)
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
-    header.style.gap = "6px";
-    header.style.marginBottom = "3px";
+    header.style.gap = "8px";
+    header.style.marginBottom = "8px";
+    header.style.paddingBottom = "6px";
+    header.style.borderBottom = "1px solid rgba(15, 23, 42, 0.08)";
 
     const tagName = document.createElement("span");
-    tagName.style.opacity = "0.9";
-    tagName.style.color = "#0f172a";
-    tagName.style.background = "#f8fafc";
-    tagName.style.borderRadius = "3px";
-    tagName.style.padding = "0 4px";
+    tagName.style.color = "#f8fafc";
+    tagName.style.background = "#0f172a";
+    tagName.style.borderRadius = "4px";
+    tagName.style.padding = "1px 5px";
     tagName.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
-    tagName.style.fontSize = "9px";
+    tagName.style.fontSize = "10px";
+    tagName.style.fontWeight = "500";
     tagName.textContent = info.tagName;
     header.appendChild(tagName);
 
     if (info.textSnippet) {
       const snippet = document.createElement("span");
-      snippet.style.opacity = "0.75";
+      snippet.style.color = "rgba(15, 23, 42, 0.6)";
       snippet.style.overflow = "hidden";
       snippet.style.textOverflow = "ellipsis";
-      snippet.style.maxWidth = "220px";
       snippet.style.whiteSpace = "nowrap";
+      snippet.style.flex = "1";
+      snippet.style.minWidth = "0";
+      snippet.style.fontSize = "10px";
       snippet.textContent = info.textSnippet;
       header.appendChild(snippet);
     }
@@ -411,53 +564,67 @@ export const TextInspector: TextInspectorAPI = (() => {
       close.textContent = "×";
       Object.assign(close.style, {
         all: "unset",
-        marginLeft: "auto",
-        width: "14px",
-        height: "14px",
-        lineHeight: "12px",
+        marginLeft: info.textSnippet ? "0" : "auto",
+        flex: "0 0 auto",
+        width: "16px",
+        height: "16px",
+        lineHeight: "14px",
         textAlign: "center",
-        borderRadius: "3px",
-        color: "#cbd5e1",
+        borderRadius: "4px",
+        color: "rgba(15, 23, 42, 0.5)",
         fontSize: "14px",
         cursor: "pointer",
+        transition: "background 120ms ease, color 120ms ease",
       } satisfies Partial<CSSStyleDeclaration>);
       header.appendChild(close);
     }
 
     tag.appendChild(header);
 
-    for (const row of info.rows) {
-      const line = document.createElement("div");
-      line.style.display = "grid";
-      line.style.gridTemplateColumns = "52px 1fr auto";
-      line.style.columnGap = "8px";
-      line.style.alignItems = "baseline";
+    // Rows: label (left) + value (monospace) + optional var ref
+    const grid = document.createElement("div");
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = "auto 1fr";
+    grid.style.columnGap = "12px";
+    grid.style.rowGap = "3px";
+    grid.style.alignItems = "baseline";
 
+    for (const row of info.rows) {
       const l = document.createElement("span");
-      l.style.opacity = "0.55";
+      l.style.color = "rgba(15, 23, 42, 0.5)";
+      l.style.fontSize = "11px";
       l.textContent = row.label;
 
       const v = document.createElement("span");
       v.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
+      v.style.fontSize = "11px";
+      v.style.color = "#0f172a";
       v.style.overflow = "hidden";
       v.style.textOverflow = "ellipsis";
-      v.textContent = row.value;
-
-      line.appendChild(l);
-      line.appendChild(v);
+      v.style.whiteSpace = "nowrap";
 
       if (row.varName) {
+        const val = document.createElement("span");
+        val.textContent = row.value;
+        v.appendChild(val);
+        const sep = document.createElement("span");
+        sep.style.color = "rgba(15, 23, 42, 0.3)";
+        sep.style.margin = "0 6px";
+        sep.textContent = "·";
+        v.appendChild(sep);
         const varEl = document.createElement("span");
-        varEl.style.opacity = "0.55";
-        varEl.style.fontFamily =
-          "ui-monospace, SFMono-Regular, Menlo, monospace";
-        varEl.style.color = "#7dd3fc";
+        varEl.style.color = "#0369a1";
         varEl.textContent = row.varName;
-        line.appendChild(varEl);
+        v.appendChild(varEl);
+      } else {
+        v.textContent = row.value;
       }
 
-      tag.appendChild(line);
+      grid.appendChild(l);
+      grid.appendChild(v);
     }
+
+    tag.appendChild(grid);
   };
 
   // Position the tag just below the box, centered; fall back above if it'd
@@ -556,8 +723,16 @@ export const TextInspector: TextInspectorAPI = (() => {
 
     if (el !== hoveredEl) {
       hoveredEl = el;
-      const info = getTypographyInfo(el);
-      populateTag(hoverTag!, info, false);
+      // Fast: prefer cached full info, otherwise compute just the values
+      // and enrich var refs asynchronously. This keeps the hover feedback
+      // at 60fps even on pages with thousands of stylesheet rules.
+      const cached = typographyCache.get(el);
+      if (cached) {
+        populateTag(hoverTag!, cached, false);
+      } else {
+        populateTag(hoverTag!, getFastTypographyInfo(el), false);
+        scheduleEnrichment(el);
+      }
     }
 
     positionBox(hoverBox!, rect);
@@ -579,7 +754,9 @@ export const TextInspector: TextInspectorAPI = (() => {
     if (!sourceEl) return;
 
     const root = ensureOverlay();
-    const info = getTypographyInfo(sourceEl);
+    // Pinned cards are "sticky" — user will stare at them. Always do the
+    // full var scan here (cached if already done from a previous hover).
+    const info = getFullTypographyInfo(sourceEl);
     const box = makeBox(FILL_PINNED, OUTLINE_PINNED);
     const tag = makeTag(true);
     populateTag(tag, info, true);
@@ -794,6 +971,13 @@ export const TextInspector: TextInspectorAPI = (() => {
   const disable = () => {
     if (!enabled) return;
     enabled = false;
+    if (pendingEnrichId !== -1) {
+      idleApi.cancel(pendingEnrichId);
+      pendingEnrichId = -1;
+      pendingEnrichEl = null;
+    }
+    ruleCache = null;
+    ruleCacheSheetCount = -1;
     window.removeEventListener("mousemove", onMouseMove, true);
     window.removeEventListener("mouseout", onMouseLeaveWindow, true);
     window.removeEventListener("click", onClickCapture, true);
