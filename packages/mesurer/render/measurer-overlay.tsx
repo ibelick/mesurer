@@ -126,7 +126,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
   return (
     <div
       className={`msr:absolute msr:inset-0 ${
-        enabled && toolMode !== "none"
+        enabled && toolMode !== "none" && toolMode !== "text-inspector"
           ? `msr:pointer-events-auto ${
               guidesEnabled
                 ? hoverGuide || draggingGuideId

@@ -18,6 +18,7 @@ import {
   CursorIcon,
   MinusIcon,
   RulerIcon,
+  TextInspectorIcon,
 } from "./icons";
 
 type Point = {
@@ -316,6 +317,14 @@ function ToolbarComponent(
     onInteract();
   }, [onInteract, setEnabled, setToolMode]);
 
+  const textInspectorMode = useCallback(() => {
+    setEnabled(true);
+    setToolMode((prev) =>
+      prev === "text-inspector" ? "none" : "text-inspector",
+    );
+    onInteract();
+  }, [onInteract, setEnabled, setToolMode]);
+
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
       setEnabled(true);
@@ -383,6 +392,29 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <CursorIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="text-inspector"
+        active={toolMode === "text-inspector"}
+        label="Text inspector"
+        shortcut="A"
+        onClick={textInspectorMode}
+        tooltipVisible={visibleTooltipId === "text-inspector"}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <span
+          className={cn(
+            "msr:flex msr:items-center msr:justify-center msr:transition-opacity",
+            toolMode === "text-inspector"
+              ? "msr:opacity-100"
+              : "msr:opacity-40",
+          )}
+          aria-hidden="true"
+        >
+          <TextInspectorIcon size={20} />
+        </span>
       </ToolbarButton>
       <ToolbarButton
         id="guides"
