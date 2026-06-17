@@ -2,8 +2,8 @@
 
 import { memo } from "react";
 import { MeasureTag } from "../components/measure-tag";
-import type { DistanceOverlay } from "../types";
-import { formatValue } from "../utils";
+import type { DistanceOverlay } from "../core/types";
+import { formatValue } from "../core/utils";
 
 type DistanceOverlayItemProps = {
   distance: DistanceOverlay;

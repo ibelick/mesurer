@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import type { MutableRefObject } from "react"
-import type { Point, Rect } from "../types"
+import type { Point, Rect } from "../core/types"
 
 type UseMeasurerLocalStateArgs = {
   selectedElementRef: MutableRefObject<HTMLElement | null>

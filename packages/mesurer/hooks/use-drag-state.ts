@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { Point } from "../types"
+import type { Point } from "../core/types"
 
 export const useDragState = () => {
   const [start, setStart] = useState<Point | null>(null)

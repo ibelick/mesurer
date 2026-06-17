@@ -6,7 +6,7 @@ import type {
   InspectMeasurement,
   Measurement,
   ToolMode,
-} from "../types"
+} from "../core/types"
 
 type GuideOrientation = "vertical" | "horizontal"
 

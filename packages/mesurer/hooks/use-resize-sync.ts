@@ -1,14 +1,14 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useEffect, useRef } from "react"
-import { updateDistanceForResize } from "../distances"
-import { getInspectMeasurement, updateMeasurementForResize } from "../dom"
-import { getViewportSize } from "../geometry"
+import { updateDistanceForResize } from "../core/distances"
+import { getInspectMeasurement, updateMeasurementForResize } from "../core/dom"
+import { getViewportSize } from "../core/geometry"
 import type {
   DistanceOverlay,
   Guide,
   InspectMeasurement,
   Measurement,
-} from "../types"
+} from "../core/types"
 
 type ResizeParams = {
   setMeasurements: Dispatch<SetStateAction<Measurement[]>>

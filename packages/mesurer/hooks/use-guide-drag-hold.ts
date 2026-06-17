@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react"
-import { GUIDE_DRAG_HOLD_MS } from "../constants"
+import { GUIDE_DRAG_HOLD_MS } from "../core/constants"
 
 export const useGuideDragHold = () => {
   const guideDragHoldTimerRef = useRef<number | null>(null)

@@ -10,8 +10,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { MEASURE_TRANSITION_MS } from "./constants";
-import { ensureMeasurerStyles } from "./style-inject";
+import { MEASURE_TRANSITION_MS } from "./core/constants";
+import { ensureMeasurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
 import { useDragState } from "./hooks/use-drag-state";
@@ -28,14 +28,14 @@ import { useMeasurerPointer } from "./hooks/use-measurer-pointer";
 import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
-import { TextInspector } from "./text-inspector";
+import { TextInspector } from "./runtime/text-inspector";
 import type {
   DistanceOverlay,
   Guide,
   Measurement,
   Rect,
   ToolMode,
-} from "./types";
+} from "./core/types";
 
 type MeasurerProps = {
   highlightColor?: string;

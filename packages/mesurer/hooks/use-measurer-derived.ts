@@ -1,16 +1,16 @@
 import { useMemo } from "react"
-import { getDistanceOverlay } from "../distances"
-import { getEdgeVisibilityForRects } from "../edge-visibility"
-import { getGuideRect } from "../guides"
+import { getDistanceOverlay } from "../core/distances"
+import { getEdgeVisibilityForRects } from "../core/edge-visibility"
+import { getGuideRect } from "../core/guides"
 import {
   getHoveredGuide,
   getOptionContainerLines,
   getOptionPairOverlay,
   getSelectedGuide,
-} from "../option-measurements"
-import { getPrimarySelectedMeasurement } from "../selection-helpers"
-import type { InspectMeasurement, Point, Rect } from "../types"
-import { formatValue } from "../utils"
+} from "../core/option-measurements"
+import { getPrimarySelectedMeasurement } from "../core/selection-helpers"
+import type { InspectMeasurement, Point, Rect } from "../core/types"
+import { formatValue } from "../core/utils"
 
 type UseMeasurerDerivedArgs = {
   start: Point | null

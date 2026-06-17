@@ -1,7 +1,7 @@
 "use client"
 
 import { memo } from "react"
-import type { EdgeVisibility } from "../edge-visibility"
+import type { EdgeVisibility } from "../core/edge-visibility"
 import { MeasureTag } from "./measure-tag"
 
 type Rect = {

@@ -1,14 +1,14 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useEffect, useRef } from "react"
-import { getDistanceOverlay } from "../distances"
-import { getInspectMeasurement, getRectFromDom } from "../dom"
-import { normalizeRect, rectAlmostEqual } from "../geometry"
+import { getDistanceOverlay } from "../core/distances"
+import { getInspectMeasurement, getRectFromDom } from "../core/dom"
+import { normalizeRect, rectAlmostEqual } from "../core/geometry"
 import type {
   DistanceOverlay,
   InspectMeasurement,
   Measurement,
   Rect,
-} from "../types"
+} from "../core/types"
 
 type LiveParams = {
   enabled: boolean

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { Guide } from "../types"
+import type { Guide } from "../core/types"
 
 type GuideStateOptions = {
   initialGuides?: Guide[]

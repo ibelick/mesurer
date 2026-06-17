@@ -9,8 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ToolMode } from "../types";
-import { cn } from "../utils";
+import type { ToolMode } from "../core/types";
+import { cn } from "../core/utils";
 import {
   CaretDownIcon,
   CheckIcon,

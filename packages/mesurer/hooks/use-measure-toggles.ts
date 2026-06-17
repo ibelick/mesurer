@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { ToolMode } from "../types"
+import type { ToolMode } from "../core/types"
 
 type MeasureToggleOptions = {
   initialEnabled?: boolean

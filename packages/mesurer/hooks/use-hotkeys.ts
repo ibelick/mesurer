@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useEffect } from "react"
-import type { ToolMode } from "../types"
+import type { ToolMode } from "../core/types"
 
 type HotkeyOptions = {
   clearAll: () => void

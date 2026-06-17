@@ -10,8 +10,8 @@ import {
   GUIDE_HITBOX_SIZE,
   MEASURE_LABEL_OFFSET,
   MEASURE_TRANSITION_MS,
-} from "../constants";
-import type { EdgeVisibility } from "../edge-visibility";
+} from "../core/constants";
+import type { EdgeVisibility } from "../core/edge-visibility";
 import type {
   DistanceOverlay,
   Guide,
@@ -19,8 +19,8 @@ import type {
   Measurement,
   Rect,
   ToolMode,
-} from "../types";
-import { formatValue } from "../utils";
+} from "../core/types";
+import { formatValue } from "../core/utils";
 import { DistanceOverlayItem } from "./distance-overlay-item";
 
 type GuidePreview = {

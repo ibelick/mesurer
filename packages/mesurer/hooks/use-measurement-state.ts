@@ -4,7 +4,7 @@ import type {
   InspectMeasurement,
   Measurement,
   Rect,
-} from "../types"
+} from "../core/types"
 
 type MeasurementStateOptions = {
   initialActiveMeasurement?: Measurement | null

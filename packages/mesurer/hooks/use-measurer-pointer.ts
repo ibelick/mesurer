@@ -4,15 +4,15 @@ import type {
   PointerEvent as ReactPointerEvent,
   SetStateAction,
 } from "react"
-import { getInspectMeasurement } from "../dom"
-import { getRectFromPoints } from "../geometry"
-import { getSnapGuidePosition } from "../guides"
+import { getInspectMeasurement } from "../core/dom"
+import { getRectFromPoints } from "../core/geometry"
+import { getSnapGuidePosition } from "../core/guides"
 import {
   getElementsInRectCached,
   getSnappedClickTarget,
   getTargetElement,
-} from "../selection"
-import { getSelectedMeasurementHit } from "../selection-helpers"
+} from "../core/selection"
+import { getSelectedMeasurementHit } from "../core/selection-helpers"
 import type {
   DistanceOverlay,
   Guide,
@@ -21,8 +21,8 @@ import type {
   Point,
   Rect,
   ToolMode,
-} from "../types"
-import { createId } from "../utils"
+} from "../core/types"
+import { createId } from "../core/utils"
 
 type GuidePreview = {
   orientation: "vertical" | "horizontal"
