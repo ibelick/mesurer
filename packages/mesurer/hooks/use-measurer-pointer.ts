@@ -133,11 +133,6 @@ export const useMeasurerPointer = ({
   })
   const shiftDragRef = useRef(false)
   const shiftToggleElementRef = useRef<HTMLElement | null>(null)
-  const guidesEnabledRef = useRef(guidesEnabled)
-  const guidesRef = useRef(guides)
-  const snapGuidesEnabledRef = useRef(snapGuidesEnabled)
-  const draggingGuideIdRef = useRef(draggingGuideId)
-  const guideOrientationRef = useRef(guideOrientation)
 
   useEffect(() => {
     return () => {
@@ -146,26 +141,6 @@ export const useMeasurerPointer = ({
       }
     }
   }, [])
-
-  useEffect(() => {
-    guidesEnabledRef.current = guidesEnabled
-  }, [guidesEnabled])
-
-  useEffect(() => {
-    guidesRef.current = guides
-  }, [guides])
-
-  useEffect(() => {
-    snapGuidesEnabledRef.current = snapGuidesEnabled
-  }, [snapGuidesEnabled])
-
-  useEffect(() => {
-    guideOrientationRef.current = guideOrientation
-  }, [guideOrientation])
-
-  useEffect(() => {
-    draggingGuideIdRef.current = draggingGuideId
-  }, [draggingGuideId])
 
   const updateHoverTarget = useCallback(
     (point: Point) => {
@@ -308,33 +283,33 @@ export const useMeasurerPointer = ({
       if (!hoverFrameRef.current) {
         hoverFrameRef.current = requestAnimationFrame(() => {
           const latest = hoverPointRef.current
-          if (latest && !draggingGuideIdRef.current) {
+          if (latest && !draggingGuideId) {
             if (hoverHighlightEnabled) {
               updateHoverTarget(latest)
             } else {
               updateHoverElement(latest)
             }
           }
-          if (latest && guidesRef.current.length > 0) {
+          if (latest && guides.length > 0) {
             setHoverPointer(latest)
           } else {
             setHoverPointer(null)
           }
           if (
-            guidesEnabledRef.current &&
+            guidesEnabled &&
             latest &&
-            !draggingGuideIdRef.current
+            !draggingGuideId
           ) {
             const position = getSnapGuidePosition({
-              orientation: guideOrientationRef.current,
+              orientation: guideOrientation,
               point: latest,
-              snapGuidesEnabled: snapGuidesEnabledRef.current,
+              snapGuidesEnabled,
               overlayNode: overlayRef.current,
-              guides: guidesRef.current,
-              draggingGuideId: draggingGuideIdRef.current,
+              guides,
+              draggingGuideId,
             })
             setGuidePreview({
-              orientation: guideOrientationRef.current,
+              orientation: guideOrientation,
               position,
             })
           } else {
@@ -353,10 +328,10 @@ export const useMeasurerPointer = ({
                   position: getSnapGuidePosition({
                     orientation: guide.orientation,
                     point,
-                    snapGuidesEnabled: snapGuidesEnabledRef.current,
+                    snapGuidesEnabled,
                     overlayNode: overlayRef.current,
-                    guides: guidesRef.current,
-                    draggingGuideId: draggingGuideIdRef.current,
+                    guides,
+                    draggingGuideId,
                   }),
                 }
               : guide
@@ -381,8 +356,11 @@ export const useMeasurerPointer = ({
       draggingGuideId,
       enabled,
       hoverHighlightEnabled,
+      guides,
+      guidesEnabled,
       isDragging,
       overlayRef,
+      guideOrientation,
       setAltPressed,
       setEnd,
       setGuidePreview,
@@ -391,6 +369,7 @@ export const useMeasurerPointer = ({
       setHoverPointer,
       setHoverRect,
       setIsDragging,
+      snapGuidesEnabled,
       start,
       toolMode,
       toolbarRef,

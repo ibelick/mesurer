@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useEffect, useState } from "react"
+import { memo } from "react"
 import type { EdgeVisibility } from "../edge-visibility"
 import { MeasureTag } from "./measure-tag"
 
@@ -33,24 +33,10 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
   labelOffset,
   edgeVisibility,
 }: SelectedMeasurementBoxProps) {
-  const [rect, setRect] = useState<Rect>(
-    measurement.originRect ?? measurement.rect
-  )
-
-  useEffect(() => {
-    if (!measurement.originRect) return
-
-    const frame = requestAnimationFrame(() => {
-      setRect(measurement.rect)
-    })
-
-    return () => cancelAnimationFrame(frame)
-  }, [measurement])
-
   const edges =
     edgeVisibility ??
     ({ top: true, right: true, bottom: true, left: true } as EdgeVisibility)
-  const displayRect = measurement.originRect ? rect : measurement.rect
+  const displayRect = measurement.rect
   const outlineColor =
     "color-mix(in oklch, oklch(0.62 0.18 255) 80%, transparent)"
   const fillColor = "color-mix(in oklch, oklch(0.62 0.18 255) 8%, transparent)"
@@ -65,9 +51,7 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
           width: displayRect.width,
           height: displayRect.height,
           backgroundColor: fillColor,
-          transition: measurement.originRect
-            ? `left ${transitionMs}ms ease, top ${transitionMs}ms ease, width ${transitionMs}ms ease, height ${transitionMs}ms ease`
-            : undefined,
+          transition: `left ${transitionMs}ms ease, top ${transitionMs}ms ease, width ${transitionMs}ms ease, height ${transitionMs}ms ease`,
         }}
       >
         {edges.top ? (
@@ -100,9 +84,7 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
         style={{
           left: displayRect.left + displayRect.width / 2,
           top: displayRect.top + displayRect.height + labelOffset,
-          transition: measurement.originRect
-            ? `left ${transitionMs}ms ease, top ${transitionMs}ms ease`
-            : undefined,
+          transition: `left ${transitionMs}ms ease, top ${transitionMs}ms ease`,
         }}
       >
         {formatValue(displayRect.width)} x {formatValue(displayRect.height)}

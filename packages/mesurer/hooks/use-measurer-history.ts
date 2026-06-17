@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useRef } from "react"
 import type { SetStateAction } from "react"
 import type {
   DistanceOverlay,
@@ -321,32 +321,13 @@ export const useMeasurerHistory = ({
     }
   }, [recordSnapshot])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey)) return
-      if (event.key.toLowerCase() !== "z") return
-      if (event.shiftKey) {
-        if (futureRef.current.length === 0) return
-        event.preventDefault()
-        redo()
-        return
-      }
-      if (historyRef.current.length === 0) return
-      event.preventDefault()
-      undo()
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [redo, undo])
-
   return {
     recordSnapshot,
     createActionCommit,
     setToolModeWithHistory,
     setGuideOrientationWithHistory,
     setEnabledWithHistory,
+    undo,
+    redo,
   }
 }

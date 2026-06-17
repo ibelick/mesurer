@@ -5,7 +5,6 @@ import {
   forwardRef,
   memo,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -140,12 +139,6 @@ function useToolbarTooltip() {
     clearTimer();
     setVisibleTooltipId(null);
     instantRef.current = false;
-  }, [clearTimer]);
-
-  useEffect(() => {
-    return () => {
-      clearTimer();
-    };
   }, [clearTimer]);
 
   return { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave };

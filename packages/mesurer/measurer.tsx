@@ -98,6 +98,25 @@ function MeasurerClient({
     }
   }, [persistOnReload]);
 
+  const enabledRef = useRef(false);
+  const toolModeRef = useRef<ToolMode>(persistedState?.toolMode ?? "none");
+  const guideOrientationRef = useRef<"vertical" | "horizontal">(
+    persistedState?.guideOrientation ?? "vertical",
+  );
+  const measurementsRef = useRef<Measurement[]>(
+    persistedState?.measurements ?? [],
+  );
+  const activeMeasurementRef = useRef<Measurement | null>(
+    persistedState?.activeMeasurement ?? null,
+  );
+  const heldDistancesRef = useRef<DistanceOverlay[]>(
+    persistedState?.heldDistances ?? [],
+  );
+  const guidesRef = useRef<Guide[]>(persistedState?.guides ?? []);
+  const selectedGuideIdsRef = useRef<string[]>(
+    persistedState?.selectedGuideIds ?? [],
+  );
+
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const {
     selectionOriginRect,
@@ -172,56 +191,135 @@ function MeasurerClient({
     "vertical" | "horizontal"
   >(persistedState?.guideOrientation ?? "vertical");
 
-  const persistPayload = useMemo(() => {
-    if (!persistOnReload) return null;
-    return JSON.stringify({
-      version: 1,
-      enabled,
-      toolMode,
-      guideOrientation,
-      guides,
-      selectedGuideIds,
-      measurements: measurements.map(stripMeasurement),
-      activeMeasurement: activeMeasurement
-        ? stripMeasurement(activeMeasurement)
-        : null,
-      heldDistances: heldDistances.map(stripDistance),
-    });
-  }, [
-    activeMeasurement,
-    enabled,
-    guideOrientation,
-    guides,
-    heldDistances,
-    measurements,
-    persistOnReload,
-    selectedGuideIds,
-    toolMode,
-  ]);
+  enabledRef.current = enabled;
+  toolModeRef.current = toolMode;
+  guideOrientationRef.current = guideOrientation;
+  measurementsRef.current = measurements;
+  activeMeasurementRef.current = activeMeasurement;
+  heldDistancesRef.current = heldDistances;
+  guidesRef.current = guides;
+  selectedGuideIdsRef.current = selectedGuideIds;
 
-  useEffect(() => {
+  const persistState = useCallback(() => {
     if (!persistOnReload) return;
     if (typeof window === "undefined") return;
-    if (!persistPayload) return;
+
     try {
-      window.localStorage.setItem("mesurer-state", persistPayload);
+      window.localStorage.setItem(
+        "mesurer-state",
+        JSON.stringify({
+          version: 1,
+          enabled: enabledRef.current,
+          toolMode: toolModeRef.current,
+          guideOrientation: guideOrientationRef.current,
+          guides: guidesRef.current,
+          selectedGuideIds: selectedGuideIdsRef.current,
+          measurements: measurementsRef.current.map(stripMeasurement),
+          activeMeasurement: activeMeasurementRef.current
+            ? stripMeasurement(activeMeasurementRef.current)
+            : null,
+          heldDistances: heldDistancesRef.current.map(stripDistance),
+        }),
+      );
     } catch {
       // ignore storage errors
     }
+  }, [persistOnReload]);
 
-    const handlePageHide = () => {
-      try {
-        window.localStorage.setItem("mesurer-state", persistPayload);
-      } catch {
-        // ignore storage errors
-      }
-    };
+  const setEnabledPersisted = useCallback(
+    (value: Parameters<typeof setEnabled>[0]) => {
+      const next = typeof value === "function" ? value(enabledRef.current) : value;
+      if (Object.is(next, enabledRef.current)) return;
+      enabledRef.current = next;
+      setEnabled(next);
+      persistState();
+    },
+    [persistState, setEnabled],
+  );
 
-    window.addEventListener("pagehide", handlePageHide);
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, [persistOnReload, persistPayload]);
+  const setToolModePersisted = useCallback(
+    (value: Parameters<typeof setToolMode>[0]) => {
+      const next = typeof value === "function" ? value(toolModeRef.current) : value;
+      if (Object.is(next, toolModeRef.current)) return;
+      toolModeRef.current = next;
+      setToolMode(next);
+      persistState();
+    },
+    [persistState, setToolMode],
+  );
+
+  const setGuideOrientationPersisted = useCallback(
+    (value: Parameters<typeof setGuideOrientation>[0]) => {
+      const next =
+        typeof value === "function" ? value(guideOrientationRef.current) : value;
+      if (Object.is(next, guideOrientationRef.current)) return;
+      guideOrientationRef.current = next;
+      setGuideOrientation(next);
+      persistState();
+    },
+    [persistState, setGuideOrientation],
+  );
+
+  const setMeasurementsPersisted = useCallback(
+    (value: Parameters<typeof setMeasurements>[0]) => {
+      const next =
+        typeof value === "function" ? value(measurementsRef.current) : value;
+      if (Object.is(next, measurementsRef.current)) return;
+      measurementsRef.current = next;
+      setMeasurements(next);
+      persistState();
+    },
+    [persistState, setMeasurements],
+  );
+
+  const setActiveMeasurementPersisted = useCallback(
+    (value: Parameters<typeof setActiveMeasurement>[0]) => {
+      const next =
+        typeof value === "function"
+          ? value(activeMeasurementRef.current)
+          : value;
+      if (Object.is(next, activeMeasurementRef.current)) return;
+      activeMeasurementRef.current = next;
+      setActiveMeasurement(next);
+      persistState();
+    },
+    [persistState, setActiveMeasurement],
+  );
+
+  const setHeldDistancesPersisted = useCallback(
+    (value: Parameters<typeof setHeldDistances>[0]) => {
+      const next =
+        typeof value === "function" ? value(heldDistancesRef.current) : value;
+      if (Object.is(next, heldDistancesRef.current)) return;
+      heldDistancesRef.current = next;
+      setHeldDistances(next);
+      persistState();
+    },
+    [persistState, setHeldDistances],
+  );
+
+  const setGuidesPersisted = useCallback(
+    (value: Parameters<typeof setGuides>[0]) => {
+      const next = typeof value === "function" ? value(guidesRef.current) : value;
+      if (Object.is(next, guidesRef.current)) return;
+      guidesRef.current = next;
+      setGuides(next);
+      persistState();
+    },
+    [persistState, setGuides],
+  );
+
+  const setSelectedGuideIdsPersisted = useCallback(
+    (value: Parameters<typeof setSelectedGuideIds>[0]) => {
+      const next =
+        typeof value === "function" ? value(selectedGuideIdsRef.current) : value;
+      if (Object.is(next, selectedGuideIdsRef.current)) return;
+      selectedGuideIdsRef.current = next;
+      setSelectedGuideIds(next);
+      persistState();
+    },
+    [persistState, setSelectedGuideIds],
+  );
 
   const {
     recordSnapshot,
@@ -229,32 +327,34 @@ function MeasurerClient({
     setToolModeWithHistory,
     setGuideOrientationWithHistory,
     setEnabledWithHistory,
+    undo,
+    redo,
   } = useMeasurerHistory({
     toggles: {
       enabled,
-      setEnabled,
+      setEnabled: setEnabledPersisted,
       toolMode,
-      setToolMode,
+      setToolMode: setToolModePersisted,
       guideOrientation,
-      setGuideOrientation,
+      setGuideOrientation: setGuideOrientationPersisted,
     },
     measurements: {
       measurements,
-      setMeasurements,
+      setMeasurements: setMeasurementsPersisted,
       activeMeasurement,
-      setActiveMeasurement,
+      setActiveMeasurement: setActiveMeasurementPersisted,
       selectedMeasurements,
       setSelectedMeasurements,
       selectedMeasurement,
       setSelectedMeasurement,
       heldDistances,
-      setHeldDistances,
+      setHeldDistances: setHeldDistancesPersisted,
     },
     guides: {
       guides,
-      setGuides,
+      setGuides: setGuidesPersisted,
       selectedGuideIds,
-      setSelectedGuideIds,
+      setSelectedGuideIds: setSelectedGuideIdsPersisted,
       draggingGuideId,
       setDraggingGuideId,
     },
@@ -276,31 +376,31 @@ function MeasurerClient({
     setStart(null);
     setEnd(null);
     setIsDragging(false);
-    setActiveMeasurement(null);
-    setMeasurements([]);
+    setActiveMeasurementPersisted(null);
+    setMeasurementsPersisted([]);
     setSelectedMeasurement(null);
     setSelectedMeasurements([]);
     clearSelectionRect();
     setSelectedElement(null);
     setHoverRect(null);
     setHoverElement(null);
-    setGuides([]);
-    setSelectedGuideIds([]);
-    setHeldDistances([]);
+    setGuidesPersisted([]);
+    setSelectedGuideIdsPersisted([]);
+    setHeldDistancesPersisted([]);
   }, [
     clearGuideDragHold,
     clearSelectionRect,
     recordSnapshot,
-    setActiveMeasurement,
+    setActiveMeasurementPersisted,
     setEnd,
-    setGuides,
-    setHeldDistances,
+    setGuidesPersisted,
+    setHeldDistancesPersisted,
     setHoverElement,
     setHoverRect,
     setIsDragging,
-    setMeasurements,
+    setMeasurementsPersisted,
     setSelectedElement,
-    setSelectedGuideIds,
+    setSelectedGuideIdsPersisted,
     setSelectedMeasurement,
     setSelectedMeasurements,
     setStart,
@@ -309,15 +409,22 @@ function MeasurerClient({
   const removeSelectedGuides = useCallback(() => {
     if (selectedGuideIds.length === 0) return false;
     recordSnapshot();
-    setGuides((prev) =>
+    setGuidesPersisted((prev) =>
       prev.filter((guide) => !selectedGuideIds.includes(guide.id)),
     );
-    setSelectedGuideIds([]);
+    setSelectedGuideIdsPersisted([]);
     return true;
-  }, [recordSnapshot, selectedGuideIds, setGuides, setSelectedGuideIds]);
+  }, [
+    recordSnapshot,
+    selectedGuideIds,
+    setGuidesPersisted,
+    setSelectedGuideIdsPersisted,
+  ]);
 
   useHotkeys({
     clearAll,
+    undo,
+    redo,
     removeSelectedGuides,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
@@ -328,11 +435,11 @@ function MeasurerClient({
   });
 
   useResizeSync({
-    setMeasurements,
-    setActiveMeasurement,
-    setHeldDistances,
+    setMeasurements: setMeasurementsPersisted,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setHeldDistances: setHeldDistancesPersisted,
     setSelectedMeasurement,
-    setGuides,
+    setGuides: setGuidesPersisted,
     selectedElementRef,
   });
 
@@ -343,9 +450,9 @@ function MeasurerClient({
     setSelectedMeasurement,
     setSelectedMeasurements,
     setHoverRect,
-    setMeasurements,
-    setActiveMeasurement,
-    setHeldDistances,
+    setMeasurements: setMeasurementsPersisted,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setHeldDistances: setHeldDistancesPersisted,
   });
 
   useEffect(() => {
@@ -362,11 +469,6 @@ function MeasurerClient({
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [toolbarActive, toolMode]);
-
-  useEffect(() => {
-    if (hoverHighlightEnabled) return;
-    setHoverRect(null);
-  }, [hoverHighlightEnabled, setHoverRect]);
 
   // Drive the vanilla-DOM text-inspector IIFE from the React tool mode.
   // The module owns its own listeners / DOM / styles; React only tells it
@@ -424,6 +526,13 @@ function MeasurerClient({
         return changed ? next : prev;
       });
     }, MEASURE_TRANSITION_MS);
+
+    return () => {
+      if (selectionAnimationCleanupTimeoutRef.current !== null) {
+        window.clearTimeout(selectionAnimationCleanupTimeoutRef.current);
+        selectionAnimationCleanupTimeoutRef.current = null;
+      }
+    };
   }, [
     selectionOriginRect,
     selectedMeasurement,
@@ -432,14 +541,6 @@ function MeasurerClient({
     setSelectedMeasurements,
     setSelectionOriginRect,
   ]);
-
-  useEffect(() => {
-    return () => {
-      if (selectionAnimationCleanupTimeoutRef.current !== null) {
-        window.clearTimeout(selectionAnimationCleanupTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const displayedMeasurements = holdEnabled
     ? measurements
@@ -520,15 +621,15 @@ function MeasurerClient({
     optionPairOverlay,
     setAltPressed,
     setGuidePreview,
-    setSelectedGuideIds,
-    setGuides,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setGuides: setGuidesPersisted,
     setStart,
     setEnd,
     setIsDragging,
-    setHeldDistances,
+    setHeldDistances: setHeldDistancesPersisted,
     setDraggingGuideId,
-    setActiveMeasurement,
-    setMeasurements,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setMeasurements: setMeasurementsPersisted,
     setSelectedMeasurements,
     setSelectedMeasurement,
     setSelectionOriginRect,
@@ -542,9 +643,11 @@ function MeasurerClient({
   const removeHeldDistance = useCallback(
     (id: string) => {
       recordSnapshot();
-      setHeldDistances((prev) => prev.filter((distance) => distance.id !== id));
+      setHeldDistancesPersisted((prev) =>
+        prev.filter((distance) => distance.id !== id),
+      );
     },
-    [recordSnapshot, setHeldDistances],
+    [recordSnapshot, setHeldDistancesPersisted],
   );
 
   const handleGuidePointerDown = useCallback(
@@ -554,7 +657,7 @@ function MeasurerClient({
       event.stopPropagation();
       if (event.shiftKey) {
         commit();
-        setSelectedGuideIds((prev) =>
+        setSelectedGuideIdsPersisted((prev) =>
           prev.includes(guide.id)
             ? prev.filter((id) => id !== guide.id)
             : [...prev, guide.id],
@@ -563,7 +666,7 @@ function MeasurerClient({
       }
 
       commit();
-      setSelectedGuideIds([guide.id]);
+      setSelectedGuideIdsPersisted([guide.id]);
       scheduleGuideDragHold(guide.id, setDraggingGuideId);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
@@ -572,7 +675,7 @@ function MeasurerClient({
       enabled,
       scheduleGuideDragHold,
       setDraggingGuideId,
-      setSelectedGuideIds,
+      setSelectedGuideIdsPersisted,
     ],
   );
 

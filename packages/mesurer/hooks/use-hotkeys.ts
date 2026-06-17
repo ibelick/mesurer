@@ -4,6 +4,8 @@ import type { ToolMode } from "../types"
 
 type HotkeyOptions = {
   clearAll: () => void
+  undo: () => void
+  redo: () => void
   removeSelectedGuides: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
@@ -18,6 +20,18 @@ export const useHotkeys = (options: HotkeyOptions) => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         options.clearAll()
+        return
+      }
+
+      if (event.metaKey || event.ctrlKey) {
+        if (event.key.toLowerCase() !== "z") return
+        if (event.shiftKey) {
+          event.preventDefault()
+          options.redo()
+          return
+        }
+        event.preventDefault()
+        options.undo()
         return
       }
 
