@@ -243,6 +243,11 @@ function MeasurerClient({
       if (Object.is(next, toolModeRef.current)) return;
       toolModeRef.current = next;
       setToolMode(next);
+      if (next === "text-inspector") {
+        TextInspector.enable();
+      } else {
+        TextInspector.disable();
+      }
       persistState();
     },
     [persistState, setToolMode],

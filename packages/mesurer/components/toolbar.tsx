@@ -397,17 +397,7 @@ function ToolbarComponent(
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
       >
-        <span
-          className={cn(
-            "msr:flex msr:items-center msr:justify-center msr:transition-opacity",
-            toolMode === "text-inspector"
-              ? "msr:opacity-100"
-              : "msr:opacity-40",
-          )}
-          aria-hidden="true"
-        >
-          <TextInspectorIcon size={20} />
-        </span>
+        <TextInspectorIcon size={20} aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton
         id="guides"

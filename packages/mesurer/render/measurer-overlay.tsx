@@ -123,10 +123,13 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
   onGuidePointerUp,
   onGuidePointerCancel,
 }: MeasurerOverlayProps) {
+  const overlayVisible = enabled && toolMode !== "none";
+  const overlayInteractive = overlayVisible && toolMode !== "text-inspector";
+
   return (
     <div
       className={`msr:absolute msr:inset-0 ${
-        enabled && toolMode !== "none" && toolMode !== "text-inspector"
+        overlayVisible
           ? `msr:pointer-events-auto ${
               guidesEnabled
                 ? hoverGuide || draggingGuideId
@@ -136,6 +139,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
             } msr:opacity-100`
           : "msr:pointer-events-none msr:opacity-0"
       }`}
+      style={{ pointerEvents: overlayInteractive ? "auto" : "none" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

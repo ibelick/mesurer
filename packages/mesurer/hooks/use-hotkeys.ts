@@ -41,6 +41,13 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       const key = event.key.toLowerCase()
       if (options.isOverlayActive()) {
+        if (key === "a") {
+          options.setToolMode((prev) =>
+            prev === "text-inspector" ? "none" : "text-inspector",
+          )
+          options.onInteract()
+        }
+
         if (key === "s") {
           options.setToolMode((prev) => (prev === "select" ? "none" : "select"))
           options.onInteract()

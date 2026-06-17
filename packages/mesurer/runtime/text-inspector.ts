@@ -628,8 +628,10 @@ export const TextInspector: TextInspectorAPI = (() => {
     tag.style.fontVariantNumeric = "tabular-nums";
     tag.style.userSelect = "none";
     tag.style.whiteSpace = "nowrap";
-    tag.style.minWidth = "220px";
+    tag.style.width = "320px";
+    tag.style.minWidth = "320px";
     tag.style.maxWidth = "320px";
+    tag.style.boxSizing = "border-box";
     // Shadow matches `.mesurer-menu-surface`.
     tag.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.08)";
     return tag;
@@ -868,6 +870,8 @@ export const TextInspector: TextInspectorAPI = (() => {
     const sourceEl = pickElementAt(x, y);
     if (!sourceEl) return;
 
+    if (pinned.some((entry) => entry.sourceEl === sourceEl)) return;
+
     const root = ensureOverlay();
     // Pinned cards are "sticky" — user will stare at them. Always do the
     // full var scan here (cached if already done from a previous hover).
@@ -1084,7 +1088,8 @@ export const TextInspector: TextInspectorAPI = (() => {
       if (
         cls.contains("mesurer-ti-card") ||
         cls.contains("mesurer-ti-box") ||
-        cls.contains("mesurer-ti-close")
+        cls.contains("mesurer-ti-close") ||
+        cls.contains("mesurer-toolbar-surface")
       ) {
         return true;
       }
