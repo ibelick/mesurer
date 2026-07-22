@@ -126,6 +126,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
   const overlayVisible = enabled;
   const overlayInteractive =
     overlayVisible && toolMode !== "none" && toolMode !== "text-inspector";
+  const selectionVisible = toolMode === "select";
 
   return (
     <div
@@ -146,7 +147,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
     >
-      {!guidesEnabled
+      {selectionVisible
         ? displayedMeasurements.map((measurement, index) => (
             <MeasurementBox
               key={measurement.id}
@@ -158,7 +159,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           ))
         : null}
 
-      {!guidesEnabled && activeRect && isDragging ? (
+      {selectionVisible && activeRect && isDragging ? (
         <>
           <div
             className="msr:pointer-events-none msr:absolute"
@@ -199,7 +200,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         </>
       ) : null}
 
-      {!guidesEnabled && hoverRectToShow ? (
+      {selectionVisible && hoverRectToShow ? (
         <div
           className="msr:pointer-events-none msr:absolute"
           style={{
@@ -279,7 +280,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         </div>
       ) : null}
 
-      {!guidesEnabled
+      {selectionVisible
         ? displayedSelectedMeasurements.map((measurement, index) => (
             <SelectedMeasurementBox
               key={measurement.id}
@@ -300,7 +301,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         />
       ))}
 
-      {!guidesEnabled && altPressed && optionPairOverlay ? (
+      {selectionVisible && altPressed && optionPairOverlay ? (
         <DistanceOverlayItem
           key={`option-${optionPairOverlay.id}`}
           distance={optionPairOverlay}
@@ -316,7 +317,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         />
       ) : null}
 
-      {!guidesEnabled && altPressed && optionContainerLines ? (
+      {selectionVisible && altPressed && optionContainerLines ? (
         <>
           {optionContainerLines.top.value > 0 ? (
             <>
