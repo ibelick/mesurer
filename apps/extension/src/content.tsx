@@ -40,6 +40,10 @@ const getOrCreateContainer = () => {
     document.body.appendChild(host);
   }
 
+  // Keep the full-viewport extension shell transparent. Interactive children
+  // such as the active tool overlay and toolbar opt back into pointer events.
+  host.style.pointerEvents = "none";
+
   const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
 
   let container = shadowRoot.getElementById(ROOT_ID);

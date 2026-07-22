@@ -123,8 +123,9 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
   onGuidePointerUp,
   onGuidePointerCancel,
 }: MeasurerOverlayProps) {
-  const overlayVisible = enabled && toolMode !== "none";
-  const overlayInteractive = overlayVisible && toolMode !== "text-inspector";
+  const overlayVisible = enabled;
+  const overlayInteractive =
+    overlayVisible && toolMode !== "none" && toolMode !== "text-inspector";
 
   return (
     <div
