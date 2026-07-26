@@ -6,6 +6,8 @@ dist/
 .turbo/
 .vite/
 coverage/
+test-results/
+playwright-report/
 *.log
 pnpm-debug.log*
 npm-debug.log*
