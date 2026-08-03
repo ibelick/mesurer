@@ -29,6 +29,8 @@ export const getSelectedGuide = (
 }
 
 export const getOptionPairOverlay = (params: {
+  document?: Document
+  window?: Window
   altPressed: boolean
   primarySelectedMeasurement: InspectMeasurement | null
   selectedGuide: Guide | null
@@ -36,6 +38,8 @@ export const getOptionPairOverlay = (params: {
   hoverElement: HTMLElement | null
   selectedElementRef: HTMLElement | null
 }) => {
+  const ownerDocument = params.document ?? document
+  const ownerWindow = params.window ?? window
   if (!params.altPressed) return null
   if (!params.selectedGuide && !params.primarySelectedMeasurement) return null
 
@@ -90,11 +94,14 @@ export const getOptionPairOverlay = (params: {
     selectedTarget.rect,
     hoverTarget.rect,
     selectedTarget.element ?? null,
-    hoverTarget.element ?? null
+    hoverTarget.element ?? null,
+    ownerWindow
   )
 }
 
 export const getOptionContainerLines = (params: {
+  document?: Document
+  window?: Window
   altPressed: boolean
   primarySelectedMeasurement: InspectMeasurement | null
   optionPairOverlay: ReturnType<typeof getDistanceOverlay> | null
@@ -102,6 +109,8 @@ export const getOptionContainerLines = (params: {
   selectedElement: HTMLElement | null
   hoverElement: HTMLElement | null
 }) => {
+  const ownerDocument = params.document ?? document
+  const ownerWindow = params.window ?? window
   if (
     !params.altPressed ||
     !params.primarySelectedMeasurement ||
@@ -123,14 +132,14 @@ export const getOptionContainerLines = (params: {
 
   const containerRect =
     containerElement &&
-    containerElement !== document.body &&
-    containerElement !== document.documentElement
+    containerElement !== ownerDocument.body &&
+    containerElement !== ownerDocument.documentElement
       ? getRectFromDom(containerElement)
       : {
           left: 0,
           top: 0,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          width: ownerWindow.innerWidth,
+          height: ownerWindow.innerHeight,
         }
 
   const rect = params.primarySelectedMeasurement.rect

@@ -28,7 +28,10 @@ import { useMeasurerPointer } from "./hooks/use-measurer-pointer";
 import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
-import { TextInspector } from "./runtime/text-inspector";
+import {
+  createTextInspector,
+  type TextInspectorAPI,
+} from "./runtime/text-inspector";
 import type {
   DistanceOverlay,
   Guide,
@@ -43,7 +46,10 @@ type MeasurerProps = {
   hoverHighlightEnabled?: boolean;
   persistOnReload?: boolean;
   portalTarget?: HTMLElement | ShadowRoot;
+  persistKey?: string;
 };
+
+let measurerInstanceCount = 0;
 
 const subscribeHydration = () => () => {};
 const useHydrated = () =>
@@ -70,16 +76,34 @@ function MeasurerClient({
   hoverHighlightEnabled,
   persistOnReload,
   portalTarget,
-}: Required<MeasurerProps>) {
+  persistKey,
+}: Required<Omit<MeasurerProps, "persistKey">> &
+  Pick<MeasurerProps, "persistKey">) {
+  const instanceIdRef = useRef<number | null>(null);
+  if (instanceIdRef.current === null) {
+    instanceIdRef.current = ++measurerInstanceCount;
+  }
+  const storageKey =
+    persistKey ??
+    (instanceIdRef.current === 1
+      ? "mesurer-state"
+      : `mesurer-state-${instanceIdRef.current}`);
+  const ownerDocument = portalTarget.ownerDocument ?? document;
+  const ownerWindow = ownerDocument.defaultView ?? window;
+  const textInspectorRef = useRef<TextInspectorAPI | null>(null);
+  if (!textInspectorRef.current) {
+    textInspectorRef.current = createTextInspector({ portalTarget });
+  }
+  const textInspector = textInspectorRef.current!;
   const selectionRectRef = useRef<Rect | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const selectionAnimationCleanupTimeoutRef = useRef<number | null>(null);
 
   const persistedState = useMemo(() => {
     if (!persistOnReload) return null;
-    const stored = window.localStorage.getItem("mesurer-state");
-    if (!stored) return null;
     try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (!stored) return null;
       const parsed = JSON.parse(stored) as {
         version: number;
         enabled: boolean;
@@ -96,7 +120,7 @@ function MeasurerClient({
     } catch {
       return null;
     }
-  }, [persistOnReload]);
+  }, [persistOnReload, storageKey]);
 
   const enabledRef = useRef(false);
   const toolModeRef = useRef<ToolMode>(persistedState?.toolMode ?? "none");
@@ -182,7 +206,7 @@ function MeasurerClient({
     initialSelectedGuideIds: persistedState?.selectedGuideIds ?? [],
   });
   const [toolbarActive, setToolbarActive] = useState(true);
-  const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold();
+  const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
     position: number;
@@ -206,7 +230,7 @@ function MeasurerClient({
 
     try {
       window.localStorage.setItem(
-        "mesurer-state",
+        storageKey,
         JSON.stringify({
           version: 1,
           enabled: enabledRef.current,
@@ -224,7 +248,7 @@ function MeasurerClient({
     } catch {
       // ignore storage errors
     }
-  }, [persistOnReload]);
+  }, [persistOnReload, storageKey]);
 
   const setEnabledPersisted = useCallback(
     (value: Parameters<typeof setEnabled>[0]) => {
@@ -244,13 +268,13 @@ function MeasurerClient({
       toolModeRef.current = next;
       setToolMode(next);
       if (next === "text-inspector") {
-        TextInspector.enable();
+        textInspector.enable();
       } else {
-        TextInspector.disable();
+        textInspector.disable();
       }
       persistState();
     },
-    [persistState, setToolMode],
+    [persistState, setToolMode, textInspector],
   );
 
   const setGuideOrientationPersisted = useCallback(
@@ -376,14 +400,14 @@ function MeasurerClient({
   });
 
   const undo = useCallback(() => {
-    if (toolMode === "text-inspector" && TextInspector.undo()) return;
+    if (toolMode === "text-inspector" && textInspector.undo()) return;
     undoHistory();
-  }, [toolMode, undoHistory]);
+  }, [textInspector, toolMode, undoHistory]);
 
   const redo = useCallback(() => {
-    if (toolMode === "text-inspector" && TextInspector.redo()) return;
+    if (toolMode === "text-inspector" && textInspector.redo()) return;
     redoHistory();
-  }, [toolMode, redoHistory]);
+  }, [redoHistory, textInspector, toolMode]);
 
   const clearAll = useCallback(() => {
     recordSnapshot();
@@ -437,6 +461,7 @@ function MeasurerClient({
   ]);
 
   useHotkeys({
+    eventTarget: ownerWindow,
     clearAll,
     undo,
     redo,
@@ -450,6 +475,8 @@ function MeasurerClient({
   });
 
   useResizeSync({
+    document: ownerDocument,
+    window: ownerWindow,
     setMeasurements: setMeasurementsPersisted,
     setActiveMeasurement: setActiveMeasurementPersisted,
     setHeldDistances: setHeldDistancesPersisted,
@@ -459,6 +486,8 @@ function MeasurerClient({
   });
 
   useLiveElementTracking({
+    document: ownerDocument,
+    window: ownerWindow,
     enabled,
     selectedElementRef,
     hoverElementRef,
@@ -479,11 +508,11 @@ function MeasurerClient({
       setToolbarActive(false);
     };
 
-    window.addEventListener("pointerdown", handlePointerDown);
+    ownerWindow.addEventListener("pointerdown", handlePointerDown);
     return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
+      ownerWindow.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [toolbarActive, toolMode]);
+  }, [ownerWindow, toolbarActive, toolMode]);
 
   // Drive the vanilla-DOM text-inspector IIFE from the React tool mode.
   // The module owns its own listeners / DOM / styles; React only tells it
@@ -491,17 +520,17 @@ function MeasurerClient({
   // nothing leaks on SPA re-init or extension teardown.
   useEffect(() => {
     if (toolMode === "text-inspector") {
-      TextInspector.enable();
+      textInspector.enable();
     } else {
-      TextInspector.disable();
+      textInspector.disable();
     }
-  }, [toolMode]);
+  }, [textInspector, toolMode]);
 
   useEffect(() => {
     return () => {
-      TextInspector.cleanup();
+      textInspector.destroy();
     };
-  }, []);
+  }, [textInspector]);
 
   useEffect(() => {
     const hasSelectionAnimationState =
@@ -585,6 +614,8 @@ function MeasurerClient({
     hoverEdgeVisibility,
     measurementEdgeVisibility,
   } = useMeasurerDerived({
+    document: ownerDocument,
+    window: ownerWindow,
     start,
     end,
     selectedMeasurements,
@@ -611,6 +642,8 @@ function MeasurerClient({
     handlePointerUp,
     handlePointerLeave,
   } = useMeasurerPointer({
+    document: ownerDocument,
+    window: ownerWindow,
     toolbarRef,
     overlayRef,
     selectionRectRef,
@@ -753,6 +786,7 @@ function MeasurerClient({
 
       <Toolbar
         ref={toolbarRef}
+        eventTarget={ownerWindow}
         toolMode={toolMode}
         setEnabled={setEnabledWithHistory}
         setToolMode={setToolModeWithHistory}
@@ -771,6 +805,7 @@ export default function Measurer({
   hoverHighlightEnabled = true,
   persistOnReload = false,
   portalTarget,
+  persistKey,
 }: MeasurerProps) {
   if (typeof document !== "undefined") {
     ensureMeasurerStyles(MESURER_STYLES, portalTarget);
@@ -785,6 +820,7 @@ export default function Measurer({
       guideColor={guideColor}
       hoverHighlightEnabled={hoverHighlightEnabled}
       persistOnReload={persistOnReload}
+      persistKey={persistKey}
       portalTarget={portalTarget ?? document.body}
     />
   );

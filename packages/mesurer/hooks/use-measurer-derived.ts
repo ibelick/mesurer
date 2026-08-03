@@ -13,6 +13,8 @@ import type { InspectMeasurement, Point, Rect } from "../core/types"
 import { formatValue } from "../core/utils"
 
 type UseMeasurerDerivedArgs = {
+  document: Document
+  window: Window
   start: Point | null
   end: Point | null
   selectedMeasurements: InspectMeasurement[]
@@ -41,6 +43,8 @@ type UseMeasurerDerivedArgs = {
 }
 
 export const useMeasurerDerived = ({
+  document,
+  window,
   start,
   end,
   selectedMeasurements,
@@ -144,6 +148,8 @@ export const useMeasurerDerived = ({
       hoverGuide,
       hoverElement,
       selectedElementRef: selectedElement,
+      document,
+      window,
     })
   }, [
     altPressed,
@@ -162,6 +168,8 @@ export const useMeasurerDerived = ({
       selectedGuideIds,
       selectedElement,
       hoverElement,
+      document,
+      window,
     })
   }, [
     altPressed,
@@ -181,8 +189,11 @@ export const useMeasurerDerived = ({
       selectedGuide.id !== hoverGuide.id
     ) {
       return getDistanceOverlay(
-        getGuideRect(selectedGuide),
-        getGuideRect(hoverGuide)
+        getGuideRect(selectedGuide, window),
+        getGuideRect(hoverGuide, window),
+        null,
+        null,
+        window,
       )
     }
 
@@ -212,8 +223,11 @@ export const useMeasurerDerived = ({
 
     if (!nearest) return null
     return getDistanceOverlay(
-      getGuideRect(previewGuide),
-      getGuideRect(nearest.guide)
+      getGuideRect(previewGuide, window),
+      getGuideRect(nearest.guide, window),
+      null,
+      null,
+      window,
     )
   }, [
     altPressed,

@@ -4,7 +4,7 @@ import type { InspectMeasurement, Point } from "./types"
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
   if (!overlayNode) return null
   const rootNode = overlayNode.getRootNode()
-  return rootNode instanceof ShadowRoot ? rootNode.host : null
+  return rootNode.nodeType === 11 ? (rootNode as ShadowRoot).host : null
 }
 
 export const getPrimarySelectedMeasurement = (
@@ -19,12 +19,16 @@ export const getSelectedMeasurementHit = (params: {
   point: Point
   selectedMeasurements: InspectMeasurement[]
   overlayNode: HTMLDivElement | null
+  document?: Document
 }) => {
+  const ownerDocument = params.document ?? document
+  const HTMLElementConstructor =
+    ownerDocument.defaultView?.HTMLElement ?? HTMLElement
   const overlayHost = getOverlayHost(params.overlayNode)
   const candidates = params.selectedMeasurements
     .map((measurement) => {
       const element = measurement.elementRef
-      if (!element || !document.contains(element)) return null
+      if (!element || !ownerDocument.contains(element)) return null
       const rect = getRectFromDom(element)
       return {
         measurement,
@@ -38,9 +42,9 @@ export const getSelectedMeasurementHit = (params: {
 
   if (candidates.length === 0) return null
 
-  const stack = document.elementsFromPoint(params.point.x, params.point.y)
+  const stack = ownerDocument.elementsFromPoint(params.point.x, params.point.y)
   for (const element of stack) {
-    if (!(element instanceof HTMLElement)) continue
+    if (!(element instanceof HTMLElementConstructor)) continue
     if (params.overlayNode && params.overlayNode.contains(element)) continue
     if (overlayHost && element === overlayHost) continue
     for (const candidate of candidates) {

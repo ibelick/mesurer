@@ -3,8 +3,8 @@ import { getBodyElementsCached, getRectFromDomCached } from "./dom"
 import { getViewportSize } from "./geometry"
 import type { Guide, Point, Rect } from "./types"
 
-export const getGuideRect = (guide: Guide): Rect => {
-  const viewport = getViewportSize()
+export const getGuideRect = (guide: Guide, ownerWindow: Window = window): Rect => {
+  const viewport = getViewportSize(ownerWindow)
   return guide.orientation === "vertical"
     ? { left: guide.position, top: 0, width: 1, height: viewport.height }
     : { left: 0, top: guide.position, width: viewport.width, height: 1 }
@@ -22,20 +22,22 @@ export const getSnapGuidePosition = (params: {
   overlayNode: HTMLDivElement | null
   guides: Guide[]
   draggingGuideId: string | null
+  document?: Document
 }) => {
+  const ownerDocument = params.document ?? document
   const { orientation, point, snapGuidesEnabled, overlayNode, guides } = params
   if (!snapGuidesEnabled) {
     return orientation === "vertical" ? point.x : point.y
   }
 
-  const elements = getBodyElementsCached()
+  const elements = getBodyElementsCached(ownerDocument)
   let bestValue = orientation === "vertical" ? point.x : point.y
   let bestDistance = GUIDE_SNAP_DISTANCE + 1
 
   for (const element of elements) {
-    if (!(element instanceof HTMLElement)) continue
+    if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
     if (overlayNode && overlayNode.contains(element)) continue
-    if (element === document.body || element === document.documentElement)
+    if (element === ownerDocument.body || element === ownerDocument.documentElement)
       continue
     const rect = getRectFromDomCached(element)
     if (rect.width <= 2 || rect.height <= 2) continue

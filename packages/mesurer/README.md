@@ -41,6 +41,7 @@ function App() {
 | `guideColor`            | Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).                 |
 | `hoverHighlightEnabled` | Disables hover highlight and deselects on click when `false`.                 |
 | `persistOnReload`       | Persists state in `localStorage` as `mesurer-state` when `true`.              |
+| `persistKey`            | Optional storage key for isolating persisted state between multiple instances. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
 
 ## Commands

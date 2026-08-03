@@ -3,6 +3,7 @@ import { useEffect } from "react"
 import type { ToolMode } from "../core/types"
 
 type HotkeyOptions = {
+  eventTarget: Window
   clearAll: () => void
   undo: () => void
   redo: () => void
@@ -17,6 +18,7 @@ type HotkeyOptions = {
 
 export const useHotkeys = (options: HotkeyOptions) => {
   useEffect(() => {
+    const target = options.eventTarget
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         options.clearAll()
@@ -87,11 +89,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("keyup", handleKeyUp)
+    target.addEventListener("keydown", handleKeyDown)
+    target.addEventListener("keyup", handleKeyUp)
     return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("keyup", handleKeyUp)
+      target.removeEventListener("keydown", handleKeyDown)
+      target.removeEventListener("keyup", handleKeyUp)
     }
   }, [options])
 }

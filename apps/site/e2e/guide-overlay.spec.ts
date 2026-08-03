@@ -44,13 +44,13 @@ test("font inspector mode participates in undo and redo history", async ({
   });
 
   await textInspectorButton.click();
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspect-mode/);
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
 
   await page.keyboard.press("Control+Z");
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspect-mode/);
+  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
 
   await page.keyboard.press("Control+Shift+Z");
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspect-mode/);
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
 
   await page.mouse.move(300, 280);
   await page.mouse.click(300, 280);
@@ -62,4 +62,46 @@ test("font inspector mode participates in undo and redo history", async ({
 
   await page.keyboard.press("Control+Shift+Z");
   await expect(pinnedCard).toHaveCount(1);
+});
+
+test("font inspector refreshes styles and brings repeated pins to front", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+
+  await page.mouse.click(300, 280);
+  await page.mouse.click(300, 560);
+  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCards).toHaveCount(2);
+  await expect(pinnedCards.last()).toContainText("Secondary app button");
+
+  await page.mouse.click(300, 280);
+  await expect(pinnedCards).toHaveCount(2);
+  await expect(pinnedCards.last()).toContainText("Underlying app button");
+
+  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
+    (button as HTMLElement).style.fontSize = "24px";
+  });
+  await page.mouse.move(100, 100);
+  await page.mouse.move(300, 280);
+  await expect(
+    page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)"),
+  ).toContainText("24px");
+});
+
+test("removing a source element silently removes its pinned card", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.mouse.click(300, 280);
+
+  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCards).toHaveCount(1);
+  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
+    button.remove();
+  });
+  await page.mouse.move(100, 100);
+  await expect(pinnedCards).toHaveCount(0);
 });

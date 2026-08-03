@@ -26,6 +26,7 @@ type Point = {
 };
 
 type ToolbarProps = {
+  eventTarget: Window;
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
@@ -144,7 +145,7 @@ function useToolbarTooltip() {
   return { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave };
 }
 
-function useToolbarDrag(initialPosition: Point) {
+function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
   const [position, setPosition] = useState(initialPosition);
   const suppressClickRef = useRef(false);
   const detachListenersRef = useRef<(() => void) | null>(null);
@@ -197,8 +198,8 @@ function useToolbarDrag(initialPosition: Point) {
         if (!current.active) return;
 
         current.didDrag = true;
-        const maxX = Math.max(8, window.innerWidth - current.width - 8);
-        const maxY = Math.max(8, window.innerHeight - current.height - 8);
+        const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8);
+        const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8);
         setPosition({
           x: Math.min(maxX, Math.max(8, current.originX + dx)),
           y: Math.min(maxY, Math.max(8, current.originY + dy)),
@@ -217,22 +218,22 @@ function useToolbarDrag(initialPosition: Point) {
         current.didDrag = false;
         current.pointerId = -1;
 
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerEnd);
-        window.removeEventListener("pointercancel", handlePointerEnd);
+        eventTarget.removeEventListener("pointermove", handlePointerMove);
+        eventTarget.removeEventListener("pointerup", handlePointerEnd);
+        eventTarget.removeEventListener("pointercancel", handlePointerEnd);
         detachListenersRef.current = null;
       };
 
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerEnd);
-      window.addEventListener("pointercancel", handlePointerEnd);
+      eventTarget.addEventListener("pointermove", handlePointerMove);
+      eventTarget.addEventListener("pointerup", handlePointerEnd);
+      eventTarget.addEventListener("pointercancel", handlePointerEnd);
       detachListenersRef.current = () => {
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerEnd);
-        window.removeEventListener("pointercancel", handlePointerEnd);
+        eventTarget.removeEventListener("pointermove", handlePointerMove);
+        eventTarget.removeEventListener("pointerup", handlePointerEnd);
+        eventTarget.removeEventListener("pointercancel", handlePointerEnd);
       };
     },
-    [position.x, position.y],
+    [eventTarget, position.x, position.y],
   );
 
   const onClickCapture = useCallback(
@@ -256,13 +257,14 @@ function ToolbarComponent(
     guideOrientation,
     setGuideOrientation,
     onInteract,
+    eventTarget,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
   const { position, onPointerDown, onClickCapture } = useToolbarDrag({
     x: 16,
     y: 16,
-  });
+  }, eventTarget);
   const { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
@@ -282,16 +284,16 @@ function ToolbarComponent(
       return;
     }
 
-    if (leftAlignedRight > window.innerWidth - VIEWPORT_PADDING) {
+    if (leftAlignedRight > eventTarget.innerWidth - VIEWPORT_PADDING) {
       setMenuAlign("right");
       return;
     }
 
     setMenuAlign("right");
-  }, []);
+  }, [eventTarget]);
 
   const viewportHeight =
-    typeof window === "undefined" ? 0 : window.innerHeight || 0;
+    eventTarget.innerHeight || 0;
   const nearTop = position.y < 56;
   const nearBottom = viewportHeight > 0 && position.y > viewportHeight - 56;
   const tooltipSide: "top" | "bottom" =
@@ -332,7 +334,7 @@ function ToolbarComponent(
   useLayoutEffect(() => {
     if (!guideMenuOpen) return;
 
-    const frame = requestAnimationFrame(() => {
+    const frame = eventTarget.requestAnimationFrame(() => {
       guideMenuRef.current
         ?.querySelector<HTMLElement>("[role='menu']")
         ?.focus();
@@ -352,14 +354,14 @@ function ToolbarComponent(
       updateMenuAlign();
     };
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("resize", handleResize);
+    eventTarget.addEventListener("pointerdown", handlePointerDown);
+    eventTarget.addEventListener("resize", handleResize);
     return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("resize", handleResize);
+      eventTarget.cancelAnimationFrame(frame);
+      eventTarget.removeEventListener("pointerdown", handlePointerDown);
+      eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [guideMenuOpen, guideOrientation, updateMenuAlign]);
+  }, [eventTarget, guideMenuOpen, guideOrientation, updateMenuAlign]);
 
   return (
     <div

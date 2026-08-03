@@ -1,13 +1,13 @@
 import { useCallback, useRef } from "react"
 import { GUIDE_DRAG_HOLD_MS } from "../core/constants"
 
-export const useGuideDragHold = () => {
+export const useGuideDragHold = (eventTarget: Window) => {
   const guideDragHoldTimerRef = useRef<number | null>(null)
   const guideDragHoldGuideIdRef = useRef<string | null>(null)
 
   const clearGuideDragHold = useCallback(() => {
     if (guideDragHoldTimerRef.current !== null) {
-      window.clearTimeout(guideDragHoldTimerRef.current)
+      eventTarget.clearTimeout(guideDragHoldTimerRef.current)
       guideDragHoldTimerRef.current = null
     }
     guideDragHoldGuideIdRef.current = null
@@ -17,7 +17,7 @@ export const useGuideDragHold = () => {
     (id: string, onHold: (guideId: string) => void) => {
       clearGuideDragHold()
       guideDragHoldGuideIdRef.current = id
-      guideDragHoldTimerRef.current = window.setTimeout(() => {
+      guideDragHoldTimerRef.current = eventTarget.setTimeout(() => {
         if (guideDragHoldGuideIdRef.current === id) {
           onHold(id)
         }

@@ -11,7 +11,7 @@ import type { Point, Rect } from "./types"
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
   if (!overlayNode) return null
   const rootNode = overlayNode.getRootNode()
-  return rootNode instanceof ShadowRoot ? rootNode.host : null
+  return rootNode.nodeType === 11 ? (rootNode as ShadowRoot).host : null
 }
 
 const isOverlayElement = (
@@ -24,22 +24,39 @@ const isOverlayElement = (
   return false
 }
 
+const getDeepestElementAt = (
+  element: Element,
+  point: Point,
+): Element => {
+  let current = element
+  const HTMLElementConstructor =
+    element.ownerDocument.defaultView?.HTMLElement ?? HTMLElement
+  while (current instanceof HTMLElementConstructor && current.shadowRoot) {
+    const nested = current.shadowRoot.elementFromPoint(point.x, point.y)
+    if (!nested || nested === current) break
+    current = nested
+  }
+  return current
+}
+
 export const getTargetElement = (
   point: Point,
-  overlayNode: HTMLDivElement | null
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
 
   if (overlayNode) {
     const previous = overlayNode.style.pointerEvents
     overlayNode.style.pointerEvents = "none"
-    const elements = document.elementsFromPoint(point.x, point.y)
+    const elements = ownerDocument.elementsFromPoint(point.x, point.y)
     overlayNode.style.pointerEvents = previous
 
-    for (const element of elements) {
-      if (!(element instanceof HTMLElement)) continue
+    for (const rawElement of elements) {
+      const element = getDeepestElementAt(rawElement, point)
+      if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
       if (isOverlayElement(element, overlayNode, overlayHost)) continue
-      if (element === document.body || element === document.documentElement)
+      if (element === ownerDocument.body || element === ownerDocument.documentElement)
         continue
       const rect = element.getBoundingClientRect()
       if (rect.width <= 2 || rect.height <= 2) continue
@@ -48,11 +65,12 @@ export const getTargetElement = (
     return null
   }
 
-  const elements = document.elementsFromPoint(point.x, point.y)
-  for (const element of elements) {
-    if (!(element instanceof HTMLElement)) continue
+  const elements = ownerDocument.elementsFromPoint(point.x, point.y)
+  for (const rawElement of elements) {
+    const element = getDeepestElementAt(rawElement, point)
+    if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
     if (isOverlayElement(element, overlayNode, overlayHost)) continue
-    if (element === document.body || element === document.documentElement)
+    if (element === ownerDocument.body || element === ownerDocument.documentElement)
       continue
     const rect = element.getBoundingClientRect()
     if (rect.width <= 2 || rect.height <= 2) continue
@@ -63,15 +81,16 @@ export const getTargetElement = (
 
 export const getShiftClickTarget = (
   point: Point,
-  overlayNode: HTMLDivElement | null
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
-  const elements = document.elementsFromPoint(point.x, point.y)
+  const elements = ownerDocument.elementsFromPoint(point.x, point.y)
   for (let i = elements.length - 1; i >= 0; i -= 1) {
-    const element = elements[i]
-    if (!(element instanceof HTMLElement)) continue
+    const element = getDeepestElementAt(elements[i], point)
+    if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
     if (isOverlayElement(element, overlayNode, overlayHost)) continue
-    if (element === document.body || element === document.documentElement)
+    if (element === ownerDocument.body || element === ownerDocument.documentElement)
       continue
     const rect = element.getBoundingClientRect()
     if (rect.width <= 2 || rect.height <= 2) continue
@@ -83,35 +102,38 @@ export const getShiftClickTarget = (
 export const getSnappedClickTarget = (
   point: Point,
   overlayNode: HTMLDivElement | null,
-  snapEnabled: boolean
+  snapEnabled: boolean,
+  ownerDocument: Document = document,
 ) => {
-  if (!snapEnabled) return getTargetElement(point, overlayNode)
+  if (!snapEnabled) return getTargetElement(point, overlayNode, ownerDocument)
   const probeRect: Rect = {
     left: point.x - 20,
     top: point.y - 20,
     width: 40,
     height: 40,
   }
-  const entries = getSelectionEntries(probeRect, overlayNode)
+  const entries = getSelectionEntries(probeRect, overlayNode, ownerDocument)
   return (
     pickPointTarget(point, entries) ??
     pickSingleTarget(probeRect, point, entries) ??
-    getTargetElement(point, overlayNode)
+    getTargetElement(point, overlayNode, ownerDocument)
   )
 }
 
 export const getElementsInRect = (
   rect: Rect,
-  overlayNode: HTMLDivElement | null
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
 ): HTMLElement[] => {
-  const entries = getSelectionEntries(rect, overlayNode)
+  const entries = getSelectionEntries(rect, overlayNode, ownerDocument)
   if (entries.length === 0) return []
   return pickMultiTargets(rect, entries)
 }
 
 export const getSelectionEntries = (
   rect: Rect,
-  overlayNode: HTMLDivElement | null
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
   const frame = getFrameToken()
@@ -121,7 +143,8 @@ export const getSelectionEntries = (
   if (
     frame === cachedSelectionFrame &&
     cachedSelectionKey === key &&
-    cachedOverlayNode === overlayNode
+    cachedOverlayNode === overlayNode &&
+    cachedSelectionDocument === ownerDocument
   ) {
     return cachedSelectionEntries
   }
@@ -129,12 +152,12 @@ export const getSelectionEntries = (
   const minTop = rect.top - 1
   const maxRight = rect.left + rect.width + 1
   const maxBottom = rect.top + rect.height + 1
-  const elements = getBodyElementsCached()
+  const elements = getBodyElementsCached(ownerDocument)
   const entries = elements
     .map((element) => ({ element, rect: getRectFromDomCached(element) }))
     .filter(({ element, rect: elementRect }) => {
       if (isOverlayElement(element, overlayNode, overlayHost)) return false
-      if (element === document.body || element === document.documentElement)
+      if (element === ownerDocument.body || element === ownerDocument.documentElement)
         return false
       if (
         elementRect.width < MIN_MULTI_TARGET_SIZE ||
@@ -152,6 +175,7 @@ export const getSelectionEntries = (
   cachedSelectionFrame = frame
   cachedSelectionKey = key
   cachedOverlayNode = overlayNode
+  cachedSelectionDocument = ownerDocument
   cachedSelectionEntries = entries
   return entries
 }
@@ -160,6 +184,7 @@ let cachedSelectionFrame = -1
 let cachedSelectionKey = ""
 let cachedSelectionEntries: Array<{ element: HTMLElement; rect: Rect }> = []
 let cachedOverlayNode: HTMLDivElement | null = null
+let cachedSelectionDocument: Document | null = null
 
 export type SelectionEntriesCache = {
   key: string
@@ -176,7 +201,8 @@ const getSelectionCacheKey = (rect: Rect) =>
 export const getSelectionEntriesCached = (
   rect: Rect,
   overlayNode: HTMLDivElement | null,
-  cache: SelectionEntriesCache
+  cache: SelectionEntriesCache,
+  ownerDocument: Document = document,
 ) => {
   const frame = getFrameToken()
   const key = getSelectionCacheKey(rect)
@@ -187,7 +213,7 @@ export const getSelectionEntriesCached = (
   ) {
     return cache.entries
   }
-  const entries = getSelectionEntries(rect, overlayNode)
+  const entries = getSelectionEntries(rect, overlayNode, ownerDocument)
   cache.key = key
   cache.overlayNode = overlayNode
   cache.frame = frame
@@ -198,9 +224,10 @@ export const getSelectionEntriesCached = (
 export const getElementsInRectCached = (
   rect: Rect,
   overlayNode: HTMLDivElement | null,
-  cache: SelectionEntriesCache
+  cache: SelectionEntriesCache,
+  ownerDocument: Document = document,
 ) => {
-  const entries = getSelectionEntriesCached(rect, overlayNode, cache)
+  const entries = getSelectionEntriesCached(rect, overlayNode, cache, ownerDocument)
   if (entries.length === 0) return []
   return pickMultiTargets(rect, entries)
 }

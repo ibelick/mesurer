@@ -1,3 +1,13 @@
 export { default as Measurer } from "./measurer";
-export { TextInspector } from "./runtime/text-inspector";
-export type { TextInspectorAPI } from "./runtime/text-inspector";
+export {
+  createTextInspector,
+  TextInspector,
+} from "./runtime/text-inspector";
+export type {
+  TextInspectorAPI,
+  TextInspectorOptions,
+} from "./runtime/text-inspector";
+export type {
+  TypographyInfo,
+  TypographyRow,
+} from "./runtime/text-inspector-typography";
