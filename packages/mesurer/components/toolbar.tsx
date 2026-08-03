@@ -48,6 +48,7 @@ type ToolbarButtonProps = {
   shortcut: string;
   onClick: () => void;
   tooltipVisible: boolean;
+  tooltipInstant: boolean;
   tooltipSide: "top" | "bottom";
   onTooltipEnter: (id: string) => void;
   onTooltipLeave: (id: string) => void;
@@ -61,6 +62,7 @@ function ToolbarButton({
   shortcut,
   onClick,
   tooltipVisible,
+  tooltipInstant,
   tooltipSide,
   onTooltipEnter,
   onTooltipLeave,
@@ -88,7 +90,10 @@ function ToolbarButton({
       </button>
       <span
         className={cn(
-          "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+          cn(
+            "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+            tooltipInstant && "msr:transition-none",
+          ),
           tooltipSide === "top"
             ? "msr:bottom-full msr:mb-2"
             : "msr:top-full msr:mt-2",
@@ -105,6 +110,7 @@ function useToolbarTooltip() {
   const [visibleTooltipId, setVisibleTooltipId] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const instantRef = useRef(false);
+  const [tooltipInstant, setTooltipInstant] = useState(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current === null) return;
@@ -116,10 +122,12 @@ function useToolbarTooltip() {
     (id: string) => {
       clearTimer();
       if (instantRef.current) {
+        setTooltipInstant(true);
         setVisibleTooltipId(id);
         return;
       }
 
+      setTooltipInstant(false);
       timerRef.current = window.setTimeout(() => {
         setVisibleTooltipId(id);
         instantRef.current = true;
@@ -141,9 +149,16 @@ function useToolbarTooltip() {
     clearTimer();
     setVisibleTooltipId(null);
     instantRef.current = false;
+    setTooltipInstant(false);
   }, [clearTimer]);
 
-  return { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave };
+  return {
+    visibleTooltipId,
+    tooltipInstant,
+    onTooltipEnter,
+    onTooltipLeave,
+    onToolbarLeave,
+  };
 }
 
 function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
@@ -266,7 +281,13 @@ function ToolbarComponent(
     x: 16,
     y: 16,
   }, eventTarget);
-  const { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave } =
+  const {
+    visibleTooltipId,
+    tooltipInstant,
+    onTooltipEnter,
+    onTooltipLeave,
+    onToolbarLeave,
+  } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
@@ -389,6 +410,7 @@ function ToolbarComponent(
         shortcut="S"
         onClick={selectMode}
         tooltipVisible={visibleTooltipId === "select"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
@@ -402,6 +424,7 @@ function ToolbarComponent(
         shortcut="X"
         onClick={xrayMode}
         tooltipVisible={visibleTooltipId === "xray"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
@@ -415,6 +438,7 @@ function ToolbarComponent(
         shortcut="A"
         onClick={textInspectorMode}
         tooltipVisible={visibleTooltipId === "text-inspector"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
@@ -428,6 +452,7 @@ function ToolbarComponent(
         shortcut="G"
         onClick={guidesMode}
         tooltipVisible={visibleTooltipId === "guides"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
