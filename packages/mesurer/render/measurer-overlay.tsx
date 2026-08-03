@@ -125,7 +125,10 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 }: MeasurerOverlayProps) {
   const overlayVisible = enabled;
   const overlayInteractive =
-    overlayVisible && toolMode !== "none" && toolMode !== "text-inspector";
+    overlayVisible &&
+    toolMode !== "none" &&
+    toolMode !== "text-inspector" &&
+    toolMode !== "xray";
   const selectionVisible = toolMode === "select";
 
   return (

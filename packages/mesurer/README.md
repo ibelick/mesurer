@@ -51,6 +51,7 @@ function App() {
 | `M`                    | Toggle measurer on/off.                               |
 | `S`                    | Toggle Select mode.                                   |
 | `G`                    | Toggle Guides mode.                                   |
+| `X`                    | Toggle X-ray mode.                                    |
 | `H`                    | Set guide orientation to horizontal.                  |
 | `V`                    | Set guide orientation to vertical.                    |
 | `Alt`                  | Temporarily enable option/guide measurement overlays. |

@@ -12,4 +12,10 @@ export default defineConfig({
       ),
     },
   },
+  optimizeDeps: {
+    exclude: ["mesurer"],
+  },
+  server: {
+    strictPort: true,
+  },
 });

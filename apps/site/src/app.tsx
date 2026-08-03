@@ -3,6 +3,7 @@ import {
   ArrowsCounterClockwiseIcon,
   CalculatorIcon,
   CursorIcon,
+  GridFourIcon,
   LockKeyIcon,
   RulerIcon,
   TextAaIcon,
@@ -130,6 +131,11 @@ function HomeContent() {
       icon: <TextAaIcon size={16} weight="light" />,
       title: "Text inspector",
       description: "Inspect typography styles on any element",
+    },
+    {
+      icon: <GridFourIcon size={16} weight="light" />,
+      title: "X-ray mode",
+      description: "Reveal the structure of every element",
     },
   ];
 

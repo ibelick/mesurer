@@ -27,6 +27,19 @@ export const RulerIcon = ({ size = 20, ...props }: IconProps) => (
   </IconBase>
 )
 
+export const XrayIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="12"
+      d="M96 48H64a16 16 0 0 0-16 16v32m112-48h32a16 16 0 0 1 16 16v32M48 160v32a16 16 0 0 0 16 16h32m64 0h32a16 16 0 0 0 16-16v-32"
+    />
+  </IconBase>
+)
+
 export const CaretDownIcon = ({ size = 8, ...props }: IconProps) => (
   <IconBase size={size} {...props}>
     <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" />

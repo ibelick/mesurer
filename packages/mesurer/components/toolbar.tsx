@@ -18,6 +18,7 @@ import {
   MinusIcon,
   RulerIcon,
   TextInspectorIcon,
+  XrayIcon,
 } from "./icons";
 
 type Point = {
@@ -320,6 +321,12 @@ function ToolbarComponent(
     onInteract();
   }, [onInteract, setEnabled, setToolMode]);
 
+  const xrayMode = useCallback(() => {
+    setEnabled(true);
+    setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
+    onInteract();
+  }, [onInteract, setEnabled, setToolMode]);
+
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
       setEnabled(true);
@@ -387,6 +394,19 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <CursorIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="xray"
+        active={toolMode === "xray"}
+        label="X-ray"
+        shortcut="X"
+        onClick={xrayMode}
+        tooltipVisible={visibleTooltipId === "xray"}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <XrayIcon size={20} />
       </ToolbarButton>
       <ToolbarButton
         id="text-inspector"

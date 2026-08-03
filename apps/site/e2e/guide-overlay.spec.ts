@@ -105,3 +105,27 @@ test("removing a source element silently removes its pinned card", async ({
   await page.mouse.move(100, 100);
   await expect(pinnedCards).toHaveCount(0);
 });
+
+test("x-ray mode outlines the page without hiding the toolbar", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
+  await xrayButton.click();
+
+  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+  await expect(page.locator("body")).toHaveClass(/xray-mode/);
+  await expect(xrayButton).toHaveCSS("background-color", "rgb(13, 153, 255)");
+  await expect(xrayButton).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select (S)" })).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("marketing site renders the current x-ray toolbar icon", async ({ page }) => {
+  await page.goto("/");
+
+  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
+  await expect(xrayButton).toBeVisible();
+  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+});

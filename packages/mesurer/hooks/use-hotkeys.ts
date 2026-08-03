@@ -60,6 +60,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
           options.onInteract()
         }
 
+        if (key === "x") {
+          options.setToolMode((prev) => (prev === "xray" ? "none" : "xray"))
+          options.onInteract()
+        }
+
         if (key === "h") {
           options.setGuideOrientation("horizontal")
           options.onInteract()

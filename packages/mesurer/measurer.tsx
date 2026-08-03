@@ -50,6 +50,20 @@ type MeasurerProps = {
 };
 
 let measurerInstanceCount = 0;
+const XRAY_STYLE_ID = "mesurer-xray-styles";
+const XRAY_STYLES = `
+.xray-mode * {
+  outline: solid 1px blue !important;
+}
+.xray-mode #mesurer-extension-host,
+.xray-mode #mesurer-extension-host *,
+.xray-mode .mesurer-root,
+.xray-mode .mesurer-root *,
+.xray-mode .mesurer-toolbar-surface,
+.xray-mode .mesurer-toolbar-surface * {
+  outline: none !important;
+}
+`;
 
 const subscribeHydration = () => () => {};
 const useHydrated = () =>
@@ -525,6 +539,24 @@ function MeasurerClient({
       textInspector.disable();
     }
   }, [textInspector, toolMode]);
+
+  useEffect(() => {
+    let style = ownerDocument.getElementById(XRAY_STYLE_ID);
+    if (!style) {
+      style = ownerDocument.createElement("style");
+      style.id = XRAY_STYLE_ID;
+      style.textContent = XRAY_STYLES;
+      ownerDocument.head.appendChild(style);
+    }
+    if (toolMode === "xray") {
+      ownerDocument.body.classList.add("xray-mode");
+    } else {
+      ownerDocument.body.classList.remove("xray-mode");
+    }
+    return () => {
+      ownerDocument.body.classList.remove("xray-mode");
+    };
+  }, [ownerDocument, toolMode]);
 
   useEffect(() => {
     return () => {
