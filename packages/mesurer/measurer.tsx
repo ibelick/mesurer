@@ -332,8 +332,8 @@ function MeasurerClient({
     setToolModeWithHistory,
     setGuideOrientationWithHistory,
     setEnabledWithHistory,
-    undo,
-    redo,
+    undo: undoHistory,
+    redo: redoHistory,
   } = useMeasurerHistory({
     toggles: {
       enabled,
@@ -374,6 +374,16 @@ function MeasurerClient({
       clearSelectionRect,
     },
   });
+
+  const undo = useCallback(() => {
+    if (toolMode === "text-inspector" && TextInspector.undo()) return;
+    undoHistory();
+  }, [toolMode, undoHistory]);
+
+  const redo = useCallback(() => {
+    if (toolMode === "text-inspector" && TextInspector.redo()) return;
+    redoHistory();
+  }, [toolMode, redoHistory]);
 
   const clearAll = useCallback(() => {
     recordSnapshot();

@@ -3,42 +3,8 @@
 // Exposes `enable()`, `disable()`, `isEnabled()`, and `cleanup()` from a
 // single module-scoped IIFE (`TextInspector`). Pure DOM — no React.
 //
-// ─────────────────────────────────────────────────────────────
-// ANIMATION STORYBOARD
-//
-//   First hover (nothing visible yet):
-//     0ms    box fades in + scales 0.98 → 1            (160ms, ease-out)
-//     60ms   card fades in + translateY 4px → 0 +
-//            scales 0.97 → 1                           (180ms, ease-out)
-//
-//   Retarget (card already visible, pointer moves to another element):
-//     0ms    box + card snap to new position instantly
-//            no re-entrance. Sonner principle: the second
-//            tooltip feels instant.
-//
-//   Pin (click):
-//     0ms    pinned box fades in
-//     0ms    pinned card pops: scale 0.96 → 1 +
-//            translateY(2px) → 0 + opacity 0 → 1       (220ms, ease-out)
-//
-//   Pin close (× or disable):
-//     0ms    card + box collapse: scale 1 → 0.97 +
-//            opacity 1 → 0                             (140ms, ease-out)
-//
-//   Close button press:
-//     scale(0.92) on :active                           (80ms, ease-out)
-//
-//   Continuous updates (mousemove, scroll, resize, pin sync):
-//     No transition — pointer tracking must land on the
-//     exact frame. rAF-throttled so we write once per tick.
-//
-//   prefers-reduced-motion: all transitions collapse to opacity
-//     only, no transform.
-// ─────────────────────────────────────────────────────────────
-//
 // Visual language mirrors the measurer's menu surface:
-//   - Card: solid white, ink-200 (#e2e8f0) 1px border, 8px radius,
-//     matching `.mesurer-menu-surface` shadow.
+//   - Card: solid white, 8px radius, and a layered shadow.
 //   - Highlight: fill + 4 hairline edges in the measurer blue.
 //   - Dark tag badge + truncated snippet + close button in header.
 //   - Two-column grid (label | monospace value · var-ref) for rows.
@@ -90,28 +56,7 @@ const INK_200 = "#e2e8f0";
 const INK_500 = "#64748b";
 const INK_900 = "#0f172a";
 
-// --- Motion system (see storyboard at the top of the file). -------------
-//
-// Named timing + easing so the whole animation system is readable at the
-// top of the file. Durations stay under the 300ms ceiling Emil recommends
-// for UI; easing is a "strong ease-out" curve from easing.dev that punches
-// more than the stock CSS `ease-out`.
-const TIMING = {
-  boxEnter: 160, // hover box appears
-  tagEnter: 180, // hover card appears (60ms lag after the box)
-  tagEnterDelay: 60,
-  pinEnter: 220, // pinned card pops in
-  exitFast: 140, // pin close / mode disable
-  closeTap: 80, // close-button press feedback
-} as const;
-
-const EASE = {
-  out: "cubic-bezier(0.23, 1, 0.32, 1)",
-  inOut: "cubic-bezier(0.77, 0, 0.175, 1)",
-} as const;
-
-// Minimal page-scoped styles. Transitions (not keyframes) so any hover
-// retarget or rapid close interrupts smoothly.
+// Minimal page-scoped styles.
 const INSPECTOR_STYLES = `
 .${BODY_MODE_CLASS},
 .${BODY_MODE_CLASS} * {
@@ -131,72 +76,25 @@ const INSPECTOR_STYLES = `
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close {
   cursor: pointer;
-  transition: background-color 120ms ${EASE.out}, color 120ms ${EASE.out}, transform ${TIMING.closeTap}ms ${EASE.out};
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close:hover {
   background: rgba(15, 23, 42, 0.06);
   color: ${INK_900};
 }
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-close:active {
-  transform: scale(0.92);
-}
-
-/* Entrance / exit state classes — CSS transitions, not keyframes, so a
-   rapid retarget or close can interrupt smoothly. */
+/* State changes are immediate so the inspector never animates. */
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box {
-  transition: opacity ${TIMING.boxEnter}ms ${EASE.out}, transform ${TIMING.boxEnter}ms ${EASE.out};
+  opacity: 1;
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-state="hidden"] {
   opacity: 0;
-  transform: scale(0.98);
-}
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-state="visible"] {
-  opacity: 1;
-  transform: scale(1);
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card {
   transform-origin: top center;
-  transition:
-    opacity ${TIMING.tagEnter}ms ${EASE.out},
-    transform ${TIMING.tagEnter}ms ${EASE.out};
-  will-change: transform, opacity;
+  transform: translateX(-50%);
+  opacity: 1;
 }
 .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-state="hidden"] {
   opacity: 0;
-  transform: translate(-50%, 4px) scale(0.97);
-}
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-state="visible"] {
-  opacity: 1;
-  transform: translate(-50%, 0) scale(1);
-}
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned {
-  transition:
-    opacity ${TIMING.pinEnter}ms ${EASE.out},
-    transform ${TIMING.pinEnter}ms ${EASE.out};
-}
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card--pinned[data-state="hidden"] {
-  opacity: 0;
-  transform: translate(-50%, 2px) scale(0.96);
-}
-
-/* Retarget: when the card is already visible and the pointer moves to a
-   new element, disable the entrance transition for a single frame so the
-   card snaps rather than re-animating. */
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box[data-instant],
-.${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card[data-instant] {
-  transition-duration: 0ms !important;
-}
-
-/* Respect reduced-motion: keep the fade for comprehension, drop transform. */
-@media (prefers-reduced-motion: reduce) {
-  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box,
-  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-card {
-    transition: opacity 120ms linear !important;
-    transform: translate(-50%, 0) scale(1) !important;
-  }
-  .${BODY_MODE_CLASS} #${OVERLAY_ID} .mesurer-ti-box {
-    transform: scale(1) !important;
-  }
 }
 `;
 
@@ -225,6 +123,8 @@ type Pinned = {
 export type TextInspectorAPI = {
   enable: () => void;
   disable: () => void;
+  undo: () => boolean;
+  redo: () => boolean;
   isEnabled: () => boolean;
   cleanup: () => void;
 };
@@ -236,6 +136,8 @@ export const TextInspector: TextInspectorAPI = (() => {
   let hoverTag: HTMLDivElement | null = null;
   let hoveredEl: HTMLElement | null = null;
   const pinned: Pinned[] = [];
+  const pinHistory: HTMLElement[][] = [];
+  const pinFuture: HTMLElement[][] = [];
 
   // Pointer tracking + rAF throttle.
   let pointerX = 0;
@@ -588,6 +490,7 @@ export const TextInspector: TextInspectorAPI = (() => {
     box.className = "mesurer-ti-box";
     box.dataset.state = "hidden";
     box.style.position = "fixed";
+    box.style.zIndex = "0";
     box.style.pointerEvents = "none";
     box.style.backgroundColor = fill;
     box.style.boxSizing = "border-box";
@@ -612,14 +515,12 @@ export const TextInspector: TextInspectorAPI = (() => {
       : "mesurer-ti-card";
     tag.dataset.state = "hidden";
     tag.style.position = "fixed";
+    tag.style.zIndex = "1";
     tag.style.pointerEvents = pinned ? "auto" : "none";
-    // Match `.mesurer-menu-surface` — solid white + ink-200 border, soft
-    // drop shadow. Reads as a first-party mesurer surface rather than a
-    // floating OS tooltip.
+    // Match the first-party mesurer surface without using a border.
     tag.style.background = "#ffffff";
     tag.style.color = INK_900;
-    tag.style.border = `1px solid ${INK_200}`;
-    tag.style.borderRadius = "8px";
+    tag.style.borderRadius = "13px";
     tag.style.padding = "10px 12px";
     tag.style.fontSize = "11px";
     tag.style.lineHeight = "1.5";
@@ -632,8 +533,8 @@ export const TextInspector: TextInspectorAPI = (() => {
     tag.style.minWidth = "320px";
     tag.style.maxWidth = "320px";
     tag.style.boxSizing = "border-box";
-    // Shadow matches `.mesurer-menu-surface`.
-    tag.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.08)";
+    tag.style.boxShadow =
+      "0px 0px 0.5px rgba(0, 0, 0, 0.18), 0px 3px 8px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.1)";
     return tag;
   };
 
@@ -647,7 +548,6 @@ export const TextInspector: TextInspectorAPI = (() => {
     header.style.gap = "8px";
     header.style.marginBottom = "8px";
     header.style.paddingBottom = "6px";
-    header.style.borderBottom = `1px solid ${INK_200}`;
 
     const tagName = document.createElement("span");
     tagName.style.color = INK_50;
@@ -834,9 +734,7 @@ export const TextInspector: TextInspectorAPI = (() => {
     const rect = el.getBoundingClientRect();
 
     // If the card was already visible and we're just retargeting to a new
-    // element, this is a "subsequent tooltip" — no re-animation. Position
-    // writes to `left/top/width/height` aren't transitioned, so it snaps
-    // naturally. The only thing we need to do is swap content + position.
+    // element, swap its content and position in place.
     if (el !== hoveredEl) {
       hoveredEl = el;
       const cached = typographyCache.get(el);
@@ -851,9 +749,6 @@ export const TextInspector: TextInspectorAPI = (() => {
     positionBox(hoverBox!, rect);
     positionTagFor(hoverTag!, rect);
 
-    // First reveal (coming from hidden) runs the 160/180ms entrance
-    // transition. Retargets are already visible — setting state="visible"
-    // again is a no-op.
     hoverBox!.dataset.state = "visible";
     hoverTag!.dataset.state = "visible";
   };
@@ -866,11 +761,22 @@ export const TextInspector: TextInspectorAPI = (() => {
 
   // -------- pinned cards --------
 
-  const pinCurrent = (x: number, y: number) => {
-    const sourceEl = pickElementAt(x, y);
-    if (!sourceEl) return;
+  const snapshotPinned = () => pinned.map((entry) => entry.sourceEl);
 
-    if (pinned.some((entry) => entry.sourceEl === sourceEl)) return;
+  const recordPinSnapshot = () => {
+    pinHistory.push(snapshotPinned());
+    pinFuture.length = 0;
+  };
+
+  const createPinned = (sourceEl: HTMLElement, recordHistory = true) => {
+    const existing = pinned.find((entry) => entry.sourceEl === sourceEl);
+    if (existing) {
+      const root = ensureOverlay();
+      root.appendChild(existing.box);
+      root.appendChild(existing.tag);
+      return false;
+    }
+    if (recordHistory) recordPinSnapshot();
 
     const root = ensureOverlay();
     // Pinned cards are "sticky" — user will stare at them. Always do the
@@ -886,16 +792,8 @@ export const TextInspector: TextInspectorAPI = (() => {
     positionBox(box, rect);
     positionTagFor(tag, rect);
 
-    // Force a style flush so the first paint lands in the hidden state,
-    // then flip to visible on the next frame — CSS transitions take it
-    // from there. Using transitions (not keyframes) means a rapid close
-    // interrupts the pop smoothly instead of restarting from zero.
-    void box.offsetHeight;
-    void tag.offsetHeight;
-    requestAnimationFrame(() => {
-      box.dataset.state = "visible";
-      tag.dataset.state = "visible";
-    });
+    box.dataset.state = "visible";
+    tag.dataset.state = "visible";
 
     const entry: Pinned = {
       sourceEl,
@@ -916,11 +814,12 @@ export const TextInspector: TextInspectorAPI = (() => {
     });
 
     entry.detach = attachDrag(entry);
+    return true;
+  };
 
-    // Clear the pop class after animation so re-pins retrigger it.
-    window.setTimeout(() => {
-      tag.style.animation = "";
-    }, 220);
+  const pinCurrent = (x: number, y: number) => {
+    const sourceEl = pickElementAt(x, y);
+    if (sourceEl) createPinned(sourceEl);
   };
 
   const attachDrag = (entry: Pinned): (() => void) => {
@@ -995,29 +894,15 @@ export const TextInspector: TextInspectorAPI = (() => {
     };
   };
 
-  const removePinned = (entry: Pinned) => {
+  const removePinned = (entry: Pinned, recordHistory = true) => {
     const i = pinned.indexOf(entry);
     if (i === -1) return;
+    if (recordHistory) recordPinSnapshot();
     pinned.splice(i, 1);
     entry.detach();
 
-    // Asymmetric exit: faster than enter. Override transition inline
-    // before flipping to hidden so the enter-duration class doesn't
-    // apply. After the fade completes, remove from the DOM.
-    const fast = `opacity ${TIMING.exitFast}ms ${EASE.out}, transform ${TIMING.exitFast}ms ${EASE.out}`;
-    entry.box.style.transition = fast;
-    entry.tag.style.transition = fast;
-    entry.box.dataset.state = "hidden";
-    entry.tag.dataset.state = "hidden";
-
-    const cleanup = () => {
-      entry.box.remove();
-      entry.tag.remove();
-    };
-    // transitionend fires per property — the first one is enough.
-    entry.tag.addEventListener("transitionend", cleanup, { once: true });
-    // Safety net if the node is disconnected before the transition fires.
-    window.setTimeout(cleanup, TIMING.exitFast + 60);
+    entry.box.remove();
+    entry.tag.remove();
   };
 
   const removeAllPinned = () => {
@@ -1027,6 +912,29 @@ export const TextInspector: TextInspectorAPI = (() => {
       entry.box.remove();
       entry.tag.remove();
     }
+  };
+
+  const restorePinned = (sources: HTMLElement[]) => {
+    removeAllPinned();
+    for (const source of sources) {
+      if (source.isConnected) createPinned(source, false);
+    }
+  };
+
+  const undo = () => {
+    const previous = pinHistory.pop();
+    if (!previous) return false;
+    pinFuture.push(snapshotPinned());
+    restorePinned(previous);
+    return true;
+  };
+
+  const redo = () => {
+    const next = pinFuture.pop();
+    if (!next) return false;
+    pinHistory.push(snapshotPinned());
+    restorePinned(next);
+    return true;
   };
 
   // Keep pinned boxes (and non-user-placed tags) in sync with their source
@@ -1177,5 +1085,5 @@ export const TextInspector: TextInspectorAPI = (() => {
     removeStyles();
   };
 
-  return { enable, disable, isEnabled, cleanup };
+  return { enable, disable, undo, redo, isEnabled, cleanup };
 })();

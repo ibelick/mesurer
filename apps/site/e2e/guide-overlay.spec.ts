@@ -33,3 +33,33 @@ test("placed guides remain visible while host-app clicks pass through", async ({
   await guidesButton.click();
   await expect(overlay).toHaveCSS("pointer-events", "auto");
 });
+
+test("font inspector mode participates in undo and redo history", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const textInspectorButton = page.getByRole("button", {
+    name: "Text inspector (A)",
+  });
+
+  await textInspectorButton.click();
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspect-mode/);
+
+  await page.keyboard.press("Control+Z");
+  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspect-mode/);
+
+  await page.keyboard.press("Control+Shift+Z");
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspect-mode/);
+
+  await page.mouse.move(300, 280);
+  await page.mouse.click(300, 280);
+  const pinnedCard = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCard).toHaveCount(1);
+
+  await page.keyboard.press("Control+Z");
+  await expect(pinnedCard).toHaveCount(0);
+
+  await page.keyboard.press("Control+Shift+Z");
+  await expect(pinnedCard).toHaveCount(1);
+});
