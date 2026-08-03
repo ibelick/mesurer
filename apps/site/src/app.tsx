@@ -5,6 +5,7 @@ import {
   CursorIcon,
   LockKeyIcon,
   RulerIcon,
+  TextAaIcon,
   ToggleLeftIcon,
 } from "@phosphor-icons/react";
 import InstallCommand from "./components/install-command";
@@ -124,6 +125,11 @@ function HomeContent() {
       icon: <LockKeyIcon size={16} weight="light" />,
       title: "Persist state",
       description: "Keep guides and measurements on reload",
+    },
+    {
+      icon: <TextAaIcon size={16} weight="light" />,
+      title: "Text inspector",
+      description: "Inspect typography styles on any element",
     },
   ];
 

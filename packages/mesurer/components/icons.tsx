@@ -58,13 +58,13 @@ export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
   >
     <text
       x="50%"
-      y="54%"
+      y="60%"
       textAnchor="middle"
       dominantBaseline="middle"
       fill="currentColor"
       fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-      fontWeight={600}
-      fontSize={160}
+      fontWeight={300}
+      fontSize={220}
     >
       Aa
     </text>
