@@ -19,6 +19,19 @@ function Fixture() {
       >
         Underlying app button
       </button>
+      <button
+        type="button"
+        style={{
+          position: "absolute",
+          left: 240,
+          top: 520,
+          width: 200,
+          height: 100,
+          fontSize: 18,
+        }}
+      >
+        Secondary app button
+      </button>
       <output data-testid="underlying-click-count">{clicks}</output>
     </>
   );

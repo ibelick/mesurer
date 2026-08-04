@@ -33,3 +33,102 @@ test("placed guides remain visible while host-app clicks pass through", async ({
   await guidesButton.click();
   await expect(overlay).toHaveCSS("pointer-events", "auto");
 });
+
+test("font inspector mode participates in undo and redo history", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const textInspectorButton = page.getByRole("button", {
+    name: "Text inspector (A)",
+  });
+
+  await textInspectorButton.click();
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
+
+  await page.keyboard.press("Control+Z");
+  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
+
+  await page.keyboard.press("Control+Shift+Z");
+  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
+
+  await page.mouse.move(300, 280);
+  await page.mouse.click(300, 280);
+  const pinnedCard = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCard).toHaveCount(1);
+
+  await page.keyboard.press("Control+Z");
+  await expect(pinnedCard).toHaveCount(0);
+
+  await page.keyboard.press("Control+Shift+Z");
+  await expect(pinnedCard).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(pinnedCard).toHaveCount(0);
+});
+
+test("font inspector refreshes styles and brings repeated pins to front", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+
+  await page.mouse.click(300, 280);
+  await page.mouse.click(300, 560);
+  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCards).toHaveCount(2);
+  await expect(pinnedCards.last()).toContainText("Secondary app button");
+
+  await page.mouse.click(300, 280);
+  await expect(pinnedCards).toHaveCount(2);
+  await expect(pinnedCards.last()).toContainText("Underlying app button");
+
+  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
+    (button as HTMLElement).style.fontSize = "24px";
+  });
+  await page.mouse.move(100, 100);
+  await page.mouse.move(300, 280);
+  await expect(
+    page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)"),
+  ).toContainText("24px");
+});
+
+test("removing a source element silently removes its pinned card", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.mouse.click(300, 280);
+
+  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
+  await expect(pinnedCards).toHaveCount(1);
+  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
+    button.remove();
+  });
+  await page.mouse.move(100, 100);
+  await expect(pinnedCards).toHaveCount(0);
+});
+
+test("x-ray mode outlines the page without hiding the toolbar", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
+  await xrayButton.click();
+
+  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+  await expect(page.locator("body")).toHaveClass(/xray-mode/);
+  await expect(xrayButton).toHaveCSS("background-color", "rgb(13, 153, 255)");
+  await expect(xrayButton).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select (S)" })).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("marketing site renders the current x-ray toolbar icon", async ({ page }) => {
+  await page.goto("/");
+
+  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
+  await expect(xrayButton).toBeVisible();
+  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+});

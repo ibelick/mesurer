@@ -11,6 +11,8 @@ import type {
 } from "../core/types"
 
 type ResizeParams = {
+  document: Document
+  window: Window
   setMeasurements: Dispatch<SetStateAction<Measurement[]>>
   setActiveMeasurement: Dispatch<SetStateAction<Measurement | null>>
   setHeldDistances: Dispatch<SetStateAction<DistanceOverlay[]>>
@@ -21,33 +23,43 @@ type ResizeParams = {
 
 export const useResizeSync = (params: ResizeParams) => {
   const resizeFrameRef = useRef<number | null>(null)
-  const viewportRef = useRef(getViewportSize())
+  const viewportRef = useRef(getViewportSize(params.window))
 
   useEffect(() => {
     const handleResize = () => {
       if (resizeFrameRef.current) {
-        cancelAnimationFrame(resizeFrameRef.current)
+        params.window.cancelAnimationFrame(resizeFrameRef.current)
       }
 
-      resizeFrameRef.current = requestAnimationFrame(() => {
-        const viewport = getViewportSize()
+      resizeFrameRef.current = params.window.requestAnimationFrame(() => {
+        const viewport = getViewportSize(params.window)
         const previousViewport = viewportRef.current
 
         params.setMeasurements((prev) =>
           prev.map((measurement) =>
-            updateMeasurementForResize(measurement, viewport)
+            updateMeasurementForResize(measurement, viewport, params.document)
           )
         )
         params.setActiveMeasurement((prev) =>
-          prev ? updateMeasurementForResize(prev, viewport) : prev
+          prev ? updateMeasurementForResize(prev, viewport, params.document) : prev
         )
         params.setHeldDistances((prev) =>
-          prev.map((distance) => updateDistanceForResize(distance, viewport))
+          prev.map((distance) =>
+            updateDistanceForResize(
+              distance,
+              viewport,
+              params.document,
+              params.window,
+            )
+          )
         )
 
-        if (params.selectedElementRef.current) {
+        if (
+          params.selectedElementRef.current &&
+          params.document.contains(params.selectedElementRef.current)
+        ) {
           params.setSelectedMeasurement(
-            getInspectMeasurement(params.selectedElementRef.current)
+              getInspectMeasurement(params.selectedElementRef.current, params.window)
           )
         }
 
@@ -67,12 +79,12 @@ export const useResizeSync = (params: ResizeParams) => {
       })
     }
 
-    window.addEventListener("resize", handleResize)
+    params.window.addEventListener("resize", handleResize)
     return () => {
       if (resizeFrameRef.current) {
-        cancelAnimationFrame(resizeFrameRef.current)
+        params.window.cancelAnimationFrame(resizeFrameRef.current)
       }
-      window.removeEventListener("resize", handleResize)
+      params.window.removeEventListener("resize", handleResize)
     }
   }, [params])
 }

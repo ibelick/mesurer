@@ -3,12 +3,14 @@ import { useEffect } from "react"
 import type { ToolMode } from "../core/types"
 
 type HotkeyOptions = {
+  eventTarget: Window
   clearAll: () => void
   undo: () => void
   redo: () => void
   removeSelectedGuides: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
+  setRulersVisible: Dispatch<SetStateAction<boolean>>
   setAltPressed: Dispatch<SetStateAction<boolean>>
   isOverlayActive: () => boolean
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
@@ -17,6 +19,7 @@ type HotkeyOptions = {
 
 export const useHotkeys = (options: HotkeyOptions) => {
   useEffect(() => {
+    const target = options.eventTarget
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         options.clearAll()
@@ -58,6 +61,16 @@ export const useHotkeys = (options: HotkeyOptions) => {
           options.onInteract()
         }
 
+        if (key === "x") {
+          options.setToolMode((prev) => (prev === "xray" ? "none" : "xray"))
+          options.onInteract()
+        }
+
+        if (key === "r") {
+          options.setRulersVisible((prev) => !prev)
+          options.onInteract()
+        }
+
         if (key === "h") {
           options.setGuideOrientation("horizontal")
           options.onInteract()
@@ -87,11 +100,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("keyup", handleKeyUp)
+    target.addEventListener("keydown", handleKeyDown)
+    target.addEventListener("keyup", handleKeyUp)
     return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("keyup", handleKeyUp)
+      target.removeEventListener("keydown", handleKeyDown)
+      target.removeEventListener("keyup", handleKeyUp)
     }
   }, [options])
 }

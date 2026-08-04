@@ -27,6 +27,33 @@ export const RulerIcon = ({ size = 20, ...props }: IconProps) => (
   </IconBase>
 )
 
+export const XrayIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="12"
+      strokeOpacity="0.78"
+      d="M76 48h96a16 16 0 0 1 16 16v96a16 16 0 0 1-16 16H76a16 16 0 0 1-16-16V64a16 16 0 0 1 16-16Zm32 32h96a16 16 0 0 1 16 16v96a16 16 0 0 1-16 16h-96a16 16 0 0 1-16-16V96a16 16 0 0 1 16-16Z"
+    />
+  </IconBase>
+)
+
+export const RulersIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="12"
+      d="M48 208V48h160M80 48v24m32-24v24m32-24v24m32-24v24M48 80h24M48 112h24m-24 32h24m-24 32h24"
+    />
+  </IconBase>
+)
+
 export const CaretDownIcon = ({ size = 8, ...props }: IconProps) => (
   <IconBase size={size} {...props}>
     <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" />
@@ -58,13 +85,13 @@ export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
   >
     <text
       x="50%"
-      y="54%"
+      y="60%"
       textAnchor="middle"
       dominantBaseline="middle"
       fill="currentColor"
       fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-      fontWeight={600}
-      fontSize={160}
+      fontWeight={300}
+      fontSize={220}
     >
       Aa
     </text>

@@ -17,7 +17,9 @@ import {
   CursorIcon,
   MinusIcon,
   RulerIcon,
+  RulersIcon,
   TextInspectorIcon,
+  XrayIcon,
 } from "./icons";
 
 type Point = {
@@ -26,9 +28,12 @@ type Point = {
 };
 
 type ToolbarProps = {
+  eventTarget: Window;
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
+  rulersVisible: boolean;
+  setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
   onInteract: () => void;
@@ -46,6 +51,7 @@ type ToolbarButtonProps = {
   shortcut: string;
   onClick: () => void;
   tooltipVisible: boolean;
+  tooltipInstant: boolean;
   tooltipSide: "top" | "bottom";
   onTooltipEnter: (id: string) => void;
   onTooltipLeave: (id: string) => void;
@@ -59,6 +65,7 @@ function ToolbarButton({
   shortcut,
   onClick,
   tooltipVisible,
+  tooltipInstant,
   tooltipSide,
   onTooltipEnter,
   onTooltipLeave,
@@ -73,6 +80,7 @@ function ToolbarButton({
       <button
         type="button"
         aria-label={`${label} (${shortcut})`}
+        aria-pressed={active}
         title={`${label} (${shortcut})`}
         className={cn(
           "msr:flex msr:size-8 msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
@@ -86,7 +94,10 @@ function ToolbarButton({
       </button>
       <span
         className={cn(
-          "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+          cn(
+            "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
+            tooltipInstant && "msr:transition-none",
+          ),
           tooltipSide === "top"
             ? "msr:bottom-full msr:mb-2"
             : "msr:top-full msr:mt-2",
@@ -103,6 +114,7 @@ function useToolbarTooltip() {
   const [visibleTooltipId, setVisibleTooltipId] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const instantRef = useRef(false);
+  const [tooltipInstant, setTooltipInstant] = useState(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current === null) return;
@@ -114,10 +126,12 @@ function useToolbarTooltip() {
     (id: string) => {
       clearTimer();
       if (instantRef.current) {
+        setTooltipInstant(true);
         setVisibleTooltipId(id);
         return;
       }
 
+      setTooltipInstant(false);
       timerRef.current = window.setTimeout(() => {
         setVisibleTooltipId(id);
         instantRef.current = true;
@@ -139,12 +153,19 @@ function useToolbarTooltip() {
     clearTimer();
     setVisibleTooltipId(null);
     instantRef.current = false;
+    setTooltipInstant(false);
   }, [clearTimer]);
 
-  return { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave };
+  return {
+    visibleTooltipId,
+    tooltipInstant,
+    onTooltipEnter,
+    onTooltipLeave,
+    onToolbarLeave,
+  };
 }
 
-function useToolbarDrag(initialPosition: Point) {
+function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
   const [position, setPosition] = useState(initialPosition);
   const suppressClickRef = useRef(false);
   const detachListenersRef = useRef<(() => void) | null>(null);
@@ -197,8 +218,8 @@ function useToolbarDrag(initialPosition: Point) {
         if (!current.active) return;
 
         current.didDrag = true;
-        const maxX = Math.max(8, window.innerWidth - current.width - 8);
-        const maxY = Math.max(8, window.innerHeight - current.height - 8);
+        const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8);
+        const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8);
         setPosition({
           x: Math.min(maxX, Math.max(8, current.originX + dx)),
           y: Math.min(maxY, Math.max(8, current.originY + dy)),
@@ -217,22 +238,22 @@ function useToolbarDrag(initialPosition: Point) {
         current.didDrag = false;
         current.pointerId = -1;
 
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerEnd);
-        window.removeEventListener("pointercancel", handlePointerEnd);
+        eventTarget.removeEventListener("pointermove", handlePointerMove);
+        eventTarget.removeEventListener("pointerup", handlePointerEnd);
+        eventTarget.removeEventListener("pointercancel", handlePointerEnd);
         detachListenersRef.current = null;
       };
 
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerEnd);
-      window.addEventListener("pointercancel", handlePointerEnd);
+      eventTarget.addEventListener("pointermove", handlePointerMove);
+      eventTarget.addEventListener("pointerup", handlePointerEnd);
+      eventTarget.addEventListener("pointercancel", handlePointerEnd);
       detachListenersRef.current = () => {
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerEnd);
-        window.removeEventListener("pointercancel", handlePointerEnd);
+        eventTarget.removeEventListener("pointermove", handlePointerMove);
+        eventTarget.removeEventListener("pointerup", handlePointerEnd);
+        eventTarget.removeEventListener("pointercancel", handlePointerEnd);
       };
     },
-    [position.x, position.y],
+    [eventTarget, position.x, position.y],
   );
 
   const onClickCapture = useCallback(
@@ -253,17 +274,26 @@ function ToolbarComponent(
     toolMode,
     setEnabled,
     setToolMode,
+    rulersVisible,
+    setRulersVisible,
     guideOrientation,
     setGuideOrientation,
     onInteract,
+    eventTarget,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
   const { position, onPointerDown, onClickCapture } = useToolbarDrag({
     x: 16,
     y: 16,
-  });
-  const { visibleTooltipId, onTooltipEnter, onTooltipLeave, onToolbarLeave } =
+  }, eventTarget);
+  const {
+    visibleTooltipId,
+    tooltipInstant,
+    onTooltipEnter,
+    onTooltipLeave,
+    onToolbarLeave,
+  } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
@@ -282,16 +312,16 @@ function ToolbarComponent(
       return;
     }
 
-    if (leftAlignedRight > window.innerWidth - VIEWPORT_PADDING) {
+    if (leftAlignedRight > eventTarget.innerWidth - VIEWPORT_PADDING) {
       setMenuAlign("right");
       return;
     }
 
     setMenuAlign("right");
-  }, []);
+  }, [eventTarget]);
 
   const viewportHeight =
-    typeof window === "undefined" ? 0 : window.innerHeight || 0;
+    eventTarget.innerHeight || 0;
   const nearTop = position.y < 56;
   const nearBottom = viewportHeight > 0 && position.y > viewportHeight - 56;
   const tooltipSide: "top" | "bottom" =
@@ -318,6 +348,18 @@ function ToolbarComponent(
     onInteract();
   }, [onInteract, setEnabled, setToolMode]);
 
+  const xrayMode = useCallback(() => {
+    setEnabled(true);
+    setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
+    onInteract();
+  }, [onInteract, setEnabled, setToolMode]);
+
+  const rulersMode = useCallback(() => {
+    setEnabled(true);
+    setRulersVisible((prev) => !prev);
+    onInteract();
+  }, [onInteract, setEnabled, setRulersVisible]);
+
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
       setEnabled(true);
@@ -332,7 +374,7 @@ function ToolbarComponent(
   useLayoutEffect(() => {
     if (!guideMenuOpen) return;
 
-    const frame = requestAnimationFrame(() => {
+    const frame = eventTarget.requestAnimationFrame(() => {
       guideMenuRef.current
         ?.querySelector<HTMLElement>("[role='menu']")
         ?.focus();
@@ -352,14 +394,14 @@ function ToolbarComponent(
       updateMenuAlign();
     };
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("resize", handleResize);
+    eventTarget.addEventListener("pointerdown", handlePointerDown);
+    eventTarget.addEventListener("resize", handleResize);
     return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("resize", handleResize);
+      eventTarget.cancelAnimationFrame(frame);
+      eventTarget.removeEventListener("pointerdown", handlePointerDown);
+      eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [guideMenuOpen, guideOrientation, updateMenuAlign]);
+  }, [eventTarget, guideMenuOpen, guideOrientation, updateMenuAlign]);
 
   return (
     <div
@@ -380,11 +422,40 @@ function ToolbarComponent(
         shortcut="S"
         onClick={selectMode}
         tooltipVisible={visibleTooltipId === "select"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
       >
         <CursorIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="xray"
+        active={toolMode === "xray"}
+        label="X-ray"
+        shortcut="X"
+        onClick={xrayMode}
+        tooltipVisible={visibleTooltipId === "xray"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <XrayIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="rulers"
+        active={rulersVisible}
+        label="Rulers"
+        shortcut="R"
+        onClick={rulersMode}
+        tooltipVisible={visibleTooltipId === "rulers"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <RulersIcon size={20} />
       </ToolbarButton>
       <ToolbarButton
         id="text-inspector"
@@ -393,6 +464,7 @@ function ToolbarComponent(
         shortcut="A"
         onClick={textInspectorMode}
         tooltipVisible={visibleTooltipId === "text-inspector"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
@@ -406,6 +478,7 @@ function ToolbarComponent(
         shortcut="G"
         onClick={guidesMode}
         tooltipVisible={visibleTooltipId === "guides"}
+        tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}

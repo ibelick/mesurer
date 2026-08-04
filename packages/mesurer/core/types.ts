@@ -87,4 +87,10 @@ export type OptionTarget = {
   guideId?: string
 }
 
-export type ToolMode = "none" | "select" | "guides" | "text-inspector"
+export type ToolMode =
+  | "none"
+  | "select"
+  | "guides"
+  | "text-inspector"
+  | "xray"
+  | "rulers"

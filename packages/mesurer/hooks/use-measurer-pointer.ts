@@ -30,6 +30,8 @@ type GuidePreview = {
 }
 
 type UseMeasurerPointerArgs = {
+  document: Document
+  window: Window
   toolbarRef: MutableRefObject<HTMLDivElement | null>
   overlayRef: MutableRefObject<HTMLDivElement | null>
   selectionRectRef: MutableRefObject<Rect | null>
@@ -80,6 +82,8 @@ type UseMeasurerPointerArgs = {
 }
 
 export const useMeasurerPointer = ({
+  document,
+  window,
   toolbarRef,
   overlayRef,
   selectionRectRef,
@@ -137,14 +141,14 @@ export const useMeasurerPointer = ({
   useEffect(() => {
     return () => {
       if (hoverFrameRef.current) {
-        cancelAnimationFrame(hoverFrameRef.current)
+         window.cancelAnimationFrame(hoverFrameRef.current)
       }
     }
   }, [])
 
   const updateHoverTarget = useCallback(
     (point: Point) => {
-      const target = getTargetElement(point, overlayRef.current)
+      const target = getTargetElement(point, overlayRef.current, document)
       if (target) {
         const rect = target.getBoundingClientRect()
         setHoverRect({
@@ -159,15 +163,15 @@ export const useMeasurerPointer = ({
         setHoverElement(null)
       }
     },
-    [overlayRef, setHoverElement, setHoverRect]
+    [document, overlayRef, setHoverElement, setHoverRect]
   )
 
   const updateHoverElement = useCallback(
     (point: Point) => {
-      const target = getTargetElement(point, overlayRef.current)
+      const target = getTargetElement(point, overlayRef.current, document)
       setHoverElement(target)
     },
-    [overlayRef, setHoverElement]
+    [document, overlayRef, setHoverElement]
   )
 
   const handlePointerDown = useCallback(
@@ -185,6 +189,7 @@ export const useMeasurerPointer = ({
             point,
             selectedMeasurements,
             overlayNode: overlayRef.current,
+            document,
           })?.elementRef ?? null)
         : null
       selectionCacheRef.current.key = ""
@@ -210,9 +215,10 @@ export const useMeasurerPointer = ({
           overlayNode: overlayRef.current,
           guides,
           draggingGuideId,
+          document,
         })
         const id = createId()
-        setSelectedGuideIds([])
+         setSelectedGuideIds([id])
         setGuides((prev) => [
           ...prev,
           { id, orientation: guideOrientation, position },
@@ -236,7 +242,8 @@ export const useMeasurerPointer = ({
       altPressed,
       clearSelectionRect,
       createActionCommit,
-      draggingGuideId,
+          draggingGuideId,
+          document,
       enabled,
       guideOrientation,
       guides,
@@ -281,7 +288,7 @@ export const useMeasurerPointer = ({
 
       hoverPointRef.current = point
       if (!hoverFrameRef.current) {
-        hoverFrameRef.current = requestAnimationFrame(() => {
+        hoverFrameRef.current = window.requestAnimationFrame(() => {
           const latest = hoverPointRef.current
           if (latest && !draggingGuideId) {
             if (hoverHighlightEnabled) {
@@ -306,7 +313,8 @@ export const useMeasurerPointer = ({
               snapGuidesEnabled,
               overlayNode: overlayRef.current,
               guides,
-              draggingGuideId,
+          draggingGuideId,
+          document,
             })
             setGuidePreview({
               orientation: guideOrientation,
@@ -332,6 +340,7 @@ export const useMeasurerPointer = ({
                     overlayNode: overlayRef.current,
                     guides,
                     draggingGuideId,
+                    document,
                   }),
                 }
               : guide
@@ -432,7 +441,8 @@ export const useMeasurerPointer = ({
         const elements = getElementsInRectCached(
           selectionRect,
           overlayRef.current,
-          selectionCacheRef.current
+          selectionCacheRef.current,
+          document
         )
         const hasSameSelection =
           elements.length === selectedMeasurements.length &&
@@ -447,7 +457,7 @@ export const useMeasurerPointer = ({
           if (!hasSameSelection) {
             commit()
             const nextMeasurements = elements.map((element) => ({
-              ...getInspectMeasurement(element),
+              ...getInspectMeasurement(element, window),
               originRect: selectionRect,
             }))
             setSelectedMeasurements(nextMeasurements)
@@ -487,6 +497,7 @@ export const useMeasurerPointer = ({
             point,
             selectedMeasurements,
             overlayNode: overlayRef.current,
+            document,
           })
 
       if (event.shiftKey && selectedHit) {
@@ -522,12 +533,12 @@ export const useMeasurerPointer = ({
       }
 
       const target = event.shiftKey
-        ? (getTargetElement(point, overlayRef.current) ??
-          getSnappedClickTarget(point, overlayRef.current, snapEnabled))
-        : getSnappedClickTarget(point, overlayRef.current, snapEnabled)
+        ? (getTargetElement(point, overlayRef.current, document) ??
+          getSnappedClickTarget(point, overlayRef.current, snapEnabled, document))
+        : getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
 
       if (target) {
-        const inspectMeasurement = getInspectMeasurement(target)
+        const inspectMeasurement = getInspectMeasurement(target, window)
         clearTransientMeasurements()
 
         if (event.shiftKey) {

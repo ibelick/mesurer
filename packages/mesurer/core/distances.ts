@@ -11,9 +11,10 @@ export const getDistanceOverlay = (
   rectA: Rect,
   rectB: Rect,
   elementRefA?: HTMLElement | null,
-  elementRefB?: HTMLElement | null
+  elementRefB?: HTMLElement | null,
+  ownerWindow: Window = window,
 ): DistanceOverlay => {
-  const viewport = getViewportSize()
+  const viewport = getViewportSize(ownerWindow)
   const normalizedRectA = normalizeRect(rectA, viewport)
   const normalizedRectB = normalizeRect(rectB, viewport)
   const rightA = rectA.left + rectA.width
@@ -62,10 +63,10 @@ export const getDistanceOverlay = (
 
   const normalizedConnectors = connectors
     .map((segment) => ({
-      x1: clamp(segment.x1, 0, window.innerWidth),
-      y1: clamp(segment.y1, 0, window.innerHeight),
-      x2: clamp(segment.x2, 0, window.innerWidth),
-      y2: clamp(segment.y2, 0, window.innerHeight),
+      x1: clamp(segment.x1, 0, ownerWindow.innerWidth),
+      y1: clamp(segment.y1, 0, ownerWindow.innerHeight),
+      x2: clamp(segment.x2, 0, ownerWindow.innerWidth),
+      y2: clamp(segment.y2, 0, ownerWindow.innerHeight),
     }))
     .filter(
       (segment) =>
@@ -89,23 +90,25 @@ export const getDistanceOverlay = (
 
 export const updateDistanceForResize = (
   distance: DistanceOverlay,
-  viewport = getViewportSize()
+  viewport = getViewportSize(),
+  ownerDocument: Document = document,
+  ownerWindow: Window = window,
 ): DistanceOverlay => {
   const normalizedRectA =
-    distance.normalizedRectA ?? normalizeRect(distance.rectA)
+    distance.normalizedRectA ?? normalizeRect(distance.rectA, viewport)
   const normalizedRectB =
-    distance.normalizedRectB ?? normalizeRect(distance.rectB)
+    distance.normalizedRectB ?? normalizeRect(distance.rectB, viewport)
 
   let rectA = distance.rectA
   let rectB = distance.rectB
 
-  if (distance.elementRefA && document.contains(distance.elementRefA)) {
+  if (distance.elementRefA && ownerDocument.contains(distance.elementRefA)) {
     rectA = distance.elementRefA.getBoundingClientRect()
   } else {
     rectA = denormalizeRect(normalizedRectA, viewport)
   }
 
-  if (distance.elementRefB && document.contains(distance.elementRefB)) {
+  if (distance.elementRefB && ownerDocument.contains(distance.elementRefB)) {
     rectB = distance.elementRefB.getBoundingClientRect()
   } else {
     rectB = denormalizeRect(normalizedRectB, viewport)
@@ -115,7 +118,8 @@ export const updateDistanceForResize = (
     rectA,
     rectB,
     distance.elementRefA,
-    distance.elementRefB
+    distance.elementRefB,
+    ownerWindow
   )
 
   return {

@@ -11,6 +11,8 @@ import type {
 } from "../core/types"
 
 type LiveParams = {
+  document: Document
+  window: Window
   enabled: boolean
   selectedElementRef: RefObject<HTMLElement | null>
   hoverElementRef: RefObject<HTMLElement | null>
@@ -28,7 +30,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
   useEffect(() => {
     if (!params.enabled) {
       if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
+        params.window.cancelAnimationFrame(frameRef.current)
       }
       frameRef.current = null
       return
@@ -39,7 +41,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
         prev.map((measurement) => {
           if (
             !measurement.elementRef ||
-            !document.contains(measurement.elementRef)
+            !params.document.contains(measurement.elementRef)
           ) {
             return measurement
           }
@@ -57,7 +59,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       )
 
       params.setActiveMeasurement((prev) => {
-        if (!prev?.elementRef || !document.contains(prev.elementRef))
+        if (!prev?.elementRef || !params.document.contains(prev.elementRef))
           return prev
         const rect = getRectFromDom(prev.elementRef)
         if (rectAlmostEqual(rect, prev.rect)) return prev
@@ -72,9 +74,9 @@ export const useLiveElementTracking = (params: LiveParams) => {
       params.setHeldDistances((prev) =>
         prev.map((distance) => {
           const canTrackA =
-            distance.elementRefA && document.contains(distance.elementRefA)
+              distance.elementRefA && params.document.contains(distance.elementRefA)
           const canTrackB =
-            distance.elementRefB && document.contains(distance.elementRefB)
+              distance.elementRefB && params.document.contains(distance.elementRefB)
           if (!canTrackA && !canTrackB) return distance
 
           const rectA = canTrackA
@@ -90,12 +92,13 @@ export const useLiveElementTracking = (params: LiveParams) => {
             return distance
           }
 
-          const updated = getDistanceOverlay(
-            rectA,
-            rectB,
-            distance.elementRefA,
-            distance.elementRefB
-          )
+            const updated = getDistanceOverlay(
+              rectA,
+              rectB,
+              distance.elementRefA,
+              distance.elementRefB,
+              params.window,
+            )
 
           return {
             ...updated,
@@ -105,9 +108,9 @@ export const useLiveElementTracking = (params: LiveParams) => {
       )
 
       const selected = params.selectedElementRef.current
-      if (selected && document.contains(selected)) {
+      if (selected && params.document.contains(selected)) {
         params.setSelectedMeasurement((prev) => {
-          const next = getInspectMeasurement(selected)
+          const next = getInspectMeasurement(selected, params.window)
           if (prev && rectAlmostEqual(prev.rect, next.rect)) return prev
           return next
         })
@@ -117,11 +120,11 @@ export const useLiveElementTracking = (params: LiveParams) => {
         prev.map((measurement) => {
           if (
             !measurement.elementRef ||
-            !document.contains(measurement.elementRef)
+            !params.document.contains(measurement.elementRef)
           ) {
             return measurement
           }
-          const next = getInspectMeasurement(measurement.elementRef)
+          const next = getInspectMeasurement(measurement.elementRef, params.window)
           if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
           return {
             ...next,
@@ -131,21 +134,21 @@ export const useLiveElementTracking = (params: LiveParams) => {
       )
 
       const hover = params.hoverElementRef.current
-      if (hover && document.contains(hover)) {
+      if (hover && params.document.contains(hover)) {
         const rect = getRectFromDom(hover)
         params.setHoverRect((prev) =>
           prev && rectAlmostEqual(prev, rect) ? prev : rect
         )
       }
 
-      frameRef.current = requestAnimationFrame(tick)
+      frameRef.current = params.window.requestAnimationFrame(tick)
     }
 
-    frameRef.current = requestAnimationFrame(tick)
+    frameRef.current = params.window.requestAnimationFrame(tick)
 
     return () => {
       if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
+        params.window.cancelAnimationFrame(frameRef.current)
       }
       frameRef.current = null
     }

@@ -2,17 +2,23 @@ const MESURER_STYLE_ID = "mesurer-styles";
 
 type StyleTarget = Document | ShadowRoot;
 
+const isDocument = (target: StyleTarget): target is Document =>
+  target.nodeType === 9;
+
+const isShadowRoot = (target: StyleTarget): target is ShadowRoot =>
+  target.nodeType === 11;
+
 const getStyleTarget = (
   target?: HTMLElement | ShadowRoot,
 ): StyleTarget | null => {
   if (typeof document === "undefined") return null;
   if (!target) return document;
-  if (target instanceof ShadowRoot) return target;
+  if (isShadowRoot(target as StyleTarget)) return target as ShadowRoot;
 
   const rootNode = target.getRootNode();
-  if (rootNode instanceof ShadowRoot) return rootNode;
+  if (rootNode.nodeType === 11) return rootNode as ShadowRoot;
 
-  return document;
+  return target.ownerDocument ?? document;
 };
 
 export function ensureMeasurerStyles(
@@ -26,14 +32,18 @@ export function ensureMeasurerStyles(
   if (!styleTarget) return;
   if (styleTarget.querySelector(`#${MESURER_STYLE_ID}`)) return;
 
-  const style = document.createElement("style");
+  const ownerDocument = isDocument(styleTarget)
+    ? styleTarget
+    : styleTarget.ownerDocument;
+  if (!ownerDocument) return;
+  const style = ownerDocument.createElement("style");
   style.id = MESURER_STYLE_ID;
   style.textContent = cssText;
 
-  if (styleTarget instanceof ShadowRoot) {
+  if (isShadowRoot(styleTarget)) {
     styleTarget.appendChild(style);
     return;
   }
 
-  styleTarget.head.appendChild(style);
+  ownerDocument.head.appendChild(style);
 }

@@ -3,8 +3,10 @@ import {
   ArrowsCounterClockwiseIcon,
   CalculatorIcon,
   CursorIcon,
+  GridFourIcon,
   LockKeyIcon,
   RulerIcon,
+  TextAaIcon,
   ToggleLeftIcon,
 } from "@phosphor-icons/react";
 import InstallCommand from "./components/install-command";
@@ -106,9 +108,14 @@ function HomeContent() {
       description: "Click elements to measure their bounds",
     },
     {
-      icon: <RulerIcon size={16} weight="light" />,
+      icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
       title: "Guides mode",
       description: "Add vertical or horizontal guides",
+    },
+    {
+      icon: <RulerIcon size={16} weight="light" />,
+      title: "Rulers",
+      description: "Show pixel rulers along the top and left edges",
     },
     {
       icon: <CalculatorIcon size={16} weight="light" />,
@@ -124,6 +131,16 @@ function HomeContent() {
       icon: <LockKeyIcon size={16} weight="light" />,
       title: "Persist state",
       description: "Keep guides and measurements on reload",
+    },
+    {
+      icon: <TextAaIcon size={16} weight="light" />,
+      title: "Text inspector",
+      description: "Inspect typography styles on any element",
+    },
+    {
+      icon: <GridFourIcon size={16} weight="light" />,
+      title: "X-ray mode",
+      description: "Reveal the structure of every element",
     },
   ];
 
