@@ -10,10 +10,11 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { MEASURE_TRANSITION_MS } from "./core/constants";
+import { GUIDE_HITBOX_SIZE, MEASURE_TRANSITION_MS } from "./core/constants";
 import { ensureMeasurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
+import { RulersOverlay } from "./components/rulers-overlay";
 import { useDragState } from "./hooks/use-drag-state";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
 import { useGuideState } from "./hooks/use-guide-state";
@@ -28,6 +29,7 @@ import { useMeasurerPointer } from "./hooks/use-measurer-pointer";
 import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
+import { createId } from "./core/utils";
 import {
   createTextInspector,
   type TextInspectorAPI,
@@ -104,6 +106,10 @@ function MeasurerClient({
       : `mesurer-state-${instanceIdRef.current}`);
   const ownerDocument = portalTarget.ownerDocument ?? document;
   const ownerWindow = ownerDocument.defaultView ?? window;
+  const guideScrollRef = useRef({
+    x: ownerWindow.scrollX,
+    y: ownerWindow.scrollY,
+  });
   const textInspectorRef = useRef<TextInspectorAPI | null>(null);
   if (!textInspectorRef.current) {
     textInspectorRef.current = createTextInspector({ portalTarget });
@@ -112,6 +118,13 @@ function MeasurerClient({
   const selectionRectRef = useRef<Rect | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const selectionAnimationCleanupTimeoutRef = useRef<number | null>(null);
+  const guideDragRef = useRef<{
+    id: string;
+    orientation: "vertical" | "horizontal";
+    pointerId: number;
+    commit: () => void;
+    committed: boolean;
+  } | null>(null);
 
   const persistedState = useMemo(() => {
     if (!persistOnReload) return null;
@@ -126,8 +139,9 @@ function MeasurerClient({
         guides: Guide[];
         selectedGuideIds: string[];
         measurements: Measurement[];
-        activeMeasurement: Measurement | null;
-        heldDistances: DistanceOverlay[];
+         activeMeasurement: Measurement | null;
+         heldDistances: DistanceOverlay[];
+         rulersVisible?: boolean;
       };
       if (!parsed || parsed.version !== 1) return null;
       return parsed;
@@ -137,7 +151,12 @@ function MeasurerClient({
   }, [persistOnReload, storageKey]);
 
   const enabledRef = useRef(false);
-  const toolModeRef = useRef<ToolMode>(persistedState?.toolMode ?? "none");
+  const toolModeRef = useRef<ToolMode>(
+    persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? "none",
+  );
+  const rulersVisibleRef = useRef(
+    persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
+  );
   const guideOrientationRef = useRef<"vertical" | "horizontal">(
     persistedState?.guideOrientation ?? "vertical",
   );
@@ -181,12 +200,17 @@ function MeasurerClient({
     setAltPressed,
     toolMode,
     setToolMode,
+    rulersVisible,
+    setRulersVisible,
     guidesEnabled,
     multiMeasureEnabled,
     snapGuidesEnabled,
   } = useMeasureToggles({
     initialEnabled: persistedState?.enabled,
-    initialToolMode: persistedState?.toolMode,
+    initialToolMode:
+      persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
+    initialRulersVisible:
+      persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
     useDragState();
@@ -231,6 +255,7 @@ function MeasurerClient({
 
   enabledRef.current = enabled;
   toolModeRef.current = toolMode;
+  rulersVisibleRef.current = rulersVisible;
   guideOrientationRef.current = guideOrientation;
   measurementsRef.current = measurements;
   activeMeasurementRef.current = activeMeasurement;
@@ -249,6 +274,7 @@ function MeasurerClient({
           version: 1,
           enabled: enabledRef.current,
           toolMode: toolModeRef.current,
+          rulersVisible: rulersVisibleRef.current,
           guideOrientation: guideOrientationRef.current,
           guides: guidesRef.current,
           selectedGuideIds: selectedGuideIdsRef.current,
@@ -273,6 +299,20 @@ function MeasurerClient({
       persistState();
     },
     [persistState, setEnabled],
+  );
+
+  const setRulersVisiblePersisted = useCallback(
+    (value: Parameters<typeof setRulersVisible>[0]) => {
+      const next =
+        typeof value === "function"
+          ? value(rulersVisibleRef.current)
+          : value;
+      if (Object.is(next, rulersVisibleRef.current)) return;
+      rulersVisibleRef.current = next;
+      setRulersVisible(next);
+      persistState();
+    },
+    [persistState, setRulersVisible],
   );
 
   const setToolModePersisted = useCallback(
@@ -424,6 +464,9 @@ function MeasurerClient({
   }, [redoHistory, textInspector, toolMode]);
 
   const clearAll = useCallback(() => {
+    if (toolMode === "text-inspector") {
+      textInspector.clear();
+    }
     recordSnapshot();
     clearGuideDragHold();
     setStart(null);
@@ -457,6 +500,8 @@ function MeasurerClient({
     setSelectedMeasurement,
     setSelectedMeasurements,
     setStart,
+    textInspector,
+    toolMode,
   ]);
 
   const removeSelectedGuides = useCallback(() => {
@@ -482,6 +527,7 @@ function MeasurerClient({
     removeSelectedGuides,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
+    setRulersVisible: setRulersVisiblePersisted,
     setAltPressed,
     isOverlayActive: () => enabled && (toolMode !== "none" || toolbarActive),
     setGuideOrientation: setGuideOrientationWithHistory,
@@ -498,6 +544,31 @@ function MeasurerClient({
     setGuides: setGuidesPersisted,
     selectedElementRef,
   });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const next = {
+        x: ownerWindow.scrollX,
+        y: ownerWindow.scrollY,
+      };
+      const deltaX = next.x - guideScrollRef.current.x;
+      const deltaY = next.y - guideScrollRef.current.y;
+      guideScrollRef.current = next;
+      if (deltaX === 0 && deltaY === 0) return;
+
+      setGuidesPersisted((prev) =>
+        prev.map((guide) => ({
+          ...guide,
+          position:
+            guide.position -
+            (guide.orientation === "vertical" ? deltaX : deltaY),
+        })),
+      );
+    };
+
+    ownerWindow.addEventListener("scroll", handleScroll, true);
+    return () => ownerWindow.removeEventListener("scroll", handleScroll, true);
+  }, [ownerWindow, setGuidesPersisted]);
 
   useLiveElementTracking({
     document: ownerDocument,
@@ -527,6 +598,97 @@ function MeasurerClient({
       ownerWindow.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [ownerWindow, toolbarActive, toolMode]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleGuidePointerDown = (event: globalThis.PointerEvent) => {
+      if (toolbarRef.current?.contains(event.target as Node)) return;
+      const guideTarget = event.composedPath().some(
+        (target) =>
+          target instanceof ownerWindow.Element &&
+          target.hasAttribute("data-mesurer-guide"),
+      );
+      if (guideTarget && toolMode !== "none") return;
+
+      const point = { x: event.clientX, y: event.clientY };
+      const guide = guides.find((candidate) => {
+        const distance =
+          candidate.orientation === "vertical"
+            ? Math.abs(candidate.position - point.x)
+            : Math.abs(candidate.position - point.y);
+        return distance <= GUIDE_HITBOX_SIZE / 2;
+      });
+      if (!guide) return;
+
+      if (event.button === 0 && !event.shiftKey && toolMode === "none") {
+        guideDragRef.current = {
+          id: guide.id,
+          orientation: guide.orientation,
+          pointerId: event.pointerId,
+          commit: createActionCommit(),
+          committed: false,
+        };
+      }
+
+      setSelectedGuideIdsPersisted((prev) =>
+        event.shiftKey
+          ? prev.includes(guide.id)
+            ? prev.filter((id) => id !== guide.id)
+            : [...prev, guide.id]
+          : [guide.id],
+      );
+    };
+
+    const handleGuidePointerMove = (event: globalThis.PointerEvent) => {
+      const drag = guideDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const position =
+        drag.orientation === "vertical" ? event.clientX : event.clientY;
+      if (!drag.committed) {
+        drag.commit();
+        drag.committed = true;
+      }
+      setGuidesPersisted((prev) =>
+        prev.map((guide) =>
+          guide.id === drag.id ? { ...guide, position } : guide,
+        ),
+      );
+    };
+
+    const handleGuidePointerEnd = (event: globalThis.PointerEvent) => {
+      if (guideDragRef.current?.pointerId === event.pointerId) {
+        guideDragRef.current = null;
+      }
+    };
+
+    ownerWindow.addEventListener("pointerdown", handleGuidePointerDown, true);
+    ownerWindow.addEventListener("pointermove", handleGuidePointerMove, true);
+    ownerWindow.addEventListener("pointerup", handleGuidePointerEnd, true);
+    ownerWindow.addEventListener("pointercancel", handleGuidePointerEnd, true);
+    return () => {
+      ownerWindow.removeEventListener(
+        "pointerdown",
+        handleGuidePointerDown,
+        true,
+      );
+      ownerWindow.removeEventListener("pointermove", handleGuidePointerMove, true);
+      ownerWindow.removeEventListener("pointerup", handleGuidePointerEnd, true);
+      ownerWindow.removeEventListener(
+        "pointercancel",
+        handleGuidePointerEnd,
+        true,
+      );
+    };
+  }, [
+    createActionCommit,
+    enabled,
+    guides,
+    ownerWindow,
+    setGuidesPersisted,
+    setSelectedGuideIdsPersisted,
+    toolMode,
+  ]);
 
   // Drive the vanilla-DOM text-inspector IIFE from the React tool mode.
   // The module owns its own listeners / DOM / styles; React only tells it
@@ -730,6 +892,45 @@ function MeasurerClient({
     [recordSnapshot, setHeldDistancesPersisted],
   );
 
+  const startGuideFromRuler = useCallback(
+    (orientation: "vertical" | "horizontal", position: number) => {
+      const id = createId();
+      const commit = createActionCommit();
+      commit();
+      setSelectedGuideIdsPersisted([]);
+      setGuidesPersisted((prev) => [...prev, { id, orientation, position }]);
+      return id;
+    },
+    [
+      createActionCommit,
+      setGuidesPersisted,
+      setSelectedGuideIdsPersisted,
+    ],
+  );
+
+  const moveGuideFromRuler = useCallback(
+    (id: string, position: number) => {
+      setGuidesPersisted((prev) =>
+        prev.map((guide) => (guide.id === id ? { ...guide, position } : guide)),
+      );
+    },
+    [setGuidesPersisted],
+  );
+
+  const finishGuideFromRuler = useCallback(
+    (id: string) => {
+      setSelectedGuideIdsPersisted([id]);
+    },
+    [setSelectedGuideIdsPersisted],
+  );
+
+  const cancelGuideFromRuler = useCallback(
+    (id: string) => {
+      setGuidesPersisted((prev) => prev.filter((guide) => guide.id !== id));
+    },
+    [setGuidesPersisted],
+  );
+
   const handleGuidePointerDown = useCallback(
     (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => {
       const commit = createActionCommit();
@@ -776,9 +977,20 @@ function MeasurerClient({
       ref={overlayRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
     >
+      {enabled && rulersVisible ? (
+        <RulersOverlay
+          onStartGuide={startGuideFromRuler}
+          onMoveGuide={moveGuideFromRuler}
+          onFinishGuide={finishGuideFromRuler}
+          onCancelGuide={cancelGuideFromRuler}
+          guides={guides}
+          selectedGuideIds={selectedGuideIds}
+        />
+      ) : null}
       <MeasurerOverlay
         enabled={enabled}
         toolMode={toolMode}
+        guidePointerEvents={enabled && (toolMode !== "none" || rulersVisible)}
         guidesEnabled={guidesEnabled}
         altPressed={altPressed}
         isDragging={isDragging}
@@ -822,6 +1034,8 @@ function MeasurerClient({
         toolMode={toolMode}
         setEnabled={setEnabledWithHistory}
         setToolMode={setToolModeWithHistory}
+        rulersVisible={rulersVisible}
+        setRulersVisible={setRulersVisiblePersisted}
         guideOrientation={guideOrientation}
         setGuideOrientation={setGuideOrientationWithHistory}
         onInteract={() => setToolbarActive(true)}

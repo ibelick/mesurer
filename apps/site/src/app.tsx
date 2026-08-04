@@ -113,6 +113,11 @@ function HomeContent() {
       description: "Add vertical or horizontal guides",
     },
     {
+      icon: <RulerIcon size={16} weight="light" />,
+      title: "Rulers",
+      description: "Show pixel rulers along the top and left edges",
+    },
+    {
       icon: <CalculatorIcon size={16} weight="light" />,
       title: "Distance overlays",
       description: "Hold Alt for quick spacing checks",

@@ -10,6 +10,7 @@ type HotkeyOptions = {
   removeSelectedGuides: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
+  setRulersVisible: Dispatch<SetStateAction<boolean>>
   setAltPressed: Dispatch<SetStateAction<boolean>>
   isOverlayActive: () => boolean
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
@@ -62,6 +63,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
         if (key === "x") {
           options.setToolMode((prev) => (prev === "xray" ? "none" : "xray"))
+          options.onInteract()
+        }
+
+        if (key === "r") {
+          options.setRulersVisible((prev) => !prev)
           options.onInteract()
         }
 

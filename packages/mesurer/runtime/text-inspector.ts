@@ -552,6 +552,14 @@ export const createTextInspector = (
       const rect = pin.sourceEl.getBoundingClientRect();
       positionBox(pin.box, rect);
       if (!pin.userPlaced) positionCard(window, pin.card, rect);
+      const visible =
+        rect.bottom >= 0 &&
+        rect.right >= 0 &&
+        rect.left <= window.innerWidth &&
+        rect.top <= window.innerHeight;
+      setState(pin.box, visible);
+      setState(pin.card, visible);
+      pin.card.style.pointerEvents = visible ? "auto" : "none";
     }
   };
 

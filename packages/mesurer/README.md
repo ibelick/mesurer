@@ -52,6 +52,7 @@ function App() {
 | `S`                    | Toggle Select mode.                                   |
 | `G`                    | Toggle Guides mode.                                   |
 | `X`                    | Toggle X-ray mode.                                    |
+| `R`                    | Toggle pixel rulers along the top and left edges.     |
 | `H`                    | Set guide orientation to horizontal.                  |
 | `V`                    | Set guide orientation to vertical.                    |
 | `Alt`                  | Temporarily enable option/guide measurement overlays. |
@@ -65,6 +66,7 @@ function App() {
 - **Toggle on/off** – Enable the overlay with a single shortcut
 - **Select mode** – Click elements to measure their bounds
 - **Guides mode** – Add vertical or horizontal guides
+- **Rulers** – Show pixel rulers along the top and left edges
 - **Distance overlays** – Hold Alt for quick spacing checks
 - **Undo/redo** – Command history for guide and measurement changes
 - **Persist state** – Keep guides and measurements on reload

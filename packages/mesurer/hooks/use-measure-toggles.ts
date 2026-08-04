@@ -4,6 +4,7 @@ import type { ToolMode } from "../core/types"
 type MeasureToggleOptions = {
   initialEnabled?: boolean
   initialToolMode?: ToolMode
+  initialRulersVisible?: boolean
 }
 
 export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
@@ -11,6 +12,9 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
   const [altPressed, setAltPressed] = useState(false)
   const [toolMode, setToolMode] = useState<ToolMode>(
     options.initialToolMode ?? "none"
+  )
+  const [rulersVisible, setRulersVisible] = useState(
+    options.initialRulersVisible ?? false
   )
   const holdEnabled = false
   const multiMeasureEnabled = false
@@ -26,6 +30,8 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
     setAltPressed,
     toolMode,
     setToolMode,
+    rulersVisible,
+    setRulersVisible,
     guidesEnabled,
     multiMeasureEnabled,
     snapGuidesEnabled,

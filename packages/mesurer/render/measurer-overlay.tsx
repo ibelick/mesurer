@@ -38,6 +38,7 @@ type OptionContainerLines = {
 type MeasurerOverlayProps = {
   enabled: boolean;
   toolMode: ToolMode;
+  guidePointerEvents: boolean;
   guidesEnabled: boolean;
   altPressed: boolean;
   isDragging: boolean;
@@ -87,6 +88,7 @@ type MeasurerOverlayProps = {
 export const MeasurerOverlay = memo(function MeasurerOverlay({
   enabled,
   toolMode,
+  guidePointerEvents,
   guidesEnabled,
   altPressed,
   isDragging,
@@ -128,7 +130,8 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
     overlayVisible &&
     toolMode !== "none" &&
     toolMode !== "text-inspector" &&
-    toolMode !== "xray";
+    toolMode !== "xray" &&
+    toolMode !== "rulers";
   const selectionVisible = toolMode === "select";
 
   return (
@@ -444,6 +447,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           <div
             key={guide.id}
             className="msr:absolute"
+            data-mesurer-guide="true"
             style={
               guide.orientation === "vertical"
                 ? {
@@ -451,12 +455,14 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                     top: 0,
                     width: GUIDE_HITBOX_SIZE,
                     height: "100%",
+                    pointerEvents: guidePointerEvents ? "auto" : "none",
                   }
                 : {
                     top: guide.position - GUIDE_HITBOX_SIZE / 2,
                     left: 0,
                     height: GUIDE_HITBOX_SIZE,
                     width: "100%",
+                    pointerEvents: guidePointerEvents ? "auto" : "none",
                   }
             }
             onPointerDown={(event) => onGuidePointerDown(guide, event)}

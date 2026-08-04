@@ -17,6 +17,7 @@ import {
   CursorIcon,
   MinusIcon,
   RulerIcon,
+  RulersIcon,
   TextInspectorIcon,
   XrayIcon,
 } from "./icons";
@@ -31,6 +32,8 @@ type ToolbarProps = {
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
+  rulersVisible: boolean;
+  setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
   onInteract: () => void;
@@ -77,6 +80,7 @@ function ToolbarButton({
       <button
         type="button"
         aria-label={`${label} (${shortcut})`}
+        aria-pressed={active}
         title={`${label} (${shortcut})`}
         className={cn(
           "msr:flex msr:size-8 msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
@@ -270,6 +274,8 @@ function ToolbarComponent(
     toolMode,
     setEnabled,
     setToolMode,
+    rulersVisible,
+    setRulersVisible,
     guideOrientation,
     setGuideOrientation,
     onInteract,
@@ -347,6 +353,12 @@ function ToolbarComponent(
     setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
     onInteract();
   }, [onInteract, setEnabled, setToolMode]);
+
+  const rulersMode = useCallback(() => {
+    setEnabled(true);
+    setRulersVisible((prev) => !prev);
+    onInteract();
+  }, [onInteract, setEnabled, setRulersVisible]);
 
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
@@ -430,6 +442,20 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <XrayIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="rulers"
+        active={rulersVisible}
+        label="Rulers"
+        shortcut="R"
+        onClick={rulersMode}
+        tooltipVisible={visibleTooltipId === "rulers"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <RulersIcon size={20} />
       </ToolbarButton>
       <ToolbarButton
         id="text-inspector"

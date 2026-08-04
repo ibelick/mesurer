@@ -35,7 +35,21 @@ export const XrayIcon = ({ size = 20, ...props }: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="12"
-      d="M96 48H64a16 16 0 0 0-16 16v32m112-48h32a16 16 0 0 1 16 16v32M48 160v32a16 16 0 0 0 16 16h32m64 0h32a16 16 0 0 0 16-16v-32"
+      strokeOpacity="0.78"
+      d="M76 48h96a16 16 0 0 1 16 16v96a16 16 0 0 1-16 16H76a16 16 0 0 1-16-16V64a16 16 0 0 1 16-16Zm32 32h96a16 16 0 0 1 16 16v96a16 16 0 0 1-16 16h-96a16 16 0 0 1-16-16V96a16 16 0 0 1 16-16Z"
+    />
+  </IconBase>
+)
+
+export const RulersIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="12"
+      d="M48 208V48h160M80 48v24m32-24v24m32-24v24m32-24v24M48 80h24M48 112h24m-24 32h24m-24 32h24"
     />
   </IconBase>
 )

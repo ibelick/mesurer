@@ -218,7 +218,7 @@ export const useMeasurerPointer = ({
           document,
         })
         const id = createId()
-        setSelectedGuideIds([])
+         setSelectedGuideIds([id])
         setGuides((prev) => [
           ...prev,
           { id, orientation: guideOrientation, position },

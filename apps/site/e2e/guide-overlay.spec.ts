@@ -62,6 +62,9 @@ test("font inspector mode participates in undo and redo history", async ({
 
   await page.keyboard.press("Control+Shift+Z");
   await expect(pinnedCard).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(pinnedCard).toHaveCount(0);
 });
 
 test("font inspector refreshes styles and brings repeated pins to front", async ({
