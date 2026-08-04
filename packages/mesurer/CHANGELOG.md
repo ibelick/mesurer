@@ -10,6 +10,8 @@
 - add X-ray inspection mode
 - improve Text Inspector behavior and toolbar interactions
 - update toolbar and marketing-site feature icons
+- Thanks to [@alecramos-sudo](https://github.com/alecramos-sudo) for [adding the Aa text-style inspector mode to the overlay toolbar](https://github.com/ibelick/mesurer/pull/8).
+- Thanks to [@Romariin](https://github.com/Romariin) for [keeping guides visible without blocking page clicks](https://github.com/ibelick/mesurer/pull/12).
 
 ## 0.0.8
 

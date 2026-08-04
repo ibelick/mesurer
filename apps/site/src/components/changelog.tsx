@@ -1,4 +1,5 @@
 import changelog from "../../../../packages/mesurer/CHANGELOG.md?raw";
+import type { ReactNode } from "react";
 
 type ChangelogListItem = { text: string; children?: string[] };
 
@@ -6,6 +7,25 @@ type ChangelogBlock =
   | { type: "h2" | "h3"; text: string }
   | { type: "p"; text: string }
   | { type: "ul"; items: ChangelogListItem[] };
+
+function renderInlineMarkdown(text: string): ReactNode {
+  return text.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, index) => {
+    const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!match) return part;
+
+    return (
+      <a
+        key={index}
+        href={match[2]}
+        target="_blank"
+        rel="noreferrer"
+        className="underline decoration-current/40 underline-offset-2 hover:decoration-current"
+      >
+        {match[1]}
+      </a>
+    );
+  });
+}
 
 function parseChangelog(raw: string) {
   const lines = raw.split(/\r?\n/);
@@ -78,7 +98,7 @@ export default function Changelog() {
         if (block.type === "h2") {
           return (
             <h2 key={index} className="font-medium text-strong">
-              {block.text}
+              {renderInlineMarkdown(block.text)}
             </h2>
           );
         }
@@ -86,7 +106,7 @@ export default function Changelog() {
         if (block.type === "h3") {
           return (
             <h3 key={index} className="font-[450] text-strong">
-              {block.text}
+              {renderInlineMarkdown(block.text)}
             </h3>
           );
         }
@@ -96,11 +116,11 @@ export default function Changelog() {
             <ul key={index} className="list-disc space-y-1 pl-5 text-muted">
               {block.items.map((item, itemIndex) => (
                 <li key={itemIndex}>
-                  {item.text}
+                  {renderInlineMarkdown(item.text)}
                   {item.children && item.children.length > 0 && (
                     <ul className="list-disc space-y-1 pl-5 text-muted">
                       {item.children.map((child, childIndex) => (
-                        <li key={childIndex}>{child}</li>
+                        <li key={childIndex}>{renderInlineMarkdown(child)}</li>
                       ))}
                     </ul>
                   )}
@@ -112,7 +132,7 @@ export default function Changelog() {
 
         return (
           <p key={index} className="text-muted">
-            {block.text}
+            {renderInlineMarkdown(block.text)}
           </p>
         );
       })}
