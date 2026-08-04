@@ -1,6 +1,6 @@
 {
   "name": "mesurer",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Measure and align elements on any website.",
   "license": "MIT",
   "author": "Julien Thibeaut",
@@ -24,7 +24,9 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "publishConfig": {
     "access": "public"
   },
