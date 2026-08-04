@@ -108,7 +108,7 @@ function HomeContent() {
       description: "Click elements to measure their bounds",
     },
     {
-      icon: <RulerIcon size={16} weight="light" />,
+      icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
       title: "Guides mode",
       description: "Add vertical or horizontal guides",
     },

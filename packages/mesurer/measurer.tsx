@@ -125,6 +125,7 @@ function MeasurerClient({
     commit: () => void;
     committed: boolean;
   } | null>(null);
+  const guideUserSelectRef = useRef<string | null>(null);
 
   const persistedState = useMemo(() => {
     if (!persistOnReload) return null;
@@ -646,6 +647,12 @@ function MeasurerClient({
       const position =
         drag.orientation === "vertical" ? event.clientX : event.clientY;
       if (!drag.committed) {
+        event.preventDefault();
+        if (guideUserSelectRef.current === null) {
+          guideUserSelectRef.current = ownerDocument.documentElement.style.userSelect;
+          ownerDocument.documentElement.style.userSelect = "none";
+        }
+        ownerWindow.getSelection()?.removeAllRanges();
         drag.commit();
         drag.committed = true;
       }
@@ -659,6 +666,10 @@ function MeasurerClient({
     const handleGuidePointerEnd = (event: globalThis.PointerEvent) => {
       if (guideDragRef.current?.pointerId === event.pointerId) {
         guideDragRef.current = null;
+        if (guideUserSelectRef.current !== null) {
+          ownerDocument.documentElement.style.userSelect = guideUserSelectRef.current;
+          guideUserSelectRef.current = null;
+        }
       }
     };
 
@@ -679,6 +690,10 @@ function MeasurerClient({
         handleGuidePointerEnd,
         true,
       );
+      if (guideUserSelectRef.current !== null) {
+        ownerDocument.documentElement.style.userSelect = guideUserSelectRef.current;
+        guideUserSelectRef.current = null;
+      }
     };
   }, [
     createActionCommit,
@@ -936,6 +951,7 @@ function MeasurerClient({
       const commit = createActionCommit();
       if (!enabled) return;
       event.stopPropagation();
+      event.preventDefault();
       if (event.shiftKey) {
         commit();
         setSelectedGuideIdsPersisted((prev) =>
