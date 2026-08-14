@@ -17,6 +17,7 @@ import {
   CheckIcon,
   ColorPickerIcon,
   CursorIcon,
+  GearIcon,
   MinusIcon,
   RulerIcon,
   RulersIcon,
@@ -42,6 +43,8 @@ type ToolbarProps = {
   colorPickerActive: boolean;
   setColorPickerActive: Dispatch<SetStateAction<boolean>>;
   onColorPickerClick: () => void;
+  settingsOpen: boolean;
+  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -53,7 +56,7 @@ type ToolbarButtonProps = {
   id: string;
   active: boolean;
   label: string;
-  shortcut: string;
+  shortcut?: string;
   onClick: () => void;
   tooltipVisible: boolean;
   tooltipInstant: boolean;
@@ -109,7 +112,7 @@ function ToolbarButton({
           tooltipVisible ? "msr:opacity-100" : "msr:opacity-0",
         )}
       >
-        {label} <kbd className="msr:text-white/60">{shortcut}</kbd>
+        {label}{shortcut ? <> <kbd className="msr:text-white/60">{shortcut}</kbd></> : null}
       </span>
     </div>
   );
@@ -309,6 +312,8 @@ function ToolbarComponent(
     colorPickerActive,
     setColorPickerActive,
     onColorPickerClick,
+    settingsOpen,
+    setSettingsOpen,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -325,6 +330,7 @@ function ToolbarComponent(
   } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
@@ -448,6 +454,26 @@ function ToolbarComponent(
       eventTarget.removeEventListener("resize", handleResize);
     };
   }, [eventTarget, guideMenuOpen, guideOrientation, updateMenuAlign]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const settings = settingsRef.current;
+      if (settings && event.composedPath().includes(settings)) return;
+      setSettingsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+
+    eventTarget.addEventListener("pointerdown", handlePointerDown);
+    eventTarget.addEventListener("keydown", handleKeyDown);
+    return () => {
+      eventTarget.removeEventListener("pointerdown", handlePointerDown);
+      eventTarget.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [eventTarget, settingsOpen]);
 
   return (
     <div
@@ -680,6 +706,42 @@ function ToolbarComponent(
               <span className="msr:flex-1">Vertical</span>
               <span>V</span>
             </button>
+          </div>
+        ) : null}
+      </div>
+      <div ref={settingsRef} className="msr:relative msr:flex">
+        <ToolbarButton
+          id="settings"
+          active={settingsOpen}
+          label="Settings"
+          shortcut="⌘/Ctrl+,"
+          onClick={() => {
+            onInteract();
+            setSettingsOpen((previous) => !previous);
+          }}
+          tooltipVisible={visibleTooltipId === "settings"}
+          tooltipInstant={tooltipInstant}
+          tooltipSide={tooltipSide}
+          onTooltipEnter={onTooltipEnter}
+          onTooltipLeave={onTooltipLeave}
+        >
+          <GearIcon size={20} aria-hidden="true" />
+        </ToolbarButton>
+        {settingsOpen ? (
+          <div
+            className={cn(
+              "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-56 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
+              menuSide === "bottom"
+                ? "msr:top-full msr:mt-2"
+                : "msr:bottom-full msr:mb-2",
+            )}
+            role="dialog"
+            aria-label="Settings"
+          >
+            <p className="msr:text-[12px] msr:font-medium msr:text-ink-900">Settings</p>
+            <p className="msr:mt-1 msr:text-[12px] msr:text-ink-500">
+              More controls coming soon.
+            </p>
           </div>
         ) : null}
       </div>

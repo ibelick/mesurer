@@ -16,6 +16,7 @@ type HotkeyOptions = {
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
   onInteract: () => void
   onColorPicker: () => void
+  onToggleSettings: () => void
 }
 
 export const useHotkeys = (options: HotkeyOptions) => {
@@ -28,6 +29,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (event.metaKey || event.ctrlKey) {
+        if (event.key === ",") {
+          event.preventDefault()
+          options.onToggleSettings()
+          options.onInteract()
+          return
+        }
         if (event.key.toLowerCase() !== "z") return
         if (event.shiftKey) {
           event.preventDefault()

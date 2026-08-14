@@ -265,6 +265,7 @@ function MeasurerClient({
   const [colorPickerActive, setColorPickerActive] = useState(false);
   const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
   const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
@@ -579,6 +580,7 @@ function MeasurerClient({
     setGuideOrientation: setGuideOrientationWithHistory,
     onInteract: () => setToolbarActive(true),
     onColorPicker: openColorPicker,
+    onToggleSettings: () => setSettingsOpen((previous) => !previous),
   });
 
   useResizeSync({
@@ -1114,6 +1116,8 @@ function MeasurerClient({
         colorPickerActive={colorPickerActive}
         setColorPickerActive={setColorPickerActive}
         onColorPickerClick={openColorPicker}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
       />
     </div>,
     portalTarget,

@@ -171,3 +171,20 @@ test("P opens the native color picker", async ({ page }) => {
 
   await expect(page.locator(".mesurer-color-picker")).toContainText("#00ff00");
 });
+
+test("settings button opens and dismisses its popover", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const settings = page.getByRole("button", { name: "Settings" });
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
+test("Cmd/Ctrl comma opens settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" })).toBeVisible();
+  await page.keyboard.press("Control+,");
+
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+});
