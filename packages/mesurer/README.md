@@ -63,6 +63,7 @@ function App() {
 | `Backspace` / `Delete` | Remove selected guides.                               |
 | `Cmd/Ctrl + Z`         | Undo.                                                 |
 | `Cmd/Ctrl + Shift + Z` | Redo.                                                 |
+| `Cmd/Ctrl + ,`         | Open Settings.                                        |
 
 ## Features
 
@@ -74,6 +75,7 @@ function App() {
 - **Undo/redo** – Command history for guide and measurement changes
 - **Persist state** – Keep guides and measurements on reload
 - **Color picker** – Use the browser eyedropper to inspect rendered colors
+- **Settings** – Configure picker, appearance, measurement, and workspace preferences
 
 ## Requirements
 

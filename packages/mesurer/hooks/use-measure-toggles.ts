@@ -5,6 +5,9 @@ type MeasureToggleOptions = {
   initialEnabled?: boolean
   initialToolMode?: ToolMode
   initialRulersVisible?: boolean
+  initialSnapEnabled?: boolean
+  initialSnapGuidesEnabled?: boolean
+  initialMultiMeasureEnabled?: boolean
 }
 
 export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
@@ -17,10 +20,14 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
     options.initialRulersVisible ?? false
   )
   const holdEnabled = false
-  const multiMeasureEnabled = false
-  const snapGuidesEnabled = true
+  const [multiMeasureEnabled, setMultiMeasureEnabled] = useState(
+    options.initialMultiMeasureEnabled ?? false,
+  )
+  const [snapGuidesEnabled, setSnapGuidesEnabled] = useState(
+    options.initialSnapGuidesEnabled ?? true,
+  )
   const guidesEnabled = toolMode === "guides"
-  const snapEnabled = true
+  const [snapEnabled, setSnapEnabled] = useState(options.initialSnapEnabled ?? true)
 
   return {
     enabled,
@@ -35,6 +42,9 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
     guidesEnabled,
     multiMeasureEnabled,
     snapGuidesEnabled,
+    setSnapGuidesEnabled,
     snapEnabled,
+    setSnapEnabled,
+    setMultiMeasureEnabled,
   }
 }

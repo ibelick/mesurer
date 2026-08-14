@@ -11,7 +11,9 @@ import {
   useState,
 } from "react";
 import type { ToolMode } from "../core/types";
+import type { ColorPickerFormat } from "../core/colors";
 import { cn } from "../core/utils";
+import { SettingsPanel } from "./settings-panel";
 import {
   CaretDownIcon,
   CheckIcon,
@@ -45,6 +47,24 @@ type ToolbarProps = {
   onColorPickerClick: () => void;
   settingsOpen: boolean;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
+  highlightColor: string;
+  setHighlightColor: Dispatch<SetStateAction<string>>;
+  guideColor: string;
+  setGuideColor: Dispatch<SetStateAction<string>>;
+  hoverHighlight: boolean;
+  setHoverHighlight: Dispatch<SetStateAction<boolean>>;
+  persistOnReload: boolean;
+  setPersistOnReload: Dispatch<SetStateAction<boolean>>;
+  colorPickerFormats: ColorPickerFormat[];
+  setColorPickerFormats: Dispatch<SetStateAction<ColorPickerFormat[]>>;
+  colorPickerClickFormat: ColorPickerFormat;
+  setColorPickerClickFormat: Dispatch<SetStateAction<ColorPickerFormat>>;
+  snapEnabled: boolean;
+  setSnapEnabled: Dispatch<SetStateAction<boolean>>;
+  snapGuidesEnabled: boolean;
+  setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>;
+  multiMeasureEnabled: boolean;
+  setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -314,6 +334,24 @@ function ToolbarComponent(
     onColorPickerClick,
     settingsOpen,
     setSettingsOpen,
+    highlightColor,
+    setHighlightColor,
+    guideColor,
+    setGuideColor,
+    hoverHighlight,
+    setHoverHighlight,
+    persistOnReload,
+    setPersistOnReload,
+    colorPickerFormats,
+    setColorPickerFormats,
+    colorPickerClickFormat,
+    setColorPickerClickFormat,
+    snapEnabled,
+    setSnapEnabled,
+    snapGuidesEnabled,
+    setSnapGuidesEnabled,
+    multiMeasureEnabled,
+    setMultiMeasureEnabled,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -334,6 +372,7 @@ function ToolbarComponent(
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
+  const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();
@@ -493,7 +532,7 @@ function ToolbarComponent(
         label="Select"
         shortcut="S"
         onClick={selectMode}
-        tooltipVisible={visibleTooltipId === "select"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -507,7 +546,7 @@ function ToolbarComponent(
         label="X-ray"
         shortcut="X"
         onClick={xrayMode}
-        tooltipVisible={visibleTooltipId === "xray"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -521,7 +560,7 @@ function ToolbarComponent(
         label="Color picker"
         shortcut="P"
         onClick={colorPickerMode}
-        tooltipVisible={visibleTooltipId === "color-picker"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -535,7 +574,7 @@ function ToolbarComponent(
         label="Rulers"
         shortcut="R"
         onClick={rulersMode}
-        tooltipVisible={visibleTooltipId === "rulers"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -549,7 +588,7 @@ function ToolbarComponent(
         label="Text inspector"
         shortcut="A"
         onClick={textInspectorMode}
-        tooltipVisible={visibleTooltipId === "text-inspector"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -563,7 +602,7 @@ function ToolbarComponent(
         label="Guides"
         shortcut="G"
         onClick={guidesMode}
-        tooltipVisible={visibleTooltipId === "guides"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -613,7 +652,7 @@ function ToolbarComponent(
             tooltipSide === "top"
               ? "msr:bottom-full msr:mb-2"
               : "msr:top-full msr:mt-2",
-            visibleTooltipId === "guide-menu" && !guideMenuOpen
+            visibleTooltipId === "guide-menu" && tooltipsEnabled
               ? "msr:opacity-100"
               : "msr:opacity-0",
           )}
@@ -719,7 +758,7 @@ function ToolbarComponent(
             onInteract();
             setSettingsOpen((previous) => !previous);
           }}
-          tooltipVisible={visibleTooltipId === "settings"}
+          tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
           tooltipInstant={tooltipInstant}
           tooltipSide={tooltipSide}
           onTooltipEnter={onTooltipEnter}
@@ -738,10 +777,26 @@ function ToolbarComponent(
             role="dialog"
             aria-label="Settings"
           >
-            <p className="msr:text-[12px] msr:font-medium msr:text-ink-900">Settings</p>
-            <p className="msr:mt-1 msr:text-[12px] msr:text-ink-500">
-              More controls coming soon.
-            </p>
+            <SettingsPanel
+              highlightColor={highlightColor}
+              setHighlightColor={setHighlightColor}
+              guideColor={guideColor}
+              setGuideColor={setGuideColor}
+              hoverHighlight={hoverHighlight}
+              setHoverHighlight={setHoverHighlight}
+              persistOnReload={persistOnReload}
+              setPersistOnReload={setPersistOnReload}
+              colorFormats={colorPickerFormats}
+              setColorFormats={setColorPickerFormats}
+              colorClickFormat={colorPickerClickFormat}
+              setColorClickFormat={setColorPickerClickFormat}
+              snapEnabled={snapEnabled}
+              setSnapEnabled={setSnapEnabled}
+              snapGuidesEnabled={snapGuidesEnabled}
+              setSnapGuidesEnabled={setSnapGuidesEnabled}
+              multiMeasureEnabled={multiMeasureEnabled}
+              setMultiMeasureEnabled={setMultiMeasureEnabled}
+            />
           </div>
         ) : null}
       </div>

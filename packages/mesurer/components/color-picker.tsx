@@ -59,7 +59,7 @@ export function ColorPicker({
   return (
     <div
       ref={panelRef}
-      className="mesurer-color-picker msr:pointer-events-auto msr:fixed msr:z-[80] msr:min-w-44 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-3 msr:py-2.5 msr:font-mono msr:text-[11px] msr:leading-5 msr:shadow-lg"
+      className="mesurer-color-picker msr:pointer-events-auto msr:fixed msr:z-[80] msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg"
       role="dialog"
       aria-label="Selected color values"
     >
@@ -77,9 +77,9 @@ export function ColorPicker({
         </div>
       ) : sample ? (
         <>
-          <div className="msr:mb-1.5 msr:flex msr:items-center msr:gap-2 msr:border-b msr:border-black/8 msr:pb-1.5">
+          <div className="msr:mb-1 msr:flex msr:items-center msr:gap-1.5 msr:border-b msr:border-black/8 msr:pb-1">
             <span
-              className="msr:size-4 msr:rounded-full msr:border msr:border-black/15"
+              className="msr:size-3 msr:rounded-full msr:border msr:border-black/15"
               style={{ backgroundColor: colorToHex(sample) }}
               aria-hidden="true"
             />
@@ -87,8 +87,8 @@ export function ColorPicker({
           </div>
           {formats.map((format) => (
             <div key={format} className="msr:flex msr:items-center msr:gap-2">
-              <span className="msr:w-10 msr:text-[10px] msr:uppercase msr:text-black/45">
-                {format.toUpperCase()}
+              <span className="msr:w-9 msr:text-black/45">
+                {format}
               </span>
               <button
                 type="button"

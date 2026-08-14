@@ -150,9 +150,9 @@ test("native color picker shows color formats", async ({ page }) => {
   const picker = page.locator(".mesurer-color-picker");
   await expect(picker).toBeVisible();
   await expect(picker).toContainText("#ff0000");
-  await expect(picker).toContainText("HEX");
-  await expect(picker).toContainText("RGB");
-  await expect(picker).toContainText("OKLCH");
+  await expect(picker).toContainText("hex");
+  await expect(picker).toContainText("rgb");
+  await expect(picker).toContainText("oklch");
   await expect(picker).not.toContainText("Copied");
 });
 

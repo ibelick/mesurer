@@ -160,6 +160,14 @@ function MeasurerClient({
          activeMeasurement: Measurement | null;
          heldDistances: DistanceOverlay[];
          rulersVisible?: boolean;
+         snapEnabled?: boolean;
+         snapGuidesEnabled?: boolean;
+         multiMeasureEnabled?: boolean;
+         highlightColor?: string;
+         guideColor?: string;
+         hoverHighlightEnabled?: boolean;
+         colorPickerFormats?: ColorPickerFormat[];
+         colorPickerClickFormat?: ColorPickerFormat;
       };
       if (!parsed || parsed.version !== 1) return null;
       return parsed;
@@ -223,12 +231,18 @@ function MeasurerClient({
     guidesEnabled,
     multiMeasureEnabled,
     snapGuidesEnabled,
+    setSnapGuidesEnabled,
+    setSnapEnabled,
+    setMultiMeasureEnabled,
   } = useMeasureToggles({
     initialEnabled: persistedState?.enabled,
     initialToolMode:
       persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
     initialRulersVisible:
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
+    initialSnapEnabled: persistedState?.snapEnabled,
+    initialSnapGuidesEnabled: persistedState?.snapGuidesEnabled,
+    initialMultiMeasureEnabled: persistedState?.multiMeasureEnabled,
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
     useDragState();
@@ -266,6 +280,22 @@ function MeasurerClient({
   const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
   const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsHighlightColor, setSettingsHighlightColor] = useState(
+    persistedState?.highlightColor ?? highlightColor,
+  );
+  const [settingsGuideColor, setSettingsGuideColor] = useState(
+    persistedState?.guideColor ?? guideColor,
+  );
+  const [settingsHoverHighlight, setSettingsHoverHighlight] = useState(
+    persistedState?.hoverHighlightEnabled ?? hoverHighlightEnabled,
+  );
+  const [settingsPersistOnReload, setSettingsPersistOnReload] = useState(persistOnReload);
+  const [settingsColorFormats, setSettingsColorFormats] = useState(
+    persistedState?.colorPickerFormats ?? colorPickerFormats,
+  );
+  const [settingsColorClickFormat, setSettingsColorClickFormat] = useState(
+    persistedState?.colorPickerClickFormat ?? colorPickerClickFormat,
+  );
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
@@ -286,7 +316,7 @@ function MeasurerClient({
   selectedGuideIdsRef.current = selectedGuideIds;
 
   const persistState = useCallback(() => {
-    if (!persistOnReload) return;
+    if (!settingsPersistOnReload) return;
     if (typeof window === "undefined") return;
 
     try {
@@ -304,13 +334,36 @@ function MeasurerClient({
           activeMeasurement: activeMeasurementRef.current
             ? stripMeasurement(activeMeasurementRef.current)
             : null,
-          heldDistances: heldDistancesRef.current.map(stripDistance),
+           heldDistances: heldDistancesRef.current.map(stripDistance),
+           snapEnabled,
+           snapGuidesEnabled,
+           multiMeasureEnabled,
+           highlightColor: settingsHighlightColor,
+           guideColor: settingsGuideColor,
+           hoverHighlightEnabled: settingsHoverHighlight,
+           colorPickerFormats: settingsColorFormats,
+           colorPickerClickFormat: settingsColorClickFormat,
         }),
       );
     } catch {
       // ignore storage errors
     }
-  }, [persistOnReload, storageKey]);
+  }, [
+    multiMeasureEnabled,
+    settingsColorClickFormat,
+    settingsColorFormats,
+    settingsGuideColor,
+    settingsHighlightColor,
+    settingsHoverHighlight,
+    settingsPersistOnReload,
+    snapEnabled,
+    snapGuidesEnabled,
+    storageKey,
+  ]);
+
+  useEffect(() => {
+    if (settingsPersistOnReload) persistState();
+  }, [persistState, settingsPersistOnReload]);
 
   const setEnabledPersisted = useCallback(
     (value: Parameters<typeof setEnabled>[0]) => {
@@ -556,7 +609,7 @@ function MeasurerClient({
       if (!nextSample) return;
       setColorPickerSample(nextSample);
       const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(
-        formatColor(nextSample, colorPickerClickFormat),
+        formatColor(nextSample, settingsColorClickFormat),
       );
       void clipboardWrite?.catch(() => undefined);
     } catch (error) {
@@ -564,7 +617,7 @@ function MeasurerClient({
         setColorPickerActive(false);
       }
     }
-  }, [colorPickerClickFormat, ownerWindow, setEnabledWithHistory, setToolModeWithHistory]);
+  }, [ownerWindow, setEnabledWithHistory, setToolModeWithHistory, settingsColorClickFormat]);
 
   useHotkeys({
     eventTarget: ownerWindow,
@@ -888,9 +941,9 @@ function MeasurerClient({
     guidesEnabled,
     guidePreview,
     displayedMeasurements,
-    hoverHighlightEnabled,
-    highlightColor,
-    guideColor,
+    hoverHighlightEnabled: settingsHoverHighlight,
+    highlightColor: settingsHighlightColor,
+    guideColor: settingsGuideColor,
   });
 
   const {
@@ -1098,7 +1151,7 @@ function MeasurerClient({
         unsupported={colorPickerUnsupported}
         ownerWindow={ownerWindow}
         toolbarRef={toolbarRef}
-        formats={colorPickerFormats}
+        formats={settingsColorFormats}
         onClose={() => setColorPickerActive(false)}
       />
 
@@ -1118,6 +1171,24 @@ function MeasurerClient({
         onColorPickerClick={openColorPicker}
         settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
+        highlightColor={settingsHighlightColor}
+        setHighlightColor={setSettingsHighlightColor}
+        guideColor={settingsGuideColor}
+        setGuideColor={setSettingsGuideColor}
+        hoverHighlight={settingsHoverHighlight}
+        setHoverHighlight={setSettingsHoverHighlight}
+        persistOnReload={settingsPersistOnReload}
+        setPersistOnReload={setSettingsPersistOnReload}
+        colorPickerFormats={settingsColorFormats}
+        setColorPickerFormats={setSettingsColorFormats}
+        colorPickerClickFormat={settingsColorClickFormat}
+        setColorPickerClickFormat={setSettingsColorClickFormat}
+        snapEnabled={snapEnabled}
+        setSnapEnabled={setSnapEnabled}
+        snapGuidesEnabled={snapGuidesEnabled}
+        setSnapGuidesEnabled={setSnapGuidesEnabled}
+        multiMeasureEnabled={multiMeasureEnabled}
+        setMultiMeasureEnabled={setMultiMeasureEnabled}
       />
     </div>,
     portalTarget,
