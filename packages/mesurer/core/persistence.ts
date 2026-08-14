@@ -224,10 +224,12 @@ const migrate = (record: StoredRecord): MesurerPersistenceSnapshot | null => {
 
 export const createLocalStoragePersistence = (
   ownerWindow: Window,
-  key: string,
+  workspaceKey: string,
+  settingsKey = workspaceKey,
+  legacyKey?: string,
 ): MesurerPersistence => {
   let errorHandler: ((error: unknown) => void) | undefined
-  const read = () => {
+  const readRecord = (key: string): MesurerPersistenceSnapshot | null => {
     try {
       const raw = ownerWindow.localStorage.getItem(key)
       if (!raw) return null
@@ -238,7 +240,18 @@ export const createLocalStoragePersistence = (
     }
   }
 
-  const write = (snapshot: MesurerPersistenceSnapshot) => {
+  const read = () => {
+    const legacy = legacyKey ? readRecord(legacyKey) : null
+    const settingsRecord = readRecord(settingsKey)
+    const workspaceRecord = readRecord(workspaceKey)
+    if (!settingsRecord && !workspaceRecord && !legacy) return null
+    return {
+      settings: settingsRecord?.settings ?? legacy?.settings ?? {},
+      workspace: workspaceRecord?.workspace ?? legacy?.workspace ?? null,
+    }
+  }
+
+  const writeRecord = (key: string, snapshot: MesurerPersistenceSnapshot) => {
     try {
       ownerWindow.localStorage.setItem(
         key,
@@ -253,28 +266,40 @@ export const createLocalStoragePersistence = (
   return {
     load: read,
     saveSettings: (settings) => {
-      const current = read()
-      write({ settings, workspace: current?.workspace ?? null })
+      if (settingsKey === workspaceKey) {
+        writeRecord(workspaceKey, { settings, workspace: read()?.workspace ?? null })
+        return
+      }
+      writeRecord(settingsKey, { settings, workspace: null })
     },
     saveWorkspace: (workspace) => {
-      const current = read()
-      write({ settings: current?.settings ?? {}, workspace })
+      if (settingsKey === workspaceKey) {
+        writeRecord(workspaceKey, { settings: read()?.settings ?? {}, workspace })
+        return
+      }
+      writeRecord(workspaceKey, { settings: {}, workspace })
     },
     clearWorkspace: () => {
-      const current = read()
-      if (!current) return
-      write({ settings: current.settings, workspace: null })
+      if (settingsKey === workspaceKey) {
+        const current = read()
+        if (current) writeRecord(workspaceKey, { settings: current.settings, workspace: null })
+        return
+      }
+      writeRecord(workspaceKey, { settings: {}, workspace: null })
     },
     clearSettings: () => {
-      const current = read()
-      write({ settings: {}, workspace: current?.workspace ?? null })
+      if (settingsKey === workspaceKey) {
+        writeRecord(workspaceKey, { settings: {}, workspace: read()?.workspace ?? null })
+        return
+      }
+      writeRecord(settingsKey, { settings: {}, workspace: null })
     },
     setErrorHandler: (handler) => {
       errorHandler = handler
     },
     subscribe: (listener) => {
       const handleStorage = (event: StorageEvent) => {
-        if (event.key !== key) return
+        if (event.key !== settingsKey && event.key !== workspaceKey && event.key !== legacyKey) return
         listener(read())
       }
       ownerWindow.addEventListener("storage", handleStorage)

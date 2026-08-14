@@ -109,6 +109,22 @@ const stripDistance = (distance: DistanceOverlay): DistanceOverlay => ({
   elementRefB: undefined,
 });
 
+const TAB_ID_KEY = "mesurer:tab-id";
+const SETTINGS_STORAGE_KEY = "mesurer-settings";
+const LEGACY_STORAGE_KEY = "mesurer-state";
+
+const getTabId = (ownerWindow: Window) => {
+  try {
+    const existing = ownerWindow.sessionStorage.getItem(TAB_ID_KEY);
+    if (existing) return existing;
+    const id = ownerWindow.crypto.randomUUID();
+    ownerWindow.sessionStorage.setItem(TAB_ID_KEY, id);
+    return id;
+  } catch {
+    return "session";
+  }
+};
+
 function MeasurerClient({
   highlightColor,
   guideColor,
@@ -126,13 +142,16 @@ function MeasurerClient({
   if (instanceIdRef.current === null) {
     instanceIdRef.current = ++measurerInstanceCount;
   }
+  const ownerDocument = portalTarget.ownerDocument ?? document;
+  const ownerWindow = ownerDocument.defaultView ?? window;
+  const tabIdRef = useRef<string | null>(null);
+  if (tabIdRef.current === null) tabIdRef.current = getTabId(ownerWindow);
   const storageKey =
     persistKey ??
     (instanceIdRef.current === 1
-      ? "mesurer-state"
-      : `mesurer-state-${instanceIdRef.current}`);
-  const ownerDocument = portalTarget.ownerDocument ?? document;
-  const ownerWindow = ownerDocument.defaultView ?? window;
+      ? `mesurer-state:${tabIdRef.current}`
+      : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
+  const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
   const guideScrollRef = useRef({
     x: ownerWindow.scrollX,
     y: ownerWindow.scrollY,
@@ -157,10 +176,10 @@ function MeasurerClient({
   const persistenceErrorHandlerRef = useRef(onPersistenceError);
   persistenceErrorHandlerRef.current = onPersistenceError;
   const activePersistence = useMemo(() => {
-    const next = persistence ?? createLocalStoragePersistence(ownerWindow, storageKey);
+    const next = persistence ?? createLocalStoragePersistence(ownerWindow, storageKey, SETTINGS_STORAGE_KEY, legacyStorageKey);
     next.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error));
     return next;
-  }, [ownerWindow, persistence, storageKey]);
+  }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
   const storedState = useMemo(
     () => activePersistence.load(),
     [activePersistence],

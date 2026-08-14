@@ -41,7 +41,7 @@ function App() {
 | `guideColor`            | Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).                 |
 | `hoverHighlightEnabled` | Disables hover highlight and deselects on click when `false`.                 |
 | `persistOnReload`       | Persists workspace state across reloads when `true`.                          |
-| `persistKey`            | Optional storage key for isolating persisted state between multiple instances. |
+| `persistKey`            | Optional workspace storage key; default workspaces are isolated per browser tab. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
 | `persistence`           | Optional storage adapter for custom or extension-backed persistence.           |
 | `onPersistenceError`    | Called when persistence is unavailable or a storage write fails.              |

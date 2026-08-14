@@ -259,3 +259,23 @@ test("syncs settings between tabs", async ({ page }) => {
   );
   await secondPage.close();
 });
+
+test("keeps persisted workspaces independent between tabs", async ({ page }) => {
+  const secondPage = await page.context().newPage();
+  await page.goto("/e2e/fixtures/guide-overlay.html?persist");
+  await secondPage.goto("/e2e/fixtures/guide-overlay.html?persist");
+
+  const firstTabId = await page.evaluate(() => sessionStorage.getItem("mesurer:tab-id"));
+  const secondTabId = await secondPage.evaluate(() => sessionStorage.getItem("mesurer:tab-id"));
+  expect(firstTabId).not.toBe(secondTabId);
+  await page.evaluate((tabId) => {
+    localStorage.setItem(`mesurer-state:${tabId}`, JSON.stringify({ version: 2, settings: {}, workspace: null }));
+  }, firstTabId);
+  await secondPage.evaluate((tabId) => {
+    localStorage.setItem(`mesurer-state:${tabId}`, JSON.stringify({ version: 2, settings: {}, workspace: null }));
+  }, secondTabId);
+  await expect.poll(async () =>
+    page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("mesurer-state:"))),
+  ).toHaveLength(2);
+  await secondPage.close();
+});

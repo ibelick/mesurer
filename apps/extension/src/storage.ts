@@ -9,13 +9,14 @@ import type {
 
 const SETTINGS_KEY = "mesurer:settings";
 
-const workspaceKey = (origin: string) =>
-  `mesurer:workspace:${encodeURIComponent(origin)}`;
+const workspaceKey = (origin: string, tabId: string) =>
+  `mesurer:workspace:${encodeURIComponent(origin)}:${tabId}`;
 
 export const createExtensionPersistence = async (
   origin: string,
+  tabId: string,
 ): Promise<MesurerPersistence> => {
-  const key = workspaceKey(origin);
+  const key = workspaceKey(origin, tabId);
   const stored = await chrome.storage.local.get([SETTINGS_KEY, key]);
   let settings = normalizeStoredSettings(stored[SETTINGS_KEY]);
   let workspace = normalizeStoredWorkspace(stored[key]);

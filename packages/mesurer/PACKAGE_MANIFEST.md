@@ -28,7 +28,7 @@ type MeasurerProps = {
 - `guideColor`: Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).
 - `hoverHighlightEnabled`: When `false`, hover highlight is disabled and clicking a selected item deselects it.
 - `persistOnReload`: When `true`, persists guides, measurements, and tool state through the configured persistence adapter.
-- `persistKey`: `localStorage` key used by the default adapter.
+- `persistKey`: Workspace `localStorage` key used by the default adapter. Default workspaces are isolated per browser tab, while settings are shared globally.
 - `persistence`: Optional custom adapter for extension or application-managed storage.
 - `onPersistenceError`: Optional callback for storage read/write failures.
 

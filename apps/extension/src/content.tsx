@@ -17,6 +17,19 @@ type ExtensionGlobal = typeof globalThis & {
 };
 
 const extensionGlobal = globalThis as ExtensionGlobal;
+const TAB_ID_KEY = "mesurer:tab-id";
+
+const getTabId = () => {
+  try {
+    const existing = sessionStorage.getItem(TAB_ID_KEY);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    sessionStorage.setItem(TAB_ID_KEY, id);
+    return id;
+  } catch {
+    return "session";
+  }
+};
 
 const getState = () => {
   if (!extensionGlobal[STATE_KEY]) {
@@ -70,7 +83,7 @@ const mount = async () => {
     let persistence: Awaited<ReturnType<typeof createExtensionPersistence>> | undefined;
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       try {
-        persistence = await createExtensionPersistence(location.origin);
+        persistence = await createExtensionPersistence(location.origin, getTabId());
       } catch {
         persistence = undefined;
       }
