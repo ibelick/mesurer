@@ -32,19 +32,26 @@ export function ColorPicker({
     const toolbar = toolbarRef.current
     if (!panel || !toolbar) return
 
-    const toolbarRect = toolbar.getBoundingClientRect()
-    const panelRect = panel.getBoundingClientRect()
-    const left = Math.min(
-      Math.max(8, toolbarRect.left),
-      ownerWindow.innerWidth - panelRect.width - 8,
-    )
-    const belowTop = toolbarRect.bottom + 8
-    const aboveTop = toolbarRect.top - panelRect.height - 8
-    const top = belowTop + panelRect.height <= ownerWindow.innerHeight
-      ? belowTop
-      : Math.max(8, aboveTop)
-    panel.style.left = `${left}px`
-    panel.style.top = `${top}px`
+    let frame = 0
+    const updatePosition = () => {
+      const toolbarRect = toolbar.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      const left = Math.min(
+        Math.max(8, toolbarRect.left),
+        ownerWindow.innerWidth - panelRect.width - 8,
+      )
+      const belowTop = toolbarRect.bottom + 8
+      const aboveTop = toolbarRect.top - panelRect.height - 8
+      const top = belowTop + panelRect.height <= ownerWindow.innerHeight
+        ? belowTop
+        : Math.max(8, aboveTop)
+      panel.style.left = `${left}px`
+      panel.style.top = `${top}px`
+      frame = ownerWindow.requestAnimationFrame(updatePosition)
+    }
+
+    frame = ownerWindow.requestAnimationFrame(updatePosition)
+    return () => ownerWindow.cancelAnimationFrame(frame)
   }, [active, ownerWindow, toolbarRef, formats, sample, unsupported])
 
   if (!active || (!sample && !unsupported)) return null

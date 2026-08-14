@@ -5,6 +5,7 @@ import {
   forwardRef,
   memo,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -172,6 +173,7 @@ function useToolbarTooltip() {
 function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
   const [position, setPosition] = useState(initialPosition);
   const suppressClickRef = useRef(false);
+  const previousUserSelectRef = useRef<string | null>(null);
   const detachListenersRef = useRef<(() => void) | null>(null);
   const dragRef = useRef({
     active: false,
@@ -185,13 +187,32 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
     height: 0,
   });
 
+  const disableTextSelection = useCallback(() => {
+    if (previousUserSelectRef.current !== null) return;
+    const root = eventTarget.document.documentElement;
+    previousUserSelectRef.current = root.style.userSelect;
+    root.style.setProperty("user-select", "none", "important");
+  }, [eventTarget]);
+
+  const restoreTextSelection = useCallback(() => {
+    const previous = previousUserSelectRef.current;
+    if (previous === null) return;
+    const root = eventTarget.document.documentElement;
+    root.style.userSelect = previous;
+    previousUserSelectRef.current = null;
+  }, [eventTarget]);
+
+  useEffect(() => restoreTextSelection, [restoreTextSelection]);
+
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
+      disableTextSelection();
 
       if (detachListenersRef.current) {
         detachListenersRef.current();
         detachListenersRef.current = null;
+        restoreTextSelection();
       }
 
       const state = dragRef.current;
@@ -238,6 +259,7 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
         )
           return;
         suppressClickRef.current = current.didDrag;
+        restoreTextSelection();
         current.active = false;
         current.didDrag = false;
         current.pointerId = -1;
@@ -257,7 +279,7 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
         eventTarget.removeEventListener("pointercancel", handlePointerEnd);
       };
     },
-    [eventTarget, position.x, position.y],
+    [disableTextSelection, eventTarget, position.x, position.y, restoreTextSelection],
   );
 
   const onClickCapture = useCallback(
