@@ -139,7 +139,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.highlightColor === "string" ? { highlightColor: input.highlightColor } : {}),
     ...(typeof input.guideColor === "string" ? { guideColor: input.guideColor } : {}),
     ...(typeof input.hoverHighlightEnabled === "boolean" ? { hoverHighlightEnabled: input.hoverHighlightEnabled } : {}),
-    ...(Array.isArray(input.colorPickerFormats)
+    ...(Array.isArray(input.colorPickerFormats) && input.colorPickerFormats.some(isFormat)
       ? { colorPickerFormats: input.colorPickerFormats.filter(isFormat) }
       : {}),
     ...(isFormat(input.colorPickerClickFormat)

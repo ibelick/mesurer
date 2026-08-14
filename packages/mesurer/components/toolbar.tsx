@@ -778,6 +778,7 @@ function ToolbarComponent(
             aria-label="Settings"
           >
             <SettingsPanel
+              ownerWindow={eventTarget}
               highlightColor={highlightColor}
               setHighlightColor={setHighlightColor}
               guideColor={guideColor}

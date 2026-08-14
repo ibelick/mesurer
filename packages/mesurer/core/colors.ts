@@ -17,15 +17,22 @@ const round = (value: number, digits = 2) => {
 
 const parseChannel = (value: string) => {
   const trimmed = value.trim()
-  if (trimmed.endsWith("%")) return clamp(Number.parseFloat(trimmed) / 100) * 255
-  return clamp(Number.parseFloat(trimmed) / 255) * 255
+  const numeric = trimmed.endsWith("%") ? trimmed.slice(0, -1).trim() : trimmed
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(numeric)) return null
+  const parsed = Number.parseFloat(numeric)
+  if (!Number.isFinite(parsed)) return null
+  if (trimmed.endsWith("%")) return clamp(parsed / 100) * 255
+  return clamp(parsed / 255) * 255
 }
 
 const parseAlpha = (value: string | undefined) => {
   if (!value) return 1
-  return clamp(value.trim().endsWith("%")
-    ? Number.parseFloat(value) / 100
-    : Number.parseFloat(value))
+  const trimmed = value.trim()
+  const numeric = trimmed.endsWith("%") ? trimmed.slice(0, -1).trim() : trimmed
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(numeric)) return null
+  const parsed = Number.parseFloat(numeric)
+  if (!Number.isFinite(parsed)) return null
+  return clamp(trimmed.endsWith("%") ? parsed / 100 : parsed)
 }
 
 export const parseCssColor = (value: string): ColorSample | null => {
@@ -49,13 +56,13 @@ export const parseCssColor = (value: string): ColorSample | null => {
   const match = input.match(/^rgba?\((.*)\)$/)
   if (!match) return null
   const channels = match[1].replace(/\//g, " ").split(/[ ,]+/).filter(Boolean)
-  if (channels.length < 3) return null
-  return {
-    red: parseChannel(channels[0]),
-    green: parseChannel(channels[1]),
-    blue: parseChannel(channels[2]),
-    alpha: parseAlpha(channels[3]),
-  }
+  if (channels.length < 3 || channels.length > 4) return null
+  const red = parseChannel(channels[0])
+  const green = parseChannel(channels[1])
+  const blue = parseChannel(channels[2])
+  const alpha = parseAlpha(channels[3])
+  if (red === null || green === null || blue === null || alpha === null) return null
+  return { red, green, blue, alpha }
 }
 
 const toByte = (value: number) => Math.round(clamp(value / 255) * 255)

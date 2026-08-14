@@ -6,6 +6,7 @@ import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 
 type SettingsPanelProps = {
+  ownerWindow: Window
   highlightColor: string
   setHighlightColor: Dispatch<SetStateAction<string>>
   guideColor: string
@@ -58,21 +59,31 @@ function SettingsSwitch({ label, checked, onChange }: {
   )
 }
 
-function ColorField({ label, value, fallback, onChange }: {
+function ColorField({ label, value, fallback, ownerWindow, onChange }: {
   label: string
   value: string
   fallback: string
+  ownerWindow: Window
   onChange: (value: string) => void
 }) {
   const parsed = parseCssColor(value)
-  const inputValue = parsed ? colorToHex(parsed).slice(0, 7) : fallback
+  const canvas = ownerWindow.document.createElement("canvas")
+  const context = canvas.getContext("2d")
+  if (context) context.fillStyle = value
+  const serialized = typeof context?.fillStyle === "string" ? context.fillStyle : ""
+  const converted = serialized ? parseCssColor(serialized) : null
+  const inputValue = (parsed ?? converted) ? colorToHex(parsed ?? converted!).slice(0, 7) : fallback
+  const swatchColor =
+    (ownerWindow as Window & { CSS?: { supports: (property: string, value: string) => boolean } }).CSS?.supports("color", value)
+      ? value
+      : fallback
   return (
     <label className="msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
       <span>{label}</span>
       <span
         className="msr:relative msr:block msr:size-4 msr:overflow-hidden msr:cursor-pointer msr:rounded-[4px]"
         style={{
-          backgroundColor: inputValue,
+          backgroundColor: swatchColor,
           boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.14)",
         }}
       >
@@ -89,6 +100,7 @@ function ColorField({ label, value, fallback, onChange }: {
 }
 
 export function SettingsPanel({
+  ownerWindow,
   highlightColor,
   setHighlightColor,
   guideColor,
@@ -167,8 +179,8 @@ export function SettingsPanel({
 
       <section>
         <h2 className="msr:text-[12px] msr:font-medium msr:text-ink-700">Appearance</h2>
-        <div className="msr:mt-2"><ColorField label="Highlight color" value={highlightColor} fallback="#0d99ff" onChange={setHighlightColor} /></div>
-        <div className="msr:mt-2"><ColorField label="Guide color" value={guideColor} fallback="#f97316" onChange={setGuideColor} /></div>
+        <div className="msr:mt-2"><ColorField label="Highlight color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} /></div>
+        <div className="msr:mt-2"><ColorField label="Guide color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} /></div>
       </section>
     </div>
   )

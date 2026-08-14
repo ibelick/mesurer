@@ -156,6 +156,53 @@ test("native color picker shows color formats", async ({ page }) => {
   await expect(picker).not.toContainText("Copied");
 });
 
+test("falls back to default color formats when persisted formats are invalid", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#ff0000" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    localStorage.setItem("mesurer-settings", JSON.stringify({
+      version: 2,
+      settings: { colorPickerFormats: ["invalid"] },
+      workspace: null,
+    }));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Color picker (P)" }).click();
+
+  const picker = page.locator(".mesurer-color-picker");
+  await expect(picker).toContainText("hex");
+  await expect(picker).toContainText("rgb");
+  await expect(picker).toContainText("oklch");
+});
+
+test("falls back to the default swatch for an invalid persisted color", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    localStorage.setItem("mesurer-settings", JSON.stringify({
+      version: 2,
+      settings: { highlightColor: "not-a-color" },
+      workspace: null,
+    }));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(dialog).toBeVisible();
+  const colorField = dialog.locator("label").filter({ hasText: "Highlight color" });
+  await expect(colorField.locator("span").nth(1)).toHaveCSS(
+    "background-color",
+    "oklch(0.62 0.18 255)",
+  );
+});
+
 test("P opens the native color picker", async ({ page }) => {
   await page.addInitScript(() => {
     class MockEyeDropper {
@@ -179,6 +226,18 @@ test("settings button opens and dismisses its popover", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
+test("Escape closes settings without clearing the workspace", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html?persist=1");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 });
 
 test("Cmd/Ctrl comma opens settings", async ({ page }) => {

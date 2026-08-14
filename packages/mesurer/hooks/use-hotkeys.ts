@@ -17,13 +17,18 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onToggleSettings: () => void
+  isSettingsOpen: () => boolean
 }
 
 export const useHotkeys = (options: HotkeyOptions) => {
   useEffect(() => {
     const target = options.eventTarget
-    const handleKeyDown = (event: KeyboardEvent) => {
+      const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (options.isSettingsOpen()) {
+          options.onToggleSettings()
+          return
+        }
         options.clearAll()
         return
       }

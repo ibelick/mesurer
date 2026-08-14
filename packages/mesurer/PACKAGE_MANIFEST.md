@@ -19,6 +19,8 @@ type MeasurerProps = {
   hoverHighlightEnabled?: boolean
   persistOnReload?: boolean
   persistKey?: string
+  colorPickerFormats?: ColorPickerFormat[]
+  colorPickerClickFormat?: ColorPickerFormat
   persistence?: MesurerPersistence
   onPersistenceError?: (error: unknown) => void
 }
@@ -29,6 +31,8 @@ type MeasurerProps = {
 - `hoverHighlightEnabled`: When `false`, hover highlight is disabled and clicking a selected item deselects it.
 - `persistOnReload`: When `true`, persists guides, measurements, and tool state through the configured persistence adapter.
 - `persistKey`: Workspace `localStorage` key used by the default adapter. Default workspaces are isolated per browser tab, while settings are shared globally.
+- `colorPickerFormats`: Color formats displayed by the native color picker.
+- `colorPickerClickFormat`: Format copied when a displayed color value is clicked.
 - `persistence`: Optional custom adapter for extension or application-managed storage.
 - `onPersistenceError`: Optional callback for storage read/write failures.
 
@@ -46,6 +50,8 @@ The default adapter stores versioned settings and workspace data. Custom adapter
 - `Backspace` / `Delete`: Remove selected guides
 - `Cmd/Ctrl + Z`: Undo
 - `Cmd/Ctrl + Shift + Z`: Redo
+- `P`: Open the native color picker
+- `Cmd/Ctrl + ,`: Open Settings
 
 ## Runtime Dependencies
 

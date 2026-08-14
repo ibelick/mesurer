@@ -52,6 +52,7 @@ import {
   createLocalStoragePersistence,
   type MesurerPersistence,
   type MesurerPersistenceSnapshot,
+  type MesurerStoredSettings,
   type MesurerStoredWorkspace,
 } from "./core/persistence";
 
@@ -125,6 +126,17 @@ const getTabId = (ownerWindow: Window) => {
   }
 };
 
+const sanitizeStoredSettings = (ownerWindow: Window, settings: MesurerStoredSettings) => {
+  const supportsColor = (value: string | undefined) =>
+    value !== undefined &&
+    (ownerWindow as Window & { CSS?: { supports: (property: string, value: string) => boolean } }).CSS?.supports("color", value) === true;
+  return {
+    ...settings,
+    ...(supportsColor(settings.highlightColor) ? {} : { highlightColor: undefined }),
+    ...(supportsColor(settings.guideColor) ? {} : { guideColor: undefined }),
+  };
+};
+
 function MeasurerClient({
   highlightColor,
   guideColor,
@@ -188,7 +200,7 @@ function MeasurerClient({
     persistOnReload || storedState?.settings.persistOnReload
       ? storedState?.workspace ?? null
       : null;
-  const persistedSettings = storedState?.settings ?? {};
+  const persistedSettings = sanitizeStoredSettings(ownerWindow, storedState?.settings ?? {});
 
   useEffect(() => {
     return () => activePersistence.setErrorHandler?.(undefined);
@@ -459,7 +471,7 @@ function MeasurerClient({
     }
 
     applyingExternalPersistenceRef.current = true;
-    const settings = snapshot.settings;
+    const settings = sanitizeStoredSettings(ownerWindow, snapshot.settings);
     if (settings.highlightColor !== undefined) setSettingsHighlightColor(settings.highlightColor);
     if (settings.guideColor !== undefined) setSettingsGuideColor(settings.guideColor);
     if (settings.hoverHighlightEnabled !== undefined) setSettingsHoverHighlight(settings.hoverHighlightEnabled);
@@ -762,6 +774,7 @@ function MeasurerClient({
     onInteract: () => setToolbarActive(true),
     onColorPicker: openColorPicker,
     onToggleSettings: () => setSettingsOpen((previous) => !previous),
+    isSettingsOpen: () => settingsOpen,
   });
 
   useResizeSync({
