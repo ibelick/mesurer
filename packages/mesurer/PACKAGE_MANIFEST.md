@@ -4,8 +4,9 @@ This module is now structured so `Measurer` can be moved into a standalone packa
 
 ## Public API
 
-- Export only `Measurer`.
-- Current barrel already does this in `app/mesurer/index.ts`.
+- `Measurer` component.
+- Persistence types and `createLocalStoragePersistence`.
+- Text inspector API and color picker types.
 
 ## Component Props
 
@@ -17,13 +18,21 @@ type MeasurerProps = {
   guideColor?: string
   hoverHighlightEnabled?: boolean
   persistOnReload?: boolean
+  persistKey?: string
+  persistence?: MesurerPersistence
+  onPersistenceError?: (error: unknown) => void
 }
 ```
 
 - `highlightColor`: Base color for selection/hover overlays (defaults to `oklch(0.62 0.18 255)`).
 - `guideColor`: Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).
 - `hoverHighlightEnabled`: When `false`, hover highlight is disabled and clicking a selected item deselects it.
-- `persistOnReload`: When `true`, persists guides, measurements, and tool state to `localStorage` under `mesurer-state`.
+- `persistOnReload`: When `true`, persists guides, measurements, and tool state through the configured persistence adapter.
+- `persistKey`: `localStorage` key used by the default adapter.
+- `persistence`: Optional custom adapter for extension or application-managed storage.
+- `onPersistenceError`: Optional callback for storage read/write failures.
+
+The default adapter stores versioned settings and workspace data. Custom adapters can also call `clearWorkspace()` or `clearSettings()` and subscribe to external changes.
 
 ## Commands & Shortcuts
 

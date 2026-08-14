@@ -260,8 +260,7 @@ export default function RootLayout({ children }) {
               <code className="code">persistOnReload</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Persists state in <code className="code">localStorage</code> as{" "}
-              <code className="code">mesurer-state</code>
+              Persists workspace state across reloads
             </div>
           </div>
         </div>

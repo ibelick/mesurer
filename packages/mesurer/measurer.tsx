@@ -48,6 +48,12 @@ import {
   type ColorPickerFormat,
   type ColorSample,
 } from "./core/colors";
+import {
+  createLocalStoragePersistence,
+  type MesurerPersistence,
+  type MesurerPersistenceSnapshot,
+  type MesurerStoredWorkspace,
+} from "./core/persistence";
 
 type MeasurerProps = {
   highlightColor?: string;
@@ -58,6 +64,8 @@ type MeasurerProps = {
   persistKey?: string;
   colorPickerFormats?: ColorPickerFormat[];
   colorPickerClickFormat?: ColorPickerFormat;
+  persistence?: MesurerPersistence;
+  onPersistenceError?: (error: unknown) => void;
 };
 
 type EyeDropperResult = { sRGBHex: string };
@@ -110,8 +118,10 @@ function MeasurerClient({
   persistKey,
   colorPickerFormats,
   colorPickerClickFormat,
-}: Required<Omit<MeasurerProps, "persistKey">> &
-  Pick<MeasurerProps, "persistKey">) {
+  persistence,
+  onPersistenceError,
+}: Required<Omit<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError">> &
+  Pick<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError">) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
     instanceIdRef.current = ++measurerInstanceCount;
@@ -144,37 +154,26 @@ function MeasurerClient({
   } | null>(null);
   const guideUserSelectRef = useRef<string | null>(null);
 
-  const persistedState = useMemo(() => {
-    if (!persistOnReload) return null;
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored) as {
-        version: number;
-        enabled: boolean;
-        toolMode: ToolMode;
-        guideOrientation: "vertical" | "horizontal";
-        guides: Guide[];
-        selectedGuideIds: string[];
-        measurements: Measurement[];
-         activeMeasurement: Measurement | null;
-         heldDistances: DistanceOverlay[];
-         rulersVisible?: boolean;
-         snapEnabled?: boolean;
-         snapGuidesEnabled?: boolean;
-         multiMeasureEnabled?: boolean;
-         highlightColor?: string;
-         guideColor?: string;
-         hoverHighlightEnabled?: boolean;
-         colorPickerFormats?: ColorPickerFormat[];
-         colorPickerClickFormat?: ColorPickerFormat;
-      };
-      if (!parsed || parsed.version !== 1) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  }, [persistOnReload, storageKey]);
+  const persistenceErrorHandlerRef = useRef(onPersistenceError);
+  persistenceErrorHandlerRef.current = onPersistenceError;
+  const activePersistence = useMemo(() => {
+    const next = persistence ?? createLocalStoragePersistence(ownerWindow, storageKey);
+    next.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error));
+    return next;
+  }, [ownerWindow, persistence, storageKey]);
+  const storedState = useMemo(
+    () => activePersistence.load(),
+    [activePersistence],
+  );
+  const persistedState =
+    persistOnReload || storedState?.settings.persistOnReload
+      ? storedState?.workspace ?? null
+      : null;
+  const persistedSettings = storedState?.settings ?? {};
+
+  useEffect(() => {
+    return () => activePersistence.setErrorHandler?.(undefined);
+  }, [activePersistence]);
 
   const enabledRef = useRef(false);
   const toolModeRef = useRef<ToolMode>(
@@ -199,6 +198,8 @@ function MeasurerClient({
   const selectedGuideIdsRef = useRef<string[]>(
     persistedState?.selectedGuideIds ?? [],
   );
+  const workspacePersistTimeoutRef = useRef<number | null>(null);
+  const applyingExternalPersistenceRef = useRef(false);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const {
@@ -240,9 +241,9 @@ function MeasurerClient({
       persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
     initialRulersVisible:
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
-    initialSnapEnabled: persistedState?.snapEnabled,
-    initialSnapGuidesEnabled: persistedState?.snapGuidesEnabled,
-    initialMultiMeasureEnabled: persistedState?.multiMeasureEnabled,
+    initialSnapEnabled: persistedSettings.snapEnabled,
+    initialSnapGuidesEnabled: persistedSettings.snapGuidesEnabled,
+    initialMultiMeasureEnabled: persistedSettings.multiMeasureEnabled,
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
     useDragState();
@@ -281,20 +282,22 @@ function MeasurerClient({
   const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsHighlightColor, setSettingsHighlightColor] = useState(
-    persistedState?.highlightColor ?? highlightColor,
+    persistedSettings.highlightColor ?? highlightColor,
   );
   const [settingsGuideColor, setSettingsGuideColor] = useState(
-    persistedState?.guideColor ?? guideColor,
+    persistedSettings.guideColor ?? guideColor,
   );
   const [settingsHoverHighlight, setSettingsHoverHighlight] = useState(
-    persistedState?.hoverHighlightEnabled ?? hoverHighlightEnabled,
+    persistedSettings.hoverHighlightEnabled ?? hoverHighlightEnabled,
   );
-  const [settingsPersistOnReload, setSettingsPersistOnReload] = useState(persistOnReload);
+  const [settingsPersistOnReload, setSettingsPersistOnReload] = useState(
+    persistedSettings.persistOnReload ?? persistOnReload,
+  );
   const [settingsColorFormats, setSettingsColorFormats] = useState(
-    persistedState?.colorPickerFormats ?? colorPickerFormats,
+    persistedSettings.colorPickerFormats ?? colorPickerFormats,
   );
   const [settingsColorClickFormat, setSettingsColorClickFormat] = useState(
-    persistedState?.colorPickerClickFormat ?? colorPickerClickFormat,
+    persistedSettings.colorPickerClickFormat ?? colorPickerClickFormat,
   );
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
@@ -315,39 +318,47 @@ function MeasurerClient({
   guidesRef.current = guides;
   selectedGuideIdsRef.current = selectedGuideIds;
 
+  const saveWorkspace = useCallback(() => {
+    if (!settingsPersistOnReload) return;
+    const workspace: MesurerStoredWorkspace = {
+      enabled: enabledRef.current,
+      toolMode: toolModeRef.current,
+      rulersVisible: rulersVisibleRef.current,
+      guideOrientation: guideOrientationRef.current,
+      guides: guidesRef.current,
+      selectedGuideIds: selectedGuideIdsRef.current,
+      measurements: measurementsRef.current.map(stripMeasurement),
+      activeMeasurement: activeMeasurementRef.current
+        ? stripMeasurement(activeMeasurementRef.current)
+        : null,
+      heldDistances: heldDistancesRef.current.map(stripDistance),
+    };
+    activePersistence.saveWorkspace(workspace);
+  }, [activePersistence, settingsPersistOnReload]);
+
   const persistState = useCallback(() => {
     if (!settingsPersistOnReload) return;
-    if (typeof window === "undefined") return;
-
-    try {
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          version: 1,
-          enabled: enabledRef.current,
-          toolMode: toolModeRef.current,
-          rulersVisible: rulersVisibleRef.current,
-          guideOrientation: guideOrientationRef.current,
-          guides: guidesRef.current,
-          selectedGuideIds: selectedGuideIdsRef.current,
-          measurements: measurementsRef.current.map(stripMeasurement),
-          activeMeasurement: activeMeasurementRef.current
-            ? stripMeasurement(activeMeasurementRef.current)
-            : null,
-           heldDistances: heldDistancesRef.current.map(stripDistance),
-           snapEnabled,
-           snapGuidesEnabled,
-           multiMeasureEnabled,
-           highlightColor: settingsHighlightColor,
-           guideColor: settingsGuideColor,
-           hoverHighlightEnabled: settingsHoverHighlight,
-           colorPickerFormats: settingsColorFormats,
-           colorPickerClickFormat: settingsColorClickFormat,
-        }),
-      );
-    } catch {
-      // ignore storage errors
+    if (workspacePersistTimeoutRef.current !== null) {
+      ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
     }
+    workspacePersistTimeoutRef.current = ownerWindow.setTimeout(() => {
+      workspacePersistTimeoutRef.current = null;
+      saveWorkspace();
+    }, 250);
+  }, [ownerWindow, saveWorkspace, settingsPersistOnReload]);
+
+  const persistSettings = useCallback(() => {
+    activePersistence.saveSettings({
+      highlightColor: settingsHighlightColor,
+      guideColor: settingsGuideColor,
+      hoverHighlightEnabled: settingsHoverHighlight,
+      colorPickerFormats: settingsColorFormats,
+      colorPickerClickFormat: settingsColorClickFormat,
+      snapEnabled,
+      snapGuidesEnabled,
+      multiMeasureEnabled,
+      persistOnReload: settingsPersistOnReload,
+    });
   }, [
     multiMeasureEnabled,
     settingsColorClickFormat,
@@ -358,12 +369,110 @@ function MeasurerClient({
     settingsPersistOnReload,
     snapEnabled,
     snapGuidesEnabled,
-    storageKey,
+    activePersistence,
   ]);
 
   useEffect(() => {
+    if (applyingExternalPersistenceRef.current) {
+      applyingExternalPersistenceRef.current = false;
+      return;
+    }
+    persistSettings();
     if (settingsPersistOnReload) persistState();
-  }, [persistState, settingsPersistOnReload]);
+  }, [persistSettings, persistState, settingsPersistOnReload]);
+
+  useEffect(() => () => {
+    if (workspacePersistTimeoutRef.current !== null) {
+      ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
+      workspacePersistTimeoutRef.current = null;
+      saveWorkspace();
+    }
+  }, [ownerWindow, saveWorkspace]);
+
+  const clearPersistedWorkspace = useCallback(() => {
+    enabledRef.current = false;
+    toolModeRef.current = "none";
+    rulersVisibleRef.current = false;
+    guideOrientationRef.current = "vertical";
+    measurementsRef.current = [];
+    activeMeasurementRef.current = null;
+    heldDistancesRef.current = [];
+    guidesRef.current = [];
+    selectedGuideIdsRef.current = [];
+    setEnabled(false);
+    setToolMode("none");
+    setRulersVisible(false);
+    setGuideOrientation("vertical");
+    setMeasurements([]);
+    setActiveMeasurement(null);
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
+    setHeldDistances([]);
+    setGuides([]);
+    setSelectedGuideIds([]);
+  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setToolMode]);
+
+  const applyPersistedWorkspace = useCallback((workspace: MesurerStoredWorkspace) => {
+    enabledRef.current = workspace.enabled;
+    toolModeRef.current = workspace.toolMode;
+    rulersVisibleRef.current = workspace.rulersVisible;
+    guideOrientationRef.current = workspace.guideOrientation;
+    measurementsRef.current = workspace.measurements;
+    activeMeasurementRef.current = workspace.activeMeasurement;
+    heldDistancesRef.current = workspace.heldDistances;
+    guidesRef.current = workspace.guides;
+    selectedGuideIdsRef.current = workspace.selectedGuideIds;
+    setEnabled(workspace.enabled);
+    setToolMode(workspace.toolMode);
+    setRulersVisible(workspace.rulersVisible);
+    setGuideOrientation(workspace.guideOrientation);
+    setMeasurements(workspace.measurements);
+    setActiveMeasurement(workspace.activeMeasurement);
+    setGuides(workspace.guides);
+    setSelectedGuideIds(workspace.selectedGuideIds);
+    setHeldDistances(workspace.heldDistances);
+  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setToolMode]);
+
+  const applyPersistenceSnapshot = useCallback((snapshot: MesurerPersistenceSnapshot | null) => {
+    if (!snapshot) {
+      clearPersistedWorkspace();
+      return;
+    }
+
+    applyingExternalPersistenceRef.current = true;
+    const settings = snapshot.settings;
+    if (settings.highlightColor !== undefined) setSettingsHighlightColor(settings.highlightColor);
+    if (settings.guideColor !== undefined) setSettingsGuideColor(settings.guideColor);
+    if (settings.hoverHighlightEnabled !== undefined) setSettingsHoverHighlight(settings.hoverHighlightEnabled);
+    if (settings.colorPickerFormats !== undefined) setSettingsColorFormats(settings.colorPickerFormats);
+    if (settings.colorPickerClickFormat !== undefined) setSettingsColorClickFormat(settings.colorPickerClickFormat);
+    if (settings.persistOnReload !== undefined) setSettingsPersistOnReload(settings.persistOnReload);
+    if (settings.snapEnabled !== undefined) setSnapEnabled(settings.snapEnabled);
+    if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
+    if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
+
+    const workspace = snapshot.workspace;
+    if (!workspace) {
+      clearPersistedWorkspace();
+    } else if (settings.persistOnReload ?? settingsPersistOnReload) {
+      applyPersistedWorkspace(workspace);
+    }
+    ownerWindow.setTimeout(() => {
+      applyingExternalPersistenceRef.current = false;
+    }, 0);
+  }, [applyPersistedWorkspace, clearPersistedWorkspace, ownerWindow, setMultiMeasureEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+
+  const previousPersistenceRef = useRef(activePersistence);
+  useEffect(() => {
+    if (previousPersistenceRef.current === activePersistence) return;
+    previousPersistenceRef.current = activePersistence;
+    applyPersistenceSnapshot(storedState);
+  }, [activePersistence, applyPersistenceSnapshot, storedState]);
+
+  useEffect(() => {
+    const unsubscribe = activePersistence.subscribe?.(applyPersistenceSnapshot);
+    return unsubscribe;
+  }, [activePersistence, applyPersistenceSnapshot]);
 
   const setEnabledPersisted = useCallback(
     (value: Parameters<typeof setEnabled>[0]) => {
@@ -1204,6 +1313,8 @@ export default function Measurer({
   persistKey,
   colorPickerFormats = ["hex", "rgb", "oklch"],
   colorPickerClickFormat = "hex",
+  persistence,
+  onPersistenceError,
 }: MeasurerProps) {
   if (typeof document !== "undefined") {
     ensureMeasurerStyles(MESURER_STYLES, portalTarget);
@@ -1221,6 +1332,8 @@ export default function Measurer({
       persistKey={persistKey}
       colorPickerFormats={colorPickerFormats}
       colorPickerClickFormat={colorPickerClickFormat}
+      persistence={persistence}
+      onPersistenceError={onPersistenceError}
       portalTarget={portalTarget ?? document.body}
     />
   );

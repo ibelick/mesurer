@@ -40,9 +40,11 @@ function App() {
 | `highlightColor`        | Base color for selection/hover overlays (defaults to `oklch(0.62 0.18 255)`). |
 | `guideColor`            | Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).                 |
 | `hoverHighlightEnabled` | Disables hover highlight and deselects on click when `false`.                 |
-| `persistOnReload`       | Persists state in `localStorage` as `mesurer-state` when `true`.              |
+| `persistOnReload`       | Persists workspace state across reloads when `true`.                          |
 | `persistKey`            | Optional storage key for isolating persisted state between multiple instances. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
+| `persistence`           | Optional storage adapter for custom or extension-backed persistence.           |
+| `onPersistenceError`    | Called when persistence is unavailable or a storage write fails.              |
 | `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
 | `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |
 
@@ -81,6 +83,8 @@ function App() {
 
 - React 18+
 - Chromium-based browser for the native color picker
+
+Settings are stored separately from workspace state. The default adapter uses `localStorage`; integrations can provide a `persistence` adapter such as the browser extension's `chrome.storage.local` implementation.
 
 ## License
 

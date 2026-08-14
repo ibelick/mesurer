@@ -2,6 +2,8 @@
 
 This extension toggles the Mesurer toolbar on the current page when you click the extension icon.
 
+Settings are shared across sites with `chrome.storage.local`; guides and measurements are stored separately per page origin.
+
 The generated `manifest.json` syncs `name`, `description`, and `version` from `packages/mesurer/package.json`.
 
 ## Build

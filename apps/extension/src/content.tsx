@@ -1,5 +1,6 @@
 import { createRoot, type Root } from "react-dom/client";
 import { Measurer } from "mesurer";
+import { createExtensionPersistence } from "./storage";
 
 const HOST_ID = "mesurer-extension-host";
 const ROOT_ID = "mesurer-extension-root";
@@ -8,6 +9,7 @@ const STATE_KEY = "__MESURER_EXTENSION_STATE__";
 type ExtensionState = {
   root: Root | null;
   mounted: boolean;
+  mounting: boolean;
 };
 
 type ExtensionGlobal = typeof globalThis & {
@@ -21,6 +23,7 @@ const getState = () => {
     extensionGlobal[STATE_KEY] = {
       root: null,
       mounted: false,
+      mounting: false,
     };
   }
 
@@ -57,14 +60,36 @@ const getOrCreateContainer = () => {
   return { container, shadowRoot };
 };
 
-const mount = () => {
+const mount = async () => {
   const state = getState();
-  if (state.mounted) return;
+  if (state.mounted || state.mounting) return;
+  state.mounting = true;
 
-  const { container, shadowRoot } = getOrCreateContainer();
-  state.root = createRoot(container);
-  state.root.render(<Measurer portalTarget={shadowRoot} />);
-  state.mounted = true;
+  try {
+    const { container, shadowRoot } = getOrCreateContainer();
+    let persistence: Awaited<ReturnType<typeof createExtensionPersistence>> | undefined;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      try {
+        persistence = await createExtensionPersistence(location.origin);
+      } catch {
+        persistence = undefined;
+      }
+    }
+    state.root = createRoot(container);
+    state.root.render(
+      <Measurer
+        portalTarget={shadowRoot}
+        persistence={persistence}
+        persistOnReload={new URLSearchParams(location.search).has("persist")}
+      />,
+    );
+    state.mounted = true;
+  } catch {
+    state.root = null;
+    state.mounted = false;
+  } finally {
+    state.mounting = false;
+  }
 };
 
 const unmount = () => {
@@ -74,6 +99,7 @@ const unmount = () => {
   state.root.unmount();
   state.root = null;
   state.mounted = false;
+  state.mounting = false;
 
   const host = document.getElementById(HOST_ID);
   if (host) {
@@ -87,7 +113,7 @@ const toggle = () => {
     return;
   }
 
-  mount();
+  void mount();
 };
 
 toggle();

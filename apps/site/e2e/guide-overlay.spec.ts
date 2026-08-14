@@ -188,3 +188,74 @@ test("Cmd/Ctrl comma opens settings", async ({ page }) => {
 
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });
+
+test("settings preferences survive a reload", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const hoverSwitch = page.getByRole("switch", { name: "Hover highlight" });
+  await hoverSwitch.click();
+  await expect(hoverSwitch).toHaveAttribute("aria-checked", "false");
+
+  await page.reload();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+});
+
+test("migrates v1 workspace state", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html?persist=1");
+  await page.evaluate(() => {
+    localStorage.setItem("mesurer-state", JSON.stringify({
+      version: 1,
+      enabled: true,
+      toolMode: "none",
+      rulersVisible: false,
+      guideOrientation: "vertical",
+      guides: [{ id: "legacy-guide", orientation: "vertical", position: 180 }],
+      selectedGuideIds: [],
+      measurements: [],
+      activeMeasurement: null,
+      heldDistances: [],
+    }));
+  });
+  await page.reload();
+
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("ignores malformed persisted workspace data", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    localStorage.setItem("mesurer-state", JSON.stringify({
+      version: 2,
+      settings: { colorPickerFormats: ["invalid", "hex"] },
+      workspace: {
+        enabled: true,
+        toolMode: "invalid",
+        guides: [{ broken: true }],
+      },
+    }));
+  });
+  await page.reload();
+
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+});
+
+test("syncs settings between tabs", async ({ page }) => {
+  const secondPage = await page.context().newPage();
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await secondPage.goto("/e2e/fixtures/guide-overlay.html");
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("switch", { name: "Hover highlight" }).click();
+
+  await secondPage.getByRole("button", { name: "Settings" }).click();
+  await expect(secondPage.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+  await secondPage.close();
+});
