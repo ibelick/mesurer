@@ -31,6 +31,7 @@ import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
 import { createId } from "./core/utils";
+import { getSnapGuidePosition } from "./core/guides";
 import {
   createTextInspector,
   type TextInspectorAPI,
@@ -1149,29 +1150,55 @@ function MeasurerClient({
     [recordSnapshot, setHeldDistancesPersisted],
   );
 
+  const snapGuidePosition = useCallback(
+    (
+      orientation: "vertical" | "horizontal",
+      position: number,
+      draggingGuideId: string | null = null,
+    ) =>
+      getSnapGuidePosition({
+        orientation,
+        point: orientation === "vertical" ? { x: position, y: 0 } : { x: 0, y: position },
+        snapGuidesEnabled,
+        overlayNode: overlayRef.current,
+        guides,
+        draggingGuideId,
+        document: ownerDocument,
+      }),
+    [guides, ownerDocument, overlayRef, snapGuidesEnabled],
+  );
+
   const startGuideFromRuler = useCallback(
     (orientation: "vertical" | "horizontal", position: number) => {
       const id = createId();
       const commit = createActionCommit();
       commit();
       setSelectedGuideIdsPersisted([]);
-      setGuidesPersisted((prev) => [...prev, { id, orientation, position }]);
+      setGuidesPersisted((prev) => [
+        ...prev,
+        { id, orientation, position: snapGuidePosition(orientation, position) },
+      ]);
       return id;
     },
     [
       createActionCommit,
       setGuidesPersisted,
       setSelectedGuideIdsPersisted,
+      snapGuidePosition,
     ],
   );
 
   const moveGuideFromRuler = useCallback(
     (id: string, position: number) => {
       setGuidesPersisted((prev) =>
-        prev.map((guide) => (guide.id === id ? { ...guide, position } : guide)),
+        prev.map((guide) =>
+          guide.id === id
+            ? { ...guide, position: snapGuidePosition(guide.orientation, position, id) }
+            : guide,
+        ),
       );
     },
-    [setGuidesPersisted],
+    [setGuidesPersisted, snapGuidePosition],
   );
 
   const finishGuideFromRuler = useCallback(

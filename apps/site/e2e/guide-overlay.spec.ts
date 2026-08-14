@@ -338,3 +338,24 @@ test("keeps persisted workspaces independent between tabs", async ({ page }) => 
   ).toHaveLength(2);
   await secondPage.close();
 });
+
+test("ruler-created guides snap to regular guides", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Rulers" }).click();
+  await page.mouse.move(9, 200);
+  await page.mouse.down();
+  await page.mouse.move(304, 200, { steps: 10 });
+  await page.mouse.up();
+
+  const guides = page.locator("[data-mesurer-guide]");
+  await expect(guides).toHaveCount(2);
+  const first = await guides.nth(0).boundingBox();
+  const second = await guides.nth(1).boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(Math.abs(first!.x - second!.x)).toBeLessThanOrEqual(1);
+});
