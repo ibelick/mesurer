@@ -15,6 +15,7 @@ type HotkeyOptions = {
   isOverlayActive: () => boolean
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
   onInteract: () => void
+  onColorPicker: () => void
 }
 
 export const useHotkeys = (options: HotkeyOptions) => {
@@ -43,6 +44,13 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       const key = event.key.toLowerCase()
+      if (key === "p") {
+        event.preventDefault()
+        options.onColorPicker()
+        options.onInteract()
+        return
+      }
+
       if (options.isOverlayActive()) {
         if (key === "a") {
           options.setToolMode((prev) =>

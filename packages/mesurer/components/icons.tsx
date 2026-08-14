@@ -97,3 +97,11 @@ export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
     </text>
   </svg>
 )
+
+export const ColorPickerIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <circle cx="104" cy="104" r="52" fill="none" stroke="currentColor" strokeWidth="16" />
+    <path d="m143 143 61 61" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="18" />
+    <path d="M104 72v64M72 104h64" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="10" opacity="0.65" />
+  </IconBase>
+)

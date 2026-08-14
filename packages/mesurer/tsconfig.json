@@ -11,5 +11,6 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "exclude": ["dist", "node_modules"]
 }

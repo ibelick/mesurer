@@ -14,6 +14,7 @@ import { cn } from "../core/utils";
 import {
   CaretDownIcon,
   CheckIcon,
+  ColorPickerIcon,
   CursorIcon,
   MinusIcon,
   RulerIcon,
@@ -37,6 +38,9 @@ type ToolbarProps = {
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
   onInteract: () => void;
+  colorPickerActive: boolean;
+  setColorPickerActive: Dispatch<SetStateAction<boolean>>;
+  onColorPickerClick: () => void;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -280,6 +284,9 @@ function ToolbarComponent(
     setGuideOrientation,
     onInteract,
     eventTarget,
+    colorPickerActive,
+    setColorPickerActive,
+    onColorPickerClick,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -330,35 +337,52 @@ function ToolbarComponent(
 
   const selectMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) => (prev === "select" ? "none" : "select"));
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const guidesMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) => (prev === "guides" ? "none" : "guides"));
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const textInspectorMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) =>
       prev === "text-inspector" ? "none" : "text-inspector",
     );
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const xrayMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
+
+  const colorPickerMode = useCallback(() => {
+    setEnabled(true);
+    setToolMode("none");
+    if (colorPickerActive) {
+      setColorPickerActive(false);
+    } else {
+      setColorPickerActive(true);
+      onColorPickerClick();
+    }
+    onInteract();
+  }, [colorPickerActive, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const rulersMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setRulersVisible((prev) => !prev);
     onInteract();
-  }, [onInteract, setEnabled, setRulersVisible]);
+  }, [onInteract, setColorPickerActive, setEnabled, setRulersVisible]);
 
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
@@ -442,6 +466,20 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <XrayIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
+        id="color-picker"
+        active={colorPickerActive}
+        label="Color picker"
+        shortcut="P"
+        onClick={colorPickerMode}
+        tooltipVisible={visibleTooltipId === "color-picker"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <ColorPickerIcon size={20} aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton
         id="rulers"

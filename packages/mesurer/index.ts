@@ -11,3 +11,4 @@ export type {
   TypographyInfo,
   TypographyRow,
 } from "./runtime/text-inspector-typography";
+export type { ColorPickerFormat, ColorSample } from "./core/colors";

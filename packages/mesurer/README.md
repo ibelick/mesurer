@@ -43,6 +43,8 @@ function App() {
 | `persistOnReload`       | Persists state in `localStorage` as `mesurer-state` when `true`.              |
 | `persistKey`            | Optional storage key for isolating persisted state between multiple instances. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
+| `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
+| `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |
 
 ## Commands
 
@@ -50,6 +52,7 @@ function App() {
 | ---------------------- | ----------------------------------------------------- |
 | `M`                    | Toggle measurer on/off.                               |
 | `S`                    | Toggle Select mode.                                   |
+| `P`                    | Open the native Color picker.                         |
 | `G`                    | Toggle Guides mode.                                   |
 | `X`                    | Toggle X-ray mode.                                    |
 | `R`                    | Toggle pixel rulers along the top and left edges.     |
@@ -70,10 +73,12 @@ function App() {
 - **Distance overlays** – Hold Alt for quick spacing checks
 - **Undo/redo** – Command history for guide and measurement changes
 - **Persist state** – Keep guides and measurements on reload
+- **Color picker** – Use the browser eyedropper to inspect rendered colors
 
 ## Requirements
 
 - React 18+
+- Chromium-based browser for the native color picker
 
 ## License
 

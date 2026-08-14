@@ -13,7 +13,7 @@
     "deploy:site": "pnpm --filter mesurer-site deploy:pages",
     "build:site": "pnpm --filter mesurer-site build",
     "build:pkg": "pnpm --filter mesurer build",
-    "dev": "pnpm -r dev",
+    "dev": "pnpm --parallel -r dev",
     "dev:site": "pnpm --filter mesurer-site dev",
     "dev:pkg": "pnpm --filter mesurer dev",
     "lint": "pnpm -r lint",

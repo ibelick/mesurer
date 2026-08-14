@@ -14,6 +14,7 @@ import { GUIDE_HITBOX_SIZE, MEASURE_TRANSITION_MS } from "./core/constants";
 import { ensureMeasurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
+import { ColorPicker } from "./components/color-picker";
 import { RulersOverlay } from "./components/rulers-overlay";
 import { useDragState } from "./hooks/use-drag-state";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
@@ -41,6 +42,12 @@ import type {
   Rect,
   ToolMode,
 } from "./core/types";
+import {
+  formatColor,
+  parseCssColor,
+  type ColorPickerFormat,
+  type ColorSample,
+} from "./core/colors";
 
 type MeasurerProps = {
   highlightColor?: string;
@@ -49,6 +56,14 @@ type MeasurerProps = {
   persistOnReload?: boolean;
   portalTarget?: HTMLElement | ShadowRoot;
   persistKey?: string;
+  colorPickerFormats?: ColorPickerFormat[];
+  colorPickerClickFormat?: ColorPickerFormat;
+};
+
+type EyeDropperResult = { sRGBHex: string };
+type EyeDropperLike = { open: () => Promise<EyeDropperResult> };
+type WindowWithEyeDropper = Window & {
+  EyeDropper?: new () => EyeDropperLike;
 };
 
 let measurerInstanceCount = 0;
@@ -93,6 +108,8 @@ function MeasurerClient({
   persistOnReload,
   portalTarget,
   persistKey,
+  colorPickerFormats,
+  colorPickerClickFormat,
 }: Required<Omit<MeasurerProps, "persistKey">> &
   Pick<MeasurerProps, "persistKey">) {
   const instanceIdRef = useRef<number | null>(null);
@@ -245,6 +262,9 @@ function MeasurerClient({
     initialSelectedGuideIds: persistedState?.selectedGuideIds ?? [],
   });
   const [toolbarActive, setToolbarActive] = useState(true);
+  const [colorPickerActive, setColorPickerActive] = useState(false);
+  const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
+  const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
@@ -520,6 +540,31 @@ function MeasurerClient({
     setSelectedGuideIdsPersisted,
   ]);
 
+  const openColorPicker = useCallback(async () => {
+    const EyeDropper = (ownerWindow as WindowWithEyeDropper).EyeDropper;
+    setEnabledWithHistory(true);
+    setToolModeWithHistory("none");
+    setColorPickerActive(true);
+    setColorPickerSample(null);
+    setColorPickerUnsupported(!EyeDropper);
+    if (!EyeDropper) return;
+
+    try {
+      const result = await new EyeDropper().open();
+      const nextSample = parseCssColor(result.sRGBHex);
+      if (!nextSample) return;
+      setColorPickerSample(nextSample);
+      const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(
+        formatColor(nextSample, colorPickerClickFormat),
+      );
+      void clipboardWrite?.catch(() => undefined);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setColorPickerActive(false);
+      }
+    }
+  }, [colorPickerClickFormat, ownerWindow, setEnabledWithHistory, setToolModeWithHistory]);
+
   useHotkeys({
     eventTarget: ownerWindow,
     clearAll,
@@ -533,6 +578,7 @@ function MeasurerClient({
     isOverlayActive: () => enabled && (toolMode !== "none" || toolbarActive),
     setGuideOrientation: setGuideOrientationWithHistory,
     onInteract: () => setToolbarActive(true),
+    onColorPicker: openColorPicker,
   });
 
   useResizeSync({
@@ -1044,6 +1090,16 @@ function MeasurerClient({
         onGuidePointerCancel={handleGuidePointerUp}
       />
 
+      <ColorPicker
+        active={colorPickerActive}
+        sample={colorPickerSample}
+        unsupported={colorPickerUnsupported}
+        ownerWindow={ownerWindow}
+        toolbarRef={toolbarRef}
+        formats={colorPickerFormats}
+        onClose={() => setColorPickerActive(false)}
+      />
+
       <Toolbar
         ref={toolbarRef}
         eventTarget={ownerWindow}
@@ -1055,6 +1111,9 @@ function MeasurerClient({
         guideOrientation={guideOrientation}
         setGuideOrientation={setGuideOrientationWithHistory}
         onInteract={() => setToolbarActive(true)}
+        colorPickerActive={colorPickerActive}
+        setColorPickerActive={setColorPickerActive}
+        onColorPickerClick={openColorPicker}
       />
     </div>,
     portalTarget,
@@ -1068,6 +1127,8 @@ export default function Measurer({
   persistOnReload = false,
   portalTarget,
   persistKey,
+  colorPickerFormats = ["hex", "rgb", "oklch"],
+  colorPickerClickFormat = "hex",
 }: MeasurerProps) {
   if (typeof document !== "undefined") {
     ensureMeasurerStyles(MESURER_STYLES, portalTarget);
@@ -1083,6 +1144,8 @@ export default function Measurer({
       hoverHighlightEnabled={hoverHighlightEnabled}
       persistOnReload={persistOnReload}
       persistKey={persistKey}
+      colorPickerFormats={colorPickerFormats}
+      colorPickerClickFormat={colorPickerClickFormat}
       portalTarget={portalTarget ?? document.body}
     />
   );

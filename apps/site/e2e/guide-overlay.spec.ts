@@ -52,6 +52,7 @@ test("font inspector mode participates in undo and redo history", async ({
   await page.keyboard.press("Control+Shift+Z");
   await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
 
+  await page.mouse.move(100, 100);
   await page.mouse.move(300, 280);
   await page.mouse.click(300, 280);
   const pinnedCard = page.locator(".mesurer-ti-card--pinned");
@@ -131,4 +132,42 @@ test("marketing site renders the current x-ray toolbar icon", async ({ page }) =
   const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
   await expect(xrayButton).toBeVisible();
   await expect(xrayButton.locator("svg path")).toHaveCount(1);
+});
+
+test("native color picker shows color formats", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#ff0000" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await page.getByRole("button", { name: "Color picker (P)" }).click();
+
+  const picker = page.locator(".mesurer-color-picker");
+  await expect(picker).toBeVisible();
+  await expect(picker).toContainText("#ff0000");
+  await expect(picker).toContainText("HEX");
+  await expect(picker).toContainText("RGB");
+  await expect(picker).toContainText("OKLCH");
+  await expect(picker).not.toContainText("Copied");
+});
+
+test("P opens the native color picker", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#00ff00" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Color picker (P)" })).toBeVisible();
+  await page.keyboard.press("p");
+
+  await expect(page.locator(".mesurer-color-picker")).toContainText("#00ff00");
 });
