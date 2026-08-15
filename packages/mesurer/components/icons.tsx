@@ -11,6 +11,8 @@ const IconBase = ({ size = 24, ...props }: IconProps) => (
     height={size}
     viewBox="0 0 256 256"
     fill="currentColor"
+    aria-hidden="true"
+    onDragStart={(event) => event.preventDefault()}
     {...props}
   />
 )
@@ -81,6 +83,8 @@ export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
     height={size}
     viewBox="0 0 256 256"
     fill="currentColor"
+    aria-hidden="true"
+    onDragStart={(event) => event.preventDefault()}
     {...props}
   >
     <text

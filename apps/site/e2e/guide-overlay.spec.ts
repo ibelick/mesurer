@@ -196,6 +196,7 @@ test("falls back to the default swatch for an invalid persisted color", async ({
 
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: "Colors" }).click();
   const colorField = dialog.locator("label").filter({ hasText: "Highlight color" });
   await expect(colorField.locator("span").nth(1)).toHaveCSS(
     "background-color",
@@ -228,6 +229,44 @@ test("settings button opens and dismisses its popover", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
 
+test("guide sliders do not drag the toolbar", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+  const slider = page.getByRole("slider", { name: "Guide opacity" });
+  const before = await toolbar.boundingBox();
+  const sliderBox = await slider.boundingBox();
+  expect(before).not.toBeNull();
+  expect(sliderBox).not.toBeNull();
+  expect(sliderBox!.width).toBe(14);
+  expect(sliderBox!.height).toBe(14);
+  await page.mouse.move(sliderBox!.x + 2, sliderBox!.y + sliderBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sliderBox!.x + sliderBox!.width - 2, sliderBox!.y + sliderBox!.height / 2, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(slider).toHaveAttribute("aria-valuenow", "1");
+  const after = await toolbar.boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.x).toBe(before!.x);
+  expect(after!.y).toBe(before!.y);
+});
+
+test("guide pattern renders as a real dashed line", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("combobox").nth(0).selectOption("dashed");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const line = page.locator("[data-mesurer-guide] > div");
+  await expect(line).toHaveCount(1);
+  await expect(line).toHaveCSS("background-image", /repeating-linear-gradient/);
+  await expect(line).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
 test("Escape closes settings without clearing the workspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html?persist=1");
   await page.getByRole("button", { name: "Guides (G)" }).click();
@@ -251,12 +290,14 @@ test("Cmd/Ctrl comma opens settings", async ({ page }) => {
 test("settings preferences survive a reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Behavior" }).click();
   const hoverSwitch = page.getByRole("switch", { name: "Hover highlight" });
   await hoverSwitch.click();
   await expect(hoverSwitch).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Behavior" }).click();
   await expect(page.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
     "aria-checked",
     "false",
@@ -309,9 +350,11 @@ test("syncs settings between tabs", async ({ page }) => {
   await secondPage.goto("/e2e/fixtures/guide-overlay.html");
 
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Behavior" }).click();
   await page.getByRole("switch", { name: "Hover highlight" }).click();
 
   await secondPage.getByRole("button", { name: "Settings" }).click();
+  await secondPage.getByRole("tab", { name: "Behavior" }).click();
   await expect(secondPage.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
     "aria-checked",
     "false",

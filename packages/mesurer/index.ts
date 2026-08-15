@@ -23,4 +23,6 @@ export type {
   MesurerPersistenceSnapshot,
   MesurerStoredSettings,
   MesurerStoredWorkspace,
+  GuidePattern,
+  GuideStyle,
 } from "./core/persistence";

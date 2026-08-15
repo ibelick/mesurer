@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { ToolMode } from "../core/types";
 import type { ColorPickerFormat } from "../core/colors";
+import type { GuideStyle } from "../core/persistence";
 import { cn } from "../core/utils";
 import { SettingsPanel } from "./settings-panel";
 import {
@@ -37,6 +38,8 @@ type ToolbarProps = {
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
+  xrayVisible: boolean;
+  setXrayVisible: Dispatch<SetStateAction<boolean>>;
   rulersVisible: boolean;
   setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
@@ -65,6 +68,8 @@ type ToolbarProps = {
   setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>;
   multiMeasureEnabled: boolean;
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
+  guideStyle: GuideStyle;
+  setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -107,11 +112,10 @@ function ToolbarButton({
     >
       <button
         type="button"
-        aria-label={`${label} (${shortcut})`}
         aria-pressed={active}
         title={`${label} (${shortcut})`}
         className={cn(
-          "msr:flex msr:size-8 msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
+          "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
             : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
@@ -323,6 +327,8 @@ function ToolbarComponent(
     toolMode,
     setEnabled,
     setToolMode,
+    xrayVisible,
+    setXrayVisible,
     rulersVisible,
     setRulersVisible,
     guideOrientation,
@@ -352,6 +358,8 @@ function ToolbarComponent(
     setSnapGuidesEnabled,
     multiMeasureEnabled,
     setMultiMeasureEnabled,
+    guideStyle,
+    setGuideStyle,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -428,9 +436,9 @@ function ToolbarComponent(
   const xrayMode = useCallback(() => {
     setEnabled(true);
     setColorPickerActive(false);
-    setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
+    setXrayVisible((prev) => !prev);
     onInteract();
-  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setXrayVisible]);
 
   const colorPickerMode = useCallback(() => {
     setEnabled(true);
@@ -542,7 +550,7 @@ function ToolbarComponent(
       </ToolbarButton>
       <ToolbarButton
         id="xray"
-        active={toolMode === "xray"}
+        active={xrayVisible}
         label="X-ray"
         shortcut="X"
         onClick={xrayMode}
@@ -797,6 +805,8 @@ function ToolbarComponent(
               setSnapGuidesEnabled={setSnapGuidesEnabled}
               multiMeasureEnabled={multiMeasureEnabled}
               setMultiMeasureEnabled={setMultiMeasureEnabled}
+              guideStyle={guideStyle}
+              setGuideStyle={setGuideStyle}
             />
           </div>
         ) : null}

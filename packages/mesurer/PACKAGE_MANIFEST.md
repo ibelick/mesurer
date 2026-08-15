@@ -35,6 +35,7 @@ type MeasurerProps = {
 - `colorPickerClickFormat`: Format copied when a displayed color value is clicked.
 - `persistence`: Optional custom adapter for extension or application-managed storage.
 - `onPersistenceError`: Optional callback for storage read/write failures.
+- `GuideStyle`: Persisted guide appearance settings for opacity, width, pattern, dash length, and gap.
 
 The default adapter stores versioned settings and workspace data. Custom adapters can also call `clearWorkspace()` or `clearSettings()` and subscribe to external changes.
 

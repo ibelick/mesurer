@@ -16,6 +16,7 @@ type HotkeyOptions = {
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
   onInteract: () => void
   onColorPicker: () => void
+  onToggleXray: () => void
   onToggleSettings: () => void
   isSettingsOpen: () => boolean
 }
@@ -63,6 +64,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
+      if (key === "x") {
+        options.onToggleXray()
+        options.onInteract()
+        return
+      }
+
       if (options.isOverlayActive()) {
         if (key === "a") {
           options.setToolMode((prev) =>
@@ -78,11 +85,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
         if (key === "g") {
           options.setToolMode((prev) => (prev === "guides" ? "none" : "guides"))
-          options.onInteract()
-        }
-
-        if (key === "x") {
-          options.setToolMode((prev) => (prev === "xray" ? "none" : "xray"))
           options.onInteract()
         }
 

@@ -51,10 +51,12 @@ import {
 } from "./core/colors";
 import {
   createLocalStoragePersistence,
+  DEFAULT_GUIDE_STYLE,
   type MesurerPersistence,
   type MesurerPersistenceSnapshot,
   type MesurerStoredSettings,
   type MesurerStoredWorkspace,
+  type GuideStyle,
 } from "./core/persistence";
 
 type MeasurerProps = {
@@ -87,7 +89,11 @@ const XRAY_STYLES = `
 .xray-mode .mesurer-root,
 .xray-mode .mesurer-root *,
 .xray-mode .mesurer-toolbar-surface,
-.xray-mode .mesurer-toolbar-surface * {
+.xray-mode .mesurer-toolbar-surface *,
+.xray-mode .mesurer-ti-box,
+.xray-mode .mesurer-ti-card,
+.xray-mode .mesurer-ti-card *,
+.xray-mode .mesurer-ti-close {
   outline: none !important;
 }
 `;
@@ -214,6 +220,7 @@ function MeasurerClient({
   const rulersVisibleRef = useRef(
     persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
   );
+  const xrayVisibleRef = useRef(persistedState?.xrayVisible ?? persistedState?.toolMode === "xray");
   const guideOrientationRef = useRef<"vertical" | "horizontal">(
     persistedState?.guideOrientation ?? "vertical",
   );
@@ -331,6 +338,11 @@ function MeasurerClient({
   const [settingsColorClickFormat, setSettingsColorClickFormat] = useState(
     persistedSettings.colorPickerClickFormat ?? colorPickerClickFormat,
   );
+  const [settingsGuideStyle, setSettingsGuideStyle] = useState<GuideStyle>({
+    ...DEFAULT_GUIDE_STYLE,
+    ...persistedSettings.guideStyle,
+  });
+  const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
@@ -341,6 +353,7 @@ function MeasurerClient({
   >(persistedState?.guideOrientation ?? "vertical");
 
   enabledRef.current = enabled;
+  xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
   rulersVisibleRef.current = rulersVisible;
   guideOrientationRef.current = guideOrientation;
@@ -354,6 +367,7 @@ function MeasurerClient({
     if (!settingsPersistOnReload) return;
     const workspace: MesurerStoredWorkspace = {
       enabled: enabledRef.current,
+      xrayVisible: xrayVisibleRef.current,
       toolMode: toolModeRef.current,
       rulersVisible: rulersVisibleRef.current,
       guideOrientation: guideOrientationRef.current,
@@ -390,6 +404,7 @@ function MeasurerClient({
       snapGuidesEnabled,
       multiMeasureEnabled,
       persistOnReload: settingsPersistOnReload,
+      guideStyle: settingsGuideStyle,
     });
   }, [
     multiMeasureEnabled,
@@ -402,6 +417,7 @@ function MeasurerClient({
     snapEnabled,
     snapGuidesEnabled,
     activePersistence,
+    settingsGuideStyle,
   ]);
 
   useEffect(() => {
@@ -425,6 +441,7 @@ function MeasurerClient({
     enabledRef.current = false;
     toolModeRef.current = "none";
     rulersVisibleRef.current = false;
+    xrayVisibleRef.current = false;
     guideOrientationRef.current = "vertical";
     measurementsRef.current = [];
     activeMeasurementRef.current = null;
@@ -434,6 +451,7 @@ function MeasurerClient({
     setEnabled(false);
     setToolMode("none");
     setRulersVisible(false);
+    setXrayVisible(false);
     setGuideOrientation("vertical");
     setMeasurements([]);
     setActiveMeasurement(null);
@@ -448,6 +466,7 @@ function MeasurerClient({
     enabledRef.current = workspace.enabled;
     toolModeRef.current = workspace.toolMode;
     rulersVisibleRef.current = workspace.rulersVisible;
+    xrayVisibleRef.current = workspace.xrayVisible;
     guideOrientationRef.current = workspace.guideOrientation;
     measurementsRef.current = workspace.measurements;
     activeMeasurementRef.current = workspace.activeMeasurement;
@@ -457,6 +476,7 @@ function MeasurerClient({
     setEnabled(workspace.enabled);
     setToolMode(workspace.toolMode);
     setRulersVisible(workspace.rulersVisible);
+    setXrayVisible(workspace.xrayVisible);
     setGuideOrientation(workspace.guideOrientation);
     setMeasurements(workspace.measurements);
     setActiveMeasurement(workspace.activeMeasurement);
@@ -482,6 +502,7 @@ function MeasurerClient({
     if (settings.snapEnabled !== undefined) setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
     if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
+    if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE, ...settings.guideStyle });
 
     const workspace = snapshot.workspace;
     if (!workspace) {
@@ -774,6 +795,7 @@ function MeasurerClient({
     setGuideOrientation: setGuideOrientationWithHistory,
     onInteract: () => setToolbarActive(true),
     onColorPicker: openColorPicker,
+    onToggleXray: () => setXrayVisible((previous) => !previous),
     onToggleSettings: () => setSettingsOpen((previous) => !previous),
     isSettingsOpen: () => settingsOpen,
   });
@@ -968,7 +990,7 @@ function MeasurerClient({
       style.textContent = XRAY_STYLES;
       ownerDocument.head.appendChild(style);
     }
-    if (toolMode === "xray") {
+    if (xrayVisible) {
       ownerDocument.body.classList.add("xray-mode");
     } else {
       ownerDocument.body.classList.remove("xray-mode");
@@ -976,7 +998,7 @@ function MeasurerClient({
     return () => {
       ownerDocument.body.classList.remove("xray-mode");
     };
-  }, [ownerDocument, toolMode]);
+  }, [ownerDocument, xrayVisible]);
 
   useEffect(() => {
     return () => {
@@ -1303,6 +1325,7 @@ function MeasurerClient({
         guideColorActive={guideColorActive}
         guideColorHover={guideColorHover}
         guideColorDefault={guideColorDefault}
+        guideStyle={settingsGuideStyle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1329,6 +1352,8 @@ function MeasurerClient({
         toolMode={toolMode}
         setEnabled={setEnabledWithHistory}
         setToolMode={setToolModeWithHistory}
+        xrayVisible={xrayVisible}
+        setXrayVisible={setXrayVisible}
         rulersVisible={rulersVisible}
         setRulersVisible={setRulersVisiblePersisted}
         guideOrientation={guideOrientation}
@@ -1357,6 +1382,8 @@ function MeasurerClient({
         setSnapGuidesEnabled={setSnapGuidesEnabled}
         multiMeasureEnabled={multiMeasureEnabled}
         setMultiMeasureEnabled={setMultiMeasureEnabled}
+        guideStyle={settingsGuideStyle}
+        setGuideStyle={setSettingsGuideStyle}
       />
     </div>,
     portalTarget,

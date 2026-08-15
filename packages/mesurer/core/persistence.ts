@@ -8,6 +8,24 @@ import type { ColorPickerFormat } from "./colors"
 
 export const MESURER_STORAGE_VERSION = 2
 
+export type GuidePattern = "solid" | "dashed" | "dotted"
+
+export type GuideStyle = {
+  opacity: number
+  width: number
+  pattern: GuidePattern
+  dashLength: number
+  gap: number
+}
+
+export const DEFAULT_GUIDE_STYLE: GuideStyle = {
+  opacity: 1,
+  width: 1,
+  pattern: "solid",
+  dashLength: 6,
+  gap: 4,
+}
+
 export type MesurerStoredSettings = {
   highlightColor?: string
   guideColor?: string
@@ -18,10 +36,12 @@ export type MesurerStoredSettings = {
   snapGuidesEnabled?: boolean
   multiMeasureEnabled?: boolean
   persistOnReload?: boolean
+  guideStyle?: Partial<GuideStyle>
 }
 
 export type MesurerStoredWorkspace = {
   enabled: boolean
+  xrayVisible: boolean
   toolMode: ToolMode
   rulersVisible: boolean
   guideOrientation: "vertical" | "horizontal"
@@ -52,6 +72,7 @@ type StoredRecord = {
   settings?: MesurerStoredSettings
   workspace?: MesurerStoredWorkspace | null
   enabled?: boolean
+  xrayVisible?: boolean
   toolMode?: ToolMode
   rulersVisible?: boolean
   guideOrientation?: "vertical" | "horizontal"
@@ -64,6 +85,18 @@ type StoredRecord = {
 
 const isFormat = (value: unknown): value is ColorPickerFormat =>
   value === "hex" || value === "rgb" || value === "hsl" || value === "oklch"
+
+const normalizeGuideStyle = (value: unknown): GuideStyle | undefined => {
+  if (!value || typeof value !== "object") return undefined
+  const input = value as Record<string, unknown>
+  return {
+    opacity: typeof input.opacity === "number" ? Math.min(1, Math.max(0, input.opacity)) : DEFAULT_GUIDE_STYLE.opacity,
+    width: typeof input.width === "number" ? Math.min(4, Math.max(1, input.width)) : DEFAULT_GUIDE_STYLE.width,
+    pattern: input.pattern === "dashed" || input.pattern === "dotted" ? input.pattern : DEFAULT_GUIDE_STYLE.pattern,
+    dashLength: typeof input.dashLength === "number" ? Math.min(24, Math.max(2, input.dashLength)) : DEFAULT_GUIDE_STYLE.dashLength,
+    gap: typeof input.gap === "number" ? Math.min(24, Math.max(0, input.gap)) : DEFAULT_GUIDE_STYLE.gap,
+  }
+}
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value)
@@ -149,6 +182,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.snapGuidesEnabled === "boolean" ? { snapGuidesEnabled: input.snapGuidesEnabled } : {}),
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
+    ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),
   }
 }
 
@@ -167,6 +201,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
   ) return null
   return {
     enabled: input.enabled,
+    xrayVisible: typeof input.xrayVisible === "boolean" ? input.xrayVisible : input.toolMode === "xray",
     toolMode: input.toolMode,
     rulersVisible: input.rulersVisible,
     guideOrientation: input.guideOrientation,
@@ -209,7 +244,8 @@ const migrate = (record: StoredRecord): MesurerPersistenceSnapshot | null => {
       !record.heldDistances
         ? null
         : normalizeStoredWorkspace({
-            enabled: record.enabled,
+             enabled: record.enabled,
+             xrayVisible: record.toolMode === "xray",
             toolMode: record.toolMode,
             rulersVisible: record.rulersVisible ?? record.toolMode === "rulers",
             guideOrientation: record.guideOrientation,

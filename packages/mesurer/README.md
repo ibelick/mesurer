@@ -48,6 +48,8 @@ function App() {
 | `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
 | `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |
 
+Guide appearance can be customized from Settings with opacity, line weight, solid/dashed/dotted pattern, dash length, and dash gap controls. These preferences are shared across browser tabs.
+
 ## Commands
 
 | Shortcut               | Action                                                |

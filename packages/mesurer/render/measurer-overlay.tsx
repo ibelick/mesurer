@@ -20,6 +20,7 @@ import type {
   Rect,
   ToolMode,
 } from "../core/types";
+import type { GuideStyle } from "../core/persistence";
 import { formatValue } from "../core/utils";
 import { DistanceOverlayItem } from "./distance-overlay-item";
 
@@ -66,6 +67,7 @@ type MeasurerOverlayProps = {
   guideColorActive: string;
   guideColorHover: string;
   guideColorDefault: string;
+  guideStyle: GuideStyle;
   onPointerDown: PointerEventHandler<HTMLDivElement>;
   onPointerMove: PointerEventHandler<HTMLDivElement>;
   onPointerUp: PointerEventHandler<HTMLDivElement>;
@@ -116,6 +118,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
   guideColorActive,
   guideColorHover,
   guideColorDefault,
+  guideStyle,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -436,12 +439,23 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
       {guides.map((guide) => {
         const isSelected = selectedGuideIds.includes(guide.id);
         const isHovered = hoverGuide?.id === guide.id;
-        const strokeWidth = isSelected || isHovered ? 2 : 1;
         const strokeColor = isSelected
           ? guideColorActive
           : isHovered
             ? guideColorHover
             : guideColorDefault;
+        const strokeWidth = Math.max(guideStyle.width, isSelected || isHovered ? 2 : guideStyle.width);
+        const isSolid = guideStyle.pattern === "solid";
+        const backgroundImage = guideStyle.pattern === "solid"
+          ? undefined
+          : guideStyle.pattern === "dotted"
+            ? `radial-gradient(circle, ${strokeColor} 0 ${strokeWidth / 2}px, transparent ${strokeWidth / 2 + 0.5}px)`
+            : `repeating-linear-gradient(${guide.orientation === "vertical" ? "to bottom" : "to right"}, ${strokeColor} 0 ${guideStyle.dashLength}px, transparent ${guideStyle.dashLength}px ${guideStyle.dashLength + guideStyle.gap}px)`;
+        const backgroundSize = guideStyle.pattern === "dotted"
+          ? guide.orientation === "vertical"
+            ? `${strokeWidth}px ${guideStyle.dashLength + guideStyle.gap}px`
+            : `${guideStyle.dashLength + guideStyle.gap}px ${strokeWidth}px`
+          : undefined;
 
         return (
           <div
@@ -478,14 +492,20 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
                       top: 0,
                       width: strokeWidth,
                       height: "100%",
-                      backgroundColor: strokeColor,
+                      backgroundColor: isSolid ? strokeColor : "transparent",
+                      backgroundImage,
+                      backgroundSize,
+                      opacity: guideStyle.opacity,
                     }
                   : {
                       top: GUIDE_HITBOX_SIZE / 2 - 1,
                       left: 0,
                       height: strokeWidth,
                       width: "100%",
-                      backgroundColor: strokeColor,
+                      backgroundColor: isSolid ? strokeColor : "transparent",
+                      backgroundImage,
+                      backgroundSize,
+                      opacity: guideStyle.opacity,
                     }
               }
             />
