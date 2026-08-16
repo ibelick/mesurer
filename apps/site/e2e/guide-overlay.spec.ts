@@ -234,7 +234,7 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.getByRole("button", { name: "Settings" }).click();
 
   const toolbar = page.locator(".mesurer-toolbar-surface");
-  const slider = page.getByRole("slider", { name: "Guide opacity" });
+  const slider = page.getByRole("slider", { name: "Opacity" });
   const before = await toolbar.boundingBox();
   const sliderBox = await slider.boundingBox();
   expect(before).not.toBeNull();
@@ -247,6 +247,13 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.mouse.up();
 
   await expect(slider).toHaveAttribute("aria-valuenow", "1");
+  const valueInput = page.locator("input[aria-label='Opacity value']");
+  await valueInput.click();
+  await valueInput.selectText();
+  await valueInput.pressSequentially("75%");
+  await expect(valueInput).toHaveValue("75%");
+  await valueInput.press("Enter");
+  await expect(valueInput).toHaveValue("75%");
   const after = await toolbar.boundingBox();
   expect(after).not.toBeNull();
   expect(after!.x).toBe(before!.x);
@@ -290,15 +297,15 @@ test("Cmd/Ctrl comma opens settings", async ({ page }) => {
 test("settings preferences survive a reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Behavior" }).click();
-  const hoverSwitch = page.getByRole("switch", { name: "Hover highlight" });
+  await page.getByRole("tab", { name: "Interaction" }).click();
+  const hoverSwitch = page.getByRole("switch", { name: "Hover" });
   await hoverSwitch.click();
   await expect(hoverSwitch).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Behavior" }).click();
-  await expect(page.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
+  await page.getByRole("tab", { name: "Interaction" }).click();
+  await expect(page.getByRole("switch", { name: "Hover" })).toHaveAttribute(
     "aria-checked",
     "false",
   );
@@ -350,12 +357,12 @@ test("syncs settings between tabs", async ({ page }) => {
   await secondPage.goto("/e2e/fixtures/guide-overlay.html");
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Behavior" }).click();
-  await page.getByRole("switch", { name: "Hover highlight" }).click();
+  await page.getByRole("tab", { name: "Interaction" }).click();
+  await page.getByRole("switch", { name: "Hover" }).click();
 
   await secondPage.getByRole("button", { name: "Settings" }).click();
-  await secondPage.getByRole("tab", { name: "Behavior" }).click();
-  await expect(secondPage.getByRole("switch", { name: "Hover highlight" })).toHaveAttribute(
+  await secondPage.getByRole("tab", { name: "Interaction" }).click();
+  await expect(secondPage.getByRole("switch", { name: "Hover" })).toHaveAttribute(
     "aria-checked",
     "false",
   );

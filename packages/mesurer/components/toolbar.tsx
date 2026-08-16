@@ -777,7 +777,7 @@ function ToolbarComponent(
         {settingsOpen ? (
           <div
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-56 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
+              "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-[260px] msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
               menuSide === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
