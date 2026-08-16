@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactP
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
+import { Tooltip, useTooltip } from "./tooltip"
 import type { GuideStyle } from "../core/persistence"
 
 type SettingsPanelProps = {
@@ -32,6 +33,11 @@ type SettingsPanelProps = {
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
 type SettingsTab = "guides" | "colors" | "interaction"
+const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
+  { value: "solid", label: "Solid" },
+  { value: "dashed", label: "Dashed" },
+  { value: "dotted", label: "Dotted" },
+]
 
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
@@ -366,6 +372,7 @@ export function SettingsPanel({
   }
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("guides")
+  const patternTooltip = useTooltip()
 
   return (
     <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-3 msr:overflow-y-auto">
@@ -400,14 +407,53 @@ export function SettingsPanel({
           <h2 className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guide</h2>
           <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
           <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
-          <label className="msr:mt-2 msr:flex msr:items-center msr:justify-between msr:text-[12px] msr:text-ink-700">
-            Pattern
-            <select className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" value={guideStyle.pattern} onChange={(event) => setGuideStyle((style) => ({ ...style, pattern: event.target.value as GuideStyle["pattern"] }))}>
-              <option value="solid">Solid</option>
-              <option value="dashed">Dashed</option>
-              <option value="dotted">Dotted</option>
-            </select>
-          </label>
+          <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+            <span className="msr:text-[12px] msr:text-ink-700">Pattern</span>
+            <div
+              className="msr:flex msr:gap-1"
+              role="radiogroup"
+              aria-label="Guide pattern"
+              onMouseLeave={patternTooltip.onTooltipContainerLeave}
+            >
+              {GUIDE_PATTERNS.map(({ value, label }) => {
+                const selected = guideStyle.pattern === value
+                const tooltipId = `guide-pattern-${value}`
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-label={`${label} guide pattern`}
+                    aria-checked={selected}
+                    className={cn(
+                      "msr:group msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-[5px] msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                      selected
+                        ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10"
+                        : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
+                    )}
+                    onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
+                    onMouseEnter={() => patternTooltip.onTooltipEnter(tooltipId)}
+                    onFocus={() => patternTooltip.onTooltipEnter(tooltipId)}
+                    onBlur={patternTooltip.onTooltipLeave}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "msr:block msr:w-full msr:border-t-2 msr:border-ink-700",
+                        value === "dashed" ? "msr:border-dashed" : value === "dotted" ? "msr:border-dotted" : "msr:border-solid",
+                      )}
+                    />
+                    <Tooltip
+                      label={label}
+                      visible={patternTooltip.visibleTooltipId === tooltipId}
+                      instant={patternTooltip.tooltipInstant}
+                      className="msr:z-10"
+                    />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           {guideStyle.pattern !== "solid" ? (
             <>
               <SliderControl label="Dash length" min={2} max={24} step={1} value={guideStyle.dashLength} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, dashLength: value }))} />
