@@ -197,8 +197,8 @@ test("falls back to the default swatch for an invalid persisted color", async ({
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("tab", { name: "Colors" }).click();
-  const colorField = dialog.locator("label").filter({ hasText: "Highlight color" });
-  await expect(colorField.locator("span").nth(1)).toHaveCSS(
+  const swatch = dialog.locator("input[aria-label='Highlight color color picker']").locator("..");
+  await expect(swatch).toHaveCSS(
     "background-color",
     "oklch(0.62 0.18 255)",
   );
@@ -396,9 +396,10 @@ test("ruler-created guides snap to regular guides", async ({ page }) => {
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 
   await page.getByRole("button", { name: "Rulers" }).click();
-  await page.mouse.move(9, 200);
+  await page.waitForTimeout(50);
+  await page.mouse.move(9, 200, { steps: 5 });
   await page.mouse.down();
-  await page.mouse.move(304, 200, { steps: 10 });
+  await page.mouse.move(304, 200, { steps: 20 });
   await page.mouse.up();
 
   const guides = page.locator("[data-mesurer-guide]");

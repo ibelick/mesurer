@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react"
+import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
@@ -32,6 +32,17 @@ type SettingsPanelProps = {
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
 type SettingsTab = "guides" | "colors" | "interaction"
+
+function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
+  return (
+    <div
+      className="msr:flex msr:h-6 msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-ink-50 msr:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)]"
+    >
+      <div className="msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
+      <div className="msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
+    </div>
+  )
+}
 
 function SettingsSwitch({ label, checked, onChange }: {
   label: string
@@ -110,7 +121,8 @@ function SliderControl({
   return (
     <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">{label}</span>
-      <div className="msr:flex msr:h-6 msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:bg-ink-50">
+      <ControlShell
+        left={
         <div
           className="msr:relative msr:min-w-0 msr:flex-1 msr:touch-none msr:select-none msr:px-2"
           style={{ height: 20 }}
@@ -173,11 +185,13 @@ function SliderControl({
             }}
           />
         </div>
-        <input
+        }
+        right={
+          <input
           type="text"
           aria-label={`${label} value`}
-          className="msr:h-full msr:shrink-0 msr:border-0 msr:border-l msr:border-ink-200 msr:bg-ink-50 msr:px-2 msr:text-center msr:font-mono msr:text-[12px] msr:font-medium msr:tabular-nums msr:text-ink-700 msr:outline-none msr:focus:bg-white msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
-          style={{ boxSizing: "border-box", borderRadius: "0 5px 5px 0", lineHeight: "1rem", width: 48 }}
+          className="msr:h-full msr:w-full msr:shrink-0 msr:border-0 msr:bg-transparent msr:px-2 msr:text-center msr:font-mono msr:text-[12px] msr:font-medium msr:tabular-nums msr:text-ink-700 msr:outline-none"
+          style={{ boxSizing: "border-box", borderRadius: "0 5px 5px 0", lineHeight: "1rem" }}
           value={draftValue}
           onFocus={() => {
             editingRef.current = true
@@ -196,13 +210,25 @@ function SliderControl({
           }}
           onKeyDown={(event) => {
             event.stopPropagation()
+            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              event.preventDefault()
+              const current = parseInput(event.currentTarget.value)
+              const direction = event.key === "ArrowUp" ? 1 : -1
+              const next = Number(
+                Math.min(max, Math.max(min, (Number.isFinite(current) ? current : value) + direction * step)).toFixed(4),
+              )
+              setDraftValue(formatValue(next))
+              onChange(next)
+              return
+            }
             if (event.key === "Enter") {
               event.preventDefault()
               event.currentTarget.blur()
             }
           }}
-        />
-      </div>
+          />
+        }
+      />
     </div>
   )
 }
@@ -221,29 +247,88 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
   const serialized = typeof context?.fillStyle === "string" ? context.fillStyle : ""
   const converted = serialized ? parseCssColor(serialized) : null
   const inputValue = (parsed ?? converted) ? colorToHex(parsed ?? converted!).slice(0, 7) : fallback
+  const sample = parsed ?? converted ?? parseCssColor(fallback)
+  const hexValue = sample ? colorToHex({ ...sample, alpha: 1 }).slice(1).toUpperCase() : "000000"
+  const alphaValue = sample ? Math.round(sample.alpha * 100) : 100
+  const [hexDraft, setHexDraft] = useState(hexValue)
+  const [alphaDraft, setAlphaDraft] = useState(String(alphaValue))
+  useEffect(() => {
+    setHexDraft(hexValue)
+    setAlphaDraft(String(alphaValue))
+  }, [alphaValue, hexValue])
+  const updateColor = (nextHex: string, nextAlpha: number) => {
+    if (!/^[\da-f]{6}$/i.test(nextHex)) return
+    const nextSample = parseCssColor(`#${nextHex}`)
+    if (!nextSample) return
+    onChange(colorToHex({ ...nextSample, alpha: Math.min(100, Math.max(0, nextAlpha)) / 100 }))
+  }
   const swatchColor =
     (ownerWindow as Window & { CSS?: { supports: (property: string, value: string) => boolean } }).CSS?.supports("color", value)
       ? value
       : fallback
   return (
-    <label className="msr:col-span-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
+    <div className="msr:col-span-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-[12px] msr:text-ink-700">
       <span>{label}</span>
-      <span
-        className="msr:relative msr:block msr:size-4 msr:overflow-hidden msr:cursor-pointer msr:rounded-[5px]"
-        style={{
-          backgroundColor: swatchColor,
-          boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.14)",
-        }}
-      >
-        <input
-          type="color"
-          aria-label={`${label} color picker`}
-          value={inputValue}
-          className="msr:absolute msr:inset-0 msr:size-full msr:cursor-pointer msr:opacity-0"
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </span>
-    </label>
+      <ControlShell
+        left={
+          <>
+            <span
+              className="msr:relative msr:ml-1 msr:block msr:size-4 msr:shrink-0 msr:overflow-hidden msr:rounded-[3px] msr:border msr:border-black/10"
+              style={{ backgroundColor: swatchColor }}
+            >
+              <input
+                type="color"
+                aria-label={`${label} color picker`}
+                value={inputValue}
+                className="msr:absolute msr:inset-0 msr:size-full msr:cursor-pointer msr:opacity-0"
+                onChange={(event) => onChange(event.target.value)}
+              />
+            </span>
+            <input
+              aria-label={`${label} hex value`}
+              type="text"
+              value={hexDraft}
+              maxLength={6}
+              className="msr:min-w-0 msr:flex-1 msr:bg-transparent msr:px-2 msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+              onChange={(event) => {
+                const next = event.target.value.replace(/[^\da-f]/gi, "").slice(0, 6).toUpperCase()
+                setHexDraft(next)
+                updateColor(next, Number(alphaDraft))
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            />
+          </>
+        }
+        right={
+          <input
+            aria-label={`${label} opacity value`}
+            type="text"
+            inputMode="numeric"
+            value={alphaDraft ? `${alphaDraft}%` : ""}
+            maxLength={4}
+            className="msr:h-full msr:w-full msr:bg-transparent msr:px-1 msr:text-center msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+            onChange={(event) => {
+              const next = event.target.value.replace(/\D/g, "").slice(0, 3)
+              setAlphaDraft(next)
+              updateColor(hexDraft, Number(next))
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+              event.preventDefault()
+              event.stopPropagation()
+              const current = Number.parseInt(alphaDraft, 10)
+              const direction = event.key === "ArrowUp" ? 1 : -1
+              const next = Math.min(100, Math.max(0, (Number.isFinite(current) ? current : 0) + direction))
+              setAlphaDraft(String(next))
+              updateColor(hexDraft, next)
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          />
+        }
+      />
+    </div>
   )
 }
 
@@ -313,10 +398,9 @@ export function SettingsPanel({
       {activeTab === "guides" ? (
         <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" role="tabpanel" aria-label="Guides settings">
           <h2 className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guide</h2>
-          <div className="msr:mt-2"><ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} /></div>
-          <SliderControl label="Opacity" min={0.2} max={1} step={0.05} value={guideStyle.opacity} formatValue={(value) => `${Math.round(value * 100)}%`} parseInput={(input) => Number.parseFloat(input) / 100} onChange={(value) => setGuideStyle((style) => ({ ...style, opacity: value }))} />
+          <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
           <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
-          <label className="msr:col-span-2 msr:mt-2 msr:flex msr:items-center msr:justify-between msr:text-[12px] msr:text-ink-700">
+          <label className="msr:mt-2 msr:flex msr:items-center msr:justify-between msr:text-[12px] msr:text-ink-700">
             Pattern
             <select className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" value={guideStyle.pattern} onChange={(event) => setGuideStyle((style) => ({ ...style, pattern: event.target.value as GuideStyle["pattern"] }))}>
               <option value="solid">Solid</option>
@@ -354,7 +438,7 @@ export function SettingsPanel({
               </button>
             ))}
           </div>
-          <label className="msr:col-span-2 msr:mt-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
+          <label className="msr:mt-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
             Copy as
             <select
               value={colorClickFormat}
@@ -367,7 +451,7 @@ export function SettingsPanel({
             </select>
           </label>
           <div className="msr:col-span-2 msr:mt-4"><h2 className="msr:text-[12px] msr:font-medium msr:text-ink-700">Appearance</h2></div>
-          <div className="msr:mt-2"><ColorField label="Highlight color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} /></div>
+          <ColorField label="Highlight color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         </section>
       ) : null}
 
