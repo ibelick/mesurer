@@ -23,6 +23,8 @@ type SelectedMeasurementBoxProps = {
   transitionMs: number
   labelOffset: number
   edgeVisibility?: EdgeVisibility
+  outlineColor: string
+  fillColor: string
 }
 
 const formatValue = (value: number) => Math.round(value)
@@ -32,15 +34,13 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
   transitionMs,
   labelOffset,
   edgeVisibility,
+  outlineColor,
+  fillColor,
 }: SelectedMeasurementBoxProps) {
   const edges =
     edgeVisibility ??
     ({ top: true, right: true, bottom: true, left: true } as EdgeVisibility)
   const displayRect = measurement.rect
-  const outlineColor =
-    "color-mix(in oklch, oklch(0.62 0.18 255) 80%, transparent)"
-  const fillColor = "color-mix(in oklch, oklch(0.62 0.18 255) 8%, transparent)"
-
   return (
     <div className="msr:pointer-events-none">
       <div

@@ -348,6 +348,19 @@ function MeasurerClient({
     orientation: "vertical" | "horizontal";
     position: number;
   } | null>(null);
+
+  const resetSettings = () => {
+    setSettingsHighlightColor(highlightColor);
+    setSettingsGuideColor(guideColor);
+    setSettingsHoverHighlight(hoverHighlightEnabled);
+    setSettingsPersistOnReload(persistOnReload);
+    setSettingsColorFormats([...colorPickerFormats]);
+    setSettingsColorClickFormat(colorPickerClickFormat);
+    setSnapEnabled(true);
+    setSnapGuidesEnabled(true);
+    setMultiMeasureEnabled(false);
+    setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE });
+  };
   const [guideOrientation, setGuideOrientation] = useState<
     "vertical" | "horizontal"
   >(persistedState?.guideOrientation ?? "vertical");
@@ -1382,9 +1395,10 @@ function MeasurerClient({
         setSnapGuidesEnabled={setSnapGuidesEnabled}
         multiMeasureEnabled={multiMeasureEnabled}
         setMultiMeasureEnabled={setMultiMeasureEnabled}
-        guideStyle={settingsGuideStyle}
-        setGuideStyle={setSettingsGuideStyle}
-      />
+         guideStyle={settingsGuideStyle}
+         setGuideStyle={setSettingsGuideStyle}
+         onResetSettings={resetSettings}
+       />
     </div>,
     portalTarget,
   );

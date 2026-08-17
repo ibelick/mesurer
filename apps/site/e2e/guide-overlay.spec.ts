@@ -196,8 +196,8 @@ test("falls back to the default swatch for an invalid persisted color", async ({
 
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Colors" }).click();
-  const swatch = dialog.locator("input[aria-label='Highlight color color picker']").locator("..");
+  await dialog.getByRole("tab", { name: "Select" }).click();
+  const swatch = dialog.locator("input[aria-label='Color color picker']").locator("..");
   await expect(swatch).toHaveCSS(
     "background-color",
     "oklch(0.62 0.18 255)",
@@ -234,26 +234,29 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.getByRole("button", { name: "Settings" }).click();
 
   const toolbar = page.locator(".mesurer-toolbar-surface");
-  const slider = page.getByRole("slider", { name: "Opacity" });
+  const slider = page.getByRole("slider", { name: "Weight" });
+  const sliderContainer = page.locator('[data-slider-container="true"]').filter({ has: slider });
   const before = await toolbar.boundingBox();
   const sliderBox = await slider.boundingBox();
+  const sliderContainerBox = await sliderContainer.boundingBox();
   expect(before).not.toBeNull();
   expect(sliderBox).not.toBeNull();
+  expect(sliderContainerBox).not.toBeNull();
   expect(sliderBox!.width).toBe(14);
   expect(sliderBox!.height).toBe(14);
-  await page.mouse.move(sliderBox!.x + 2, sliderBox!.y + sliderBox!.height / 2);
+  await page.mouse.move(sliderContainerBox!.x + 8, sliderContainerBox!.y + sliderContainerBox!.height / 2);
   await page.mouse.down();
-  await page.mouse.move(sliderBox!.x + sliderBox!.width - 2, sliderBox!.y + sliderBox!.height / 2, { steps: 5 });
+  await page.mouse.move(sliderContainerBox!.x + sliderContainerBox!.width - 8, sliderContainerBox!.y + sliderContainerBox!.height / 2, { steps: 5 });
   await page.mouse.up();
 
-  await expect(slider).toHaveAttribute("aria-valuenow", "1");
-  const valueInput = page.locator("input[aria-label='Opacity value']");
+  await expect(slider).toHaveAttribute("aria-valuenow", "4");
+  const valueInput = page.locator("input[aria-label='Weight value']");
   await valueInput.click();
   await valueInput.selectText();
-  await valueInput.pressSequentially("75%");
-  await expect(valueInput).toHaveValue("75%");
+  await valueInput.pressSequentially("3px");
+  await expect(valueInput).toHaveValue("3px");
   await valueInput.press("Enter");
-  await expect(valueInput).toHaveValue("75%");
+  await expect(valueInput).toHaveValue("3px");
   const after = await toolbar.boundingBox();
   expect(after).not.toBeNull();
   expect(after!.x).toBe(before!.x);
@@ -263,7 +266,7 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
 test("guide pattern renders as a real dashed line", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("combobox").nth(0).selectOption("dashed");
+  await page.getByRole("radio", { name: "Dashed guide pattern" }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Guides (G)" }).click();
   await page.mouse.click(300, 200);
@@ -297,15 +300,15 @@ test("Cmd/Ctrl comma opens settings", async ({ page }) => {
 test("settings preferences survive a reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Interaction" }).click();
-  const hoverSwitch = page.getByRole("switch", { name: "Hover" });
+  await page.getByRole("tab", { name: "Select" }).click();
+  const hoverSwitch = page.getByRole("switch", { name: "Hover highlighting" });
   await hoverSwitch.click();
   await expect(hoverSwitch).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Interaction" }).click();
-  await expect(page.getByRole("switch", { name: "Hover" })).toHaveAttribute(
+  await page.getByRole("tab", { name: "Select" }).click();
+  await expect(page.getByRole("switch", { name: "Hover highlighting" })).toHaveAttribute(
     "aria-checked",
     "false",
   );
@@ -357,12 +360,12 @@ test("syncs settings between tabs", async ({ page }) => {
   await secondPage.goto("/e2e/fixtures/guide-overlay.html");
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("tab", { name: "Interaction" }).click();
-  await page.getByRole("switch", { name: "Hover" }).click();
+  await page.getByRole("tab", { name: "Select" }).click();
+  await page.getByRole("switch", { name: "Hover highlighting" }).click();
 
   await secondPage.getByRole("button", { name: "Settings" }).click();
-  await secondPage.getByRole("tab", { name: "Interaction" }).click();
-  await expect(secondPage.getByRole("switch", { name: "Hover" })).toHaveAttribute(
+  await secondPage.getByRole("tab", { name: "Select" }).click();
+  await expect(secondPage.getByRole("switch", { name: "Hover highlighting" })).toHaveAttribute(
     "aria-checked",
     "false",
   );

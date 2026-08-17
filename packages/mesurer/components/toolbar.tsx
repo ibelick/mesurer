@@ -71,6 +71,7 @@ type ToolbarProps = {
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
   guideStyle: GuideStyle;
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
+  onResetSettings: () => void;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -348,6 +349,7 @@ function ToolbarComponent(
     setMultiMeasureEnabled,
     guideStyle,
     setGuideStyle,
+    onResetSettings,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -795,6 +797,7 @@ function ToolbarComponent(
               setMultiMeasureEnabled={setMultiMeasureEnabled}
               guideStyle={guideStyle}
               setGuideStyle={setGuideStyle}
+              onResetSettings={onResetSettings}
             />
           </div>
         ) : null}

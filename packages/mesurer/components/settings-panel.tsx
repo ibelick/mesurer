@@ -29,10 +29,11 @@ type SettingsPanelProps = {
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>
   guideStyle: GuideStyle
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>
+  onResetSettings: () => void
 }
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
-type SettingsTab = "guides" | "colors" | "interaction"
+type SettingsTab = "guides" | "select" | "color-picker" | "general"
 const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
   { value: "solid", label: "Solid" },
   { value: "dashed", label: "Dashed" },
@@ -67,13 +68,13 @@ function SettingsSwitch({ label, checked, onChange }: {
       <span
         aria-hidden="true"
         className={cn(
-          "msr:relative msr:block msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:rounded-full msr:border msr:transition-colors",
+          "msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
           checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
         )}
       >
         <span
-          className="msr:absolute msr:left-0 msr:top-1/2 msr:size-[10px] msr:rounded-full msr:bg-white msr:shadow-sm msr:transition-transform"
-          style={{ transform: `translate(${checked ? 14 : 2}px, -50%)` }}
+          className="msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:shadow-sm msr:transition-transform"
+          style={{ transform: `translateX(${checked ? 12 : 0}px)` }}
         />
       </span>
     </button>
@@ -360,6 +361,7 @@ export function SettingsPanel({
   setMultiMeasureEnabled,
   guideStyle,
   setGuideStyle,
+  onResetSettings,
 }: SettingsPanelProps) {
   const toggleFormat = (format: ColorPickerFormat) => {
     setColorFormats((previous) => {
@@ -375,108 +377,94 @@ export function SettingsPanel({
   const patternTooltip = useTooltip()
 
   return (
-    <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-3 msr:overflow-y-auto">
-      <div
-        className="msr:flex msr:select-none msr:items-stretch msr:gap-0 msr:rounded-[5px] msr:bg-ink-50"
-        style={{ height: 24, padding: 1 }}
-        role="tablist"
-        aria-label="Settings sections"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        {(["guides", "colors", "interaction"] as const).map((tab) => (
+    <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-4 msr:overflow-y-auto" onPointerDown={(event) => event.stopPropagation()}>
+      <div className="msr:flex msr:h-6 msr:shrink-0 msr:select-none msr:items-stretch msr:gap-0 msr:rounded-[5px] msr:bg-ink-50 msr:p-px" role="tablist" aria-label="Settings sections">
+        {([
+          ["guides", "Guides"],
+          ["select", "Select"],
+          ["color-picker", "Color"],
+          ["general", "General"],
+        ] as const).map(([value, label]) => (
           <button
-            key={tab}
+            key={value}
             type="button"
             role="tab"
-            aria-selected={activeTab === tab}
+            aria-selected={activeTab === value}
             className={cn(
-              "msr:relative msr:flex msr:flex-1 msr:appearance-none msr:items-center msr:justify-center msr:px-2 msr:py-0 msr:text-[11px] msr:font-medium msr:transition-colors msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
-              activeTab === tab
+              "msr:relative msr:flex msr:min-w-0 msr:flex-1 msr:appearance-none msr:items-center msr:justify-center msr:whitespace-nowrap msr:px-1.5 msr:py-0 msr:text-[10px] msr:font-medium msr:transition-colors msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+              activeTab === value
                 ? "msr:rounded-[5px] msr:bg-white msr:text-ink-900 msr:shadow-[0_0_0_1px_rgba(15,23,42,0.12)]"
                 : "msr:rounded-[5px] msr:text-ink-500 msr:hover:text-ink-700",
             )}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(value)}
           >
-            {tab === "guides" ? "Guides" : tab === "colors" ? "Colors" : "Interaction"}
+            {label}
           </button>
         ))}
       </div>
 
-      {activeTab === "guides" ? (
-        <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" role="tabpanel" aria-label="Guides settings">
-          <h2 className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guide</h2>
-          <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
-          <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
-          <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
-            <span className="msr:text-[12px] msr:text-ink-700">Pattern</span>
-            <div
-              className="msr:flex msr:gap-1"
-              role="radiogroup"
-              aria-label="Guide pattern"
-              onMouseLeave={patternTooltip.onTooltipContainerLeave}
-            >
-              {GUIDE_PATTERNS.map(({ value, label }) => {
-                const selected = guideStyle.pattern === value
-                const tooltipId = `guide-pattern-${value}`
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-label={`${label} guide pattern`}
-                    aria-checked={selected}
-                    className={cn(
-                      "msr:group msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-[5px] msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
-                      selected
-                        ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10"
-                        : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
-                    )}
-                    onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
-                    onMouseEnter={() => patternTooltip.onTooltipEnter(tooltipId)}
-                    onFocus={() => patternTooltip.onTooltipEnter(tooltipId)}
-                    onBlur={patternTooltip.onTooltipLeave}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "msr:block msr:w-full msr:border-t-2 msr:border-ink-700",
-                        value === "dashed" ? "msr:border-dashed" : value === "dotted" ? "msr:border-dotted" : "msr:border-solid",
-                      )}
-                    />
-                    <Tooltip
-                      label={label}
-                      visible={patternTooltip.visibleTooltipId === tooltipId}
-                      instant={patternTooltip.tooltipInstant}
-                      className="msr:z-10"
-                    />
-                  </button>
-                )
-              })}
-            </div>
+      {activeTab === "guides" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-guides-title">
+        <h2 id="settings-guides-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guides</h2>
+        <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
+        <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
+        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+          <span className="msr:text-[12px] msr:text-ink-700">Pattern</span>
+          <div className="msr:flex msr:gap-1" role="radiogroup" aria-label="Guide pattern" onMouseLeave={patternTooltip.onTooltipContainerLeave}>
+            {GUIDE_PATTERNS.map(({ value, label }) => {
+              const selected = guideStyle.pattern === value
+              const tooltipId = `guide-pattern-${value}`
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-label={`${label} guide pattern`}
+                  aria-checked={selected}
+                  className={cn(
+                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-[5px] msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                    selected ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
+                  )}
+                  onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
+                  onMouseEnter={() => patternTooltip.onTooltipEnter(tooltipId)}
+                  onFocus={() => patternTooltip.onTooltipEnter(tooltipId)}
+                  onBlur={patternTooltip.onTooltipLeave}
+                >
+                  <span aria-hidden="true" className={cn("msr:block msr:w-full msr:border-t-2 msr:border-ink-700", value === "dashed" ? "msr:border-dashed" : value === "dotted" ? "msr:border-dotted" : "msr:border-solid")} />
+                  <Tooltip label={label} visible={patternTooltip.visibleTooltipId === tooltipId} instant={patternTooltip.tooltipInstant} className="msr:z-10" />
+                </button>
+              )
+            })}
           </div>
-          {guideStyle.pattern !== "solid" ? (
-            <>
-              <SliderControl label="Dash length" min={2} max={24} step={1} value={guideStyle.dashLength} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, dashLength: value }))} />
-              <SliderControl label="Dash gap" min={0} max={24} step={1} value={guideStyle.gap} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, gap: value }))} />
-            </>
-          ) : null}
-        </section>
-      ) : null}
+        </div>
+        {guideStyle.pattern !== "solid" ? (
+          <>
+            <SliderControl label="Dash length" min={2} max={24} step={1} value={guideStyle.dashLength} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, dashLength: value }))} />
+            <SliderControl label="Dash gap" min={0} max={24} step={1} value={guideStyle.gap} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, gap: value }))} />
+          </>
+        ) : null}
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
+      </section> : null}
 
-      {activeTab === "colors" ? (
-        <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" role="tabpanel" aria-label="Colors settings">
-          <h2 className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Color</h2>
-          <div className="msr:col-span-2 msr:mt-2 msr:flex msr:flex-wrap msr:gap-1">
+      {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-select-title">
+        <h2 id="settings-select-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Select</h2>
+        <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Hover highlighting" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Snap to elements" checked={snapEnabled} onChange={setSnapEnabled} /></div>
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
+      </section> : null}
+
+      {activeTab === "color-picker" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Color settings">
+        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+          <span className="msr:text-[12px] msr:text-ink-700">Format</span>
+          <div className="msr:flex msr:min-w-0 msr:gap-1">
             {COLOR_FORMATS.map((format) => (
               <button
                 key={format}
                 type="button"
                 aria-pressed={colorFormats.includes(format)}
                 className={cn(
-                  "msr:rounded-[5px] msr:border msr:px-1.5 msr:py-0.5 msr:text-[11px] msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
-                  colorFormats.includes(format)
-                    ? "msr:border-[#0d99ff] msr:bg-[#0d99ff] msr:text-white"
-                    : "msr:border-ink-200 msr:text-ink-500 msr:hover:bg-ink-50",
+                  "msr:h-6 msr:min-w-0 msr:flex-1 msr:rounded-[5px] msr:border msr:px-1 msr:text-[11px] msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                  colorFormats.includes(format) ? "msr:border-[#0d99ff] msr:bg-[#0d99ff] msr:text-white" : "msr:border-ink-200 msr:text-ink-500 msr:hover:bg-ink-50",
                 )}
                 onClick={() => toggleFormat(format)}
               >
@@ -484,33 +472,30 @@ export function SettingsPanel({
               </button>
             ))}
           </div>
-          <label className="msr:mt-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
-            Copy as
-            <select
-              value={colorClickFormat}
-              className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
-              onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}
-            >
-              {COLOR_FORMATS.map((format) => (
-                <option key={format} value={format}>{format}</option>
-              ))}
-            </select>
-          </label>
-          <div className="msr:col-span-2 msr:mt-4"><h2 className="msr:text-[12px] msr:font-medium msr:text-ink-700">Appearance</h2></div>
-          <ColorField label="Highlight color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
-        </section>
-      ) : null}
+        </div>
+        <label className="msr:col-span-2 msr:mt-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
+          Copy
+          <select value={colorClickFormat} className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
+            {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
+          </select>
+        </label>
+      </section> : null}
 
-      {activeTab === "interaction" ? (
-        <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" role="tabpanel" aria-label="Interaction settings">
-          <h2 className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Interaction</h2>
-          <div className="msr:mt-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
-          <div className="msr:mt-2"><SettingsSwitch label="Snap to elements" checked={snapEnabled} onChange={setSnapEnabled} /></div>
-          <div className="msr:mt-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
-          <div className="msr:mt-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
-          <div className="msr:mt-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
-        </section>
-      ) : null}
+      {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-general-title">
+        <h2 id="settings-general-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">General</h2>
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
+        <div className="msr:col-span-2 msr:mt-2 msr:flex msr:justify-end">
+          <button
+            type="button"
+            aria-label="Reset settings to defaults"
+            title="Reset settings to defaults"
+            className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+            onClick={onResetSettings}
+          >
+            Reset
+          </button>
+        </div>
+      </section> : null}
     </div>
   )
 }

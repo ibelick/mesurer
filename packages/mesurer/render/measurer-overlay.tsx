@@ -164,6 +164,8 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
               transitionMs={MEASURE_TRANSITION_MS}
               labelOffset={MEASURE_LABEL_OFFSET}
               edgeVisibility={measurementEdgeVisibility[index]}
+              outlineColor={outlineColor}
+              fillColor={fillColor}
             />
           ))
         : null}
@@ -297,6 +299,8 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
               transitionMs={MEASURE_TRANSITION_MS}
               labelOffset={MEASURE_LABEL_OFFSET}
               edgeVisibility={selectedEdgeVisibility[index]}
+              outlineColor={outlineColor}
+              fillColor={fillColor}
             />
           ))
         : null}
