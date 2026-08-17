@@ -14,6 +14,7 @@ type LiveParams = {
   document: Document
   window: Window
   enabled: boolean
+  selectionEnabled: boolean
   selectedElementRef: RefObject<HTMLElement | null>
   hoverElementRef: RefObject<HTMLElement | null>
   setSelectedMeasurement: Dispatch<SetStateAction<InspectMeasurement | null>>
@@ -108,7 +109,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       )
 
       const selected = params.selectedElementRef.current
-      if (selected && params.document.contains(selected)) {
+      if (params.selectionEnabled && selected && params.document.contains(selected)) {
         params.setSelectedMeasurement((prev) => {
           const next = getInspectMeasurement(selected, params.window)
           if (prev && rectAlmostEqual(prev.rect, next.rect)) return prev
@@ -116,25 +117,27 @@ export const useLiveElementTracking = (params: LiveParams) => {
         })
       }
 
-      params.setSelectedMeasurements((prev) =>
-        prev.map((measurement) => {
-          if (
-            !measurement.elementRef ||
-            !params.document.contains(measurement.elementRef)
-          ) {
-            return measurement
-          }
-          const next = getInspectMeasurement(measurement.elementRef, params.window)
-          if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
-          return {
-            ...next,
-            id: measurement.id,
-          }
-        })
-      )
+      if (params.selectionEnabled) {
+        params.setSelectedMeasurements((prev) =>
+          prev.map((measurement) => {
+            if (
+              !measurement.elementRef ||
+              !params.document.contains(measurement.elementRef)
+            ) {
+              return measurement
+            }
+            const next = getInspectMeasurement(measurement.elementRef, params.window)
+            if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
+            return {
+              ...next,
+              id: measurement.id,
+            }
+          })
+        )
+      }
 
       const hover = params.hoverElementRef.current
-      if (hover && params.document.contains(hover)) {
+      if (params.selectionEnabled && hover && params.document.contains(hover)) {
         const rect = getRectFromDom(hover)
         params.setHoverRect((prev) =>
           prev && rectAlmostEqual(prev, rect) ? prev : rect

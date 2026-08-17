@@ -139,7 +139,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 
   return (
     <div
-      className={`msr:absolute msr:inset-0 ${
+      className={`msr:absolute msr:inset-0 msr:select-none ${
         overlayVisible
           ? `msr:pointer-events-auto ${
               guidesEnabled

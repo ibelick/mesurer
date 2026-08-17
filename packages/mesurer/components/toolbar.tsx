@@ -782,6 +782,10 @@ function ToolbarComponent(
             data-mesurer-inspector-ui="true"
             role="dialog"
             aria-label="Settings"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerMove={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <SettingsPanel
               ownerWindow={eventTarget}

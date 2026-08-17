@@ -42,7 +42,7 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
     ({ top: true, right: true, bottom: true, left: true } as EdgeVisibility)
   const displayRect = measurement.rect
   return (
-    <div className="msr:pointer-events-none">
+    <div className="msr:pointer-events-none" data-mesurer-selected-measurement="true">
       <div
         className="msr:absolute"
         style={{

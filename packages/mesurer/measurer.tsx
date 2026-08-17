@@ -889,6 +889,7 @@ function MeasurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
+    selectionEnabled: toolMode === "select" && !settingsOpen,
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,
@@ -918,6 +919,7 @@ function MeasurerClient({
     if (!enabled) return;
 
     const handleGuidePointerDown = (event: globalThis.PointerEvent) => {
+      if (settingsOpen) return;
       if (toolbarRef.current?.contains(event.target as Node)) return;
       const guideTarget = event.composedPath().some(
         (target) =>
@@ -1016,6 +1018,7 @@ function MeasurerClient({
     ownerWindow,
     setGuidesPersisted,
     setSelectedGuideIdsPersisted,
+    settingsOpen,
     toolMode,
   ]);
 
@@ -1030,6 +1033,17 @@ function MeasurerClient({
       textInspector.disable();
     }
   }, [settingsOpen, textInspector, toolMode]);
+
+  useEffect(() => {
+    if (toolMode === "select" && !settingsOpen) return;
+    setSelectedElement(null);
+    setHoverElement(null);
+    setHoverRect(null);
+    setHoverPointer(null);
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
+    clearSelectionRect();
+  }, [clearSelectionRect, setHoverElement, setHoverPointer, setHoverRect, setSelectedElement, setSelectedMeasurement, setSelectedMeasurements, settingsOpen, toolMode]);
 
   useEffect(() => {
     let style = ownerDocument.getElementById(XRAY_STYLE_ID);
@@ -1174,6 +1188,7 @@ function MeasurerClient({
     clearGuideDragHold,
     scheduleGuideDragHold,
     enabled,
+    settingsOpen,
     toolMode,
     guidesEnabled,
     snapEnabled,
@@ -1333,7 +1348,7 @@ function MeasurerClient({
       ref={overlayRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
     >
-      {enabled && rulersVisible ? (
+      {enabled && rulersVisible && !settingsOpen ? (
         <RulersOverlay
           ownerWindow={ownerWindow}
           settings={settingsRulerSettings}
@@ -1346,9 +1361,9 @@ function MeasurerClient({
         />
       ) : null}
       <MeasurerOverlay
-        enabled={enabled}
+         enabled={enabled && !settingsOpen}
         toolMode={toolMode}
-        guidePointerEvents={enabled && (toolMode !== "none" || rulersVisible)}
+         guidePointerEvents={enabled && !settingsOpen && (toolMode !== "none" || rulersVisible)}
         guidesEnabled={guidesEnabled}
         altPressed={altPressed}
         isDragging={isDragging}

@@ -42,6 +42,7 @@ type UseMeasurerPointerArgs = {
     setDraggingGuideId: (value: SetStateAction<string | null>) => void
   ) => void
   enabled: boolean
+  settingsOpen: boolean
   toolMode: ToolMode
   guidesEnabled: boolean
   snapEnabled: boolean
@@ -91,6 +92,7 @@ export const useMeasurerPointer = ({
   clearGuideDragHold,
   scheduleGuideDragHold,
   enabled,
+  settingsOpen,
   toolMode,
   guidesEnabled,
   snapEnabled,
@@ -179,6 +181,7 @@ export const useMeasurerPointer = ({
       const commit = createActionCommit()
       const toolbarNode = toolbarRef.current
       if (toolbarNode && toolbarNode.contains(event.target as Node)) return
+      if (settingsOpen) return
       if (!enabled || event.button !== 0) return
       if (toolMode === "none") return
       clearSelectionRect()
@@ -207,7 +210,11 @@ export const useMeasurerPointer = ({
       }
 
       if (guidesEnabled) {
+        event.preventDefault()
         commit()
+        setStart(null)
+        setEnd(null)
+        setIsDragging(false)
         const position = getSnapGuidePosition({
           orientation: guideOrientation,
           point,
@@ -243,8 +250,9 @@ export const useMeasurerPointer = ({
       clearSelectionRect,
       createActionCommit,
           draggingGuideId,
-          document,
+      document,
       enabled,
+      settingsOpen,
       guideOrientation,
       guides,
       guidesEnabled,
@@ -270,6 +278,7 @@ export const useMeasurerPointer = ({
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const toolbarNode = toolbarRef.current
       if (toolbarNode && toolbarNode.contains(event.target as Node)) return
+      if (settingsOpen) return
       if (!enabled) return
       if (toolMode === "none") {
         if (hoverHighlightEnabled) {
@@ -290,7 +299,7 @@ export const useMeasurerPointer = ({
       if (!hoverFrameRef.current) {
         hoverFrameRef.current = window.requestAnimationFrame(() => {
           const latest = hoverPointRef.current
-          if (latest && !draggingGuideId) {
+          if (latest && !draggingGuideId && !guidesEnabled) {
             if (hoverHighlightEnabled) {
               updateHoverTarget(latest)
             } else {
@@ -348,6 +357,8 @@ export const useMeasurerPointer = ({
         )
       }
 
+      if (guidesEnabled) return
+
       if (!start) return
       setEnd(point)
 
@@ -364,6 +375,7 @@ export const useMeasurerPointer = ({
       altPressed,
       draggingGuideId,
       enabled,
+      settingsOpen,
       hoverHighlightEnabled,
       guides,
       guidesEnabled,
@@ -392,8 +404,15 @@ export const useMeasurerPointer = ({
       const commit = createActionCommit()
       const toolbarNode = toolbarRef.current
       if (toolbarNode && toolbarNode.contains(event.target as Node)) return
+      if (settingsOpen) return
       if (!enabled) return
       clearGuideDragHold()
+      if (guidesEnabled) {
+        setStart(null)
+        setEnd(null)
+        setIsDragging(false)
+        return
+      }
       if (toolMode === "none") {
         setStart(null)
         setEnd(null)
@@ -597,7 +616,9 @@ export const useMeasurerPointer = ({
       createActionCommit,
       draggingGuideId,
       enabled,
+      settingsOpen,
       end,
+      guidesEnabled,
       hoverHighlightEnabled,
       isDragging,
       overlayRef,
