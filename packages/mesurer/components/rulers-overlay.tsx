@@ -6,6 +6,7 @@ const RULER_SIZE = 18;
 const RULER_LENGTH = 4000;
 const TICK_STEP = 5;
 const RULER_EDGE_REVEAL_DISTANCE = 32;
+const RULER_FADE_MS = 100;
 
 type RulersOverlayProps = {
   ownerWindow: Window;
@@ -50,11 +51,22 @@ export const RulersOverlay = memo(function RulersOverlay({
   useEffect(() => {
     setNearEdge(!settings.edgeReveal);
     if (!settings.edgeReveal) return;
-    const handlePointerMove = (event: globalThis.MouseEvent) => {
-      setNearEdge(event.clientX <= RULER_EDGE_REVEAL_DISTANCE || event.clientY <= RULER_EDGE_REVEAL_DISTANCE);
+    const handlePointerMove = (event: Event) => {
+      const pointer = event as globalThis.MouseEvent;
+      const nearHorizontalEdge =
+        pointer.clientX <= RULER_EDGE_REVEAL_DISTANCE ||
+        pointer.clientX >= ownerWindow.innerWidth - RULER_EDGE_REVEAL_DISTANCE;
+      const nearVerticalEdge =
+        pointer.clientY <= RULER_EDGE_REVEAL_DISTANCE ||
+        pointer.clientY >= ownerWindow.innerHeight - RULER_EDGE_REVEAL_DISTANCE;
+      setNearEdge(nearHorizontalEdge || nearVerticalEdge);
     };
-    ownerWindow.addEventListener("mousemove", handlePointerMove);
-    return () => ownerWindow.removeEventListener("mousemove", handlePointerMove);
+    ownerWindow.document.addEventListener("pointermove", handlePointerMove, true);
+    ownerWindow.document.addEventListener("mousemove", handlePointerMove, true);
+    return () => {
+      ownerWindow.document.removeEventListener("pointermove", handlePointerMove, true);
+      ownerWindow.document.removeEventListener("mousemove", handlePointerMove, true);
+    };
   }, [ownerWindow, settings.edgeReveal]);
 
   const showRulers = nearEdge;
@@ -127,7 +139,7 @@ export const RulersOverlay = memo(function RulersOverlay({
       className="msr:pointer-events-none msr:absolute msr:inset-0 msr:select-none msr:text-[9px] msr:text-[#64748b]"
       style={{
         opacity: showRulers ? settings.opacity : 0,
-        transition: "opacity 150ms ease",
+        transition: `opacity ${RULER_FADE_MS}ms ease`,
       }}
     >
       <div
@@ -225,15 +237,6 @@ export const RulersOverlay = memo(function RulersOverlay({
           ) : null}
         </svg>
       </div>
-
-      <div
-        className="msr:pointer-events-none msr:absolute msr:left-[18px] msr:right-0 msr:top-[18px] msr:bg-white"
-        style={{ height: settings.gutter }}
-      />
-      <div
-        className="msr:pointer-events-none msr:absolute msr:bottom-0 msr:left-[18px] msr:top-[18px] msr:bg-white"
-        style={{ width: settings.gutter }}
-      />
 
       <div
         className="msr:absolute msr:bottom-0 msr:left-0 msr:top-[18px] msr:w-[18px] msr:overflow-hidden msr:bg-white"

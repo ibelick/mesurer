@@ -351,7 +351,7 @@ test("near-edge rulers reveal when the pointer approaches the edge", async ({ pa
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
   await page.getByRole("tab", { name: "Rulers" }).click();
-  await page.getByRole("switch", { name: "Near edge" }).click();
+  await page.getByRole("switch", { name: "Hover near edge" }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Rulers (R)" }).click();
 

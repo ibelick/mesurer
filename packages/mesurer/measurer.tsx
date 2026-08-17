@@ -1024,12 +1024,12 @@ function MeasurerClient({
   // when to turn on and off. `cleanup()` wipes everything on unmount so
   // nothing leaks on SPA re-init or extension teardown.
   useEffect(() => {
-    if (toolMode === "text-inspector") {
+    if (toolMode === "text-inspector" && !settingsOpen) {
       textInspector.enable();
     } else {
       textInspector.disable();
     }
-  }, [textInspector, toolMode]);
+  }, [settingsOpen, textInspector, toolMode]);
 
   useEffect(() => {
     let style = ownerDocument.getElementById(XRAY_STYLE_ID);

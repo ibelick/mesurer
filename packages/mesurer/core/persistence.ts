@@ -28,13 +28,11 @@ export const DEFAULT_GUIDE_STYLE: GuideStyle = {
 
 export type RulerSettings = {
   opacity: number
-  gutter: number
   edgeReveal: boolean
 }
 
 export const DEFAULT_RULER_SETTINGS: RulerSettings = {
   opacity: 1,
-  gutter: 8,
   edgeReveal: false,
 }
 
@@ -116,7 +114,6 @@ const normalizeRulerSettings = (value: unknown): RulerSettings | undefined => {
   const input = value as Record<string, unknown>
   return {
     opacity: typeof input.opacity === "number" ? Math.min(1, Math.max(0.2, input.opacity)) : DEFAULT_RULER_SETTINGS.opacity,
-    gutter: typeof input.gutter === "number" ? Math.min(24, Math.max(0, input.gutter)) : DEFAULT_RULER_SETTINGS.gutter,
     edgeReveal: typeof input.edgeReveal === "boolean" ? input.edgeReveal : DEFAULT_RULER_SETTINGS.edgeReveal,
   }
 }

@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": false,

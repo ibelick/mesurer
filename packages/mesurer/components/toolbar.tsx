@@ -779,6 +779,7 @@ function ToolbarComponent(
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
             )}
+            data-mesurer-inspector-ui="true"
             role="dialog"
             aria-label="Settings"
           >

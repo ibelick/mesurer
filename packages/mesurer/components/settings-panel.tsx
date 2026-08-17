@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
@@ -65,7 +66,7 @@ function SettingsSwitch({ label, checked, onChange }: {
       type="button"
       role="switch"
       aria-checked={checked}
-      className="msr:col-span-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+      className="msr:col-span-2 msr:grid msr:h-6 msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
       onClick={() => onChange(!checked)}
     >
       <span>{label}</span>
@@ -131,7 +132,7 @@ function SliderControl({
   }
 
   return (
-    <div className="msr:col-span-2 msr:mt-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
+    <div className="msr:col-span-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">{label}</span>
       <ControlShell
         left={
@@ -386,7 +387,7 @@ export function SettingsPanel({
   const patternTooltip = useTooltip()
 
   return (
-    <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-4 msr:overflow-y-auto" onPointerDown={(event) => event.stopPropagation()}>
+    <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-2 msr:overflow-y-auto" onPointerDown={(event) => event.stopPropagation()}>
       <div className="msr:flex msr:h-6 msr:shrink-0 msr:select-none msr:items-stretch msr:gap-0 msr:rounded-[5px] msr:bg-ink-50 msr:p-px" role="tablist" aria-label="Settings sections">
         {([
           ["guides", "Guides"],
@@ -413,11 +414,10 @@ export function SettingsPanel({
         ))}
       </div>
 
-      {activeTab === "guides" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-guides-title">
-        <h2 id="settings-guides-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guides</h2>
+      {activeTab === "guides" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Guide settings">
         <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
         <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
-        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
+        <div className="msr:col-span-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
           <span className="msr:text-[12px] msr:text-ink-700">Pattern</span>
           <div className="msr:flex msr:gap-1" role="radiogroup" aria-label="Guide pattern" onMouseLeave={patternTooltip.onTooltipContainerLeave}>
             {GUIDE_PATTERNS.map(({ value, label }) => {
@@ -452,19 +452,18 @@ export function SettingsPanel({
             <SliderControl label="Dash gap" min={0} max={24} step={1} value={guideStyle.gap} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, gap: value }))} />
           </>
         ) : null}
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
       </section> : null}
 
-      {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-select-title">
-        <h2 id="settings-select-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Select</h2>
+      {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Selection settings">
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Hover highlighting" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Snap to elements" checked={snapEnabled} onChange={setSnapEnabled} /></div>
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Hover highlighting" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Snap to elements" checked={snapEnabled} onChange={setSnapEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
       </section> : null}
 
       {activeTab === "color-picker" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Color settings">
-        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
+        <div className="msr:col-span-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
           <span className="msr:text-[12px] msr:text-ink-700">Format</span>
           <div className="msr:flex msr:min-w-0 msr:gap-1">
             {COLOR_FORMATS.map((format) => (
@@ -483,7 +482,7 @@ export function SettingsPanel({
             ))}
           </div>
         </div>
-        <label className="msr:col-span-2 msr:mt-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
+        <label className="msr:col-span-2 msr:flex msr:items-center msr:justify-between msr:gap-3 msr:text-[12px] msr:text-ink-700">
           Copy
           <select value={colorClickFormat} className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
             {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
@@ -491,17 +490,18 @@ export function SettingsPanel({
         </label>
       </section> : null}
 
-      {activeTab === "rulers" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-rulers-title">
-        <h2 id="settings-rulers-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Rulers</h2>
+      {activeTab === "rulers" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Ruler settings">
         <SliderControl label="Opacity" min={0.2} max={1} step={0.05} value={rulerSettings.opacity} formatValue={(value) => `${Math.round(value * 100)}%`} parseInput={(input) => Number.parseFloat(input) / 100} onChange={(value) => setRulerSettings((settings) => ({ ...settings, opacity: value }))} />
-        <SliderControl label="Gutter" min={0} max={24} step={1} value={rulerSettings.gutter} formatValue={(value) => `${value}px`} onChange={(value) => setRulerSettings((settings) => ({ ...settings, gutter: value }))} />
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Near edge" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Hover near edge" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
       </section> : null}
 
-      {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-general-title">
-        <h2 id="settings-general-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">General</h2>
-        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
-        <div className="msr:col-span-2 msr:mt-2 msr:flex msr:justify-end msr:gap-1">
+      {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="General settings">
+        <div className="msr:col-span-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
+        <div className="msr:col-span-2 msr:grid msr:h-6 msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-[12px] msr:text-ink-700">
+          <span>Version</span>
+          <span className="msr:justify-self-end msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-700">{packageManifest.version}</span>
+        </div>
+        <div className="msr:col-span-2 msr:flex msr:justify-end msr:gap-1">
           <button
             type="button"
             aria-label="Reset settings to defaults"
