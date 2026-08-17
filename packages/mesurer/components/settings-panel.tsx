@@ -5,7 +5,7 @@ import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle } from "../core/persistence"
+import type { GuideStyle, RulerSettings } from "../core/persistence"
 
 type SettingsPanelProps = {
   ownerWindow: Window
@@ -29,11 +29,13 @@ type SettingsPanelProps = {
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>
   guideStyle: GuideStyle
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>
+  rulerSettings: RulerSettings
+  setRulerSettings: Dispatch<SetStateAction<RulerSettings>>
   onResetSettings: () => void
 }
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
-type SettingsTab = "guides" | "select" | "color-picker" | "general"
+type SettingsTab = "guides" | "select" | "color-picker" | "rulers" | "general"
 const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
   { value: "solid", label: "Solid" },
   { value: "dashed", label: "Dashed" },
@@ -43,10 +45,10 @@ const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <div
-      className="msr:flex msr:h-6 msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-ink-50 msr:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)]"
+      className="msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-ink-50 msr:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)]"
     >
       <div className="msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
-      <div className="msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
+      <div className="msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
     </div>
   )
 }
@@ -61,12 +63,13 @@ function SettingsSwitch({ label, checked, onChange }: {
       type="button"
       role="switch"
       aria-checked={checked}
-      className="msr:col-span-2 msr:flex msr:w-full msr:items-center msr:justify-between msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+      className="msr:col-span-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
       onClick={() => onChange(!checked)}
     >
       <span>{label}</span>
       <span
         aria-hidden="true"
+        style={{ justifySelf: "end" }}
         className={cn(
           "msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
           checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
@@ -126,7 +129,7 @@ function SliderControl({
   }
 
   return (
-    <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+    <div className="msr:col-span-2 msr:mt-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">{label}</span>
       <ControlShell
         left={
@@ -153,12 +156,12 @@ function SliderControl({
           onClick={(event) => event.stopPropagation()}
         >
           <div
-            className="msr:absolute msr:left-3 msr:right-3 msr:rounded-full"
+             className="msr:absolute msr:left-[7px] msr:right-[7px] msr:rounded-full"
             style={{ top: 8, height: 4, backgroundColor: "rgba(15, 23, 42, 0.16)" }}
             aria-hidden="true"
           />
           <div
-            className="msr:absolute msr:left-3 msr:rounded-full"
+             className="msr:absolute msr:left-[7px] msr:rounded-full"
             style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbSize / 100}px)`, height: 4, backgroundColor: "#0d99ff" }}
             aria-hidden="true"
           />
@@ -274,7 +277,7 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
       ? value
       : fallback
   return (
-    <div className="msr:col-span-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-[12px] msr:text-ink-700">
+    <div className="msr:col-span-2 msr:grid msr:w-full msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3 msr:text-[12px] msr:text-ink-700">
       <span>{label}</span>
       <ControlShell
         left={
@@ -361,6 +364,8 @@ export function SettingsPanel({
   setMultiMeasureEnabled,
   guideStyle,
   setGuideStyle,
+  rulerSettings,
+  setRulerSettings,
   onResetSettings,
 }: SettingsPanelProps) {
   const toggleFormat = (format: ColorPickerFormat) => {
@@ -383,6 +388,7 @@ export function SettingsPanel({
           ["guides", "Guides"],
           ["select", "Select"],
           ["color-picker", "Color"],
+          ["rulers", "Rulers"],
           ["general", "General"],
         ] as const).map(([value, label]) => (
           <button
@@ -403,11 +409,11 @@ export function SettingsPanel({
         ))}
       </div>
 
-      {activeTab === "guides" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-guides-title">
+      {activeTab === "guides" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-guides-title">
         <h2 id="settings-guides-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Guides</h2>
         <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
         <SliderControl label="Weight" min={1} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
-        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
           <span className="msr:text-[12px] msr:text-ink-700">Pattern</span>
           <div className="msr:flex msr:gap-1" role="radiogroup" aria-label="Guide pattern" onMouseLeave={patternTooltip.onTooltipContainerLeave}>
             {GUIDE_PATTERNS.map(({ value, label }) => {
@@ -445,7 +451,7 @@ export function SettingsPanel({
         <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
       </section> : null}
 
-      {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-select-title">
+      {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-select-title">
         <h2 id="settings-select-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Select</h2>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Hover highlighting" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
@@ -453,8 +459,8 @@ export function SettingsPanel({
         <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
       </section> : null}
 
-      {activeTab === "color-picker" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Color settings">
-        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-3">
+      {activeTab === "color-picker" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Color settings">
+        <div className="msr:col-span-2 msr:mt-2 msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-3">
           <span className="msr:text-[12px] msr:text-ink-700">Format</span>
           <div className="msr:flex msr:min-w-0 msr:gap-1">
             {COLOR_FORMATS.map((format) => (
@@ -481,14 +487,20 @@ export function SettingsPanel({
         </label>
       </section> : null}
 
-      {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[64px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-general-title">
+      {activeTab === "rulers" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-rulers-title">
+        <h2 id="settings-rulers-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">Rulers</h2>
+        <SliderControl label="Opacity" min={0.2} max={1} step={0.05} value={rulerSettings.opacity} formatValue={(value) => `${Math.round(value * 100)}%`} parseInput={(input) => Number.parseFloat(input) / 100} onChange={(value) => setRulerSettings((settings) => ({ ...settings, opacity: value }))} />
+        <SliderControl label="Gutter" min={0} max={24} step={1} value={rulerSettings.gutter} formatValue={(value) => `${value}px`} onChange={(value) => setRulerSettings((settings) => ({ ...settings, gutter: value }))} />
+        <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Near edge" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
+      </section> : null}
+
+      {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-general-title">
         <h2 id="settings-general-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">General</h2>
         <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className="msr:col-span-2 msr:mt-2 msr:flex msr:justify-end">
           <button
             type="button"
             aria-label="Reset settings to defaults"
-            title="Reset settings to defaults"
             className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onResetSettings}
           >

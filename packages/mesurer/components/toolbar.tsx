@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { ToolMode } from "../core/types";
 import type { ColorPickerFormat } from "../core/colors";
-import type { GuideStyle } from "../core/persistence";
+import type { GuideStyle, RulerSettings } from "../core/persistence";
 import { cn } from "../core/utils";
 import { SettingsPanel } from "./settings-panel";
 import { Tooltip } from "./tooltip";
@@ -71,6 +71,8 @@ type ToolbarProps = {
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
   guideStyle: GuideStyle;
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
+  rulerSettings: RulerSettings;
+  setRulerSettings: Dispatch<SetStateAction<RulerSettings>>;
   onResetSettings: () => void;
 };
 
@@ -115,7 +117,6 @@ function ToolbarButton({
       <button
         type="button"
         aria-pressed={active}
-        title={`${label} (${shortcut})`}
         className={cn(
           "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
           active
@@ -349,6 +350,8 @@ function ToolbarComponent(
     setMultiMeasureEnabled,
     guideStyle,
     setGuideStyle,
+    rulerSettings,
+    setRulerSettings,
     onResetSettings,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
@@ -624,7 +627,6 @@ function ToolbarComponent(
         <button
           type="button"
           aria-label="Guide orientation menu"
-          title="Guide orientation"
           className={cn(
             "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
             guideMenuOpen
@@ -767,7 +769,7 @@ function ToolbarComponent(
         {settingsOpen ? (
           <div
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-[260px] msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
+              "mesurer-menu-surface msr:absolute msr:-right-1 msr:z-[70] msr:box-border msr:w-[272px] msr:max-w-[calc(100vw-16px)] msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
               menuSide === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
@@ -797,6 +799,8 @@ function ToolbarComponent(
               setMultiMeasureEnabled={setMultiMeasureEnabled}
               guideStyle={guideStyle}
               setGuideStyle={setGuideStyle}
+              rulerSettings={rulerSettings}
+              setRulerSettings={setRulerSettings}
               onResetSettings={onResetSettings}
             />
           </div>

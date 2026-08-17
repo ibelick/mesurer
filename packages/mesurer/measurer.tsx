@@ -57,6 +57,8 @@ import {
   type MesurerStoredSettings,
   type MesurerStoredWorkspace,
   type GuideStyle,
+  DEFAULT_RULER_SETTINGS,
+  type RulerSettings,
 } from "./core/persistence";
 
 type MeasurerProps = {
@@ -342,6 +344,10 @@ function MeasurerClient({
     ...DEFAULT_GUIDE_STYLE,
     ...persistedSettings.guideStyle,
   });
+  const [settingsRulerSettings, setSettingsRulerSettings] = useState<RulerSettings>({
+    ...DEFAULT_RULER_SETTINGS,
+    ...persistedSettings.rulerSettings,
+  });
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
@@ -360,6 +366,7 @@ function MeasurerClient({
     setSnapGuidesEnabled(true);
     setMultiMeasureEnabled(false);
     setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE });
+    setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS });
   };
   const [guideOrientation, setGuideOrientation] = useState<
     "vertical" | "horizontal"
@@ -418,6 +425,7 @@ function MeasurerClient({
       multiMeasureEnabled,
       persistOnReload: settingsPersistOnReload,
       guideStyle: settingsGuideStyle,
+      rulerSettings: settingsRulerSettings,
     });
   }, [
     multiMeasureEnabled,
@@ -431,6 +439,7 @@ function MeasurerClient({
     snapGuidesEnabled,
     activePersistence,
     settingsGuideStyle,
+    settingsRulerSettings,
   ]);
 
   useEffect(() => {
@@ -516,6 +525,7 @@ function MeasurerClient({
     if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
     if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
     if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE, ...settings.guideStyle });
+    if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS, ...settings.rulerSettings });
 
     const workspace = snapshot.workspace;
     if (!workspace) {
@@ -1299,6 +1309,8 @@ function MeasurerClient({
     >
       {enabled && rulersVisible ? (
         <RulersOverlay
+          ownerWindow={ownerWindow}
+          settings={settingsRulerSettings}
           onStartGuide={startGuideFromRuler}
           onMoveGuide={moveGuideFromRuler}
           onFinishGuide={finishGuideFromRuler}
@@ -1397,6 +1409,8 @@ function MeasurerClient({
         setMultiMeasureEnabled={setMultiMeasureEnabled}
          guideStyle={settingsGuideStyle}
          setGuideStyle={setSettingsGuideStyle}
+         rulerSettings={settingsRulerSettings}
+         setRulerSettings={setSettingsRulerSettings}
          onResetSettings={resetSettings}
        />
     </div>,

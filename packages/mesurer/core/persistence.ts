@@ -26,6 +26,18 @@ export const DEFAULT_GUIDE_STYLE: GuideStyle = {
   gap: 4,
 }
 
+export type RulerSettings = {
+  opacity: number
+  gutter: number
+  edgeReveal: boolean
+}
+
+export const DEFAULT_RULER_SETTINGS: RulerSettings = {
+  opacity: 1,
+  gutter: 8,
+  edgeReveal: false,
+}
+
 export type MesurerStoredSettings = {
   highlightColor?: string
   guideColor?: string
@@ -37,6 +49,7 @@ export type MesurerStoredSettings = {
   multiMeasureEnabled?: boolean
   persistOnReload?: boolean
   guideStyle?: Partial<GuideStyle>
+  rulerSettings?: Partial<RulerSettings>
 }
 
 export type MesurerStoredWorkspace = {
@@ -95,6 +108,16 @@ const normalizeGuideStyle = (value: unknown): GuideStyle | undefined => {
     pattern: input.pattern === "dashed" || input.pattern === "dotted" ? input.pattern : DEFAULT_GUIDE_STYLE.pattern,
     dashLength: typeof input.dashLength === "number" ? Math.min(24, Math.max(2, input.dashLength)) : DEFAULT_GUIDE_STYLE.dashLength,
     gap: typeof input.gap === "number" ? Math.min(24, Math.max(0, input.gap)) : DEFAULT_GUIDE_STYLE.gap,
+  }
+}
+
+const normalizeRulerSettings = (value: unknown): RulerSettings | undefined => {
+  if (!value || typeof value !== "object") return undefined
+  const input = value as Record<string, unknown>
+  return {
+    opacity: typeof input.opacity === "number" ? Math.min(1, Math.max(0.2, input.opacity)) : DEFAULT_RULER_SETTINGS.opacity,
+    gutter: typeof input.gutter === "number" ? Math.min(24, Math.max(0, input.gutter)) : DEFAULT_RULER_SETTINGS.gutter,
+    edgeReveal: typeof input.edgeReveal === "boolean" ? input.edgeReveal : DEFAULT_RULER_SETTINGS.edgeReveal,
   }
 }
 
@@ -183,6 +206,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),
+    ...(normalizeRulerSettings(input.rulerSettings) ? { rulerSettings: normalizeRulerSettings(input.rulerSettings) } : {}),
   }
 }
 
