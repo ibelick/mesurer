@@ -250,6 +250,7 @@ test("settings opens on the active feature tab", async ({ page }) => {
 test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Guides" }).click();
 
   const toolbar = page.locator(".mesurer-toolbar-surface");
   const slider = page.getByRole("slider", { name: "Weight" });
@@ -260,8 +261,8 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
   expect(before).not.toBeNull();
   expect(sliderBox).not.toBeNull();
   expect(sliderContainerBox).not.toBeNull();
-  expect(sliderBox!.width).toBe(14);
-  expect(sliderBox!.height).toBe(14);
+   expect(sliderBox!.width).toBe(12);
+   expect(sliderBox!.height).toBe(12);
   await page.mouse.move(sliderContainerBox!.x + 8, sliderContainerBox!.y + sliderContainerBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(sliderContainerBox!.x + sliderContainerBox!.width - 8, sliderContainerBox!.y + sliderContainerBox!.height / 2, { steps: 5 });
@@ -319,14 +320,14 @@ test("settings preferences survive a reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("tab", { name: "Select" }).click();
-  const hoverSwitch = page.getByRole("switch", { name: "Hover highlighting" });
+  const hoverSwitch = page.getByRole("switch", { name: "Hover" });
   await hoverSwitch.click();
   await expect(hoverSwitch).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("tab", { name: "Select" }).click();
-  await expect(page.getByRole("switch", { name: "Hover highlighting" })).toHaveAttribute(
+  await expect(page.getByRole("switch", { name: "Hover" })).toHaveAttribute(
     "aria-checked",
     "false",
   );
@@ -336,7 +337,7 @@ test("persist on reload keeps the workspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
   await page.getByRole("tab", { name: "General" }).click();
-  await page.getByRole("switch", { name: "Persist on reload" }).click();
+  await page.getByRole("switch", { name: "Reload persistence" }).click();
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Guides (G)" }).click();
@@ -351,7 +352,7 @@ test("near-edge rulers reveal when the pointer approaches the edge", async ({ pa
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
   await page.getByRole("tab", { name: "Rulers" }).click();
-  await page.getByRole("switch", { name: "Hover near edge" }).click();
+  await page.getByRole("switch", { name: "Edge reveal" }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Rulers (R)" }).click();
 
@@ -408,11 +409,11 @@ test("syncs settings between tabs", async ({ page }) => {
 
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("tab", { name: "Select" }).click();
-  await page.getByRole("switch", { name: "Hover highlighting" }).click();
+  await page.getByRole("switch", { name: "Hover" }).click();
 
   await secondPage.getByRole("button", { name: "Settings" }).click();
   await secondPage.getByRole("tab", { name: "Select" }).click();
-  await expect(secondPage.getByRole("switch", { name: "Hover highlighting" })).toHaveAttribute(
+  await expect(secondPage.getByRole("switch", { name: "Hover" })).toHaveAttribute(
     "aria-checked",
     "false",
   );
