@@ -16,6 +16,7 @@ import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
 import { ColorPicker } from "./components/color-picker";
 import { RulersOverlay } from "./components/rulers-overlay";
+import type { SettingsTab } from "./components/settings-panel";
 import { useDragState } from "./hooks/use-drag-state";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
 import { useGuideState } from "./hooks/use-guide-state";
@@ -368,6 +369,15 @@ function MeasurerClient({
     setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE });
     setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS });
   };
+  const initialSettingsTab: SettingsTab = colorPickerActive
+    ? "color-picker"
+    : rulersVisible
+      ? "rulers"
+      : toolMode === "guides"
+        ? "guides"
+        : toolMode === "select" || toolMode === "text-inspector"
+          ? "select"
+          : "general";
   const [guideOrientation, setGuideOrientation] = useState<
     "vertical" | "horizontal"
   >(persistedState?.guideOrientation ?? "vertical");
@@ -451,6 +461,17 @@ function MeasurerClient({
     if (settingsPersistOnReload) persistState();
   }, [persistSettings, persistState, settingsPersistOnReload]);
 
+  useEffect(() => {
+    if (settingsPersistOnReload) saveWorkspace();
+  }, [saveWorkspace, settingsPersistOnReload]);
+
+  useEffect(() => {
+    if (!settingsPersistOnReload) return;
+    const handleBeforeUnload = () => saveWorkspace();
+    ownerWindow.addEventListener("beforeunload", handleBeforeUnload);
+    return () => ownerWindow.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [ownerWindow, saveWorkspace, settingsPersistOnReload]);
+
   useEffect(() => () => {
     if (workspacePersistTimeoutRef.current !== null) {
       ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
@@ -483,6 +504,11 @@ function MeasurerClient({
     setGuides([]);
     setSelectedGuideIds([]);
   }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setToolMode]);
+
+  const clearWorkspace = useCallback(() => {
+    clearPersistedWorkspace();
+    activePersistence.clearWorkspace();
+  }, [activePersistence, clearPersistedWorkspace]);
 
   const applyPersistedWorkspace = useCallback((workspace: MesurerStoredWorkspace) => {
     enabledRef.current = workspace.enabled;
@@ -1411,7 +1437,9 @@ function MeasurerClient({
          setGuideStyle={setSettingsGuideStyle}
          rulerSettings={settingsRulerSettings}
          setRulerSettings={setSettingsRulerSettings}
+         initialSettingsTab={initialSettingsTab}
          onResetSettings={resetSettings}
+         onClearWorkspace={clearWorkspace}
        />
     </div>,
     portalTarget,

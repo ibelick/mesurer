@@ -31,11 +31,13 @@ type SettingsPanelProps = {
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>
   rulerSettings: RulerSettings
   setRulerSettings: Dispatch<SetStateAction<RulerSettings>>
+  initialTab: SettingsTab
   onResetSettings: () => void
+  onClearWorkspace: () => void
 }
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
-type SettingsTab = "guides" | "select" | "color-picker" | "rulers" | "general"
+export type SettingsTab = "guides" | "select" | "color-picker" | "rulers" | "general"
 const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
   { value: "solid", label: "Solid" },
   { value: "dashed", label: "Dashed" },
@@ -366,7 +368,9 @@ export function SettingsPanel({
   setGuideStyle,
   rulerSettings,
   setRulerSettings,
+  initialTab,
   onResetSettings,
+  onClearWorkspace,
 }: SettingsPanelProps) {
   const toggleFormat = (format: ColorPickerFormat) => {
     setColorFormats((previous) => {
@@ -378,7 +382,7 @@ export function SettingsPanel({
     })
   }
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>("guides")
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
   const patternTooltip = useTooltip()
 
   return (
@@ -497,14 +501,22 @@ export function SettingsPanel({
       {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[112px_minmax(0,1fr)] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-labelledby="settings-general-title">
         <h2 id="settings-general-title" className="msr:col-span-2 msr:text-[12px] msr:font-medium msr:text-ink-700">General</h2>
         <div className="msr:col-span-2 msr:mt-2"><SettingsSwitch label="Persist on reload" checked={persistOnReload} onChange={setPersistOnReload} /></div>
-        <div className="msr:col-span-2 msr:mt-2 msr:flex msr:justify-end">
+        <div className="msr:col-span-2 msr:mt-2 msr:flex msr:justify-end msr:gap-1">
           <button
             type="button"
             aria-label="Reset settings to defaults"
             className="msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onResetSettings}
           >
-            Reset
+            Use defaults
+          </button>
+          <button
+            type="button"
+            aria-label="Clear workspace"
+            className="msr:rounded-[5px] msr:border msr:border-red-200 msr:px-2 msr:py-1 msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#ef4444]"
+            onClick={onClearWorkspace}
+          >
+            Clear workspace
           </button>
         </div>
       </section> : null}

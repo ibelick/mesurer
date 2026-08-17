@@ -229,6 +229,24 @@ test("settings button opens and dismisses its popover", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
 
+test("settings opens on the active feature tab", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const settings = page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" });
+
+  await settings.click();
+  await expect(page.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await settings.click();
+  await expect(page.getByRole("tab", { name: "Guides" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Select (S)" }).click();
+  await settings.click();
+  await expect(page.getByRole("tab", { name: "Select" })).toHaveAttribute("aria-selected", "true");
+});
+
 test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
@@ -312,6 +330,35 @@ test("settings preferences survive a reload", async ({ page }) => {
     "aria-checked",
     "false",
   );
+});
+
+test("persist on reload keeps the workspace", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
+  await page.getByRole("tab", { name: "General" }).click();
+  await page.getByRole("switch", { name: "Persist on reload" }).click();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("near-edge rulers reveal when the pointer approaches the edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
+  await page.getByRole("tab", { name: "Rulers" }).click();
+  await page.getByRole("switch", { name: "Near edge" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Rulers (R)" }).click();
+
+  const rulers = page.locator("[data-mesurer-rulers]");
+  await expect(rulers).toHaveCSS("opacity", "0");
+  await page.mouse.move(20, 20);
+  await expect(rulers).toHaveCSS("opacity", "1");
 });
 
 test("migrates v1 workspace state", async ({ page }) => {

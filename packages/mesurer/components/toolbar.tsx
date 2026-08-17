@@ -14,7 +14,7 @@ import type { ToolMode } from "../core/types";
 import type { ColorPickerFormat } from "../core/colors";
 import type { GuideStyle, RulerSettings } from "../core/persistence";
 import { cn } from "../core/utils";
-import { SettingsPanel } from "./settings-panel";
+import { SettingsPanel, type SettingsTab } from "./settings-panel";
 import { Tooltip } from "./tooltip";
 import {
   CaretDownIcon,
@@ -73,7 +73,9 @@ type ToolbarProps = {
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
   rulerSettings: RulerSettings;
   setRulerSettings: Dispatch<SetStateAction<RulerSettings>>;
+  initialSettingsTab: SettingsTab;
   onResetSettings: () => void;
+  onClearWorkspace: () => void;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -117,6 +119,7 @@ function ToolbarButton({
       <button
         type="button"
         aria-pressed={active}
+        aria-label={`${label} (${shortcut})`}
         className={cn(
           "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
           active
@@ -352,7 +355,9 @@ function ToolbarComponent(
     setGuideStyle,
     rulerSettings,
     setRulerSettings,
+    initialSettingsTab,
     onResetSettings,
+    onClearWorkspace,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -801,7 +806,9 @@ function ToolbarComponent(
               setGuideStyle={setGuideStyle}
               rulerSettings={rulerSettings}
               setRulerSettings={setRulerSettings}
+              initialTab={initialSettingsTab}
               onResetSettings={onResetSettings}
+              onClearWorkspace={onClearWorkspace}
             />
           </div>
         ) : null}

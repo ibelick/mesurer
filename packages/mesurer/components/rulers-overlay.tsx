@@ -5,6 +5,7 @@ import type { RulerSettings } from "../core/persistence";
 const RULER_SIZE = 18;
 const RULER_LENGTH = 4000;
 const TICK_STEP = 5;
+const RULER_EDGE_REVEAL_DISTANCE = 32;
 
 type RulersOverlayProps = {
   ownerWindow: Window;
@@ -49,11 +50,11 @@ export const RulersOverlay = memo(function RulersOverlay({
   useEffect(() => {
     setNearEdge(!settings.edgeReveal);
     if (!settings.edgeReveal) return;
-    const handlePointerMove = (event: globalThis.PointerEvent) => {
-      setNearEdge(event.clientX <= 24 || event.clientY <= 24);
+    const handlePointerMove = (event: globalThis.MouseEvent) => {
+      setNearEdge(event.clientX <= RULER_EDGE_REVEAL_DISTANCE || event.clientY <= RULER_EDGE_REVEAL_DISTANCE);
     };
-    ownerWindow.addEventListener("pointermove", handlePointerMove);
-    return () => ownerWindow.removeEventListener("pointermove", handlePointerMove);
+    ownerWindow.addEventListener("mousemove", handlePointerMove);
+    return () => ownerWindow.removeEventListener("mousemove", handlePointerMove);
   }, [ownerWindow, settings.edgeReveal]);
 
   const showRulers = nearEdge;
@@ -122,6 +123,7 @@ export const RulersOverlay = memo(function RulersOverlay({
   return (
     <div
       aria-hidden="true"
+      data-mesurer-rulers="true"
       className="msr:pointer-events-none msr:absolute msr:inset-0 msr:select-none msr:text-[9px] msr:text-[#64748b]"
       style={{
         opacity: showRulers ? settings.opacity : 0,
