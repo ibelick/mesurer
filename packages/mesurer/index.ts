@@ -1,4 +1,5 @@
 export { default as Measurer } from "./measurer";
+export type { MeasurerProps } from "./measurer";
 export {
   createTextInspector,
   TextInspector,
@@ -11,3 +12,19 @@ export type {
   TypographyInfo,
   TypographyRow,
 } from "./runtime/text-inspector-typography";
+export type { ColorPickerFormat, ColorSample } from "./core/colors";
+export {
+  createLocalStoragePersistence,
+  MESURER_STORAGE_VERSION,
+  normalizeStoredSettings,
+  normalizeStoredWorkspace,
+} from "./core/persistence";
+export type {
+  MesurerPersistence,
+  MesurerPersistenceSnapshot,
+  MesurerStoredSettings,
+  MesurerStoredWorkspace,
+  GuidePattern,
+  GuideStyle,
+  RulerSettings,
+} from "./core/persistence";

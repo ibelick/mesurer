@@ -40,7 +40,7 @@
   },
   "scripts": {
     "build": "pnpm exec tailwindcss -i styles.css -o styles.generated.css && node scripts/generate-styles.mjs && tsup && pnpm exec tailwindcss -i styles.css -o dist/styles.css",
-    "dev": "tsup --watch",
+    "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm run build"
   },

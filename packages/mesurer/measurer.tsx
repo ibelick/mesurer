@@ -14,7 +14,9 @@ import { GUIDE_HITBOX_SIZE, MEASURE_TRANSITION_MS } from "./core/constants";
 import { ensureMeasurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
 import { Toolbar } from "./components/toolbar";
+import { ColorPicker } from "./components/color-picker";
 import { RulersOverlay } from "./components/rulers-overlay";
+import type { SettingsTab } from "./components/settings-panel";
 import { useDragState } from "./hooks/use-drag-state";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
 import { useGuideState } from "./hooks/use-guide-state";
@@ -30,6 +32,7 @@ import { useOverlayRefs } from "./hooks/use-overlay-refs";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { MeasurerOverlay } from "./render/measurer-overlay";
 import { createId } from "./core/utils";
+import { getSnapGuidePosition } from "./core/guides";
 import {
   createTextInspector,
   type TextInspectorAPI,
@@ -41,14 +44,47 @@ import type {
   Rect,
   ToolMode,
 } from "./core/types";
+import {
+  formatColor,
+  parseCssColor,
+  type ColorPickerFormat,
+  type ColorSample,
+} from "./core/colors";
+import {
+  createLocalStoragePersistence,
+  DEFAULT_GUIDE_STYLE,
+  type MesurerPersistence,
+  type MesurerPersistenceSnapshot,
+  type MesurerStoredSettings,
+  type MesurerStoredWorkspace,
+  type GuideStyle,
+  DEFAULT_RULER_SETTINGS,
+  type RulerSettings,
+} from "./core/persistence";
 
-type MeasurerProps = {
+export type MeasurerProps = {
   highlightColor?: string;
   guideColor?: string;
   hoverHighlightEnabled?: boolean;
   persistOnReload?: boolean;
   portalTarget?: HTMLElement | ShadowRoot;
   persistKey?: string;
+  colorPickerFormats?: ColorPickerFormat[];
+  colorPickerClickFormat?: ColorPickerFormat;
+  snapEnabled?: boolean;
+  snapGuidesEnabled?: boolean;
+  selectNewGuideEnabled?: boolean;
+  multiMeasureEnabled?: boolean;
+  guideStyle?: Partial<GuideStyle>;
+  rulerSettings?: Partial<RulerSettings>;
+  persistence?: MesurerPersistence;
+  onPersistenceError?: (error: unknown) => void;
+};
+
+type EyeDropperResult = { sRGBHex: string };
+type EyeDropperLike = { open: () => Promise<EyeDropperResult> };
+type WindowWithEyeDropper = Window & {
+  EyeDropper?: new () => EyeDropperLike;
 };
 
 let measurerInstanceCount = 0;
@@ -62,7 +98,11 @@ const XRAY_STYLES = `
 .xray-mode .mesurer-root,
 .xray-mode .mesurer-root *,
 .xray-mode .mesurer-toolbar-surface,
-.xray-mode .mesurer-toolbar-surface * {
+.xray-mode .mesurer-toolbar-surface *,
+.xray-mode .mesurer-ti-box,
+.xray-mode .mesurer-ti-card,
+.xray-mode .mesurer-ti-card *,
+.xray-mode .mesurer-ti-close {
   outline: none !important;
 }
 `;
@@ -86,6 +126,33 @@ const stripDistance = (distance: DistanceOverlay): DistanceOverlay => ({
   elementRefB: undefined,
 });
 
+const TAB_ID_KEY = "mesurer:tab-id";
+const SETTINGS_STORAGE_KEY = "mesurer-settings";
+const LEGACY_STORAGE_KEY = "mesurer-state";
+
+const getTabId = (ownerWindow: Window) => {
+  try {
+    const existing = ownerWindow.sessionStorage.getItem(TAB_ID_KEY);
+    if (existing) return existing;
+    const id = ownerWindow.crypto.randomUUID();
+    ownerWindow.sessionStorage.setItem(TAB_ID_KEY, id);
+    return id;
+  } catch {
+    return "session";
+  }
+};
+
+const sanitizeStoredSettings = (ownerWindow: Window, settings: MesurerStoredSettings) => {
+  const supportsColor = (value: string | undefined) =>
+    value !== undefined &&
+    (ownerWindow as Window & { CSS?: { supports: (property: string, value: string) => boolean } }).CSS?.supports("color", value) === true;
+  return {
+    ...settings,
+    ...(supportsColor(settings.highlightColor) ? {} : { highlightColor: undefined }),
+    ...(supportsColor(settings.guideColor) ? {} : { guideColor: undefined }),
+  };
+};
+
 function MeasurerClient({
   highlightColor,
   guideColor,
@@ -93,19 +160,44 @@ function MeasurerClient({
   persistOnReload,
   portalTarget,
   persistKey,
-}: Required<Omit<MeasurerProps, "persistKey">> &
-  Pick<MeasurerProps, "persistKey">) {
+  colorPickerFormats,
+  colorPickerClickFormat,
+  snapEnabled: snapEnabledDefault,
+  snapGuidesEnabled: snapGuidesEnabledDefault,
+  selectNewGuideEnabled: selectNewGuideEnabledDefault,
+  multiMeasureEnabled: multiMeasureEnabledDefault,
+  guideStyle: guideStyleDefault,
+  rulerSettings: rulerSettingsDefault,
+  persistence,
+  onPersistenceError,
+}: Required<
+  Omit<
+    MeasurerProps,
+    | "persistKey"
+    | "persistence"
+    | "onPersistenceError"
+    | "guideStyle"
+    | "rulerSettings"
+  >
+> &
+  Pick<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError"> & {
+    guideStyle: GuideStyle;
+    rulerSettings: RulerSettings;
+  }) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
     instanceIdRef.current = ++measurerInstanceCount;
   }
+  const ownerDocument = portalTarget.ownerDocument ?? document;
+  const ownerWindow = ownerDocument.defaultView ?? window;
+  const tabIdRef = useRef<string | null>(null);
+  if (tabIdRef.current === null) tabIdRef.current = getTabId(ownerWindow);
   const storageKey =
     persistKey ??
     (instanceIdRef.current === 1
-      ? "mesurer-state"
-      : `mesurer-state-${instanceIdRef.current}`);
-  const ownerDocument = portalTarget.ownerDocument ?? document;
-  const ownerWindow = ownerDocument.defaultView ?? window;
+      ? `mesurer-state:${tabIdRef.current}`
+      : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
+  const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
   const guideScrollRef = useRef({
     x: ownerWindow.scrollX,
     y: ownerWindow.scrollY,
@@ -127,29 +219,26 @@ function MeasurerClient({
   } | null>(null);
   const guideUserSelectRef = useRef<string | null>(null);
 
-  const persistedState = useMemo(() => {
-    if (!persistOnReload) return null;
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored) as {
-        version: number;
-        enabled: boolean;
-        toolMode: ToolMode;
-        guideOrientation: "vertical" | "horizontal";
-        guides: Guide[];
-        selectedGuideIds: string[];
-        measurements: Measurement[];
-         activeMeasurement: Measurement | null;
-         heldDistances: DistanceOverlay[];
-         rulersVisible?: boolean;
-      };
-      if (!parsed || parsed.version !== 1) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  }, [persistOnReload, storageKey]);
+  const persistenceErrorHandlerRef = useRef(onPersistenceError);
+  persistenceErrorHandlerRef.current = onPersistenceError;
+  const activePersistence = useMemo(() => {
+    const next = persistence ?? createLocalStoragePersistence(ownerWindow, storageKey, SETTINGS_STORAGE_KEY, legacyStorageKey);
+    next.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error));
+    return next;
+  }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
+  const storedState = useMemo(
+    () => activePersistence.load(),
+    [activePersistence],
+  );
+  const persistedState =
+    persistOnReload || storedState?.settings.persistOnReload
+      ? storedState?.workspace ?? null
+      : null;
+  const persistedSettings = sanitizeStoredSettings(ownerWindow, storedState?.settings ?? {});
+
+  useEffect(() => {
+    return () => activePersistence.setErrorHandler?.(undefined);
+  }, [activePersistence]);
 
   const enabledRef = useRef(false);
   const toolModeRef = useRef<ToolMode>(
@@ -158,6 +247,7 @@ function MeasurerClient({
   const rulersVisibleRef = useRef(
     persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
   );
+  const xrayVisibleRef = useRef(persistedState?.xrayVisible ?? persistedState?.toolMode === "xray");
   const guideOrientationRef = useRef<"vertical" | "horizontal">(
     persistedState?.guideOrientation ?? "vertical",
   );
@@ -174,6 +264,8 @@ function MeasurerClient({
   const selectedGuideIdsRef = useRef<string[]>(
     persistedState?.selectedGuideIds ?? [],
   );
+  const workspacePersistTimeoutRef = useRef<number | null>(null);
+  const applyingExternalPersistenceRef = useRef(false);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const {
@@ -206,12 +298,24 @@ function MeasurerClient({
     guidesEnabled,
     multiMeasureEnabled,
     snapGuidesEnabled,
+    setSnapGuidesEnabled,
+    selectNewGuideEnabled,
+    setSelectNewGuideEnabled,
+    setSnapEnabled,
+    setMultiMeasureEnabled,
   } = useMeasureToggles({
     initialEnabled: persistedState?.enabled,
     initialToolMode:
       persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
     initialRulersVisible:
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
+    initialSnapEnabled: persistedSettings.snapEnabled ?? snapEnabledDefault,
+    initialSnapGuidesEnabled:
+      persistedSettings.snapGuidesEnabled ?? snapGuidesEnabledDefault,
+    initialSelectNewGuideEnabled:
+      persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
+    initialMultiMeasureEnabled:
+      persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
     useDragState();
@@ -245,16 +349,72 @@ function MeasurerClient({
     initialSelectedGuideIds: persistedState?.selectedGuideIds ?? [],
   });
   const [toolbarActive, setToolbarActive] = useState(true);
+  const [colorPickerActive, setColorPickerActive] = useState(false);
+  const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
+  const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsHighlightColor, setSettingsHighlightColor] = useState(
+    persistedSettings.highlightColor ?? highlightColor,
+  );
+  const [settingsGuideColor, setSettingsGuideColor] = useState(
+    persistedSettings.guideColor ?? guideColor,
+  );
+  const [settingsHoverHighlight, setSettingsHoverHighlight] = useState(
+    persistedSettings.hoverHighlightEnabled ?? hoverHighlightEnabled,
+  );
+  const [settingsPersistOnReload, setSettingsPersistOnReload] = useState(
+    persistedSettings.persistOnReload ?? persistOnReload,
+  );
+  const [settingsColorFormats, setSettingsColorFormats] = useState(
+    persistedSettings.colorPickerFormats ?? colorPickerFormats,
+  );
+  const [settingsColorClickFormat, setSettingsColorClickFormat] = useState(
+    persistedSettings.colorPickerClickFormat ?? colorPickerClickFormat,
+  );
+  const [settingsGuideStyle, setSettingsGuideStyle] = useState<GuideStyle>({
+    ...guideStyleDefault,
+    ...persistedSettings.guideStyle,
+  });
+  const [settingsRulerSettings, setSettingsRulerSettings] = useState<RulerSettings>({
+    ...rulerSettingsDefault,
+    ...persistedSettings.rulerSettings,
+  });
+  const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";
     position: number;
   } | null>(null);
+
+  const resetSettings = () => {
+    setSettingsHighlightColor(highlightColor);
+    setSettingsGuideColor(guideColor);
+    setSettingsHoverHighlight(hoverHighlightEnabled);
+    setSettingsPersistOnReload(persistOnReload);
+    setSettingsColorFormats([...colorPickerFormats]);
+    setSettingsColorClickFormat(colorPickerClickFormat);
+    setSnapEnabled(snapEnabledDefault);
+    setSnapGuidesEnabled(snapGuidesEnabledDefault);
+    setSelectNewGuideEnabled(selectNewGuideEnabledDefault);
+    setMultiMeasureEnabled(multiMeasureEnabledDefault);
+    setSettingsGuideStyle({ ...guideStyleDefault });
+    setSettingsRulerSettings({ ...rulerSettingsDefault });
+  };
+  const initialSettingsTab: SettingsTab = colorPickerActive
+    ? "color-picker"
+    : rulersVisible
+      ? "rulers"
+      : toolMode === "guides"
+        ? "guides"
+        : toolMode === "select" || toolMode === "text-inspector"
+          ? "select"
+          : "general";
   const [guideOrientation, setGuideOrientation] = useState<
     "vertical" | "horizontal"
   >(persistedState?.guideOrientation ?? "vertical");
 
   enabledRef.current = enabled;
+  xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
   rulersVisibleRef.current = rulersVisible;
   guideOrientationRef.current = guideOrientation;
@@ -264,32 +424,186 @@ function MeasurerClient({
   guidesRef.current = guides;
   selectedGuideIdsRef.current = selectedGuideIds;
 
-  const persistState = useCallback(() => {
-    if (!persistOnReload) return;
-    if (typeof window === "undefined") return;
+  const saveWorkspace = useCallback(() => {
+    if (!settingsPersistOnReload) return;
+    const workspace: MesurerStoredWorkspace = {
+      enabled: enabledRef.current,
+      xrayVisible: xrayVisibleRef.current,
+      toolMode: toolModeRef.current,
+      rulersVisible: rulersVisibleRef.current,
+      guideOrientation: guideOrientationRef.current,
+      guides: guidesRef.current,
+      selectedGuideIds: selectedGuideIdsRef.current,
+      measurements: measurementsRef.current.map(stripMeasurement),
+      activeMeasurement: activeMeasurementRef.current
+        ? stripMeasurement(activeMeasurementRef.current)
+        : null,
+      heldDistances: heldDistancesRef.current.map(stripDistance),
+    };
+    activePersistence.saveWorkspace(workspace);
+  }, [activePersistence, settingsPersistOnReload]);
 
-    try {
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          version: 1,
-          enabled: enabledRef.current,
-          toolMode: toolModeRef.current,
-          rulersVisible: rulersVisibleRef.current,
-          guideOrientation: guideOrientationRef.current,
-          guides: guidesRef.current,
-          selectedGuideIds: selectedGuideIdsRef.current,
-          measurements: measurementsRef.current.map(stripMeasurement),
-          activeMeasurement: activeMeasurementRef.current
-            ? stripMeasurement(activeMeasurementRef.current)
-            : null,
-          heldDistances: heldDistancesRef.current.map(stripDistance),
-        }),
-      );
-    } catch {
-      // ignore storage errors
+  const persistState = useCallback(() => {
+    if (!settingsPersistOnReload) return;
+    if (workspacePersistTimeoutRef.current !== null) {
+      ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
     }
-  }, [persistOnReload, storageKey]);
+    workspacePersistTimeoutRef.current = ownerWindow.setTimeout(() => {
+      workspacePersistTimeoutRef.current = null;
+      saveWorkspace();
+    }, 250);
+  }, [ownerWindow, saveWorkspace, settingsPersistOnReload]);
+
+  const persistSettings = useCallback(() => {
+    activePersistence.saveSettings({
+      highlightColor: settingsHighlightColor,
+      guideColor: settingsGuideColor,
+      hoverHighlightEnabled: settingsHoverHighlight,
+      colorPickerFormats: settingsColorFormats,
+      colorPickerClickFormat: settingsColorClickFormat,
+      snapEnabled,
+      snapGuidesEnabled,
+      selectNewGuideEnabled,
+      multiMeasureEnabled,
+      persistOnReload: settingsPersistOnReload,
+      guideStyle: settingsGuideStyle,
+      rulerSettings: settingsRulerSettings,
+    });
+  }, [
+    multiMeasureEnabled,
+    selectNewGuideEnabled,
+    settingsColorClickFormat,
+    settingsColorFormats,
+    settingsGuideColor,
+    settingsHighlightColor,
+    settingsHoverHighlight,
+    settingsPersistOnReload,
+    snapEnabled,
+    snapGuidesEnabled,
+    activePersistence,
+    settingsGuideStyle,
+    settingsRulerSettings,
+  ]);
+
+  useEffect(() => {
+    if (applyingExternalPersistenceRef.current) {
+      applyingExternalPersistenceRef.current = false;
+      return;
+    }
+    persistSettings();
+    if (settingsPersistOnReload) persistState();
+  }, [persistSettings, persistState, settingsPersistOnReload]);
+
+  useEffect(() => {
+    if (!settingsPersistOnReload) return;
+    const handleBeforeUnload = () => saveWorkspace();
+    ownerWindow.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      ownerWindow.removeEventListener("beforeunload", handleBeforeUnload);
+      if (workspacePersistTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
+        workspacePersistTimeoutRef.current = null;
+        saveWorkspace();
+      }
+    };
+  }, [ownerWindow, saveWorkspace, settingsPersistOnReload]);
+
+  const clearPersistedWorkspace = useCallback(() => {
+    enabledRef.current = false;
+    toolModeRef.current = "none";
+    rulersVisibleRef.current = false;
+    xrayVisibleRef.current = false;
+    guideOrientationRef.current = "vertical";
+    measurementsRef.current = [];
+    activeMeasurementRef.current = null;
+    heldDistancesRef.current = [];
+    guidesRef.current = [];
+    selectedGuideIdsRef.current = [];
+    setEnabled(false);
+    setToolMode("none");
+    setRulersVisible(false);
+    setXrayVisible(false);
+    setGuideOrientation("vertical");
+    setMeasurements([]);
+    setActiveMeasurement(null);
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
+    setHeldDistances([]);
+    setGuides([]);
+    setSelectedGuideIds([]);
+  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setToolMode]);
+
+  const clearWorkspace = useCallback(() => {
+    clearPersistedWorkspace();
+    activePersistence.clearWorkspace();
+  }, [activePersistence, clearPersistedWorkspace]);
+
+  const applyPersistedWorkspace = useCallback((workspace: MesurerStoredWorkspace) => {
+    enabledRef.current = workspace.enabled;
+    toolModeRef.current = workspace.toolMode;
+    rulersVisibleRef.current = workspace.rulersVisible;
+    xrayVisibleRef.current = workspace.xrayVisible;
+    guideOrientationRef.current = workspace.guideOrientation;
+    measurementsRef.current = workspace.measurements;
+    activeMeasurementRef.current = workspace.activeMeasurement;
+    heldDistancesRef.current = workspace.heldDistances;
+    guidesRef.current = workspace.guides;
+    selectedGuideIdsRef.current = workspace.selectedGuideIds;
+    setEnabled(workspace.enabled);
+    setToolMode(workspace.toolMode);
+    setRulersVisible(workspace.rulersVisible);
+    setXrayVisible(workspace.xrayVisible);
+    setGuideOrientation(workspace.guideOrientation);
+    setMeasurements(workspace.measurements);
+    setActiveMeasurement(workspace.activeMeasurement);
+    setGuides(workspace.guides);
+    setSelectedGuideIds(workspace.selectedGuideIds);
+    setHeldDistances(workspace.heldDistances);
+  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setToolMode]);
+
+  const applyPersistenceSnapshot = useCallback((snapshot: MesurerPersistenceSnapshot | null) => {
+    if (!snapshot) {
+      clearPersistedWorkspace();
+      return;
+    }
+
+    applyingExternalPersistenceRef.current = true;
+    const settings = sanitizeStoredSettings(ownerWindow, snapshot.settings);
+    if (settings.highlightColor !== undefined) setSettingsHighlightColor(settings.highlightColor);
+    if (settings.guideColor !== undefined) setSettingsGuideColor(settings.guideColor);
+    if (settings.hoverHighlightEnabled !== undefined) setSettingsHoverHighlight(settings.hoverHighlightEnabled);
+    if (settings.colorPickerFormats !== undefined) setSettingsColorFormats(settings.colorPickerFormats);
+    if (settings.colorPickerClickFormat !== undefined) setSettingsColorClickFormat(settings.colorPickerClickFormat);
+    if (settings.persistOnReload !== undefined) setSettingsPersistOnReload(settings.persistOnReload);
+    if (settings.snapEnabled !== undefined) setSnapEnabled(settings.snapEnabled);
+    if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
+    if (settings.selectNewGuideEnabled !== undefined) setSelectNewGuideEnabled(settings.selectNewGuideEnabled);
+    if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
+    if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...guideStyleDefault, ...settings.guideStyle });
+    if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...rulerSettingsDefault, ...settings.rulerSettings });
+
+    const workspace = snapshot.workspace;
+    if (!workspace) {
+      clearPersistedWorkspace();
+    } else if (settings.persistOnReload ?? settingsPersistOnReload) {
+      applyPersistedWorkspace(workspace);
+    }
+    ownerWindow.setTimeout(() => {
+      applyingExternalPersistenceRef.current = false;
+    }, 0);
+  }, [applyPersistedWorkspace, clearPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+
+  const previousPersistenceRef = useRef(activePersistence);
+  useEffect(() => {
+    if (previousPersistenceRef.current === activePersistence) return;
+    previousPersistenceRef.current = activePersistence;
+    applyPersistenceSnapshot(storedState);
+  }, [activePersistence, applyPersistenceSnapshot, storedState]);
+
+  useEffect(() => {
+    const unsubscribe = activePersistence.subscribe?.(applyPersistenceSnapshot);
+    return unsubscribe;
+  }, [activePersistence, applyPersistenceSnapshot]);
 
   const setEnabledPersisted = useCallback(
     (value: Parameters<typeof setEnabled>[0]) => {
@@ -520,6 +834,31 @@ function MeasurerClient({
     setSelectedGuideIdsPersisted,
   ]);
 
+  const openColorPicker = useCallback(async () => {
+    const EyeDropper = (ownerWindow as WindowWithEyeDropper).EyeDropper;
+    setEnabledWithHistory(true);
+    setToolModeWithHistory("none");
+    setColorPickerActive(true);
+    setColorPickerSample(null);
+    setColorPickerUnsupported(!EyeDropper);
+    if (!EyeDropper) return;
+
+    try {
+      const result = await new EyeDropper().open();
+      const nextSample = parseCssColor(result.sRGBHex);
+      if (!nextSample) return;
+      setColorPickerSample(nextSample);
+      const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(
+        formatColor(nextSample, settingsColorClickFormat),
+      );
+      void clipboardWrite?.catch(() => undefined);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setColorPickerActive(false);
+      }
+    }
+  }, [ownerWindow, setEnabledWithHistory, setToolModeWithHistory, settingsColorClickFormat]);
+
   useHotkeys({
     eventTarget: ownerWindow,
     clearAll,
@@ -533,6 +872,12 @@ function MeasurerClient({
     isOverlayActive: () => enabled && (toolMode !== "none" || toolbarActive),
     setGuideOrientation: setGuideOrientationWithHistory,
     onInteract: () => setToolbarActive(true),
+    onColorPicker: openColorPicker,
+    onToggleXray: () => setXrayVisible((previous) => !previous),
+    onToggleSettings: () => setSettingsOpen((previous) => !previous),
+    isSettingsOpen: () => settingsOpen,
+    onCloseColorPicker: () => setColorPickerActive(false),
+    isColorPickerActive: () => colorPickerActive,
   });
 
   useResizeSync({
@@ -575,6 +920,7 @@ function MeasurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
+    selectionEnabled: toolMode === "select" && !settingsOpen,
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,
@@ -604,6 +950,7 @@ function MeasurerClient({
     if (!enabled) return;
 
     const handleGuidePointerDown = (event: globalThis.PointerEvent) => {
+      if (settingsOpen) return;
       if (toolbarRef.current?.contains(event.target as Node)) return;
       const guideTarget = event.composedPath().some(
         (target) =>
@@ -702,6 +1049,7 @@ function MeasurerClient({
     ownerWindow,
     setGuidesPersisted,
     setSelectedGuideIdsPersisted,
+    settingsOpen,
     toolMode,
   ]);
 
@@ -710,12 +1058,29 @@ function MeasurerClient({
   // when to turn on and off. `cleanup()` wipes everything on unmount so
   // nothing leaks on SPA re-init or extension teardown.
   useEffect(() => {
-    if (toolMode === "text-inspector") {
+    if (toolMode === "text-inspector" && !settingsOpen) {
       textInspector.enable();
     } else {
       textInspector.disable();
     }
-  }, [textInspector, toolMode]);
+  }, [settingsOpen, textInspector, toolMode]);
+
+  const selectionContextRef = useRef({ toolMode, settingsOpen });
+  if (
+    selectionContextRef.current.toolMode !== toolMode ||
+    selectionContextRef.current.settingsOpen !== settingsOpen
+  ) {
+    selectionContextRef.current = { toolMode, settingsOpen };
+    if (!(toolMode === "select" && !settingsOpen)) {
+      setSelectedElement(null);
+      setHoverElement(null);
+      setHoverRect(null);
+      setHoverPointer(null);
+      setSelectedMeasurement(null);
+      setSelectedMeasurements([]);
+      clearSelectionRect();
+    }
+  }
 
   useEffect(() => {
     let style = ownerDocument.getElementById(XRAY_STYLE_ID);
@@ -725,7 +1090,7 @@ function MeasurerClient({
       style.textContent = XRAY_STYLES;
       ownerDocument.head.appendChild(style);
     }
-    if (toolMode === "xray") {
+    if (xrayVisible) {
       ownerDocument.body.classList.add("xray-mode");
     } else {
       ownerDocument.body.classList.remove("xray-mode");
@@ -733,7 +1098,7 @@ function MeasurerClient({
     return () => {
       ownerDocument.body.classList.remove("xray-mode");
     };
-  }, [ownerDocument, toolMode]);
+  }, [ownerDocument, xrayVisible]);
 
   useEffect(() => {
     return () => {
@@ -840,9 +1205,9 @@ function MeasurerClient({
     guidesEnabled,
     guidePreview,
     displayedMeasurements,
-    hoverHighlightEnabled,
-    highlightColor,
-    guideColor,
+    hoverHighlightEnabled: settingsHoverHighlight,
+    highlightColor: settingsHighlightColor,
+    guideColor: settingsGuideColor,
   });
 
   const {
@@ -860,10 +1225,12 @@ function MeasurerClient({
     clearGuideDragHold,
     scheduleGuideDragHold,
     enabled,
+    settingsOpen,
     toolMode,
     guidesEnabled,
     snapEnabled,
     snapGuidesEnabled,
+    selectNewGuideEnabled,
     altPressed,
     guideOrientation,
     hoverHighlightEnabled,
@@ -907,36 +1274,64 @@ function MeasurerClient({
     [recordSnapshot, setHeldDistancesPersisted],
   );
 
+  const snapGuidePosition = useCallback(
+    (
+      orientation: "vertical" | "horizontal",
+      position: number,
+      draggingGuideId: string | null = null,
+    ) =>
+      getSnapGuidePosition({
+        orientation,
+        point: orientation === "vertical" ? { x: position, y: 0 } : { x: 0, y: position },
+        snapGuidesEnabled,
+        overlayNode: overlayRef.current,
+        guides,
+        draggingGuideId,
+        document: ownerDocument,
+      }),
+    [guides, ownerDocument, overlayRef, snapGuidesEnabled],
+  );
+
   const startGuideFromRuler = useCallback(
     (orientation: "vertical" | "horizontal", position: number) => {
       const id = createId();
       const commit = createActionCommit();
       commit();
       setSelectedGuideIdsPersisted([]);
-      setGuidesPersisted((prev) => [...prev, { id, orientation, position }]);
+      setGuidesPersisted((prev) => [
+        ...prev,
+        { id, orientation, position: snapGuidePosition(orientation, position) },
+      ]);
       return id;
     },
     [
       createActionCommit,
       setGuidesPersisted,
       setSelectedGuideIdsPersisted,
+      snapGuidePosition,
     ],
   );
 
   const moveGuideFromRuler = useCallback(
     (id: string, position: number) => {
       setGuidesPersisted((prev) =>
-        prev.map((guide) => (guide.id === id ? { ...guide, position } : guide)),
+        prev.map((guide) =>
+          guide.id === id
+            ? { ...guide, position: snapGuidePosition(guide.orientation, position, id) }
+            : guide,
+        ),
       );
     },
-    [setGuidesPersisted],
+    [setGuidesPersisted, snapGuidePosition],
   );
 
   const finishGuideFromRuler = useCallback(
     (id: string) => {
-      setSelectedGuideIdsPersisted([id]);
+      if (selectNewGuideEnabled) {
+        setSelectedGuideIdsPersisted([id]);
+      }
     },
-    [setSelectedGuideIdsPersisted],
+    [selectNewGuideEnabled, setSelectedGuideIdsPersisted],
   );
 
   const cancelGuideFromRuler = useCallback(
@@ -988,13 +1383,17 @@ function MeasurerClient({
     [clearGuideDragHold, setDraggingGuideId],
   );
 
+  const overlayInteractive = enabled && !settingsOpen;
+
   return createPortal(
     <div
       ref={overlayRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
     >
-      {enabled && rulersVisible ? (
+      {enabled && rulersVisible && !settingsOpen ? (
         <RulersOverlay
+          ownerWindow={ownerWindow}
+          settings={settingsRulerSettings}
           onStartGuide={startGuideFromRuler}
           onMoveGuide={moveGuideFromRuler}
           onFinishGuide={finishGuideFromRuler}
@@ -1004,9 +1403,10 @@ function MeasurerClient({
         />
       ) : null}
       <MeasurerOverlay
-        enabled={enabled}
+        enabled={enabled && (!settingsOpen || guides.length > 0)}
+        interactive={overlayInteractive}
         toolMode={toolMode}
-        guidePointerEvents={enabled && (toolMode !== "none" || rulersVisible)}
+        guidePointerEvents={overlayInteractive && (toolMode !== "none" || rulersVisible)}
         guidesEnabled={guidesEnabled}
         altPressed={altPressed}
         isDragging={isDragging}
@@ -1034,6 +1434,7 @@ function MeasurerClient({
         guideColorActive={guideColorActive}
         guideColorHover={guideColorHover}
         guideColorDefault={guideColorDefault}
+        guideStyle={settingsGuideStyle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1044,18 +1445,63 @@ function MeasurerClient({
         onGuidePointerCancel={handleGuidePointerUp}
       />
 
+      <ColorPicker
+        active={colorPickerActive}
+        sample={colorPickerSample}
+        unsupported={colorPickerUnsupported}
+        ownerWindow={ownerWindow}
+        toolbarRef={toolbarRef}
+        formats={settingsColorFormats}
+        favoriteFormat={settingsColorClickFormat}
+        onClose={() => setColorPickerActive(false)}
+      />
+
       <Toolbar
         ref={toolbarRef}
         eventTarget={ownerWindow}
         toolMode={toolMode}
         setEnabled={setEnabledWithHistory}
         setToolMode={setToolModeWithHistory}
+        xrayVisible={xrayVisible}
+        setXrayVisible={setXrayVisible}
         rulersVisible={rulersVisible}
         setRulersVisible={setRulersVisiblePersisted}
         guideOrientation={guideOrientation}
         setGuideOrientation={setGuideOrientationWithHistory}
         onInteract={() => setToolbarActive(true)}
-      />
+        colorPickerActive={colorPickerActive}
+        setColorPickerActive={setColorPickerActive}
+        onColorPickerClick={openColorPicker}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        highlightColor={settingsHighlightColor}
+        setHighlightColor={setSettingsHighlightColor}
+        guideColor={settingsGuideColor}
+        setGuideColor={setSettingsGuideColor}
+        hoverHighlight={settingsHoverHighlight}
+        setHoverHighlight={setSettingsHoverHighlight}
+        persistOnReload={settingsPersistOnReload}
+        setPersistOnReload={setSettingsPersistOnReload}
+        colorPickerFormats={settingsColorFormats}
+        setColorPickerFormats={setSettingsColorFormats}
+        colorPickerClickFormat={settingsColorClickFormat}
+        setColorPickerClickFormat={setSettingsColorClickFormat}
+        snapEnabled={snapEnabled}
+        setSnapEnabled={setSnapEnabled}
+        snapGuidesEnabled={snapGuidesEnabled}
+        setSnapGuidesEnabled={setSnapGuidesEnabled}
+        selectNewGuideEnabled={selectNewGuideEnabled}
+        setSelectNewGuideEnabled={setSelectNewGuideEnabled}
+        multiMeasureEnabled={multiMeasureEnabled}
+        setMultiMeasureEnabled={setMultiMeasureEnabled}
+         guideStyle={settingsGuideStyle}
+         setGuideStyle={setSettingsGuideStyle}
+         rulerSettings={settingsRulerSettings}
+         setRulerSettings={setSettingsRulerSettings}
+         initialSettingsTab={initialSettingsTab}
+         onResetSettings={resetSettings}
+         onClearWorkspace={clearWorkspace}
+       />
     </div>,
     portalTarget,
   );
@@ -1068,6 +1514,16 @@ export default function Measurer({
   persistOnReload = false,
   portalTarget,
   persistKey,
+  colorPickerFormats = ["hex", "rgb", "oklch"],
+  colorPickerClickFormat = "hex",
+  snapEnabled = true,
+  snapGuidesEnabled = true,
+  selectNewGuideEnabled = true,
+  multiMeasureEnabled = false,
+  guideStyle,
+  rulerSettings,
+  persistence,
+  onPersistenceError,
 }: MeasurerProps) {
   if (typeof document !== "undefined") {
     ensureMeasurerStyles(MESURER_STYLES, portalTarget);
@@ -1083,6 +1539,16 @@ export default function Measurer({
       hoverHighlightEnabled={hoverHighlightEnabled}
       persistOnReload={persistOnReload}
       persistKey={persistKey}
+      colorPickerFormats={colorPickerFormats}
+      colorPickerClickFormat={colorPickerClickFormat}
+      snapEnabled={snapEnabled}
+      snapGuidesEnabled={snapGuidesEnabled}
+      selectNewGuideEnabled={selectNewGuideEnabled}
+      multiMeasureEnabled={multiMeasureEnabled}
+      guideStyle={{ ...DEFAULT_GUIDE_STYLE, ...guideStyle }}
+      rulerSettings={{ ...DEFAULT_RULER_SETTINGS, ...rulerSettings }}
+      persistence={persistence}
+      onPersistenceError={onPersistenceError}
       portalTarget={portalTarget ?? document.body}
     />
   );

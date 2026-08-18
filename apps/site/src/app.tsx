@@ -4,6 +4,8 @@ import {
   CalculatorIcon,
   CursorIcon,
   GridFourIcon,
+  GearIcon,
+  EyedropperIcon,
   LockKeyIcon,
   RulerIcon,
   TextAaIcon,
@@ -133,6 +135,11 @@ function HomeContent() {
       description: "Keep guides and measurements on reload",
     },
     {
+      icon: <EyedropperIcon size={16} weight="light" />,
+      title: "Color picker",
+      description: "Sample colors and copy values in your chosen format",
+    },
+    {
       icon: <TextAaIcon size={16} weight="light" />,
       title: "Text inspector",
       description: "Inspect typography styles on any element",
@@ -141,6 +148,11 @@ function HomeContent() {
       icon: <GridFourIcon size={16} weight="light" />,
       title: "X-ray mode",
       description: "Reveal the structure of every element",
+    },
+    {
+      icon: <GearIcon size={16} weight="light" />,
+      title: "Settings",
+      description: "Configure guides, selection, rulers, and persistence",
     },
   ];
 
@@ -240,6 +252,22 @@ export default function RootLayout({ children }) {
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
+              <code className="code">colorPickerFormats</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Formats shown by the color picker
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">colorPickerClickFormat</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Format copied when a color value is clicked
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
               <code className="code">guideColor</code>
             </div>
             <div className="max-w-[60%] text-right text-muted">
@@ -252,7 +280,7 @@ export default function RootLayout({ children }) {
               <code className="code">hoverHighlightEnabled</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Disables hover highlight and deselects on click
+              Enables hover highlighting in Select mode
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
@@ -260,8 +288,55 @@ export default function RootLayout({ children }) {
               <code className="code">persistOnReload</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Persists state in <code className="code">localStorage</code> as{" "}
-              <code className="code">mesurer-state</code>
+              Persists workspace state across reloads
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">snapEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Snap selection to nearby elements
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">snapGuidesEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Snap guides to other guides
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">selectNewGuideEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Highlight a guide when it is placed
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">multiMeasureEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Keep previous measurements visible
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">guideStyle</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Guide opacity, width, and pattern
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">rulerSettings</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Ruler opacity and edge reveal
             </div>
           </div>
         </div>
@@ -287,12 +362,28 @@ export default function RootLayout({ children }) {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">A</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Text Inspector mode</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">P</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Open the native Color picker</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">G</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
               Toggle Guides mode
             </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">X</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle X-ray mode</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">R</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle pixel rulers</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -323,7 +414,7 @@ export default function RootLayout({ children }) {
               <code className="code">Esc</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Clear all measurements and guides
+              Close settings or picker; else clear all
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
@@ -350,6 +441,10 @@ export default function RootLayout({ children }) {
             <div className="max-w-[60%] text-right text-balance text-muted">
               Redo
             </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + ,</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Open Settings</div>
           </div>
         </div>
       </div>

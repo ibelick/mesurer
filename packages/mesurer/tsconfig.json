@@ -5,11 +5,13 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": false,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "exclude": ["dist", "node_modules"]
 }

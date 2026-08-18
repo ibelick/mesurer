@@ -1,11 +1,16 @@
-import { memo, useRef, useState, type PointerEvent } from "react";
+import { memo, useEffect, useRef, useState, type PointerEvent } from "react";
 import type { Guide } from "../core/types";
+import type { RulerSettings } from "../core/persistence";
 
 const RULER_SIZE = 18;
 const RULER_LENGTH = 4000;
 const TICK_STEP = 5;
+const RULER_EDGE_REVEAL_DISTANCE = 32;
+const RULER_FADE_MS = 100;
 
 type RulersOverlayProps = {
+  ownerWindow: Window;
+  settings: RulerSettings;
   onStartGuide: (
     orientation: "vertical" | "horizontal",
     position: number,
@@ -23,6 +28,8 @@ const ticks = Array.from(
 );
 
 export const RulersOverlay = memo(function RulersOverlay({
+  ownerWindow,
+  settings,
   onStartGuide,
   onMoveGuide,
   onFinishGuide,
@@ -34,11 +41,34 @@ export const RulersOverlay = memo(function RulersOverlay({
   const [dragOrientation, setDragOrientation] = useState<
     "vertical" | "horizontal" | null
   >(null);
+  const [nearEdge, setNearEdge] = useState(false);
   const dragRef = useRef<{
     orientation: "vertical" | "horizontal";
     pointerId: number;
     id: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (!settings.edgeReveal) return;
+    const handlePointerMove = (event: Event) => {
+      const pointer = event as globalThis.MouseEvent;
+      const nearHorizontalEdge =
+        pointer.clientX <= RULER_EDGE_REVEAL_DISTANCE ||
+        pointer.clientX >= ownerWindow.innerWidth - RULER_EDGE_REVEAL_DISTANCE;
+      const nearVerticalEdge =
+        pointer.clientY <= RULER_EDGE_REVEAL_DISTANCE ||
+        pointer.clientY >= ownerWindow.innerHeight - RULER_EDGE_REVEAL_DISTANCE;
+      setNearEdge(nearHorizontalEdge || nearVerticalEdge);
+    };
+    ownerWindow.document.addEventListener("pointermove", handlePointerMove, true);
+    ownerWindow.document.addEventListener("mousemove", handlePointerMove, true);
+    return () => {
+      ownerWindow.document.removeEventListener("pointermove", handlePointerMove, true);
+      ownerWindow.document.removeEventListener("mousemove", handlePointerMove, true);
+    };
+  }, [ownerWindow, settings.edgeReveal]);
+
+  const showRulers = !settings.edgeReveal || nearEdge;
 
   const beginGuideDrag = (
     orientation: "vertical" | "horizontal",
@@ -104,7 +134,12 @@ export const RulersOverlay = memo(function RulersOverlay({
   return (
     <div
       aria-hidden="true"
+      data-mesurer-rulers="true"
       className="msr:pointer-events-none msr:absolute msr:inset-0 msr:select-none msr:text-[9px] msr:text-[#64748b]"
+      style={{
+        opacity: showRulers ? settings.opacity : 0,
+        transition: `opacity ${RULER_FADE_MS}ms ease`,
+      }}
     >
       <div
         className="msr:absolute msr:left-[18px] msr:right-0 msr:top-0 msr:overflow-hidden msr:bg-white"
@@ -112,7 +147,7 @@ export const RulersOverlay = memo(function RulersOverlay({
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
           height: RULER_SIZE,
           cursor: "ns-resize",
-          pointerEvents: "auto",
+          pointerEvents: showRulers ? "auto" : "none",
         }}
         onPointerDown={(event) => beginGuideDrag("horizontal", event)}
         onPointerMove={moveGuide}
@@ -208,7 +243,7 @@ export const RulersOverlay = memo(function RulersOverlay({
           boxShadow: "1px 0 3px rgba(0, 0, 0, 0.12)",
           width: RULER_SIZE,
           cursor: "ew-resize",
-          pointerEvents: "auto",
+          pointerEvents: showRulers ? "auto" : "none",
         }}
         onPointerDown={(event) => beginGuideDrag("vertical", event)}
         onPointerMove={moveGuide}

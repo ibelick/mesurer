@@ -22,51 +22,55 @@ type ResizeParams = {
 }
 
 export const useResizeSync = (params: ResizeParams) => {
+  const paramsRef = useRef(params)
+  paramsRef.current = params
   const resizeFrameRef = useRef<number | null>(null)
   const viewportRef = useRef(getViewportSize(params.window))
 
   useEffect(() => {
+    const ownerWindow = params.window
     const handleResize = () => {
+      const current = paramsRef.current
       if (resizeFrameRef.current) {
-        params.window.cancelAnimationFrame(resizeFrameRef.current)
+        ownerWindow.cancelAnimationFrame(resizeFrameRef.current)
       }
 
-      resizeFrameRef.current = params.window.requestAnimationFrame(() => {
-        const viewport = getViewportSize(params.window)
+      resizeFrameRef.current = ownerWindow.requestAnimationFrame(() => {
+        const viewport = getViewportSize(ownerWindow)
         const previousViewport = viewportRef.current
 
-        params.setMeasurements((prev) =>
+        current.setMeasurements((prev) =>
           prev.map((measurement) =>
-            updateMeasurementForResize(measurement, viewport, params.document)
+            updateMeasurementForResize(measurement, viewport, current.document)
           )
         )
-        params.setActiveMeasurement((prev) =>
-          prev ? updateMeasurementForResize(prev, viewport, params.document) : prev
+        current.setActiveMeasurement((prev) =>
+          prev ? updateMeasurementForResize(prev, viewport, current.document) : prev
         )
-        params.setHeldDistances((prev) =>
+        current.setHeldDistances((prev) =>
           prev.map((distance) =>
             updateDistanceForResize(
               distance,
               viewport,
-              params.document,
-              params.window,
+              current.document,
+              ownerWindow,
             )
           )
         )
 
         if (
-          params.selectedElementRef.current &&
-          params.document.contains(params.selectedElementRef.current)
+          current.selectedElementRef.current &&
+          current.document.contains(current.selectedElementRef.current)
         ) {
-          params.setSelectedMeasurement(
-              getInspectMeasurement(params.selectedElementRef.current, params.window)
+          current.setSelectedMeasurement(
+            getInspectMeasurement(current.selectedElementRef.current, ownerWindow)
           )
         }
 
         if (previousViewport.width > 0 && previousViewport.height > 0) {
           const scaleX = viewport.width / previousViewport.width
           const scaleY = viewport.height / previousViewport.height
-          params.setGuides((prev) =>
+          current.setGuides((prev) =>
             prev.map((guide) =>
               guide.orientation === "vertical"
                 ? { ...guide, position: guide.position * scaleX }
@@ -79,12 +83,12 @@ export const useResizeSync = (params: ResizeParams) => {
       })
     }
 
-    params.window.addEventListener("resize", handleResize)
+    ownerWindow.addEventListener("resize", handleResize)
     return () => {
       if (resizeFrameRef.current) {
-        params.window.cancelAnimationFrame(resizeFrameRef.current)
+        ownerWindow.cancelAnimationFrame(resizeFrameRef.current)
       }
-      params.window.removeEventListener("resize", handleResize)
+      ownerWindow.removeEventListener("resize", handleResize)
     }
-  }, [params])
+  }, [params.window])
 }

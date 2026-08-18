@@ -253,6 +253,7 @@ export const createTextInspector = (
     if (!element) return false;
     for (let node: Element | null = element; node; node = node.parentElement) {
       if (node.classList.contains("mesurer-toolbar-surface")) return true;
+      if (node.hasAttribute("data-mesurer-inspector-ui")) return true;
     }
     return false;
   };
@@ -597,7 +598,8 @@ export const createTextInspector = (
             element.classList.contains("mesurer-ti-card") ||
             element.classList.contains("mesurer-ti-box") ||
             element.classList.contains("mesurer-ti-close") ||
-            element.classList.contains("mesurer-toolbar-surface")
+            element.classList.contains("mesurer-toolbar-surface") ||
+            element.hasAttribute("data-mesurer-inspector-ui")
           );
         })(),
     );

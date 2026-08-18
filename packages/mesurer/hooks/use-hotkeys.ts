@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import type { ToolMode } from "../core/types"
 
 type HotkeyOptions = {
@@ -15,79 +15,111 @@ type HotkeyOptions = {
   isOverlayActive: () => boolean
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
   onInteract: () => void
+  onColorPicker: () => void
+  onToggleXray: () => void
+  onToggleSettings: () => void
+  isSettingsOpen: () => boolean
+  onCloseColorPicker: () => void
+  isColorPickerActive: () => boolean
 }
 
 export const useHotkeys = (options: HotkeyOptions) => {
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
   useEffect(() => {
     const target = options.eventTarget
     const handleKeyDown = (event: KeyboardEvent) => {
+      const current = optionsRef.current
       if (event.key === "Escape") {
-        options.clearAll()
+        if (current.isSettingsOpen()) {
+          current.onToggleSettings()
+          return
+        }
+        if (current.isColorPickerActive()) {
+          current.onCloseColorPicker()
+          return
+        }
+        current.clearAll()
         return
       }
 
       if (event.metaKey || event.ctrlKey) {
+        if (event.key === ",") {
+          event.preventDefault()
+          current.onToggleSettings()
+          current.onInteract()
+          return
+        }
         if (event.key.toLowerCase() !== "z") return
         if (event.shiftKey) {
           event.preventDefault()
-          options.redo()
+          current.redo()
           return
         }
         event.preventDefault()
-        options.undo()
+        current.undo()
         return
       }
 
       if (event.key.toLowerCase() === "m") {
-        options.setEnabled((prev) => !prev)
+        current.setEnabled((prev) => !prev)
       }
 
       const key = event.key.toLowerCase()
-      if (options.isOverlayActive()) {
+      if (key === "p") {
+        event.preventDefault()
+        current.onColorPicker()
+        current.onInteract()
+        return
+      }
+
+      if (key === "x") {
+        current.onToggleXray()
+        current.onInteract()
+        return
+      }
+
+      if (current.isOverlayActive()) {
         if (key === "a") {
-          options.setToolMode((prev) =>
+          current.setToolMode((prev) =>
             prev === "text-inspector" ? "none" : "text-inspector",
           )
-          options.onInteract()
+          current.onInteract()
         }
 
         if (key === "s") {
-          options.setToolMode((prev) => (prev === "select" ? "none" : "select"))
-          options.onInteract()
+          current.setToolMode((prev) => (prev === "select" ? "none" : "select"))
+          current.onInteract()
         }
 
         if (key === "g") {
-          options.setToolMode((prev) => (prev === "guides" ? "none" : "guides"))
-          options.onInteract()
-        }
-
-        if (key === "x") {
-          options.setToolMode((prev) => (prev === "xray" ? "none" : "xray"))
-          options.onInteract()
+          current.setToolMode((prev) => (prev === "guides" ? "none" : "guides"))
+          current.onInteract()
         }
 
         if (key === "r") {
-          options.setRulersVisible((prev) => !prev)
-          options.onInteract()
+          current.setRulersVisible((prev) => !prev)
+          current.onInteract()
         }
 
         if (key === "h") {
-          options.setGuideOrientation("horizontal")
-          options.onInteract()
+          current.setGuideOrientation("horizontal")
+          current.onInteract()
         }
 
         if (key === "v") {
-          options.setGuideOrientation("vertical")
-          options.onInteract()
+          current.setGuideOrientation("vertical")
+          current.onInteract()
         }
       }
 
       if (event.key === "Alt") {
-        options.setAltPressed(true)
+        current.setAltPressed(true)
       }
 
       if (event.key === "Backspace" || event.key === "Delete") {
-        const removed = options.removeSelectedGuides()
+        const removed = current.removeSelectedGuides()
         if (removed) {
           event.preventDefault()
         }
@@ -96,7 +128,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
     const handleKeyUp = (event: KeyboardEvent) => {
       if (event.key === "Alt") {
-        options.setAltPressed(false)
+        optionsRef.current.setAltPressed(false)
       }
     }
 
@@ -106,5 +138,5 @@ export const useHotkeys = (options: HotkeyOptions) => {
       target.removeEventListener("keydown", handleKeyDown)
       target.removeEventListener("keyup", handleKeyUp)
     }
-  }, [options])
+  }, [options.eventTarget])
 }

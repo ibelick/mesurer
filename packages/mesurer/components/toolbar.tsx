@@ -5,16 +5,23 @@ import {
   forwardRef,
   memo,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import type { ToolMode } from "../core/types";
+import type { ColorPickerFormat } from "../core/colors";
+import type { GuideStyle, RulerSettings } from "../core/persistence";
 import { cn } from "../core/utils";
+import { SettingsPanel, type SettingsTab } from "./settings-panel";
+import { Tooltip } from "./tooltip";
 import {
   CaretDownIcon,
   CheckIcon,
+  ColorPickerIcon,
   CursorIcon,
+  GearIcon,
   MinusIcon,
   RulerIcon,
   RulersIcon,
@@ -32,11 +39,45 @@ type ToolbarProps = {
   toolMode: ToolMode;
   setEnabled: Dispatch<SetStateAction<boolean>>;
   setToolMode: Dispatch<SetStateAction<ToolMode>>;
+  xrayVisible: boolean;
+  setXrayVisible: Dispatch<SetStateAction<boolean>>;
   rulersVisible: boolean;
   setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
   onInteract: () => void;
+  colorPickerActive: boolean;
+  setColorPickerActive: Dispatch<SetStateAction<boolean>>;
+  onColorPickerClick: () => void;
+  settingsOpen: boolean;
+  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
+  highlightColor: string;
+  setHighlightColor: Dispatch<SetStateAction<string>>;
+  guideColor: string;
+  setGuideColor: Dispatch<SetStateAction<string>>;
+  hoverHighlight: boolean;
+  setHoverHighlight: Dispatch<SetStateAction<boolean>>;
+  persistOnReload: boolean;
+  setPersistOnReload: Dispatch<SetStateAction<boolean>>;
+  colorPickerFormats: ColorPickerFormat[];
+  setColorPickerFormats: Dispatch<SetStateAction<ColorPickerFormat[]>>;
+  colorPickerClickFormat: ColorPickerFormat;
+  setColorPickerClickFormat: Dispatch<SetStateAction<ColorPickerFormat>>;
+  snapEnabled: boolean;
+  setSnapEnabled: Dispatch<SetStateAction<boolean>>;
+  snapGuidesEnabled: boolean;
+  setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>;
+  selectNewGuideEnabled: boolean;
+  setSelectNewGuideEnabled: Dispatch<SetStateAction<boolean>>;
+  multiMeasureEnabled: boolean;
+  setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
+  guideStyle: GuideStyle;
+  setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
+  rulerSettings: RulerSettings;
+  setRulerSettings: Dispatch<SetStateAction<RulerSettings>>;
+  initialSettingsTab: SettingsTab;
+  onResetSettings: () => void;
+  onClearWorkspace: () => void;
 };
 
 const TOOLBAR_TOOLTIP_DELAY_MS = 800;
@@ -48,7 +89,7 @@ type ToolbarButtonProps = {
   id: string;
   active: boolean;
   label: string;
-  shortcut: string;
+  shortcut?: string;
   onClick: () => void;
   tooltipVisible: boolean;
   tooltipInstant: boolean;
@@ -79,11 +120,10 @@ function ToolbarButton({
     >
       <button
         type="button"
-        aria-label={`${label} (${shortcut})`}
         aria-pressed={active}
-        title={`${label} (${shortcut})`}
+        aria-label={`${label} (${shortcut})`}
         className={cn(
-          "msr:flex msr:size-8 msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
+          "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
             : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
@@ -92,20 +132,7 @@ function ToolbarButton({
       >
         {children}
       </button>
-      <span
-        className={cn(
-          cn(
-            "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
-            tooltipInstant && "msr:transition-none",
-          ),
-          tooltipSide === "top"
-            ? "msr:bottom-full msr:mb-2"
-            : "msr:top-full msr:mt-2",
-          tooltipVisible ? "msr:opacity-100" : "msr:opacity-0",
-        )}
-      >
-        {label} <kbd className="msr:text-white/60">{shortcut}</kbd>
-      </span>
+      <Tooltip label={label} shortcut={shortcut} visible={tooltipVisible} instant={tooltipInstant} side={tooltipSide} />
     </div>
   );
 }
@@ -168,6 +195,7 @@ function useToolbarTooltip() {
 function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
   const [position, setPosition] = useState(initialPosition);
   const suppressClickRef = useRef(false);
+  const previousUserSelectRef = useRef<string | null>(null);
   const detachListenersRef = useRef<(() => void) | null>(null);
   const dragRef = useRef({
     active: false,
@@ -181,13 +209,32 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
     height: 0,
   });
 
+  const disableTextSelection = useCallback(() => {
+    if (previousUserSelectRef.current !== null) return;
+    const root = eventTarget.document.documentElement;
+    previousUserSelectRef.current = root.style.userSelect;
+    root.style.setProperty("user-select", "none", "important");
+  }, [eventTarget]);
+
+  const restoreTextSelection = useCallback(() => {
+    const previous = previousUserSelectRef.current;
+    if (previous === null) return;
+    const root = eventTarget.document.documentElement;
+    root.style.userSelect = previous;
+    previousUserSelectRef.current = null;
+  }, [eventTarget]);
+
+  useEffect(() => restoreTextSelection, [restoreTextSelection]);
+
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
+      disableTextSelection();
 
       if (detachListenersRef.current) {
         detachListenersRef.current();
         detachListenersRef.current = null;
+        restoreTextSelection();
       }
 
       const state = dragRef.current;
@@ -234,6 +281,7 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
         )
           return;
         suppressClickRef.current = current.didDrag;
+        restoreTextSelection();
         current.active = false;
         current.didDrag = false;
         current.pointerId = -1;
@@ -253,7 +301,7 @@ function useToolbarDrag(initialPosition: Point, eventTarget: Window) {
         eventTarget.removeEventListener("pointercancel", handlePointerEnd);
       };
     },
-    [eventTarget, position.x, position.y],
+    [disableTextSelection, eventTarget, position.x, position.y, restoreTextSelection],
   );
 
   const onClickCapture = useCallback(
@@ -274,12 +322,46 @@ function ToolbarComponent(
     toolMode,
     setEnabled,
     setToolMode,
+    xrayVisible,
+    setXrayVisible,
     rulersVisible,
     setRulersVisible,
     guideOrientation,
     setGuideOrientation,
     onInteract,
     eventTarget,
+    colorPickerActive,
+    setColorPickerActive,
+    onColorPickerClick,
+    settingsOpen,
+    setSettingsOpen,
+    highlightColor,
+    setHighlightColor,
+    guideColor,
+    setGuideColor,
+    hoverHighlight,
+    setHoverHighlight,
+    persistOnReload,
+    setPersistOnReload,
+    colorPickerFormats,
+    setColorPickerFormats,
+    colorPickerClickFormat,
+    setColorPickerClickFormat,
+    snapEnabled,
+    setSnapEnabled,
+    snapGuidesEnabled,
+    setSnapGuidesEnabled,
+    selectNewGuideEnabled,
+    setSelectNewGuideEnabled,
+    multiMeasureEnabled,
+    setMultiMeasureEnabled,
+    guideStyle,
+    setGuideStyle,
+    rulerSettings,
+    setRulerSettings,
+    initialSettingsTab,
+    onResetSettings,
+    onClearWorkspace,
   }: ToolbarProps,
   ref: React.Ref<HTMLDivElement>,
 ) {
@@ -296,9 +378,11 @@ function ToolbarComponent(
   } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
+  const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();
@@ -330,35 +414,52 @@ function ToolbarComponent(
 
   const selectMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) => (prev === "select" ? "none" : "select"));
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const guidesMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) => (prev === "guides" ? "none" : "guides"));
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const textInspectorMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setToolMode((prev) =>
       prev === "text-inspector" ? "none" : "text-inspector",
     );
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const xrayMode = useCallback(() => {
     setEnabled(true);
-    setToolMode((prev) => (prev === "xray" ? "none" : "xray"));
+    setColorPickerActive(false);
+    setXrayVisible((prev) => !prev);
     onInteract();
-  }, [onInteract, setEnabled, setToolMode]);
+  }, [onInteract, setColorPickerActive, setEnabled, setXrayVisible]);
+
+  const colorPickerMode = useCallback(() => {
+    setEnabled(true);
+    setToolMode("none");
+    if (colorPickerActive) {
+      setColorPickerActive(false);
+    } else {
+      setColorPickerActive(true);
+      onColorPickerClick();
+    }
+    onInteract();
+  }, [colorPickerActive, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const rulersMode = useCallback(() => {
     setEnabled(true);
+    setColorPickerActive(false);
     setRulersVisible((prev) => !prev);
     onInteract();
-  }, [onInteract, setEnabled, setRulersVisible]);
+  }, [onInteract, setColorPickerActive, setEnabled, setRulersVisible]);
 
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
@@ -372,36 +473,40 @@ function ToolbarComponent(
   );
 
   useLayoutEffect(() => {
-    if (!guideMenuOpen) return;
+    if (!guideMenuOpen && !settingsOpen) return;
 
-    const frame = eventTarget.requestAnimationFrame(() => {
-      guideMenuRef.current
-        ?.querySelector<HTMLElement>("[role='menu']")
-        ?.focus();
-    });
+    const frame = guideMenuOpen
+      ? eventTarget.requestAnimationFrame(() => {
+          guideMenuRef.current
+            ?.querySelector<HTMLElement>("[role='menu']")
+            ?.focus();
+        })
+      : 0;
 
     const handlePointerDown = (event: PointerEvent) => {
-      const menu = guideMenuRef.current;
-      if (!menu) return;
-
       const path = event.composedPath();
-      if (path.includes(menu)) return;
-
-      setGuideMenuOpen(false);
+      if (guideMenuOpen) {
+        const menu = guideMenuRef.current;
+        if (menu && !path.includes(menu)) setGuideMenuOpen(false);
+      }
+      if (settingsOpen) {
+        const settings = settingsRef.current;
+        if (settings && !path.includes(settings)) setSettingsOpen(false);
+      }
     };
 
     const handleResize = () => {
-      updateMenuAlign();
+      if (guideMenuOpen) updateMenuAlign();
     };
 
     eventTarget.addEventListener("pointerdown", handlePointerDown);
-    eventTarget.addEventListener("resize", handleResize);
+    if (guideMenuOpen) eventTarget.addEventListener("resize", handleResize);
     return () => {
-      eventTarget.cancelAnimationFrame(frame);
+      if (frame) eventTarget.cancelAnimationFrame(frame);
       eventTarget.removeEventListener("pointerdown", handlePointerDown);
       eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [eventTarget, guideMenuOpen, guideOrientation, updateMenuAlign]);
+  }, [eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
 
   return (
     <div
@@ -421,7 +526,7 @@ function ToolbarComponent(
         label="Select"
         shortcut="S"
         onClick={selectMode}
-        tooltipVisible={visibleTooltipId === "select"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -431,11 +536,11 @@ function ToolbarComponent(
       </ToolbarButton>
       <ToolbarButton
         id="xray"
-        active={toolMode === "xray"}
+        active={xrayVisible}
         label="X-ray"
         shortcut="X"
         onClick={xrayMode}
-        tooltipVisible={visibleTooltipId === "xray"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -444,12 +549,26 @@ function ToolbarComponent(
         <XrayIcon size={20} />
       </ToolbarButton>
       <ToolbarButton
+        id="color-picker"
+        active={colorPickerActive}
+        label="Color picker"
+        shortcut="P"
+        onClick={colorPickerMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <ColorPickerIcon size={20} aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
         id="rulers"
         active={rulersVisible}
         label="Rulers"
         shortcut="R"
         onClick={rulersMode}
-        tooltipVisible={visibleTooltipId === "rulers"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -463,7 +582,7 @@ function ToolbarComponent(
         label="Text inspector"
         shortcut="A"
         onClick={textInspectorMode}
-        tooltipVisible={visibleTooltipId === "text-inspector"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -477,7 +596,7 @@ function ToolbarComponent(
         label="Guides"
         shortcut="G"
         onClick={guidesMode}
-        tooltipVisible={visibleTooltipId === "guides"}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
         tooltipInstant={tooltipInstant}
         tooltipSide={tooltipSide}
         onTooltipEnter={onTooltipEnter}
@@ -501,7 +620,6 @@ function ToolbarComponent(
         <button
           type="button"
           aria-label="Guide orientation menu"
-          title="Guide orientation"
           className={cn(
             "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
             guideMenuOpen
@@ -527,7 +645,7 @@ function ToolbarComponent(
             tooltipSide === "top"
               ? "msr:bottom-full msr:mb-2"
               : "msr:top-full msr:mt-2",
-            visibleTooltipId === "guide-menu" && !guideMenuOpen
+            visibleTooltipId === "guide-menu" && tooltipsEnabled
               ? "msr:opacity-100"
               : "msr:opacity-0",
           )}
@@ -620,6 +738,73 @@ function ToolbarComponent(
               <span className="msr:flex-1">Vertical</span>
               <span>V</span>
             </button>
+          </div>
+        ) : null}
+      </div>
+      <div ref={settingsRef} className="msr:relative msr:flex">
+        <ToolbarButton
+          id="settings"
+          active={settingsOpen}
+          label="Settings"
+          shortcut="⌘/Ctrl+,"
+          onClick={() => {
+            onInteract();
+            setSettingsOpen((previous) => !previous);
+          }}
+          tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
+          tooltipInstant={tooltipInstant}
+          tooltipSide={tooltipSide}
+          onTooltipEnter={onTooltipEnter}
+          onTooltipLeave={onTooltipLeave}
+        >
+          <GearIcon size={20} aria-hidden="true" />
+        </ToolbarButton>
+        {settingsOpen ? (
+          <div
+            className={cn(
+              "mesurer-menu-surface msr:absolute msr:-right-1 msr:z-[70] msr:box-border msr:w-[272px] msr:max-w-[calc(100vw-16px)] msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3",
+              menuSide === "bottom"
+                ? "msr:top-full msr:mt-2"
+                : "msr:bottom-full msr:mb-2",
+            )}
+            data-mesurer-inspector-ui="true"
+            role="dialog"
+            aria-label="Settings"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerMove={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SettingsPanel
+              ownerWindow={eventTarget}
+              highlightColor={highlightColor}
+              setHighlightColor={setHighlightColor}
+              guideColor={guideColor}
+              setGuideColor={setGuideColor}
+              hoverHighlight={hoverHighlight}
+              setHoverHighlight={setHoverHighlight}
+              persistOnReload={persistOnReload}
+              setPersistOnReload={setPersistOnReload}
+              colorFormats={colorPickerFormats}
+              setColorFormats={setColorPickerFormats}
+              colorClickFormat={colorPickerClickFormat}
+              setColorClickFormat={setColorPickerClickFormat}
+              snapEnabled={snapEnabled}
+              setSnapEnabled={setSnapEnabled}
+              snapGuidesEnabled={snapGuidesEnabled}
+              setSnapGuidesEnabled={setSnapGuidesEnabled}
+              selectNewGuideEnabled={selectNewGuideEnabled}
+              setSelectNewGuideEnabled={setSelectNewGuideEnabled}
+              multiMeasureEnabled={multiMeasureEnabled}
+              setMultiMeasureEnabled={setMultiMeasureEnabled}
+              guideStyle={guideStyle}
+              setGuideStyle={setGuideStyle}
+              rulerSettings={rulerSettings}
+              setRulerSettings={setRulerSettings}
+              initialTab={initialSettingsTab}
+              onResetSettings={onResetSettings}
+              onClearWorkspace={onClearWorkspace}
+            />
           </div>
         ) : null}
       </div>
