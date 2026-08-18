@@ -473,56 +473,40 @@ function ToolbarComponent(
   );
 
   useLayoutEffect(() => {
-    if (!guideMenuOpen) return;
+    if (!guideMenuOpen && !settingsOpen) return;
 
-    const frame = eventTarget.requestAnimationFrame(() => {
-      guideMenuRef.current
-        ?.querySelector<HTMLElement>("[role='menu']")
-        ?.focus();
-    });
+    const frame = guideMenuOpen
+      ? eventTarget.requestAnimationFrame(() => {
+          guideMenuRef.current
+            ?.querySelector<HTMLElement>("[role='menu']")
+            ?.focus();
+        })
+      : 0;
 
     const handlePointerDown = (event: PointerEvent) => {
-      const menu = guideMenuRef.current;
-      if (!menu) return;
-
       const path = event.composedPath();
-      if (path.includes(menu)) return;
-
-      setGuideMenuOpen(false);
+      if (guideMenuOpen) {
+        const menu = guideMenuRef.current;
+        if (menu && !path.includes(menu)) setGuideMenuOpen(false);
+      }
+      if (settingsOpen) {
+        const settings = settingsRef.current;
+        if (settings && !path.includes(settings)) setSettingsOpen(false);
+      }
     };
 
     const handleResize = () => {
-      updateMenuAlign();
+      if (guideMenuOpen) updateMenuAlign();
     };
 
     eventTarget.addEventListener("pointerdown", handlePointerDown);
-    eventTarget.addEventListener("resize", handleResize);
+    if (guideMenuOpen) eventTarget.addEventListener("resize", handleResize);
     return () => {
-      eventTarget.cancelAnimationFrame(frame);
+      if (frame) eventTarget.cancelAnimationFrame(frame);
       eventTarget.removeEventListener("pointerdown", handlePointerDown);
       eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [eventTarget, guideMenuOpen, guideOrientation, updateMenuAlign]);
-
-  useEffect(() => {
-    if (!settingsOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const settings = settingsRef.current;
-      if (settings && event.composedPath().includes(settings)) return;
-      setSettingsOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-
-    eventTarget.addEventListener("pointerdown", handlePointerDown);
-    eventTarget.addEventListener("keydown", handleKeyDown);
-    return () => {
-      eventTarget.removeEventListener("pointerdown", handlePointerDown);
-      eventTarget.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [eventTarget, settingsOpen]);
+  }, [eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
 
   return (
     <div

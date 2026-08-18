@@ -495,23 +495,18 @@ function MeasurerClient({
   }, [persistSettings, persistState, settingsPersistOnReload]);
 
   useEffect(() => {
-    if (settingsPersistOnReload) saveWorkspace();
-  }, [saveWorkspace, settingsPersistOnReload]);
-
-  useEffect(() => {
     if (!settingsPersistOnReload) return;
     const handleBeforeUnload = () => saveWorkspace();
     ownerWindow.addEventListener("beforeunload", handleBeforeUnload);
-    return () => ownerWindow.removeEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      ownerWindow.removeEventListener("beforeunload", handleBeforeUnload);
+      if (workspacePersistTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
+        workspacePersistTimeoutRef.current = null;
+        saveWorkspace();
+      }
+    };
   }, [ownerWindow, saveWorkspace, settingsPersistOnReload]);
-
-  useEffect(() => () => {
-    if (workspacePersistTimeoutRef.current !== null) {
-      ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
-      workspacePersistTimeoutRef.current = null;
-      saveWorkspace();
-    }
-  }, [ownerWindow, saveWorkspace]);
 
   const clearPersistedWorkspace = useCallback(() => {
     enabledRef.current = false;
@@ -1070,16 +1065,22 @@ function MeasurerClient({
     }
   }, [settingsOpen, textInspector, toolMode]);
 
-  useEffect(() => {
-    if (toolMode === "select" && !settingsOpen) return;
-    setSelectedElement(null);
-    setHoverElement(null);
-    setHoverRect(null);
-    setHoverPointer(null);
-    setSelectedMeasurement(null);
-    setSelectedMeasurements([]);
-    clearSelectionRect();
-  }, [clearSelectionRect, setHoverElement, setHoverPointer, setHoverRect, setSelectedElement, setSelectedMeasurement, setSelectedMeasurements, settingsOpen, toolMode]);
+  const selectionContextRef = useRef({ toolMode, settingsOpen });
+  if (
+    selectionContextRef.current.toolMode !== toolMode ||
+    selectionContextRef.current.settingsOpen !== settingsOpen
+  ) {
+    selectionContextRef.current = { toolMode, settingsOpen };
+    if (!(toolMode === "select" && !settingsOpen)) {
+      setSelectedElement(null);
+      setHoverElement(null);
+      setHoverRect(null);
+      setHoverPointer(null);
+      setSelectedMeasurement(null);
+      setSelectedMeasurements([]);
+      clearSelectionRect();
+    }
+  }
 
   useEffect(() => {
     let style = ownerDocument.getElementById(XRAY_STYLE_ID);

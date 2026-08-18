@@ -41,7 +41,7 @@ export const RulersOverlay = memo(function RulersOverlay({
   const [dragOrientation, setDragOrientation] = useState<
     "vertical" | "horizontal" | null
   >(null);
-  const [nearEdge, setNearEdge] = useState(!settings.edgeReveal);
+  const [nearEdge, setNearEdge] = useState(false);
   const dragRef = useRef<{
     orientation: "vertical" | "horizontal";
     pointerId: number;
@@ -49,7 +49,6 @@ export const RulersOverlay = memo(function RulersOverlay({
   } | null>(null);
 
   useEffect(() => {
-    setNearEdge(!settings.edgeReveal);
     if (!settings.edgeReveal) return;
     const handlePointerMove = (event: Event) => {
       const pointer = event as globalThis.MouseEvent;
@@ -69,7 +68,7 @@ export const RulersOverlay = memo(function RulersOverlay({
     };
   }, [ownerWindow, settings.edgeReveal]);
 
-  const showRulers = nearEdge;
+  const showRulers = !settings.edgeReveal || nearEdge;
 
   const beginGuideDrag = (
     orientation: "vertical" | "horizontal",

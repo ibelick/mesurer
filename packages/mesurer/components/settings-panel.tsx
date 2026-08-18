@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import { useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
@@ -111,16 +111,15 @@ function SliderControl({
   const thumbInset = 8
   const percentage = ((value - min) / (max - min)) * 100
   const [draftValue, setDraftValue] = useState(formatValue(value))
-  const editingRef = useRef(false)
-  useEffect(() => {
-    if (!editingRef.current) setDraftValue(formatValue(value))
-  }, [formatValue, value])
+  const [editing, setEditing] = useState(false)
   const commitDraft = () => {
     const parsed = parseInput(draftValue)
     if (Number.isFinite(parsed)) {
       onChange(Math.min(max, Math.max(min, parsed)))
     }
-    setDraftValue(formatValue(Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : value))
+    const next = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : value
+    setDraftValue(formatValue(next))
+    setEditing(false)
   }
   const updateFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -206,9 +205,10 @@ function SliderControl({
           aria-label={`${label} value`}
           className="msr:h-full msr:w-full msr:shrink-0 msr:border-0 msr:bg-transparent msr:px-2 msr:text-center msr:font-mono msr:text-[12px] msr:font-medium msr:tabular-nums msr:text-ink-700 msr:outline-none"
           style={{ boxSizing: "border-box", borderRadius: "0 5px 5px 0", lineHeight: "1rem" }}
-          value={draftValue}
+          value={editing ? draftValue : formatValue(value)}
           onFocus={() => {
-            editingRef.current = true
+            setDraftValue(formatValue(value))
+            setEditing(true)
           }}
           onChange={(event) => {
             const nextDraft = event.target.value
@@ -219,7 +219,6 @@ function SliderControl({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
           onBlur={() => {
-            editingRef.current = false
             commitDraft()
           }}
           onKeyDown={(event) => {
@@ -266,10 +265,8 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
   const alphaValue = sample ? Math.round(sample.alpha * 100) : 100
   const [hexDraft, setHexDraft] = useState(hexValue)
   const [alphaDraft, setAlphaDraft] = useState(String(alphaValue))
-  useEffect(() => {
-    setHexDraft(hexValue)
-    setAlphaDraft(String(alphaValue))
-  }, [alphaValue, hexValue])
+  const [hexFocused, setHexFocused] = useState(false)
+  const [alphaFocused, setAlphaFocused] = useState(false)
   const updateColor = (nextHex: string, nextAlpha: number) => {
     if (!/^[\da-f]{6}$/i.test(nextHex)) return
     const nextSample = parseCssColor(`#${nextHex}`)
@@ -301,13 +298,18 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
             <input
               aria-label={`${label} hex value`}
               type="text"
-              value={hexDraft}
+              value={hexFocused ? hexDraft : hexValue}
               maxLength={6}
               className="msr:min-w-0 msr:flex-1 msr:bg-transparent msr:px-2 msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+              onFocus={() => {
+                setHexDraft(hexValue)
+                setHexFocused(true)
+              }}
+              onBlur={() => setHexFocused(false)}
               onChange={(event) => {
                 const next = event.target.value.replace(/[^\da-f]/gi, "").slice(0, 6).toUpperCase()
                 setHexDraft(next)
-                updateColor(next, Number(alphaDraft))
+                updateColor(next, alphaFocused ? Number(alphaDraft) : alphaValue)
               }}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
@@ -319,23 +321,28 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"
-            value={alphaDraft ? `${alphaDraft}%` : ""}
+            value={alphaFocused ? (alphaDraft ? `${alphaDraft}%` : "") : `${alphaValue}%`}
             maxLength={4}
             className="msr:h-full msr:w-full msr:bg-transparent msr:px-1 msr:text-center msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+            onFocus={() => {
+              setAlphaDraft(String(alphaValue))
+              setAlphaFocused(true)
+            }}
+            onBlur={() => setAlphaFocused(false)}
             onChange={(event) => {
               const next = event.target.value.replace(/\D/g, "").slice(0, 3)
               setAlphaDraft(next)
-              updateColor(hexDraft, Number(next))
+              updateColor(hexFocused ? hexDraft : hexValue, Number(next))
             }}
             onKeyDown={(event) => {
               if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
               event.preventDefault()
               event.stopPropagation()
-              const current = Number.parseInt(alphaDraft, 10)
+              const current = Number.parseInt(alphaFocused ? alphaDraft : String(alphaValue), 10)
               const direction = event.key === "ArrowUp" ? 1 : -1
               const next = Math.min(100, Math.max(0, (Number.isFinite(current) ? current : 0) + direction))
               setAlphaDraft(String(next))
-              updateColor(hexDraft, next)
+              updateColor(hexFocused ? hexDraft : hexValue, next)
             }}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
