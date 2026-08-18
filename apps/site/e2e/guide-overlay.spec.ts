@@ -218,6 +218,8 @@ test("P opens the native color picker", async ({ page }) => {
   await page.keyboard.press("p");
 
   await expect(page.locator(".mesurer-color-picker")).toContainText("#00ff00");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".mesurer-color-picker")).toHaveCount(0);
 });
 
 test("settings button opens and dismisses its popover", async ({ page }) => {

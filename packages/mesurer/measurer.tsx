@@ -847,6 +847,8 @@ function MeasurerClient({
     onToggleXray: () => setXrayVisible((previous) => !previous),
     onToggleSettings: () => setSettingsOpen((previous) => !previous),
     isSettingsOpen: () => settingsOpen,
+    onCloseColorPicker: () => setColorPickerActive(false),
+    isColorPickerActive: () => colorPickerActive,
   });
 
   useResizeSync({

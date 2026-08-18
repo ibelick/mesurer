@@ -19,6 +19,8 @@ type HotkeyOptions = {
   onToggleXray: () => void
   onToggleSettings: () => void
   isSettingsOpen: () => boolean
+  onCloseColorPicker: () => void
+  isColorPickerActive: () => boolean
 }
 
 export const useHotkeys = (options: HotkeyOptions) => {
@@ -28,6 +30,10 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (event.key === "Escape") {
         if (options.isSettingsOpen()) {
           options.onToggleSettings()
+          return
+        }
+        if (options.isColorPickerActive()) {
+          options.onCloseColorPicker()
           return
         }
         options.clearAll()
