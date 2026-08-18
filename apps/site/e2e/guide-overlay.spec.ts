@@ -150,10 +150,9 @@ test("native color picker shows color formats", async ({ page }) => {
   const picker = page.locator(".mesurer-color-picker");
   await expect(picker).toBeVisible();
   await expect(picker).toContainText("#ff0000");
-  await expect(picker).toContainText("hex");
   await expect(picker).toContainText("rgb");
   await expect(picker).toContainText("oklch");
-  await expect(picker).not.toContainText("Copied");
+  await expect(picker).not.toContainText("Copied!");
 });
 
 test("falls back to default color formats when persisted formats are invalid", async ({ page }) => {
@@ -177,7 +176,7 @@ test("falls back to default color formats when persisted formats are invalid", a
   await page.getByRole("button", { name: "Color picker (P)" }).click();
 
   const picker = page.locator(".mesurer-color-picker");
-  await expect(picker).toContainText("hex");
+  await expect(picker).toContainText("#ff0000");
   await expect(picker).toContainText("rgb");
   await expect(picker).toContainText("oklch");
 });

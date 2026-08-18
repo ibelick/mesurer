@@ -1,18 +1,70 @@
 "use client"
 
 import type { MutableRefObject } from "react"
-import { useLayoutEffect, useRef } from "react"
+import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
+import { Tooltip, useTooltip } from "./tooltip"
 
 type ColorPickerProps = {
   active: boolean
   sample: ColorSample | null
   unsupported: boolean
   formats: ColorPickerFormat[]
+  favoriteFormat: ColorPickerFormat
   ownerWindow: Window
   toolbarRef: MutableRefObject<HTMLDivElement | null>
   onClose: () => void
+}
+
+type CopyableColorValueProps = {
+  id: string
+  value: string
+  copiedId: string | null
+  onCopy: () => void
+  onTooltipEnter: (id: string) => void
+  tooltip: ReturnType<typeof useTooltip>
+  className?: string
+}
+
+function CopyableColorValue({
+  id,
+  value,
+  copiedId,
+  onCopy,
+  onTooltipEnter,
+  tooltip,
+  className,
+}: CopyableColorValueProps) {
+  const copied = copiedId === id
+  const showTooltip =
+    tooltip.visibleTooltipId === id ||
+    (copied && tooltip.visibleTooltipId === null)
+
+  return (
+    <span
+      className="msr:relative msr:inline-flex"
+      onMouseLeave={tooltip.onTooltipLeave}
+    >
+      <button
+        type="button"
+        className={className}
+        onMouseEnter={() => onTooltipEnter(id)}
+        onFocus={() => onTooltipEnter(id)}
+        onBlur={tooltip.onTooltipLeave}
+        onClick={onCopy}
+      >
+        {value}
+      </button>
+      <Tooltip
+        label={copied ? "Copied!" : "Click to copy"}
+        visible={showTooltip}
+        instant={copied || tooltip.tooltipInstant}
+        side="bottom"
+        className="msr:z-10"
+      />
+    </span>
+  )
 }
 
 export function ColorPicker({
@@ -20,11 +72,46 @@ export function ColorPicker({
   sample,
   unsupported,
   formats,
+  favoriteFormat,
   ownerWindow,
   toolbarRef,
   onClose,
 }: ColorPickerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const copyTimeoutRef = useRef<number | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const tooltip = useTooltip()
+
+  const copyValue = useCallback(
+    (id: string, value: string) => {
+      const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(value)
+      void clipboardWrite?.catch(() => undefined)
+      tooltip.onTooltipLeave()
+      setCopiedId(id)
+      if (copyTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(copyTimeoutRef.current)
+      }
+      copyTimeoutRef.current = ownerWindow.setTimeout(() => {
+        copyTimeoutRef.current = null
+        setCopiedId(null)
+      }, 1500)
+    },
+    [ownerWindow, tooltip],
+  )
+
+  const handleTooltipEnter = useCallback(
+    (id: string) => {
+      if (copiedId !== null && copiedId !== id) {
+        if (copyTimeoutRef.current !== null) {
+          ownerWindow.clearTimeout(copyTimeoutRef.current)
+          copyTimeoutRef.current = null
+        }
+        setCopiedId(null)
+      }
+      tooltip.onTooltipEnter(id)
+    },
+    [copiedId, ownerWindow, tooltip],
+  )
 
   useLayoutEffect(() => {
     if (!active) return
@@ -52,9 +139,24 @@ export function ColorPicker({
 
     frame = ownerWindow.requestAnimationFrame(updatePosition)
     return () => ownerWindow.cancelAnimationFrame(frame)
-  }, [active, ownerWindow, toolbarRef, formats, sample, unsupported])
+  }, [active, ownerWindow, toolbarRef, formats, sample, unsupported, favoriteFormat])
+
+  useLayoutEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [ownerWindow])
 
   if (!active || (!sample && !unsupported)) return null
+
+  const headerFormat = formats.includes(favoriteFormat)
+    ? favoriteFormat
+    : formats[0]
+  const secondaryFormats = headerFormat
+    ? formats.filter((format) => format !== headerFormat)
+    : []
 
   return (
     <div
@@ -62,6 +164,7 @@ export function ColorPicker({
       className="mesurer-color-picker msr:pointer-events-auto msr:fixed msr:z-[80] msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg"
       role="dialog"
       aria-label="Selected color values"
+      onMouseLeave={tooltip.onTooltipContainerLeave}
     >
       {unsupported ? (
         <div className="msr:flex msr:items-start msr:gap-2">
@@ -77,33 +180,59 @@ export function ColorPicker({
         </div>
       ) : sample ? (
         <>
-          <div className="msr:mb-1 msr:flex msr:items-center msr:gap-1.5 msr:border-b msr:border-black/8 msr:pb-1">
-            <span
-              className="msr:size-3 msr:rounded-full msr:border msr:border-black/15"
-              style={{ backgroundColor: colorToHex(sample) }}
-              aria-hidden="true"
-            />
-            <span className="msr:font-medium msr:text-black">{colorToHex(sample)}</span>
-          </div>
-          {formats.map((format) => (
-            <div key={format} className="msr:flex msr:items-center msr:gap-2">
-              <span className="msr:w-9 msr:text-black/45">
-                {format}
-              </span>
-              <button
-                type="button"
-                className="msr:select-text msr:tabular-nums msr:text-black msr:hover:underline"
-                onClick={() => {
-                  const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(
-                    formatColor(sample, format),
-                  )
-                  void clipboardWrite?.catch(() => undefined)
-                }}
-              >
-                {formatColor(sample, format)}
-              </button>
+          {headerFormat ? (
+            <div
+              className={
+                secondaryFormats.length > 0
+                  ? "msr:mb-1 msr:flex msr:items-center msr:gap-1.5 msr:border-b msr:border-black/8 msr:pb-1"
+                  : "msr:flex msr:items-center msr:gap-1.5"
+              }
+            >
+              <span
+                className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-black/15"
+                style={{ backgroundColor: colorToHex(sample) }}
+                aria-hidden="true"
+              />
+              <CopyableColorValue
+                id={headerFormat}
+                value={formatColor(sample, headerFormat)}
+                copiedId={copiedId}
+                onCopy={() =>
+                  copyValue(headerFormat, formatColor(sample, headerFormat))
+                }
+                onTooltipEnter={handleTooltipEnter}
+                tooltip={tooltip}
+                className="msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
+              />
             </div>
-          ))}
+          ) : (
+            <div className="msr:flex msr:items-center">
+              <span
+                className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-black/15"
+                style={{ backgroundColor: colorToHex(sample) }}
+                aria-hidden="true"
+              />
+            </div>
+          )}
+          {secondaryFormats.map((format) => {
+            const value = formatColor(sample, format)
+            return (
+              <div key={format} className="msr:flex msr:items-center msr:gap-2">
+                <span className="msr:w-9 msr:text-black/45">
+                  {format}
+                </span>
+                <CopyableColorValue
+                  id={format}
+                  value={value}
+                  copiedId={copiedId}
+                  onCopy={() => copyValue(format, value)}
+                  onTooltipEnter={handleTooltipEnter}
+                  tooltip={tooltip}
+                  className="msr:tabular-nums msr:text-black msr:hover:underline"
+                />
+              </div>
+            )
+          })}
         </>
       ) : null}
     </div>

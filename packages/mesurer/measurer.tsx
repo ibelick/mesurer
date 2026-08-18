@@ -1411,6 +1411,7 @@ function MeasurerClient({
         ownerWindow={ownerWindow}
         toolbarRef={toolbarRef}
         formats={settingsColorFormats}
+        favoriteFormat={settingsColorClickFormat}
         onClose={() => setColorPickerActive(false)}
       />
 
