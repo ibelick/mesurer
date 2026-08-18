@@ -1,5 +1,14 @@
 # mesurer
 
+## 0.0.10
+
+- add a color picker with hex, rgb, hsl, and oklch output
+- add Settings for colors, guide styles, rulers, snap, and persistence
+- persist settings across tabs; optionally keep the workspace across reloads
+- isolate workspaces per tab and sync settings in the Chrome extension
+- expose settings as `Measurer` props for React embeds
+- style guides with weight, dashed/dotted patterns, and opacity
+
 ## 0.0.9
 
 - add persistent pixel rulers along the top and left edges
