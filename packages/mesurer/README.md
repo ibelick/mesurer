@@ -47,10 +47,14 @@ function App() {
 | `onPersistenceError`    | Called when persistence is unavailable or a storage write fails.              |
 | `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
 | `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |
+| `snapEnabled`            | Snap selection to nearby elements. Default `true`.                           |
+| `snapGuidesEnabled`      | Snap guides to other guides. Default `true`.                                 |
+| `selectNewGuideEnabled`  | Highlight a guide when it is placed. Default `true`.                         |
+| `multiMeasureEnabled`    | Keep previous measurements visible. Default `false`.                         |
+| `guideStyle`             | Guide opacity, width, pattern, dash length, and gap.                         |
+| `rulerSettings`          | Ruler opacity and edge reveal.                                               |
 
-Guide appearance can be customized from Settings with opacity, line weight, solid/dashed/dotted pattern, dash length, and dash gap controls. These preferences are shared across browser tabs.
-
-Settings also control the selection highlight color, color output formats, ruler opacity, and edge reveal. Use **Use defaults** to restore settings or **Clear workspace** to remove guides and measurements.
+Props are the defaults. Saved settings override them; **Use defaults** restores the props.
 
 ## Commands
 

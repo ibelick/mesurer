@@ -62,7 +62,7 @@ import {
   type RulerSettings,
 } from "./core/persistence";
 
-type MeasurerProps = {
+export type MeasurerProps = {
   highlightColor?: string;
   guideColor?: string;
   hoverHighlightEnabled?: boolean;
@@ -71,6 +71,12 @@ type MeasurerProps = {
   persistKey?: string;
   colorPickerFormats?: ColorPickerFormat[];
   colorPickerClickFormat?: ColorPickerFormat;
+  snapEnabled?: boolean;
+  snapGuidesEnabled?: boolean;
+  selectNewGuideEnabled?: boolean;
+  multiMeasureEnabled?: boolean;
+  guideStyle?: Partial<GuideStyle>;
+  rulerSettings?: Partial<RulerSettings>;
   persistence?: MesurerPersistence;
   onPersistenceError?: (error: unknown) => void;
 };
@@ -156,10 +162,28 @@ function MeasurerClient({
   persistKey,
   colorPickerFormats,
   colorPickerClickFormat,
+  snapEnabled: snapEnabledDefault,
+  snapGuidesEnabled: snapGuidesEnabledDefault,
+  selectNewGuideEnabled: selectNewGuideEnabledDefault,
+  multiMeasureEnabled: multiMeasureEnabledDefault,
+  guideStyle: guideStyleDefault,
+  rulerSettings: rulerSettingsDefault,
   persistence,
   onPersistenceError,
-}: Required<Omit<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError">> &
-  Pick<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError">) {
+}: Required<
+  Omit<
+    MeasurerProps,
+    | "persistKey"
+    | "persistence"
+    | "onPersistenceError"
+    | "guideStyle"
+    | "rulerSettings"
+  >
+> &
+  Pick<MeasurerProps, "persistKey" | "persistence" | "onPersistenceError"> & {
+    guideStyle: GuideStyle;
+    rulerSettings: RulerSettings;
+  }) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
     instanceIdRef.current = ++measurerInstanceCount;
@@ -285,10 +309,13 @@ function MeasurerClient({
       persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
     initialRulersVisible:
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
-    initialSnapEnabled: persistedSettings.snapEnabled,
-    initialSnapGuidesEnabled: persistedSettings.snapGuidesEnabled,
-    initialSelectNewGuideEnabled: persistedSettings.selectNewGuideEnabled,
-    initialMultiMeasureEnabled: persistedSettings.multiMeasureEnabled,
+    initialSnapEnabled: persistedSettings.snapEnabled ?? snapEnabledDefault,
+    initialSnapGuidesEnabled:
+      persistedSettings.snapGuidesEnabled ?? snapGuidesEnabledDefault,
+    initialSelectNewGuideEnabled:
+      persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
+    initialMultiMeasureEnabled:
+      persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
     useDragState();
@@ -345,11 +372,11 @@ function MeasurerClient({
     persistedSettings.colorPickerClickFormat ?? colorPickerClickFormat,
   );
   const [settingsGuideStyle, setSettingsGuideStyle] = useState<GuideStyle>({
-    ...DEFAULT_GUIDE_STYLE,
+    ...guideStyleDefault,
     ...persistedSettings.guideStyle,
   });
   const [settingsRulerSettings, setSettingsRulerSettings] = useState<RulerSettings>({
-    ...DEFAULT_RULER_SETTINGS,
+    ...rulerSettingsDefault,
     ...persistedSettings.rulerSettings,
   });
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
@@ -366,12 +393,12 @@ function MeasurerClient({
     setSettingsPersistOnReload(persistOnReload);
     setSettingsColorFormats([...colorPickerFormats]);
     setSettingsColorClickFormat(colorPickerClickFormat);
-    setSnapEnabled(true);
-    setSnapGuidesEnabled(true);
-    setSelectNewGuideEnabled(true);
-    setMultiMeasureEnabled(false);
-    setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE });
-    setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS });
+    setSnapEnabled(snapEnabledDefault);
+    setSnapGuidesEnabled(snapGuidesEnabledDefault);
+    setSelectNewGuideEnabled(selectNewGuideEnabledDefault);
+    setMultiMeasureEnabled(multiMeasureEnabledDefault);
+    setSettingsGuideStyle({ ...guideStyleDefault });
+    setSettingsRulerSettings({ ...rulerSettingsDefault });
   };
   const initialSettingsTab: SettingsTab = colorPickerActive
     ? "color-picker"
@@ -557,8 +584,8 @@ function MeasurerClient({
     if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
     if (settings.selectNewGuideEnabled !== undefined) setSelectNewGuideEnabled(settings.selectNewGuideEnabled);
     if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
-    if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE, ...settings.guideStyle });
-    if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS, ...settings.rulerSettings });
+    if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...guideStyleDefault, ...settings.guideStyle });
+    if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...rulerSettingsDefault, ...settings.rulerSettings });
 
     const workspace = snapshot.workspace;
     if (!workspace) {
@@ -569,7 +596,7 @@ function MeasurerClient({
     ownerWindow.setTimeout(() => {
       applyingExternalPersistenceRef.current = false;
     }, 0);
-  }, [applyPersistedWorkspace, clearPersistedWorkspace, ownerWindow, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+  }, [applyPersistedWorkspace, clearPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
 
   const previousPersistenceRef = useRef(activePersistence);
   useEffect(() => {
@@ -1488,6 +1515,12 @@ export default function Measurer({
   persistKey,
   colorPickerFormats = ["hex", "rgb", "oklch"],
   colorPickerClickFormat = "hex",
+  snapEnabled = true,
+  snapGuidesEnabled = true,
+  selectNewGuideEnabled = true,
+  multiMeasureEnabled = false,
+  guideStyle,
+  rulerSettings,
   persistence,
   onPersistenceError,
 }: MeasurerProps) {
@@ -1507,6 +1540,12 @@ export default function Measurer({
       persistKey={persistKey}
       colorPickerFormats={colorPickerFormats}
       colorPickerClickFormat={colorPickerClickFormat}
+      snapEnabled={snapEnabled}
+      snapGuidesEnabled={snapGuidesEnabled}
+      selectNewGuideEnabled={selectNewGuideEnabled}
+      multiMeasureEnabled={multiMeasureEnabled}
+      guideStyle={{ ...DEFAULT_GUIDE_STYLE, ...guideStyle }}
+      rulerSettings={{ ...DEFAULT_RULER_SETTINGS, ...rulerSettings }}
       persistence={persistence}
       onPersistenceError={onPersistenceError}
       portalTarget={portalTarget ?? document.body}

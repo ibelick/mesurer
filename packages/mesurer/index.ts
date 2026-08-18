@@ -1,4 +1,5 @@
 export { default as Measurer } from "./measurer";
+export type { MeasurerProps } from "./measurer";
 export {
   createTextInspector,
   TextInspector,
@@ -25,4 +26,5 @@ export type {
   MesurerStoredWorkspace,
   GuidePattern,
   GuideStyle,
+  RulerSettings,
 } from "./core/persistence";

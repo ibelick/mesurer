@@ -291,6 +291,54 @@ export default function RootLayout({ children }) {
               Persists workspace state across reloads
             </div>
           </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">snapEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Snap selection to nearby elements
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">snapGuidesEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Snap guides to other guides
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">selectNewGuideEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Highlight a guide when it is placed
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">multiMeasureEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Keep previous measurements visible
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">guideStyle</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Guide opacity, width, and pattern
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">rulerSettings</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Ruler opacity and edge reveal
+            </div>
+          </div>
         </div>
       </div>
 
