@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --force",
     "build": "pnpm --filter mesurer build && vite build",
-    "deploy:pages": "npx wrangler pages deploy dist --project-name mesurer",
+    "deploy:pages": "npx wrangler pages deploy dist --project-name mesurer-site",
     "preview": "vite preview",
     "test": "playwright test"
   },
