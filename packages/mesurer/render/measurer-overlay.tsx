@@ -38,6 +38,7 @@ type OptionContainerLines = {
 
 type MeasurerOverlayProps = {
   enabled: boolean;
+  interactive?: boolean;
   toolMode: ToolMode;
   guidePointerEvents: boolean;
   guidesEnabled: boolean;
@@ -89,6 +90,7 @@ type MeasurerOverlayProps = {
 
 export const MeasurerOverlay = memo(function MeasurerOverlay({
   enabled,
+  interactive = true,
   toolMode,
   guidePointerEvents,
   guidesEnabled,
@@ -130,12 +132,13 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
 }: MeasurerOverlayProps) {
   const overlayVisible = enabled;
   const overlayInteractive =
+    interactive &&
     overlayVisible &&
     toolMode !== "none" &&
     toolMode !== "text-inspector" &&
     toolMode !== "xray" &&
     toolMode !== "rulers";
-  const selectionVisible = toolMode === "select";
+  const selectionVisible = interactive && toolMode === "select";
 
   return (
     <div
@@ -249,7 +252,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         </div>
       ) : null}
 
-      {guidesEnabled && guidePreview ? (
+      {interactive && guidesEnabled && guidePreview ? (
         <div
           className="msr:pointer-events-none msr:absolute"
           style={
@@ -305,14 +308,16 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           ))
         : null}
 
-      {heldDistances.map((distance) => (
+      {interactive
+        ? heldDistances.map((distance) => (
         <DistanceOverlayItem
           key={`held-${distance.id}`}
           distance={distance}
           labelOffset={MEASURE_LABEL_OFFSET}
           onRemove={onRemoveHeldDistance}
         />
-      ))}
+      ))
+        : null}
 
       {selectionVisible && altPressed && optionPairOverlay ? (
         <DistanceOverlayItem
@@ -322,7 +327,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
         />
       ) : null}
 
-      {guidesEnabled && altPressed && guideDistanceOverlay ? (
+      {interactive && guidesEnabled && altPressed && guideDistanceOverlay ? (
         <DistanceOverlayItem
           key={`guide-preview-${guideDistanceOverlay.id}`}
           distance={guideDistanceOverlay}

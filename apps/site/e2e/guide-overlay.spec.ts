@@ -357,7 +357,7 @@ test("persist on reload keeps the workspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
   await page.getByRole("tab", { name: "General" }).click();
-  await page.getByRole("switch", { name: "Reload persistence" }).click();
+  await page.getByRole("switch", { name: "Persist" }).click();
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Guides (G)" }).click();

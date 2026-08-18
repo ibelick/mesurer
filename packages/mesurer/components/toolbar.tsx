@@ -67,6 +67,8 @@ type ToolbarProps = {
   setSnapEnabled: Dispatch<SetStateAction<boolean>>;
   snapGuidesEnabled: boolean;
   setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>;
+  selectNewGuideEnabled: boolean;
+  setSelectNewGuideEnabled: Dispatch<SetStateAction<boolean>>;
   multiMeasureEnabled: boolean;
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>;
   guideStyle: GuideStyle;
@@ -349,6 +351,8 @@ function ToolbarComponent(
     setSnapEnabled,
     snapGuidesEnabled,
     setSnapGuidesEnabled,
+    selectNewGuideEnabled,
+    setSelectNewGuideEnabled,
     multiMeasureEnabled,
     setMultiMeasureEnabled,
     guideStyle,
@@ -805,6 +809,8 @@ function ToolbarComponent(
               setSnapEnabled={setSnapEnabled}
               snapGuidesEnabled={snapGuidesEnabled}
               setSnapGuidesEnabled={setSnapGuidesEnabled}
+              selectNewGuideEnabled={selectNewGuideEnabled}
+              setSelectNewGuideEnabled={setSelectNewGuideEnabled}
               multiMeasureEnabled={multiMeasureEnabled}
               setMultiMeasureEnabled={setMultiMeasureEnabled}
               guideStyle={guideStyle}

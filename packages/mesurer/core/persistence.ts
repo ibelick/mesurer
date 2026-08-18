@@ -44,6 +44,7 @@ export type MesurerStoredSettings = {
   colorPickerClickFormat?: ColorPickerFormat
   snapEnabled?: boolean
   snapGuidesEnabled?: boolean
+  selectNewGuideEnabled?: boolean
   multiMeasureEnabled?: boolean
   persistOnReload?: boolean
   guideStyle?: Partial<GuideStyle>
@@ -200,6 +201,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
       : {}),
     ...(typeof input.snapEnabled === "boolean" ? { snapEnabled: input.snapEnabled } : {}),
     ...(typeof input.snapGuidesEnabled === "boolean" ? { snapGuidesEnabled: input.snapGuidesEnabled } : {}),
+    ...(typeof input.selectNewGuideEnabled === "boolean" ? { selectNewGuideEnabled: input.selectNewGuideEnabled } : {}),
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),

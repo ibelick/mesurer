@@ -26,6 +26,8 @@ type SettingsPanelProps = {
   setSnapEnabled: Dispatch<SetStateAction<boolean>>
   snapGuidesEnabled: boolean
   setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>
+  selectNewGuideEnabled: boolean
+  setSelectNewGuideEnabled: Dispatch<SetStateAction<boolean>>
   multiMeasureEnabled: boolean
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>
   guideStyle: GuideStyle
@@ -44,14 +46,13 @@ const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
   { value: "dashed", label: "Dashed" },
   { value: "dotted", label: "Dotted" },
 ]
-
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <div
-      className="msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-ink-50 msr:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)]"
+      className="msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
     >
       <div className="msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
-      <div className="msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
+      <div className="msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-transparent msr:group-hover:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
     </div>
   )
 }
@@ -66,7 +67,7 @@ function SettingsSwitch({ label, checked, onChange }: {
       type="button"
       role="switch"
       aria-checked={checked}
-      className="msr:col-span-2 msr:grid msr:h-6 msr:w-full msr:grid-cols-[78px_156px] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+      className="msr:col-span-2 msr:grid msr:h-6 msr:w-full msr:grid-cols-[78px_156px] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700"
       onClick={() => onChange(!checked)}
     >
       <span>{label}</span>
@@ -169,7 +170,7 @@ function SliderControl({
             aria-hidden="true"
           />
           <div
-            className="msr:absolute msr:rounded-[5px] msr:bg-white msr:shadow-sm msr:transition-shadow msr:focus-visible:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+            className="msr:absolute msr:rounded-[5px] msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -363,6 +364,8 @@ export function SettingsPanel({
   setSnapEnabled,
   snapGuidesEnabled,
   setSnapGuidesEnabled,
+  selectNewGuideEnabled,
+  setSelectNewGuideEnabled,
   multiMeasureEnabled,
   setMultiMeasureEnabled,
   guideStyle,
@@ -452,14 +455,15 @@ export function SettingsPanel({
             <SliderControl label="Gap" min={0} max={24} step={1} value={guideStyle.gap} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, gap: value }))} />
           </>
         ) : null}
-        <div className="msr:col-span-2"><SettingsSwitch label="Snap to guides" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Snap" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Highlight" checked={selectNewGuideEnabled} onChange={setSelectNewGuideEnabled} /></div>
       </section> : null}
 
       {activeTab === "select" ? <section className="msr:grid msr:grid-cols-[78px_156px] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Selection settings">
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
-        <div className="msr:col-span-2"><SettingsSwitch label="Multi-measure" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
       </section> : null}
 
       {activeTab === "color-picker" ? <section className="msr:grid msr:grid-cols-[78px_156px] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="Color settings">
@@ -496,7 +500,7 @@ export function SettingsPanel({
       </section> : null}
 
       {activeTab === "general" ? <section className="msr:grid msr:grid-cols-[78px_156px] msr:items-center msr:gap-x-3 msr:gap-y-1" aria-label="General settings">
-        <div className="msr:col-span-2"><SettingsSwitch label="Reload persistence" checked={persistOnReload} onChange={setPersistOnReload} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Persist" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className="msr:col-span-2 msr:grid msr:h-6 msr:grid-cols-[78px_156px] msr:items-center msr:gap-3 msr:text-[12px] msr:text-ink-700">
           <span>Version</span>
           <span className="msr:justify-self-end msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-700">{packageManifest.version}</span>

@@ -275,6 +275,8 @@ function MeasurerClient({
     multiMeasureEnabled,
     snapGuidesEnabled,
     setSnapGuidesEnabled,
+    selectNewGuideEnabled,
+    setSelectNewGuideEnabled,
     setSnapEnabled,
     setMultiMeasureEnabled,
   } = useMeasureToggles({
@@ -285,6 +287,7 @@ function MeasurerClient({
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
     initialSnapEnabled: persistedSettings.snapEnabled,
     initialSnapGuidesEnabled: persistedSettings.snapGuidesEnabled,
+    initialSelectNewGuideEnabled: persistedSettings.selectNewGuideEnabled,
     initialMultiMeasureEnabled: persistedSettings.multiMeasureEnabled,
   });
   const { start, setStart, end, setEnd, isDragging, setIsDragging } =
@@ -365,6 +368,7 @@ function MeasurerClient({
     setSettingsColorClickFormat(colorPickerClickFormat);
     setSnapEnabled(true);
     setSnapGuidesEnabled(true);
+    setSelectNewGuideEnabled(true);
     setMultiMeasureEnabled(false);
     setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE });
     setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS });
@@ -432,6 +436,7 @@ function MeasurerClient({
       colorPickerClickFormat: settingsColorClickFormat,
       snapEnabled,
       snapGuidesEnabled,
+      selectNewGuideEnabled,
       multiMeasureEnabled,
       persistOnReload: settingsPersistOnReload,
       guideStyle: settingsGuideStyle,
@@ -439,6 +444,7 @@ function MeasurerClient({
     });
   }, [
     multiMeasureEnabled,
+    selectNewGuideEnabled,
     settingsColorClickFormat,
     settingsColorFormats,
     settingsGuideColor,
@@ -549,6 +555,7 @@ function MeasurerClient({
     if (settings.persistOnReload !== undefined) setSettingsPersistOnReload(settings.persistOnReload);
     if (settings.snapEnabled !== undefined) setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) setSnapGuidesEnabled(settings.snapGuidesEnabled);
+    if (settings.selectNewGuideEnabled !== undefined) setSelectNewGuideEnabled(settings.selectNewGuideEnabled);
     if (settings.multiMeasureEnabled !== undefined) setMultiMeasureEnabled(settings.multiMeasureEnabled);
     if (settings.guideStyle !== undefined) setSettingsGuideStyle({ ...DEFAULT_GUIDE_STYLE, ...settings.guideStyle });
     if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...DEFAULT_RULER_SETTINGS, ...settings.rulerSettings });
@@ -562,7 +569,7 @@ function MeasurerClient({
     ownerWindow.setTimeout(() => {
       applyingExternalPersistenceRef.current = false;
     }, 0);
-  }, [applyPersistedWorkspace, clearPersistedWorkspace, ownerWindow, setMultiMeasureEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+  }, [applyPersistedWorkspace, clearPersistedWorkspace, ownerWindow, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
 
   const previousPersistenceRef = useRef(activePersistence);
   useEffect(() => {
@@ -1195,6 +1202,7 @@ function MeasurerClient({
     guidesEnabled,
     snapEnabled,
     snapGuidesEnabled,
+    selectNewGuideEnabled,
     altPressed,
     guideOrientation,
     hoverHighlightEnabled,
@@ -1291,9 +1299,11 @@ function MeasurerClient({
 
   const finishGuideFromRuler = useCallback(
     (id: string) => {
-      setSelectedGuideIdsPersisted([id]);
+      if (selectNewGuideEnabled) {
+        setSelectedGuideIdsPersisted([id]);
+      }
     },
-    [setSelectedGuideIdsPersisted],
+    [selectNewGuideEnabled, setSelectedGuideIdsPersisted],
   );
 
   const cancelGuideFromRuler = useCallback(
@@ -1345,6 +1355,8 @@ function MeasurerClient({
     [clearGuideDragHold, setDraggingGuideId],
   );
 
+  const overlayInteractive = enabled && !settingsOpen;
+
   return createPortal(
     <div
       ref={overlayRef}
@@ -1363,9 +1375,10 @@ function MeasurerClient({
         />
       ) : null}
       <MeasurerOverlay
-         enabled={enabled && !settingsOpen}
+        enabled={enabled && (!settingsOpen || guides.length > 0)}
+        interactive={overlayInteractive}
         toolMode={toolMode}
-         guidePointerEvents={enabled && !settingsOpen && (toolMode !== "none" || rulersVisible)}
+        guidePointerEvents={overlayInteractive && (toolMode !== "none" || rulersVisible)}
         guidesEnabled={guidesEnabled}
         altPressed={altPressed}
         isDragging={isDragging}
@@ -1449,6 +1462,8 @@ function MeasurerClient({
         setSnapEnabled={setSnapEnabled}
         snapGuidesEnabled={snapGuidesEnabled}
         setSnapGuidesEnabled={setSnapGuidesEnabled}
+        selectNewGuideEnabled={selectNewGuideEnabled}
+        setSelectNewGuideEnabled={setSelectNewGuideEnabled}
         multiMeasureEnabled={multiMeasureEnabled}
         setMultiMeasureEnabled={setMultiMeasureEnabled}
          guideStyle={settingsGuideStyle}

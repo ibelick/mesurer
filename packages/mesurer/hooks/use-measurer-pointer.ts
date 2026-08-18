@@ -47,6 +47,7 @@ type UseMeasurerPointerArgs = {
   guidesEnabled: boolean
   snapEnabled: boolean
   snapGuidesEnabled: boolean
+  selectNewGuideEnabled: boolean
   altPressed: boolean
   guideOrientation: "vertical" | "horizontal"
   hoverHighlightEnabled: boolean
@@ -97,6 +98,7 @@ export const useMeasurerPointer = ({
   guidesEnabled,
   snapEnabled,
   snapGuidesEnabled,
+  selectNewGuideEnabled,
   altPressed,
   guideOrientation,
   hoverHighlightEnabled,
@@ -225,7 +227,7 @@ export const useMeasurerPointer = ({
           document,
         })
         const id = createId()
-         setSelectedGuideIds([id])
+        setSelectedGuideIds(selectNewGuideEnabled ? [id] : [])
         setGuides((prev) => [
           ...prev,
           { id, orientation: guideOrientation, position },
@@ -259,6 +261,7 @@ export const useMeasurerPointer = ({
       optionPairOverlay,
       overlayRef,
       scheduleGuideDragHold,
+      selectNewGuideEnabled,
       selectedGuideIds.length,
       selectedMeasurements,
       setDraggingGuideId,
