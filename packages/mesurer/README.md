@@ -66,7 +66,7 @@ Settings also control the selection highlight color, color output formats, ruler
 | `H`                    | Set guide orientation to horizontal.                  |
 | `V`                    | Set guide orientation to vertical.                    |
 | `Alt`                  | Temporarily enable option/guide measurement overlays. |
-| `Esc`                  | Clear all measurements and guides.                    |
+| `Esc`                  | Close settings or picker; else clear all.             |
 | `Backspace` / `Delete` | Remove selected guides.                               |
 | `Cmd/Ctrl + Z`         | Undo.                                                 |
 | `Cmd/Ctrl + Shift + Z` | Redo.                                                 |

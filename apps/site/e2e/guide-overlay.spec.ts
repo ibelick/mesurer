@@ -289,6 +289,7 @@ test("guide sliders do not drag the toolbar", async ({ page }) => {
 test("guide pattern renders as a real dashed line", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Guides" }).click();
   await page.getByRole("radio", { name: "Dashed guide pattern" }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Guides (G)" }).click();
