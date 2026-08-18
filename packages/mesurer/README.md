@@ -50,12 +50,15 @@ function App() {
 
 Guide appearance can be customized from Settings with opacity, line weight, solid/dashed/dotted pattern, dash length, and dash gap controls. These preferences are shared across browser tabs.
 
+Settings also control the selection highlight color, color output formats, ruler opacity, and edge reveal. Use **Use defaults** to restore settings or **Clear workspace** to remove guides and measurements.
+
 ## Commands
 
 | Shortcut               | Action                                                |
 | ---------------------- | ----------------------------------------------------- |
 | `M`                    | Toggle measurer on/off.                               |
 | `S`                    | Toggle Select mode.                                   |
+| `A`                    | Toggle Text Inspector mode.                           |
 | `P`                    | Open the native Color picker.                         |
 | `G`                    | Toggle Guides mode.                                   |
 | `X`                    | Toggle X-ray mode.                                    |
@@ -71,15 +74,16 @@ Guide appearance can be customized from Settings with opacity, line weight, soli
 
 ## Features
 
-- **Toggle on/off** – Enable the overlay with a single shortcut
 - **Select mode** – Click elements to measure their bounds
-- **Guides mode** – Add vertical or horizontal guides
-- **Rulers** – Show pixel rulers along the top and left edges
+- **Guides mode** – Add and drag vertical or horizontal guides
+- **Rulers** – Drag guides from pixel rulers along the top and left edges
+- **Text Inspector** – Inspect typography styles and pin text details
+- **X-ray mode** – Reveal element structure without changing the page
+- **Color picker** – Sample rendered colors and copy values in your chosen format
 - **Distance overlays** – Hold Alt for quick spacing checks
 - **Undo/redo** – Command history for guide and measurement changes
-- **Persist state** – Keep guides and measurements on reload
-- **Color picker** – Use the browser eyedropper to inspect rendered colors
-- **Settings** – Configure picker, appearance, measurement, and workspace preferences
+- **Settings** – Configure selection color, guide styles, ruler behavior, formats, and persistence
+- **Workspace controls** – Restore defaults or clear guides and measurements
 
 ## Requirements
 

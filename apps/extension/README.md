@@ -25,4 +25,7 @@ This generates the extension files in `apps/extension/dist`.
 
 - Open any regular website page.
 - Click the Mesurer extension icon to toggle the toolbar on/off.
+- Use Select, Guides, Rulers, Text Inspector, X-ray, and Color picker from the toolbar.
+- Open Settings to configure colors, guide styles, ruler behavior, formats, and persistence.
+- Use Clear workspace in Settings to remove guides and measurements for the current tab.
 - Chrome internal pages (like `chrome://`) are not supported by extensions.
