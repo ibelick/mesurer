@@ -1,5 +1,11 @@
 # mesurer
 
+## 0.0.11
+
+- keep guides, select, and rulers on screen while Settings is open so styles can be edited live
+- isolate the Chrome extension overlay from host-page CSS
+- stop settings saves from clearing the live workspace
+
 ## 0.0.10
 
 - add a color picker with hex, rgb, hsl, and oklch output
