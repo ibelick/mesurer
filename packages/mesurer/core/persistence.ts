@@ -69,13 +69,23 @@ export type MesurerPersistenceSnapshot = {
   workspace: MesurerStoredWorkspace | null
 }
 
+export type PersistenceChangeSource = {
+  settings?: boolean
+  workspace?: boolean
+}
+
 export type MesurerPersistence = {
   load: () => MesurerPersistenceSnapshot | null
   saveSettings: (settings: MesurerStoredSettings) => void
   saveWorkspace: (workspace: MesurerStoredWorkspace) => void
   clearWorkspace: () => void
   clearSettings: () => void
-  subscribe?: (listener: (snapshot: MesurerPersistenceSnapshot | null) => void) => () => void
+  subscribe?: (
+    listener: (
+      snapshot: MesurerPersistenceSnapshot | null,
+      source?: PersistenceChangeSource,
+    ) => void,
+  ) => () => void
   setErrorHandler?: (handler: ((error: unknown) => void) | undefined) => void
 }
 
@@ -359,7 +369,10 @@ export const createLocalStoragePersistence = (
     subscribe: (listener) => {
       const handleStorage = (event: StorageEvent) => {
         if (event.key !== settingsKey && event.key !== workspaceKey && event.key !== legacyKey) return
-        listener(read())
+        listener(read(), {
+          settings: event.key === settingsKey || event.key === legacyKey || settingsKey === workspaceKey,
+          workspace: event.key === workspaceKey || event.key === legacyKey || settingsKey === workspaceKey,
+        })
       }
       ownerWindow.addEventListener("storage", handleStorage)
       return () => {

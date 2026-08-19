@@ -56,9 +56,16 @@ export const createExtensionPersistence = async (
     subscribe: (listener) => {
       const handleChange = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
         if (area !== "local") return;
+        const settingsChanged = Boolean(changes[SETTINGS_KEY]);
+        const workspaceChanged = Boolean(changes[key]);
         if (changes[SETTINGS_KEY]) settings = normalizeStoredSettings(changes[SETTINGS_KEY].newValue);
         if (changes[key]) workspace = normalizeStoredWorkspace(changes[key].newValue);
-        if (changes[SETTINGS_KEY] || changes[key]) listener(snapshot());
+        if (settingsChanged || workspaceChanged) {
+          listener(snapshot(), {
+            settings: settingsChanged,
+            workspace: workspaceChanged,
+          });
+        }
       };
       chrome.storage.onChanged.addListener(handleChange);
       return () => {

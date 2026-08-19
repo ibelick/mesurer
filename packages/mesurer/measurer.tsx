@@ -55,6 +55,7 @@ import {
   DEFAULT_GUIDE_STYLE,
   type MesurerPersistence,
   type MesurerPersistenceSnapshot,
+  type PersistenceChangeSource,
   type MesurerStoredSettings,
   type MesurerStoredWorkspace,
   type GuideStyle,
@@ -562,11 +563,11 @@ function MeasurerClient({
     setHeldDistances(workspace.heldDistances);
   }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setToolMode]);
 
-  const applyPersistenceSnapshot = useCallback((snapshot: MesurerPersistenceSnapshot | null) => {
-    if (!snapshot) {
-      clearPersistedWorkspace();
-      return;
-    }
+  const applyPersistenceSnapshot = useCallback((
+    snapshot: MesurerPersistenceSnapshot | null,
+    source?: PersistenceChangeSource,
+  ) => {
+    if (!snapshot) return;
 
     applyingExternalPersistenceRef.current = true;
     const settings = sanitizeStoredSettings(ownerWindow, snapshot.settings);
@@ -584,15 +585,13 @@ function MeasurerClient({
     if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...rulerSettingsDefault, ...settings.rulerSettings });
 
     const workspace = snapshot.workspace;
-    if (!workspace) {
-      clearPersistedWorkspace();
-    } else if (settings.persistOnReload ?? settingsPersistOnReload) {
+    if (source?.workspace !== false && workspace && (settings.persistOnReload ?? settingsPersistOnReload)) {
       applyPersistedWorkspace(workspace);
     }
     ownerWindow.setTimeout(() => {
       applyingExternalPersistenceRef.current = false;
     }, 0);
-  }, [applyPersistedWorkspace, clearPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+  }, [applyPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
 
   const previousPersistenceRef = useRef(activePersistence);
   useEffect(() => {
