@@ -1,5 +1,4 @@
 export const HOST_ID = "mesurer-extension-host";
-export const HOST_TAG = "mesurer-host";
 export const ROOT_ID = "mesurer-extension-root";
 
 const HOST_STYLES: Array<[string, string]> = [
@@ -52,11 +51,6 @@ const HOST_STYLES: Array<[string, string]> = [
 
 const hostCleanups = new WeakMap<HTMLElement, () => void>();
 
-const defineHostElement = () => {
-  if (customElements.get(HOST_TAG)) return;
-  customElements.define(HOST_TAG, class extends HTMLElement {});
-};
-
 const lockHostStyles = (host: HTMLElement) => {
   host.removeAttribute("hidden");
   host.removeAttribute("inert");
@@ -71,16 +65,10 @@ const attachHost = (host: HTMLElement) => {
 };
 
 export const getOrCreateContainer = () => {
-  defineHostElement();
-
   let host = document.getElementById(HOST_ID);
-  if (host && host.localName !== HOST_TAG) {
-    host.remove();
-    host = null;
-  }
 
   if (!host) {
-    host = document.createElement(HOST_TAG);
+    host = document.createElement("div");
     host.id = HOST_ID;
   }
 

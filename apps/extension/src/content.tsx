@@ -66,7 +66,8 @@ const mount = async () => {
       />,
     );
     state.mounted = true;
-  } catch {
+  } catch (error) {
+    console.error("Mesurer failed to mount", error);
     state.root = null;
     state.mounted = false;
   } finally {
