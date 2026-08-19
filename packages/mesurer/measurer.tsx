@@ -55,6 +55,7 @@ import {
   DEFAULT_GUIDE_STYLE,
   type MesurerPersistence,
   type MesurerPersistenceSnapshot,
+  type PersistenceChangeSource,
   type MesurerStoredSettings,
   type MesurerStoredWorkspace,
   type GuideStyle,
@@ -353,6 +354,7 @@ function MeasurerClient({
   const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
   const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [settingsHighlightColor, setSettingsHighlightColor] = useState(
     persistedSettings.highlightColor ?? highlightColor,
   );
@@ -561,11 +563,11 @@ function MeasurerClient({
     setHeldDistances(workspace.heldDistances);
   }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setToolMode]);
 
-  const applyPersistenceSnapshot = useCallback((snapshot: MesurerPersistenceSnapshot | null) => {
-    if (!snapshot) {
-      clearPersistedWorkspace();
-      return;
-    }
+  const applyPersistenceSnapshot = useCallback((
+    snapshot: MesurerPersistenceSnapshot | null,
+    source?: PersistenceChangeSource,
+  ) => {
+    if (!snapshot) return;
 
     applyingExternalPersistenceRef.current = true;
     const settings = sanitizeStoredSettings(ownerWindow, snapshot.settings);
@@ -583,15 +585,13 @@ function MeasurerClient({
     if (settings.rulerSettings !== undefined) setSettingsRulerSettings({ ...rulerSettingsDefault, ...settings.rulerSettings });
 
     const workspace = snapshot.workspace;
-    if (!workspace) {
-      clearPersistedWorkspace();
-    } else if (settings.persistOnReload ?? settingsPersistOnReload) {
+    if (source?.workspace !== false && workspace && (settings.persistOnReload ?? settingsPersistOnReload)) {
       applyPersistedWorkspace(workspace);
     }
     ownerWindow.setTimeout(() => {
       applyingExternalPersistenceRef.current = false;
     }, 0);
-  }, [applyPersistedWorkspace, clearPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
+  }, [applyPersistedWorkspace, guideStyleDefault, ownerWindow, rulerSettingsDefault, setMultiMeasureEnabled, setSelectNewGuideEnabled, setSettingsColorClickFormat, setSettingsColorFormats, setSettingsGuideColor, setSettingsHighlightColor, setSettingsHoverHighlight, setSettingsPersistOnReload, setSnapEnabled, setSnapGuidesEnabled, settingsPersistOnReload]);
 
   const previousPersistenceRef = useRef(activePersistence);
   useEffect(() => {
@@ -859,6 +859,15 @@ function MeasurerClient({
     }
   }, [ownerWindow, setEnabledWithHistory, setToolModeWithHistory, settingsColorClickFormat]);
 
+  const toggleSettings = useCallback(() => {
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      return;
+    }
+    setSettingsTab(initialSettingsTab);
+    setSettingsOpen(true);
+  }, [initialSettingsTab, settingsOpen]);
+
   useHotkeys({
     eventTarget: ownerWindow,
     clearAll,
@@ -874,7 +883,7 @@ function MeasurerClient({
     onInteract: () => setToolbarActive(true),
     onColorPicker: openColorPicker,
     onToggleXray: () => setXrayVisible((previous) => !previous),
-    onToggleSettings: () => setSettingsOpen((previous) => !previous),
+    onToggleSettings: toggleSettings,
     isSettingsOpen: () => settingsOpen,
     onCloseColorPicker: () => setColorPickerActive(false),
     isColorPickerActive: () => colorPickerActive,
@@ -920,7 +929,7 @@ function MeasurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
-    selectionEnabled: toolMode === "select" && !settingsOpen,
+    selectionEnabled: toolMode === "select",
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,
@@ -1058,20 +1067,17 @@ function MeasurerClient({
   // when to turn on and off. `cleanup()` wipes everything on unmount so
   // nothing leaks on SPA re-init or extension teardown.
   useEffect(() => {
-    if (toolMode === "text-inspector" && !settingsOpen) {
+    if (toolMode === "text-inspector") {
       textInspector.enable();
     } else {
       textInspector.disable();
     }
-  }, [settingsOpen, textInspector, toolMode]);
+  }, [textInspector, toolMode]);
 
-  const selectionContextRef = useRef({ toolMode, settingsOpen });
-  if (
-    selectionContextRef.current.toolMode !== toolMode ||
-    selectionContextRef.current.settingsOpen !== settingsOpen
-  ) {
-    selectionContextRef.current = { toolMode, settingsOpen };
-    if (!(toolMode === "select" && !settingsOpen)) {
+  const selectionToolRef = useRef(toolMode);
+  if (selectionToolRef.current !== toolMode) {
+    selectionToolRef.current = toolMode;
+    if (toolMode !== "select") {
       setSelectedElement(null);
       setHoverElement(null);
       setHoverRect(null);
@@ -1384,16 +1390,34 @@ function MeasurerClient({
   );
 
   const overlayInteractive = enabled && !settingsOpen;
+  const overlayGuides = useMemo((): Guide[] => {
+    if (guides.length > 0) return guides;
+    if (!settingsOpen || settingsTab !== "guides") return guides;
+    return [
+      {
+        id: "__mesurer-preview-vertical",
+        orientation: "vertical",
+        position: ownerWindow.innerWidth / 2,
+      },
+      {
+        id: "__mesurer-preview-horizontal",
+        orientation: "horizontal",
+        position: ownerWindow.innerHeight / 2,
+      },
+    ];
+  }, [guides, ownerWindow, settingsOpen, settingsTab]);
 
   return createPortal(
     <div
       ref={overlayRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
     >
-      {enabled && rulersVisible && !settingsOpen ? (
+      {enabled && rulersVisible ? (
         <RulersOverlay
           ownerWindow={ownerWindow}
           settings={settingsRulerSettings}
+          interactive={!settingsOpen}
+          forceVisible={settingsOpen}
           onStartGuide={startGuideFromRuler}
           onMoveGuide={moveGuideFromRuler}
           onFinishGuide={finishGuideFromRuler}
@@ -1403,7 +1427,7 @@ function MeasurerClient({
         />
       ) : null}
       <MeasurerOverlay
-        enabled={enabled && (!settingsOpen || guides.length > 0)}
+        enabled={enabled}
         interactive={overlayInteractive}
         toolMode={toolMode}
         guidePointerEvents={overlayInteractive && (toolMode !== "none" || rulersVisible)}
@@ -1427,7 +1451,7 @@ function MeasurerClient({
         optionPairOverlay={optionPairOverlay}
         guideDistanceOverlay={guideDistanceOverlay}
         optionContainerLines={optionContainerLines}
-        guides={guides}
+        guides={overlayGuides}
         hoverGuide={hoverGuide}
         draggingGuideId={draggingGuideId}
         selectedGuideIds={selectedGuideIds}
@@ -1498,7 +1522,9 @@ function MeasurerClient({
          setGuideStyle={setSettingsGuideStyle}
          rulerSettings={settingsRulerSettings}
          setRulerSettings={setSettingsRulerSettings}
-         initialSettingsTab={initialSettingsTab}
+         settingsTab={settingsTab}
+         setSettingsTab={setSettingsTab}
+         onToggleSettings={toggleSettings}
          onResetSettings={resetSettings}
          onClearWorkspace={clearWorkspace}
        />

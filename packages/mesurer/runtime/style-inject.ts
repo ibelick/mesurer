@@ -2,6 +2,8 @@ const MESURER_STYLE_ID = "mesurer-styles";
 
 type StyleTarget = Document | ShadowRoot;
 
+const injectedTargets = new WeakSet<StyleTarget>();
+
 const isDocument = (target: StyleTarget): target is Document =>
   target.nodeType === 9;
 
@@ -21,6 +23,12 @@ const getStyleTarget = (
   return target.ownerDocument ?? document;
 };
 
+const adoptSheet = (styleTarget: ShadowRoot, cssText: string) => {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(cssText);
+  styleTarget.adoptedStyleSheets = [...styleTarget.adoptedStyleSheets, sheet];
+};
+
 export function ensureMeasurerStyles(
   cssText: string,
   target?: HTMLElement | ShadowRoot,
@@ -30,7 +38,21 @@ export function ensureMeasurerStyles(
 
   const styleTarget = getStyleTarget(target);
   if (!styleTarget) return;
-  if (styleTarget.querySelector(`#${MESURER_STYLE_ID}`)) return;
+  if (injectedTargets.has(styleTarget)) return;
+  if (styleTarget.querySelector(`#${MESURER_STYLE_ID}`)) {
+    injectedTargets.add(styleTarget);
+    return;
+  }
+
+  if (isShadowRoot(styleTarget)) {
+    try {
+      adoptSheet(styleTarget, cssText);
+      injectedTargets.add(styleTarget);
+      return;
+    } catch {
+      // Some pages block constructed stylesheets; fall back to a style tag.
+    }
+  }
 
   const ownerDocument = isDocument(styleTarget)
     ? styleTarget
@@ -42,8 +64,8 @@ export function ensureMeasurerStyles(
 
   if (isShadowRoot(styleTarget)) {
     styleTarget.appendChild(style);
-    return;
+  } else {
+    ownerDocument.head.appendChild(style);
   }
-
-  ownerDocument.head.appendChild(style);
+  injectedTargets.add(styleTarget);
 }

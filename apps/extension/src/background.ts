@@ -6,5 +6,7 @@ chrome.action.onClicked.addListener((tab) => {
       target: { tabId: tab.id },
       files: ["content.js"],
     })
-    .catch(() => undefined);
+    .catch((error) => {
+      console.error("Mesurer failed to inject", error);
+    });
 });

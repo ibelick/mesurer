@@ -20,6 +20,8 @@ type RulersOverlayProps = {
   onCancelGuide: (id: string) => void;
   guides: Guide[];
   selectedGuideIds: string[];
+  interactive?: boolean;
+  forceVisible?: boolean;
 };
 
 const ticks = Array.from(
@@ -36,6 +38,8 @@ export const RulersOverlay = memo(function RulersOverlay({
   onCancelGuide,
   guides,
   selectedGuideIds,
+  interactive = true,
+  forceVisible = false,
 }: RulersOverlayProps) {
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const [dragOrientation, setDragOrientation] = useState<
@@ -68,7 +72,7 @@ export const RulersOverlay = memo(function RulersOverlay({
     };
   }, [ownerWindow, settings.edgeReveal]);
 
-  const showRulers = !settings.edgeReveal || nearEdge;
+  const showRulers = forceVisible || !settings.edgeReveal || nearEdge;
 
   const beginGuideDrag = (
     orientation: "vertical" | "horizontal",
@@ -147,7 +151,7 @@ export const RulersOverlay = memo(function RulersOverlay({
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
           height: RULER_SIZE,
           cursor: "ns-resize",
-          pointerEvents: showRulers ? "auto" : "none",
+          pointerEvents: showRulers && interactive ? "auto" : "none",
         }}
         onPointerDown={(event) => beginGuideDrag("horizontal", event)}
         onPointerMove={moveGuide}
@@ -243,7 +247,7 @@ export const RulersOverlay = memo(function RulersOverlay({
           boxShadow: "1px 0 3px rgba(0, 0, 0, 0.12)",
           width: RULER_SIZE,
           cursor: "ew-resize",
-          pointerEvents: showRulers ? "auto" : "none",
+          pointerEvents: showRulers && interactive ? "auto" : "none",
         }}
         onPointerDown={(event) => beginGuideDrag("vertical", event)}
         onPointerMove={moveGuide}

@@ -34,7 +34,8 @@ type SettingsPanelProps = {
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>
   rulerSettings: RulerSettings
   setRulerSettings: Dispatch<SetStateAction<RulerSettings>>
-  initialTab: SettingsTab
+  activeTab: SettingsTab
+  onTabChange: (tab: SettingsTab) => void
   onResetSettings: () => void
   onClearWorkspace: () => void
 }
@@ -49,10 +50,10 @@ const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <div
-      className="msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
+      className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
     >
-      <div className="msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
-      <div className="msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-transparent msr:group-hover:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
+      <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
+      <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-transparent msr:group-hover:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
     </div>
   )
 }
@@ -67,15 +68,16 @@ function SettingsSwitch({ label, checked, onChange }: {
       type="button"
       role="switch"
       aria-checked={checked}
-      className="msr:col-span-2 msr:grid msr:h-6 msr:w-full msr:grid-cols-[78px_156px] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700"
+      className="msr:col-span-2 msr:grid msr:h-6 msr:w-full msr:appearance-none msr:grid-cols-[78px_156px] msr:items-center msr:gap-3 msr:text-left msr:text-[12px] msr:leading-none msr:text-ink-700"
       onClick={() => onChange(!checked)}
     >
       <span>{label}</span>
       <span
         aria-hidden="true"
         style={{ justifySelf: "end" }}
+        data-checked={checked ? "true" : undefined}
         className={cn(
-          "msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
+          "mesurer-switch-track msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
           checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
         )}
       >
@@ -379,7 +381,8 @@ export function SettingsPanel({
   setGuideStyle,
   rulerSettings,
   setRulerSettings,
-  initialTab,
+  activeTab,
+  onTabChange,
   onResetSettings,
   onClearWorkspace,
 }: SettingsPanelProps) {
@@ -393,12 +396,11 @@ export function SettingsPanel({
     })
   }
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
   const patternTooltip = useTooltip()
 
   return (
     <div className="msr:flex msr:max-h-[min(70vh,34rem)] msr:flex-col msr:gap-2 msr:overflow-y-auto" onPointerDown={(event) => event.stopPropagation()}>
-      <div className="msr:flex msr:h-6 msr:shrink-0 msr:select-none msr:items-stretch msr:gap-0 msr:rounded-[5px] msr:bg-ink-50 msr:p-px" role="tablist" aria-label="Settings sections">
+      <div className="mesurer-settings-tabs msr:flex msr:h-6 msr:shrink-0 msr:select-none msr:items-stretch msr:gap-0 msr:rounded-[5px] msr:bg-ink-50 msr:p-px" role="tablist" aria-label="Settings sections">
         {([
           ["guides", "Guides"],
           ["select", "Select"],
@@ -412,12 +414,12 @@ export function SettingsPanel({
             role="tab"
             aria-selected={activeTab === value}
             className={cn(
-              "msr:relative msr:flex msr:min-w-0 msr:flex-1 msr:appearance-none msr:items-center msr:justify-center msr:whitespace-nowrap msr:px-1.5 msr:py-0 msr:text-[10px] msr:font-medium msr:transition-colors msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+              "mesurer-settings-tab msr:relative msr:flex msr:min-w-0 msr:flex-1 msr:appearance-none msr:items-center msr:justify-center msr:whitespace-nowrap msr:px-1.5 msr:py-0 msr:text-[10px] msr:font-medium msr:transition-colors msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
               activeTab === value
                 ? "msr:rounded-[5px] msr:bg-white msr:text-ink-900 msr:shadow-[0_0_0_1px_rgba(15,23,42,0.12)]"
                 : "msr:rounded-[5px] msr:text-ink-500 msr:hover:text-ink-700",
             )}
-            onClick={() => setActiveTab(value)}
+            onClick={() => onTabChange(value)}
           >
             {label}
           </button>
