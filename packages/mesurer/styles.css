@@ -2,11 +2,11 @@
 @import "tailwindcss" prefix(msr);
 
 @theme {
-  --color-ink-50: var(--color-ink-50);
-  --color-ink-200: var(--color-ink-200);
-  --color-ink-500: var(--color-ink-500);
-  --color-ink-700: var(--color-ink-700);
-  --color-ink-900: var(--color-ink-900);
+  --color-ink-50: #f8fafc;
+  --color-ink-200: #e2e8f0;
+  --color-ink-500: #64748b;
+  --color-ink-700: #334155;
+  --color-ink-900: #0f172a;
 }
 
 :root,
@@ -18,6 +18,56 @@
   --color-ink-900: #0f172a;
 }
 
+:host {
+  all: initial;
+  display: block;
+  color-scheme: light;
+  color: #0f172a;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  direction: ltr;
+  --msr-spacing: 4px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    --tw-border-style: solid;
+    --tw-outline-style: solid;
+    --tw-shadow: 0 0 #0000;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    appearance: none;
+    background-color: transparent;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+}
+
 .mesurer-toolbar-surface {
   box-shadow:
     0 0 0.5px rgba(0, 0, 0, 0.18),
@@ -27,6 +77,43 @@
 
 .mesurer-menu-surface {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.mesurer-color-picker {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.mesurer-settings-tabs {
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.mesurer-settings-tab[aria-selected="true"] {
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+.mesurer-switch-track {
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+}
+
+.mesurer-switch-track[data-checked="true"] {
+  border-color: #0d99ff;
+}
+
+.mesurer-control-shell {
+  border: 1px solid transparent;
+}
+
+.mesurer-control-shell:hover {
+  border-color: #e2e8f0;
+}
+
+.mesurer-control-focus:focus-within {
+  outline: 1px solid #0d99ff;
+  outline-offset: -1px;
 }
 
 .mesurer-root {
