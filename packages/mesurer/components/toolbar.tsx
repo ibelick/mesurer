@@ -75,7 +75,9 @@ type ToolbarProps = {
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>;
   rulerSettings: RulerSettings;
   setRulerSettings: Dispatch<SetStateAction<RulerSettings>>;
-  initialSettingsTab: SettingsTab;
+  settingsTab: SettingsTab;
+  setSettingsTab: (tab: SettingsTab) => void;
+  onToggleSettings: () => void;
   onResetSettings: () => void;
   onClearWorkspace: () => void;
 };
@@ -359,7 +361,9 @@ function ToolbarComponent(
     setGuideStyle,
     rulerSettings,
     setRulerSettings,
-    initialSettingsTab,
+    settingsTab,
+    setSettingsTab,
+    onToggleSettings,
     onResetSettings,
     onClearWorkspace,
   }: ToolbarProps,
@@ -749,7 +753,7 @@ function ToolbarComponent(
           shortcut="⌘/Ctrl+,"
           onClick={() => {
             onInteract();
-            setSettingsOpen((previous) => !previous);
+            onToggleSettings();
           }}
           tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
           tooltipInstant={tooltipInstant}
@@ -801,7 +805,8 @@ function ToolbarComponent(
               setGuideStyle={setGuideStyle}
               rulerSettings={rulerSettings}
               setRulerSettings={setRulerSettings}
-              initialTab={initialSettingsTab}
+              activeTab={settingsTab}
+              onTabChange={setSettingsTab}
               onResetSettings={onResetSettings}
               onClearWorkspace={onClearWorkspace}
             />

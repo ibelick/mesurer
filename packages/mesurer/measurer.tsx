@@ -353,6 +353,7 @@ function MeasurerClient({
   const [colorPickerSample, setColorPickerSample] = useState<ColorSample | null>(null);
   const [colorPickerUnsupported, setColorPickerUnsupported] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [settingsHighlightColor, setSettingsHighlightColor] = useState(
     persistedSettings.highlightColor ?? highlightColor,
   );
@@ -859,6 +860,15 @@ function MeasurerClient({
     }
   }, [ownerWindow, setEnabledWithHistory, setToolModeWithHistory, settingsColorClickFormat]);
 
+  const toggleSettings = useCallback(() => {
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      return;
+    }
+    setSettingsTab(initialSettingsTab);
+    setSettingsOpen(true);
+  }, [initialSettingsTab, settingsOpen]);
+
   useHotkeys({
     eventTarget: ownerWindow,
     clearAll,
@@ -874,7 +884,7 @@ function MeasurerClient({
     onInteract: () => setToolbarActive(true),
     onColorPicker: openColorPicker,
     onToggleXray: () => setXrayVisible((previous) => !previous),
-    onToggleSettings: () => setSettingsOpen((previous) => !previous),
+    onToggleSettings: toggleSettings,
     isSettingsOpen: () => settingsOpen,
     onCloseColorPicker: () => setColorPickerActive(false),
     isColorPickerActive: () => colorPickerActive,
@@ -1384,6 +1394,22 @@ function MeasurerClient({
   );
 
   const overlayInteractive = enabled && !settingsOpen;
+  const overlayGuides = useMemo((): Guide[] => {
+    if (guides.length > 0) return guides;
+    if (!settingsOpen || settingsTab !== "guides") return guides;
+    return [
+      {
+        id: "__mesurer-preview-vertical",
+        orientation: "vertical",
+        position: ownerWindow.innerWidth / 2,
+      },
+      {
+        id: "__mesurer-preview-horizontal",
+        orientation: "horizontal",
+        position: ownerWindow.innerHeight / 2,
+      },
+    ];
+  }, [guides, ownerWindow, settingsOpen, settingsTab]);
 
   return createPortal(
     <div
@@ -1403,7 +1429,7 @@ function MeasurerClient({
         />
       ) : null}
       <MeasurerOverlay
-        enabled={enabled && (!settingsOpen || guides.length > 0)}
+        enabled={enabled}
         interactive={overlayInteractive}
         toolMode={toolMode}
         guidePointerEvents={overlayInteractive && (toolMode !== "none" || rulersVisible)}
@@ -1427,7 +1453,7 @@ function MeasurerClient({
         optionPairOverlay={optionPairOverlay}
         guideDistanceOverlay={guideDistanceOverlay}
         optionContainerLines={optionContainerLines}
-        guides={guides}
+        guides={overlayGuides}
         hoverGuide={hoverGuide}
         draggingGuideId={draggingGuideId}
         selectedGuideIds={selectedGuideIds}
@@ -1498,7 +1524,9 @@ function MeasurerClient({
          setGuideStyle={setSettingsGuideStyle}
          rulerSettings={settingsRulerSettings}
          setRulerSettings={setSettingsRulerSettings}
-         initialSettingsTab={initialSettingsTab}
+         settingsTab={settingsTab}
+         setSettingsTab={setSettingsTab}
+         onToggleSettings={toggleSettings}
          onResetSettings={resetSettings}
          onClearWorkspace={clearWorkspace}
        />

@@ -34,7 +34,8 @@ type SettingsPanelProps = {
   setGuideStyle: Dispatch<SetStateAction<GuideStyle>>
   rulerSettings: RulerSettings
   setRulerSettings: Dispatch<SetStateAction<RulerSettings>>
-  initialTab: SettingsTab
+  activeTab: SettingsTab
+  onTabChange: (tab: SettingsTab) => void
   onResetSettings: () => void
   onClearWorkspace: () => void
 }
@@ -379,7 +380,8 @@ export function SettingsPanel({
   setGuideStyle,
   rulerSettings,
   setRulerSettings,
-  initialTab,
+  activeTab,
+  onTabChange,
   onResetSettings,
   onClearWorkspace,
 }: SettingsPanelProps) {
@@ -393,7 +395,6 @@ export function SettingsPanel({
     })
   }
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
   const patternTooltip = useTooltip()
 
   return (
@@ -417,7 +418,7 @@ export function SettingsPanel({
                 ? "msr:rounded-[5px] msr:bg-white msr:text-ink-900 msr:shadow-[0_0_0_1px_rgba(15,23,42,0.12)]"
                 : "msr:rounded-[5px] msr:text-ink-500 msr:hover:text-ink-700",
             )}
-            onClick={() => setActiveTab(value)}
+            onClick={() => onTabChange(value)}
           >
             {label}
           </button>

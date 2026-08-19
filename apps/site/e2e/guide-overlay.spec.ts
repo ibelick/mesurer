@@ -300,6 +300,48 @@ test("guide pattern renders as a real dashed line", async ({ page }) => {
   await expect(line).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
+test("placed guides stay visible and update while settings is open", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const line = page.locator("[data-mesurer-guide] > div");
+  await expect(line).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("tab", { name: "Guides" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(line).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-guide]")).toBeVisible();
+
+  await page.getByRole("radio", { name: "Dashed guide pattern" }).click();
+  await expect(line).toHaveCSS("background-image", /repeating-linear-gradient/);
+});
+
+test("guide settings show a live preview when no guides are placed", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Guides" }).click();
+
+  const guides = page.locator("[data-mesurer-guide]");
+  await expect(guides).toHaveCount(2);
+
+  await page.getByRole("radio", { name: "Dashed guide pattern" }).click();
+  await expect(guides.locator(":scope > div").first()).toHaveCSS(
+    "background-image",
+    /repeating-linear-gradient/,
+  );
+
+  await page.getByRole("tab", { name: "Select" }).click();
+  await expect(guides).toHaveCount(0);
+});
+
 test("guides mode never selects page elements", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Select (S)" }).click();
