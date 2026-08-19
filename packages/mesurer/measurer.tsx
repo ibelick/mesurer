@@ -929,7 +929,7 @@ function MeasurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
-    selectionEnabled: toolMode === "select" && !settingsOpen,
+    selectionEnabled: toolMode === "select",
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,
@@ -1067,20 +1067,17 @@ function MeasurerClient({
   // when to turn on and off. `cleanup()` wipes everything on unmount so
   // nothing leaks on SPA re-init or extension teardown.
   useEffect(() => {
-    if (toolMode === "text-inspector" && !settingsOpen) {
+    if (toolMode === "text-inspector") {
       textInspector.enable();
     } else {
       textInspector.disable();
     }
-  }, [settingsOpen, textInspector, toolMode]);
+  }, [textInspector, toolMode]);
 
-  const selectionContextRef = useRef({ toolMode, settingsOpen });
-  if (
-    selectionContextRef.current.toolMode !== toolMode ||
-    selectionContextRef.current.settingsOpen !== settingsOpen
-  ) {
-    selectionContextRef.current = { toolMode, settingsOpen };
-    if (!(toolMode === "select" && !settingsOpen)) {
+  const selectionToolRef = useRef(toolMode);
+  if (selectionToolRef.current !== toolMode) {
+    selectionToolRef.current = toolMode;
+    if (toolMode !== "select") {
       setSelectedElement(null);
       setHoverElement(null);
       setHoverRect(null);
@@ -1415,10 +1412,12 @@ function MeasurerClient({
       ref={overlayRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
     >
-      {enabled && rulersVisible && !settingsOpen ? (
+      {enabled && rulersVisible ? (
         <RulersOverlay
           ownerWindow={ownerWindow}
           settings={settingsRulerSettings}
+          interactive={!settingsOpen}
+          forceVisible={settingsOpen}
           onStartGuide={startGuideFromRuler}
           onMoveGuide={moveGuideFromRuler}
           onFinishGuide={finishGuideFromRuler}

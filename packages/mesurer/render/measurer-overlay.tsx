@@ -138,7 +138,7 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
     toolMode !== "text-inspector" &&
     toolMode !== "xray" &&
     toolMode !== "rulers";
-  const selectionVisible = interactive && toolMode === "select";
+  const selectionVisible = toolMode === "select";
 
   return (
     <div
@@ -308,16 +308,14 @@ export const MeasurerOverlay = memo(function MeasurerOverlay({
           ))
         : null}
 
-      {interactive
-        ? heldDistances.map((distance) => (
+      {heldDistances.map((distance) => (
         <DistanceOverlayItem
           key={`held-${distance.id}`}
           distance={distance}
           labelOffset={MEASURE_LABEL_OFFSET}
           onRemove={onRemoveHeldDistance}
         />
-      ))
-        : null}
+      ))}
 
       {selectionVisible && altPressed && optionPairOverlay ? (
         <DistanceOverlayItem
