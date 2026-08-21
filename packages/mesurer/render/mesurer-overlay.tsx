@@ -6,6 +6,7 @@ import { memo } from "react"
 import type { EdgeVisibility } from "../core/edge-visibility"
 import type {
   DistanceOverlay,
+  Arrow,
   Guide,
   InspectMeasurement,
   Measurement,
@@ -17,11 +18,13 @@ import { DistancesLayer } from "./distances-layer"
 import { GuidesLayer } from "./guides-layer"
 import type { OptionContainerLines } from "./option-container-lines"
 import { SelectionLayer } from "./selection-layer"
+import { ArrowsLayer } from "./arrows-layer"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
   onPointerMove: PointerEventHandler<HTMLDivElement>
   onPointerUp: PointerEventHandler<HTMLDivElement>
+  onPointerCancel: PointerEventHandler<HTMLDivElement>
   onPointerLeave: PointerEventHandler<HTMLDivElement>
 }
 
@@ -78,6 +81,12 @@ type MesurerOverlayProps = {
   selection: OverlaySelection
   distances: OverlayDistances
   guides: OverlayGuides
+  arrows: {
+    items: Arrow[]
+    selectedIds: string[]
+    preview: { start: { x: number; y: number }; end: { x: number; y: number } } | null
+    markerId: string
+  }
 }
 
 export const MesurerOverlay = memo(function MesurerOverlay({
@@ -93,6 +102,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   selection,
   distances,
   guides,
+  arrows,
 }: MesurerOverlayProps) {
   const overlayVisible = enabled
   const overlayInteractive =
@@ -122,6 +132,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       onPointerDown={pointers.onPointerDown}
       onPointerMove={pointers.onPointerMove}
       onPointerUp={pointers.onPointerUp}
+      onPointerCancel={pointers.onPointerCancel}
       onPointerLeave={pointers.onPointerLeave}
     >
       <SelectionLayer
@@ -140,6 +151,13 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         hoverEdges={selection.hoverEdges}
         selected={selection.selected}
         selectedEdges={selection.selectedEdges}
+      />
+
+      <ArrowsLayer
+        arrows={arrows.items}
+        selectedIds={arrows.selectedIds}
+        preview={arrows.preview}
+        markerId={arrows.markerId}
       />
 
       {showGuidePreview || guides.items.length > 0 ? (
