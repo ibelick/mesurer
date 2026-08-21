@@ -8,6 +8,7 @@ type HotkeyOptions = {
   undo: () => void
   redo: () => void
   removeSelectedGuides: () => boolean
+  removeSelectedArrows: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
   setRulersVisible: Dispatch<SetStateAction<boolean>>
@@ -112,9 +113,21 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
         }
 
+        if (key === "o") {
+          current.onCloseScreenshot()
+          current.setToolMode((prev) => (prev === "selection" ? "none" : "selection"))
+          current.onInteract()
+        }
+
         if (key === "g") {
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "guides" ? "none" : "guides"))
+          current.onInteract()
+        }
+
+        if (key === "d") {
+          current.onCloseScreenshot()
+          current.setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
           current.onInteract()
         }
 
@@ -140,7 +153,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (event.key === "Backspace" || event.key === "Delete") {
-        const removed = current.removeSelectedGuides()
+        const removed = current.removeSelectedGuides() || current.removeSelectedArrows()
         if (removed) {
           event.preventDefault()
         }

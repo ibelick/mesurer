@@ -5,6 +5,7 @@ import type {
   Guide,
   InspectMeasurement,
   Measurement,
+  Arrow,
   ToolMode,
 } from "../core/types"
 
@@ -22,6 +23,8 @@ type MesurerSnapshot = {
   guides: Guide[]
   selectedGuideIds: string[]
   draggingGuideId: string | null
+  arrows: Arrow[]
+  selectedArrowIds: string[]
 }
 
 type UseMesurerHistoryArgs = {
@@ -57,6 +60,12 @@ type UseMesurerHistoryArgs = {
     draggingGuideId: string | null
     setDraggingGuideId: (value: SetStateAction<string | null>) => void
   }
+  arrows: {
+    arrows: Arrow[]
+    setArrows: (value: SetStateAction<Arrow[]>) => void
+    selectedArrowIds: string[]
+    setSelectedArrowIds: (value: SetStateAction<string[]>) => void
+  }
   transient: {
     setStart: (value: SetStateAction<{ x: number; y: number } | null>) => void
     setEnd: (value: SetStateAction<{ x: number; y: number } | null>) => void
@@ -87,6 +96,7 @@ export const useMesurerHistory = ({
   toggles,
   measurements,
   guides,
+  arrows,
   transient,
 }: UseMesurerHistoryArgs) => {
   const {
@@ -127,6 +137,7 @@ export const useMesurerHistory = ({
     setSelectedElement,
     clearSelectionRect,
   } = transient
+  const { arrows: arrowEntries, setArrows, selectedArrowIds, setSelectedArrowIds } = arrows
 
   const historyRef = useRef<MesurerSnapshot[]>([])
   const futureRef = useRef<MesurerSnapshot[]>([])
@@ -145,6 +156,8 @@ export const useMesurerHistory = ({
       guides: [...guideEntries],
       selectedGuideIds: [...selectedGuideIds],
       draggingGuideId,
+      arrows: [...arrowEntries],
+      selectedArrowIds: [...selectedArrowIds],
     }
   }, [
     activeMeasurement,
@@ -158,6 +171,8 @@ export const useMesurerHistory = ({
     selectedMeasurement,
     selectedMeasurements,
     toolMode,
+    arrowEntries,
+    selectedArrowIds,
   ])
 
   const getSnapshotSignature = useCallback((snapshot: MesurerSnapshot) => {
@@ -188,6 +203,8 @@ export const useMesurerHistory = ({
       snapshot.guides.map((item) => `${item.id}:${item.position}`).join(","),
       snapshot.selectedGuideIds.join(","),
       snapshot.draggingGuideId ?? "",
+      snapshot.arrows.map((arrow) => `${arrow.id}:${arrow.start.x},${arrow.start.y},${arrow.end.x},${arrow.end.y}`).join(","),
+      snapshot.selectedArrowIds.join(","),
     ].join("|")
   }, [])
 
@@ -216,6 +233,8 @@ export const useMesurerHistory = ({
       setGuides(snapshot.guides)
       setSelectedGuideIds(snapshot.selectedGuideIds)
       setDraggingGuideId(snapshot.draggingGuideId)
+      setArrows(snapshot.arrows)
+      setSelectedArrowIds(snapshot.selectedArrowIds)
       setStart(null)
       setEnd(null)
       setIsDragging(false)
@@ -250,6 +269,8 @@ export const useMesurerHistory = ({
       setStart,
       setToolMode,
       setHoverElement,
+      setArrows,
+      setSelectedArrowIds,
     ]
   )
 

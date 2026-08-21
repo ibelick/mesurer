@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { ensureMesurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
 import { SettingsPanel } from "./components/settings-panel";
@@ -28,6 +29,7 @@ import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
 import { useTextInspector } from "./hooks/use-text-inspector";
 import { useXray } from "./hooks/use-xray";
+import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { createPersistedSetter } from "./core/persisted-setter";
 import type { ColorPickerFormat } from "./core/colors";
 import {
@@ -168,6 +170,8 @@ function MesurerClient({
     heldDistancesRef,
     guidesRef,
     selectedGuideIdsRef,
+    arrowsRef,
+    selectedArrowIdsRef,
     overlayRef,
     selectedElementRef,
     hoverElementRef,
@@ -222,6 +226,14 @@ function MesurerClient({
     setDraggingGuideId,
     selectedGuideIds,
     setSelectedGuideIds,
+    arrows,
+    setArrows,
+    selectedArrowIds,
+    setSelectedArrowIds,
+    arrowStart,
+    setArrowStart,
+    arrowPreviewEnd,
+    setArrowPreviewEnd,
     toolbarActive,
     setToolbarActive,
     settingsOpen,
@@ -301,6 +313,8 @@ function MesurerClient({
   heldDistancesRef.current = heldDistances;
   guidesRef.current = guides;
   selectedGuideIdsRef.current = selectedGuideIds;
+  arrowsRef.current = arrows;
+  selectedArrowIdsRef.current = selectedArrowIds;
 
   const saveWorkspace = useCallback(() => {
     if (!settingsPersistOnReload) return;
@@ -312,6 +326,8 @@ function MesurerClient({
       guideOrientation: guideOrientationRef.current,
       guides: guidesRef.current,
       selectedGuideIds: selectedGuideIdsRef.current,
+      arrows: arrowsRef.current,
+      selectedArrowIds: selectedArrowIdsRef.current,
       measurements: measurementsRef.current.map(stripMeasurement),
       activeMeasurement: activeMeasurementRef.current
         ? stripMeasurement(activeMeasurementRef.current)
@@ -342,6 +358,8 @@ function MesurerClient({
     heldDistancesRef.current = [];
     guidesRef.current = [];
     selectedGuideIdsRef.current = [];
+    arrowsRef.current = [];
+    selectedArrowIdsRef.current = [];
     closeScreenshotRef.current();
     setEnabled(false);
     setToolMode("none");
@@ -355,7 +373,9 @@ function MesurerClient({
     setHeldDistances([]);
     setGuides([]);
     setSelectedGuideIds([]);
-  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setToolMode]);
+    setArrows([]);
+    setSelectedArrowIds([]);
+  }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setToolMode]);
 
   const clearWorkspace = useCallback(() => {
     clearPersistedWorkspace();
@@ -373,6 +393,8 @@ function MesurerClient({
     heldDistancesRef.current = workspace.heldDistances;
     guidesRef.current = workspace.guides;
     selectedGuideIdsRef.current = workspace.selectedGuideIds;
+    arrowsRef.current = workspace.arrows;
+    selectedArrowIdsRef.current = workspace.selectedArrowIds;
     if (!workspace.enabled) closeScreenshotRef.current();
     setEnabled(workspace.enabled);
     setToolMode(workspace.toolMode);
@@ -383,8 +405,10 @@ function MesurerClient({
     setActiveMeasurement(workspace.activeMeasurement);
     setGuides(workspace.guides);
     setSelectedGuideIds(workspace.selectedGuideIds);
+    setArrows(workspace.arrows);
+    setSelectedArrowIds(workspace.selectedArrowIds);
     setHeldDistances(workspace.heldDistances);
-  }, [setActiveMeasurement, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedGuideIds, setToolMode]);
+  }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setToolMode]);
 
   const applyPersistenceSnapshot = useCallback((
     snapshot: MesurerPersistenceSnapshot | null,
@@ -478,6 +502,16 @@ function MesurerClient({
     [persistState, setSelectedGuideIds],
   );
 
+  const setArrowsPersisted = useCallback(
+    createPersistedSetter(arrowsRef, setArrows, persistState),
+    [persistState, setArrows],
+  );
+
+  const setSelectedArrowIdsPersisted = useCallback(
+    createPersistedSetter(selectedArrowIdsRef, setSelectedArrowIds, persistState),
+    [persistState, setSelectedArrowIds],
+  );
+
   const {
     recordSnapshot,
     createActionCommit,
@@ -514,6 +548,12 @@ function MesurerClient({
       setSelectedGuideIds: setSelectedGuideIdsPersisted,
       draggingGuideId,
       setDraggingGuideId,
+    },
+    arrows: {
+      arrows,
+      setArrows: setArrowsPersisted,
+      selectedArrowIds,
+      setSelectedArrowIds: setSelectedArrowIdsPersisted,
     },
     transient: {
       setStart,
@@ -557,6 +597,8 @@ function MesurerClient({
     setGuidesPersisted([]);
     setSelectedGuideIdsPersisted([]);
     setHeldDistancesPersisted([]);
+    setArrowsPersisted([]);
+    setSelectedArrowIdsPersisted([]);
   }, [
     clearGuideDragHold,
     clearSelectionRect,
@@ -571,6 +613,8 @@ function MesurerClient({
     setMeasurementsPersisted,
     setSelectedElement,
     setSelectedGuideIdsPersisted,
+    setArrowsPersisted,
+    setSelectedArrowIdsPersisted,
     setSelectedMeasurement,
     setSelectedMeasurements,
     setStart,
@@ -592,6 +636,16 @@ function MesurerClient({
     setGuidesPersisted,
     setSelectedGuideIdsPersisted,
   ]);
+
+  const removeSelectedArrows = useCallback(() => {
+    if (selectedArrowIds.length === 0) return false;
+    recordSnapshot();
+    setArrowsPersisted((previous) =>
+      previous.filter((arrow) => !selectedArrowIds.includes(arrow.id)),
+    );
+    setSelectedArrowIdsPersisted([]);
+    return true;
+  }, [recordSnapshot, selectedArrowIds, setArrowsPersisted, setSelectedArrowIdsPersisted]);
 
   const colorPicker = useColorPicker({
     ownerWindow,
@@ -635,6 +689,7 @@ function MesurerClient({
     undo,
     redo,
     removeSelectedGuides,
+    removeSelectedArrows,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
     setRulersVisible: setRulersVisiblePersisted,
@@ -828,6 +883,22 @@ function MesurerClient({
     clearSelectionRect,
   });
 
+  const arrowsPointer = useArrowsPointer({
+    enabled,
+    settingsOpen,
+    color: settingsGuideColor,
+    width: Math.max(settingsGuideStyle.width, 1),
+    createActionCommit,
+    setArrows: setArrowsPersisted,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setToolMode: setToolModePersisted,
+    arrows,
+    arrowStart,
+    arrowPreviewEnd,
+    setArrowStart,
+    setArrowPreviewEnd,
+  });
+
   const removeHeldDistance = useCallback(
     (id: string) => {
       recordSnapshot();
@@ -864,6 +935,37 @@ function MesurerClient({
   });
 
   const overlayInteractive = enabled && !settingsOpen;
+  const pointerHandlers = toolMode === "arrows"
+    ? {
+        onPointerDown: arrowsPointer.handlePointerDown,
+        onPointerMove: arrowsPointer.handlePointerMove,
+        onPointerUp: arrowsPointer.handlePointerUp,
+        onPointerLeave: arrowsPointer.handlePointerCancel,
+        onPointerCancel: arrowsPointer.handlePointerCancel,
+      }
+    : {
+        onPointerDown: toolMode === "selection"
+          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (!arrowsPointer.handleSelectionPointerDown(event)) handlePointerDown(event)
+            }
+          : handlePointerDown,
+        onPointerMove: toolMode === "selection"
+          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (!arrowsPointer.handleSelectionPointerMove(event)) handlePointerMove(event)
+            }
+          : handlePointerMove,
+        onPointerUp: toolMode === "selection"
+          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
+            }
+          : handlePointerUp,
+        onPointerLeave: handlePointerLeave,
+        onPointerCancel: toolMode === "selection"
+          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
+            }
+          : handlePointerUp,
+      };
 
   return (
     <MesurerPortal
@@ -893,11 +995,8 @@ function MesurerClient({
         isDragging,
         fillColor,
         outlineColor,
-        pointers: {
-          onPointerDown: handlePointerDown,
-          onPointerMove: handlePointerMove,
-          onPointerUp: handlePointerUp,
-          onPointerLeave: handlePointerLeave,
+          pointers: {
+            ...pointerHandlers,
         },
         selection: {
           measurements: displayedMeasurements,
@@ -935,6 +1034,12 @@ function MesurerClient({
           onPointerDown: handleGuidePointerDown,
           onPointerUp: handleGuidePointerUp,
           onPointerCancel: handleGuidePointerUp,
+        },
+        arrows: {
+          items: arrows,
+          selectedIds: selectedArrowIds,
+          preview: arrowsPointer.preview,
+          markerId: `mesurer-arrow-marker-${instanceIdRef.current}`,
         },
       }}
       colorPicker={{
