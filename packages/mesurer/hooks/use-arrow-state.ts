@@ -12,6 +12,7 @@ export const useArrowState = (options: ArrowStateOptions = {}) => {
     options.initialSelectedArrowIds ?? [],
   )
   const [arrowStart, setArrowStart] = useState<Point | null>(null)
+  const [arrowMiddle, setArrowMiddle] = useState<Point | null>(null)
   const [arrowPreviewEnd, setArrowPreviewEnd] = useState<Point | null>(null)
 
   return {
@@ -21,6 +22,8 @@ export const useArrowState = (options: ArrowStateOptions = {}) => {
     setSelectedArrowIds,
     arrowStart,
     setArrowStart,
+    arrowMiddle,
+    setArrowMiddle,
     arrowPreviewEnd,
     setArrowPreviewEnd,
   }

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -232,6 +233,8 @@ function MesurerClient({
     setSelectedArrowIds,
     arrowStart,
     setArrowStart,
+    arrowMiddle,
+    setArrowMiddle,
     arrowPreviewEnd,
     setArrowPreviewEnd,
     toolbarActive,
@@ -302,6 +305,23 @@ function MesurerClient({
     orientation: "vertical" | "horizontal";
     position: number;
   } | null>(null);
+  const [scrollOffset, setScrollOffset] = useState({
+    x: ownerWindow.scrollX,
+    y: ownerWindow.scrollY,
+  });
+
+  useEffect(() => {
+    const updateScrollOffset = () => {
+      setScrollOffset({ x: ownerWindow.scrollX, y: ownerWindow.scrollY });
+    };
+    updateScrollOffset();
+    ownerWindow.addEventListener("scroll", updateScrollOffset, true);
+    ownerWindow.addEventListener("resize", updateScrollOffset);
+    return () => {
+      ownerWindow.removeEventListener("scroll", updateScrollOffset, true);
+      ownerWindow.removeEventListener("resize", updateScrollOffset);
+    };
+  }, [ownerWindow]);
 
   enabledRef.current = enabled;
   xrayVisibleRef.current = xrayVisible;
@@ -622,6 +642,22 @@ function MesurerClient({
     toolMode,
   ]);
 
+  const cancelInteraction = useCallback(() => {
+    clearGuideDragHold();
+    setStart(null);
+    setEnd(null);
+    setIsDragging(false);
+    clearSelectionRect();
+    setHoverRect(null);
+    setHoverElement(null);
+    setSelectedElement(null);
+    setArrowStart(null);
+    setArrowMiddle(null);
+    setArrowPreviewEnd(null);
+    setSelectedArrowIdsPersisted([]);
+    setToolModePersisted("selection");
+  }, [clearGuideDragHold, clearSelectionRect, setArrowMiddle, setArrowPreviewEnd, setArrowStart, setEnd, setHoverElement, setHoverRect, setIsDragging, setSelectedArrowIdsPersisted, setSelectedElement, setStart, setToolModePersisted]);
+
   const removeSelectedGuides = useCallback(() => {
     if (selectedGuideIds.length === 0) return false;
     recordSnapshot();
@@ -685,7 +721,7 @@ function MesurerClient({
 
   useHotkeys({
     eventTarget: ownerWindow,
-    clearAll,
+    cancelInteraction,
     undo,
     redo,
     removeSelectedGuides,
@@ -894,9 +930,12 @@ function MesurerClient({
     setToolMode: setToolModePersisted,
     arrows,
     arrowStart,
+    arrowMiddle,
     arrowPreviewEnd,
     setArrowStart,
+    setArrowMiddle,
     setArrowPreviewEnd,
+    scrollOffset,
   });
 
   const removeHeldDistance = useCallback(
@@ -940,7 +979,7 @@ function MesurerClient({
         onPointerDown: arrowsPointer.handlePointerDown,
         onPointerMove: arrowsPointer.handlePointerMove,
         onPointerUp: arrowsPointer.handlePointerUp,
-        onPointerLeave: arrowsPointer.handlePointerCancel,
+        onPointerLeave: arrowsPointer.handlePointerLeave,
         onPointerCancel: arrowsPointer.handlePointerCancel,
       }
     : {
@@ -1040,6 +1079,7 @@ function MesurerClient({
           selectedIds: selectedArrowIds,
           preview: arrowsPointer.preview,
           markerId: `mesurer-arrow-marker-${instanceIdRef.current}`,
+          scrollOffset,
         },
       }}
       colorPicker={{

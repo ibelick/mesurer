@@ -199,12 +199,14 @@ const isArrow = (value: unknown): value is Arrow => {
   const arrow = value as Record<string, unknown>
   const start = arrow.start as Record<string, unknown> | undefined
   const end = arrow.end as Record<string, unknown> | undefined
+  const control = arrow.control as Record<string, unknown> | undefined
   return (
     typeof arrow.id === "string" &&
     isFiniteNumber(start?.x) &&
     isFiniteNumber(start?.y) &&
     isFiniteNumber(end?.x) &&
     isFiniteNumber(end?.y) &&
+    (control === undefined || (isFiniteNumber(control.x) && isFiniteNumber(control.y))) &&
     typeof arrow.color === "string" &&
     isFiniteNumber(arrow.width) &&
     arrow.width > 0

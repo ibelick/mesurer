@@ -7,6 +7,7 @@ export type Arrow = {
   id: string
   start: Point
   end: Point
+  control?: Point
   color: string
   width: number
 }
