@@ -4,7 +4,7 @@ import type { ToolMode } from "../core/types"
 
 type HotkeyOptions = {
   eventTarget: Window
-  clearAll: () => void
+  cancelInteraction: () => void
   undo: () => void
   redo: () => void
   removeSelectedGuides: () => boolean
@@ -48,7 +48,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onCloseColorPicker()
           return
         }
-        current.clearAll()
+        event.preventDefault()
+        current.cancelInteraction()
         return
       }
 
