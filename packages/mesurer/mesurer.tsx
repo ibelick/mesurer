@@ -1078,7 +1078,6 @@ function MesurerClient({
           items: arrows,
           selectedIds: selectedArrowIds,
           preview: arrowsPointer.preview,
-          markerId: `mesurer-arrow-marker-${instanceIdRef.current}`,
           scrollOffset,
         },
       }}

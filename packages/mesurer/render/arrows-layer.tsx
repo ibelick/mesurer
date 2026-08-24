@@ -1,12 +1,11 @@
 import { memo } from "react"
-import { arrowPath, midpoint } from "../core/arrows"
+import { arrowHead, arrowPath, midpoint, quadraticPoint } from "../core/arrows"
 import type { Arrow, Point } from "../core/types"
 
 type ArrowsLayerProps = {
   arrows: Arrow[]
   selectedIds: string[]
   preview: { start: Point; end: Point; control?: Point } | null
-  markerId: string
   scrollOffset: Point
 }
 
@@ -48,7 +47,6 @@ const ArrowLine = ({
   control: providedControl,
   color,
   width,
-  markerId,
   selected,
   preview = false,
   id,
@@ -58,19 +56,16 @@ const ArrowLine = ({
   control?: Point
   color: string
   width: number
-  markerId: string
   selected?: boolean
   preview?: boolean
   id?: string
 }) => {
   const control = providedControl ?? midpoint(start, end)
   const path = arrowPath(start, end, control)
+  const head = arrowHead(start, control, end, width)
   const touchPoints = preview
     ? []
-    : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => ({
-        x: (1 - t) ** 2 * start.x + 2 * (1 - t) * t * control.x + t ** 2 * end.x,
-        y: (1 - t) ** 2 * start.y + 2 * (1 - t) * t * control.y + t ** 2 * end.y,
-      }))
+    : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => quadraticPoint(start, control, end, t))
 
   return (
     <g>
@@ -101,12 +96,21 @@ const ArrowLine = ({
         stroke={color}
         strokeWidth={width}
         strokeLinecap="round"
-        markerEnd={`url(#${markerId})`}
         pointerEvents={preview ? "none" : "all"}
         opacity={preview ? 0.65 : 1}
         data-mesurer-arrow={preview ? undefined : "true"}
         data-mesurer-arrow-id={id}
         data-mesurer-arrow-preview={preview ? "true" : undefined}
+      />
+      <path
+        d={`M ${head.left.x} ${head.left.y} L ${head.tip.x} ${head.tip.y} L ${head.right.x} ${head.right.y}`}
+        fill="none"
+        stroke={color}
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        pointerEvents="none"
+        opacity={preview ? 0.65 : 1}
       />
       {selected ? (
         <>
@@ -181,7 +185,6 @@ export const ArrowsLayer = memo(function ArrowsLayer({
   arrows,
   selectedIds,
   preview,
-  markerId,
   scrollOffset,
 }: ArrowsLayerProps) {
   if (arrows.length === 0 && !preview) return null
@@ -192,28 +195,6 @@ export const ArrowsLayer = memo(function ArrowsLayer({
       className="msr:pointer-events-none msr:absolute msr:inset-0 msr:size-full"
       data-mesurer-arrows-layer="true"
     >
-      <defs>
-        <marker
-          id={markerId}
-          markerHeight="12"
-          markerWidth="14"
-          markerUnits="strokeWidth"
-          orient="auto"
-          overflow="visible"
-          refX="12"
-          refY="6"
-          viewBox="0 0 14 12"
-        >
-          <path
-            d="M1 0.5L12 6L1 11.5"
-            fill="none"
-            stroke="context-stroke"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1"
-          />
-        </marker>
-      </defs>
       {arrows.map((arrow) => (
         <ArrowLine
           key={arrow.id}
@@ -222,7 +203,6 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           control={arrow.control ? { x: arrow.control.x - scrollOffset.x, y: arrow.control.y - scrollOffset.y } : undefined}
           color={arrow.color}
           width={arrow.width}
-          markerId={markerId}
           selected={selectedIds.includes(arrow.id)}
           id={arrow.id}
         />
@@ -234,7 +214,6 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           control={preview.control ? { x: preview.control.x - scrollOffset.x, y: preview.control.y - scrollOffset.y } : undefined}
           color="#0d99ff"
           width={1}
-          markerId={markerId}
           preview
         />
       ) : null}

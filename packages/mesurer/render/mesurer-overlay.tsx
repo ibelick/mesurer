@@ -85,7 +85,6 @@ type MesurerOverlayProps = {
     items: Arrow[]
     selectedIds: string[]
     preview: { start: { x: number; y: number }; end: { x: number; y: number }; control?: { x: number; y: number } } | null
-    markerId: string
     scrollOffset: { x: number; y: number }
   }
 }
@@ -158,7 +157,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         arrows={arrows.items}
         selectedIds={arrows.selectedIds}
         preview={arrows.preview}
-        markerId={arrows.markerId}
         scrollOffset={arrows.scrollOffset}
       />
 
