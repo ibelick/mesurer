@@ -270,6 +270,19 @@ export const useArrowsPointer = ({
     [clearDrawing],
   )
 
+  const cancelInteraction = useCallback(() => {
+    const edit = editRef.current
+    if (edit?.changed) {
+      setArrows((previous) => previous.map((arrow) =>
+        arrow.id === edit.arrowId ? edit.arrow : arrow,
+      ))
+    }
+    editRef.current = null
+    drawingRef.current = null
+    pointerIdRef.current = null
+    clearDrawing()
+  }, [clearDrawing, setArrows])
+
   const handleSelectionPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!editRef.current || event.pointerId !== pointerIdRef.current) return false
@@ -291,6 +304,7 @@ export const useArrowsPointer = ({
     handlePointerUp,
     handlePointerLeave,
     handlePointerCancel,
+    cancelInteraction,
     handleSelectionPointerDown,
     handleSelectionPointerMove,
     handleSelectionPointerUp,

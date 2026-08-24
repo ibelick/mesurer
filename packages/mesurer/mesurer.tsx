@@ -147,6 +147,7 @@ function MesurerClient({
   const persistedSettings = sanitizeStoredSettings(ownerWindow, storedState?.settings ?? {});
 
   const closeScreenshotRef = useRef<() => void>(() => {});
+  const cancelArrowInteractionRef = useRef<() => void>(() => {});
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
   const workspace = useMesurerWorkspaceState({
@@ -643,6 +644,7 @@ function MesurerClient({
   ]);
 
   const cancelInteraction = useCallback(() => {
+    cancelArrowInteractionRef.current();
     clearGuideDragHold();
     setStart(null);
     setEnd(null);
@@ -937,6 +939,7 @@ function MesurerClient({
     setArrowPreviewEnd,
     scrollOffset,
   });
+  cancelArrowInteractionRef.current = arrowsPointer.cancelInteraction;
 
   const removeHeldDistance = useCallback(
     (id: string) => {
