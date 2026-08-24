@@ -1,4 +1,5 @@
 import type {
+  RefObject,
   PointerEventHandler,
   PointerEvent as ReactPointerEvent,
 } from "react"
@@ -12,6 +13,7 @@ import type {
   Measurement,
   Rect,
   ToolMode,
+  TextAnnotation,
 } from "../core/types"
 import type { GuideStyle } from "../core/persistence"
 import { DistancesLayer } from "./distances-layer"
@@ -19,6 +21,7 @@ import { GuidesLayer } from "./guides-layer"
 import type { OptionContainerLines } from "./option-container-lines"
 import { SelectionLayer } from "./selection-layer"
 import { ArrowsLayer } from "./arrows-layer"
+import { TextLayer } from "./text-layer"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -87,6 +90,22 @@ type MesurerOverlayProps = {
     preview: { start: { x: number; y: number }; end: { x: number; y: number }; control?: { x: number; y: number } } | null
     scrollOffset: { x: number; y: number }
   }
+  text: {
+    items: TextAnnotation[]
+    draft: { x: number; y: number } | null
+    draftValue: string
+    draftInputRef: RefObject<HTMLTextAreaElement | null>
+    selectedIds: string[]
+    interactive: boolean
+    onSelect: (id: string) => void
+    onMoveStart: () => void
+    onMove: (id: string, x: number, y: number) => void
+    onEdit: (id: string) => void
+    scrollOffset: { x: number; y: number }
+    onDraftChange: (value: string) => void
+    onDraftKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void
+    onDraftBlur: () => void
+  }
 }
 
 export const MesurerOverlay = memo(function MesurerOverlay({
@@ -103,6 +122,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   distances,
   guides,
   arrows,
+  text,
 }: MesurerOverlayProps) {
   const overlayVisible = enabled
   const overlayInteractive =
@@ -159,6 +179,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         preview={arrows.preview}
         scrollOffset={arrows.scrollOffset}
       />
+
+      <TextLayer {...text} />
 
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer
