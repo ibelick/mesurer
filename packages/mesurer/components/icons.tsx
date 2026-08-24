@@ -134,6 +134,19 @@ export const TextInspectorIcon = ({ size = 20, ...props }: IconProps) => (
   </svg>
 )
 
+export const TextIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="16"
+      d="M48 64h160M128 64v128M88 192h80"
+    />
+  </IconBase>
+)
+
 export const ColorPickerIcon = ({ size = 20, ...props }: IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

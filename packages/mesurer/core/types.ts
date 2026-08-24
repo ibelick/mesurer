@@ -12,6 +12,13 @@ export type Arrow = {
   width: number
 }
 
+export type TextAnnotation = {
+  id: string
+  x: number
+  y: number
+  text: string
+}
+
 export type Rect = {
   left: number
   top: number
@@ -105,3 +112,4 @@ export type ToolMode =
   | "xray"
   | "rulers"
   | "arrows"
+  | "text"

@@ -29,6 +29,7 @@ import {
   RulerIcon,
   RulersIcon,
   TextInspectorIcon,
+  TextIcon,
   XrayIcon,
 } from "./icons";
 
@@ -268,6 +269,14 @@ function ToolbarComponent(
     setToolMode((prev) =>
       prev === "text-inspector" ? "none" : "text-inspector",
     );
+    onInteract();
+  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+
+  const textMode = useCallback(() => {
+    setEnabled(true);
+    setColorPickerActive(false);
+    onCancelScreenshot();
+    setToolMode((prev) => (prev === "text" ? "none" : "text"));
     onInteract();
   }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
@@ -603,6 +612,20 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <ArrowIcon size={20} aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        id="text"
+        active={toolMode === "text"}
+        label="Text"
+        shortcut="T"
+        onClick={textMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <TextIcon size={20} aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton
         id="text-inspector"

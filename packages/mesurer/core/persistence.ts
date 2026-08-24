@@ -3,6 +3,7 @@ import type {
   Guide,
   Arrow,
   Measurement,
+  TextAnnotation,
   ToolMode,
 } from "./types"
 import type { ColorPickerFormat } from "./colors"
@@ -74,6 +75,7 @@ export type MesurerStoredWorkspace = {
   selectedGuideIds: string[]
   arrows: Arrow[]
   selectedArrowIds: string[]
+  textAnnotations: TextAnnotation[]
   measurements: Measurement[]
   activeMeasurement: Measurement | null
   heldDistances: DistanceOverlay[]
@@ -117,6 +119,7 @@ type StoredRecord = {
   selectedGuideIds?: string[]
   arrows?: Arrow[]
   selectedArrowIds?: string[]
+  textAnnotations?: TextAnnotation[]
   measurements?: Measurement[]
   activeMeasurement?: Measurement | null
   heldDistances?: DistanceOverlay[]
@@ -213,6 +216,18 @@ const isArrow = (value: unknown): value is Arrow => {
   )
 }
 
+const isTextAnnotation = (value: unknown): value is TextAnnotation => {
+  if (!value || typeof value !== "object") return false
+  const annotation = value as Record<string, unknown>
+  return (
+    typeof annotation.id === "string" &&
+    isFiniteNumber(annotation.x) &&
+    isFiniteNumber(annotation.y) &&
+    typeof annotation.text === "string" &&
+    annotation.text.length > 0
+  )
+}
+
 const isDistanceOverlay = (value: unknown): value is DistanceOverlay => {
   if (!value || typeof value !== "object") return false
   const distance = value as Record<string, unknown>
@@ -277,7 +292,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
   const input = value as Record<string, unknown>
   if (
     typeof input.enabled !== "boolean" ||
-    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows") ||
+    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows" && input.toolMode !== "text") ||
     typeof input.rulersVisible !== "boolean" ||
     (input.guideOrientation !== "vertical" && input.guideOrientation !== "horizontal") ||
     !Array.isArray(input.guides) ||
@@ -296,6 +311,9 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     arrows: Array.isArray(input.arrows) ? input.arrows.filter(isArrow) : [],
     selectedArrowIds: Array.isArray(input.selectedArrowIds)
       ? input.selectedArrowIds.filter((id): id is string => typeof id === "string")
+      : [],
+    textAnnotations: Array.isArray(input.textAnnotations)
+      ? input.textAnnotations.filter(isTextAnnotation)
       : [],
     measurements: input.measurements.filter(isMeasurement),
     activeMeasurement: isMeasurement(input.activeMeasurement) ? input.activeMeasurement : null,
@@ -342,7 +360,8 @@ const migrate = (record: StoredRecord): MesurerPersistenceSnapshot | null => {
             guides: record.guides,
             selectedGuideIds: record.selectedGuideIds,
             arrows: [],
-            selectedArrowIds: [],
+             selectedArrowIds: [],
+             textAnnotations: [],
             measurements: record.measurements,
             activeMeasurement: record.activeMeasurement,
             heldDistances: record.heldDistances,

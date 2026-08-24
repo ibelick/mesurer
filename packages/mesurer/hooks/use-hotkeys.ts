@@ -35,6 +35,28 @@ export const useHotkeys = (options: HotkeyOptions) => {
     const target = options.eventTarget
     const handleKeyDown = (event: KeyboardEvent) => {
       const current = optionsRef.current
+      const target = event.target as HTMLElement | null
+      const path = event.composedPath()
+      const isEditable = path.some((item) => {
+        const element = item as HTMLElement | null
+        return Boolean(
+          element &&
+          (element.isContentEditable ||
+            element.tagName === "INPUT" ||
+            element.tagName === "TEXTAREA" ||
+            element.tagName === "SELECT"),
+        )
+      })
+      if (
+        (target &&
+          (target.isContentEditable ||
+            target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "SELECT")) ||
+        isEditable
+      ) {
+        return
+      }
       if (event.key === "Escape") {
         if (current.isSettingsOpen()) {
           current.onToggleSettings()
@@ -129,6 +151,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
         if (key === "d") {
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
+          current.onInteract()
+        }
+
+        if (key === "t") {
+          current.onCloseScreenshot()
+          current.setToolMode((prev) => (prev === "text" ? "none" : "text"))
           current.onInteract()
         }
 
