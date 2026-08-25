@@ -17,7 +17,7 @@ test("writes text anywhere on the page", async ({ page }) => {
 
   await expect(textItems(page)).toHaveCount(1);
   await expect(textItems(page)).toHaveText("Review this D G X P S\nsecond line");
-  await expect(textItems(page)).toHaveClass(/msr:outline/);
+  await expect(textItems(page)).not.toHaveClass(/msr:outline/);
   await expect(page.locator('[data-mesurer-text-id]')).toHaveAttribute("data-mesurer-text-id", /.+/);
 });
 

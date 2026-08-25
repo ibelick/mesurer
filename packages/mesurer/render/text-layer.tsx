@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type KeyboardEvent, type PointerEvent, type RefObject } from "react"
+import { memo, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from "react"
 import type { TextAnnotation } from "../core/types"
 
 type TextLayerProps = {
@@ -7,7 +7,6 @@ type TextLayerProps = {
   draft: { x: number; y: number } | null
   draftValue: string
   draftInputRef: RefObject<HTMLTextAreaElement | null>
-  selectedIds: string[]
   interactive: boolean
   onSelect: (id: string) => void
   onMoveStart: () => void
@@ -27,7 +26,6 @@ export const TextLayer = memo(function TextLayer({
   onDraftChange,
   onDraftKeyDown,
   onDraftBlur,
-  selectedIds,
   interactive,
   onSelect,
   onMoveStart,
@@ -35,6 +33,7 @@ export const TextLayer = memo(function TextLayer({
   onEdit,
 }: TextLayerProps) {
   const dragRef = useRef<{ id: string; startX: number; startY: number; itemX: number; itemY: number } | null>(null)
+  const [movingId, setMovingId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     if (!draftInputRef.current) return
@@ -55,6 +54,7 @@ export const TextLayer = memo(function TextLayer({
             event.stopPropagation()
             onSelect(item.id)
             onMoveStart()
+            setMovingId(item.id)
             dragRef.current = {
               id: item.id,
               startX: event.clientX,
@@ -75,6 +75,7 @@ export const TextLayer = memo(function TextLayer({
               event.currentTarget.releasePointerCapture(event.pointerId)
             }
             dragRef.current = null
+            setMovingId(null)
           }}
           onDoubleClick={(event) => {
             if (!interactive) return
@@ -84,7 +85,7 @@ export const TextLayer = memo(function TextLayer({
           }}
           className={`msr:absolute msr:whitespace-pre msr:text-[16px] msr:leading-6 msr:text-black ${
             interactive ? "msr:pointer-events-auto msr:cursor-pointer" : "msr:pointer-events-none"
-          } ${selectedIds.includes(item.id) ? "msr:outline msr:outline-1 msr:outline-[#0d99ff]" : ""}`}
+          } ${movingId === item.id ? "msr:outline msr:outline-1 msr:outline-[#0d99ff]" : ""}`}
           data-mesurer-text="true"
           data-mesurer-text-id={item.id}
         >
@@ -105,7 +106,7 @@ export const TextLayer = memo(function TextLayer({
           autoFocus
           aria-label="Text annotation"
           rows={1}
-          className="msr:pointer-events-auto msr:absolute msr:min-h-6 msr:min-w-32 msr:resize-none msr:overflow-hidden msr:border msr:border-[#0d99ff] msr:bg-white msr:px-1 msr:text-[16px] msr:leading-6 msr:text-black msr:outline-none"
+          className="msr:pointer-events-auto msr:absolute msr:min-h-6 msr:min-w-32 msr:resize-none msr:overflow-hidden msr:border-0 msr:bg-transparent msr:px-0 msr:text-[16px] msr:leading-6 msr:text-black msr:outline-none"
           style={{ left: draft.x - scrollOffset.x, top: draft.y - scrollOffset.y }}
           data-mesurer-text-input="true"
         />

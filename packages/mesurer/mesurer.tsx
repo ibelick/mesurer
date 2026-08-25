@@ -1188,7 +1188,6 @@ function MesurerClient({
           draft: textDraft,
           draftValue: textDraftValue,
           draftInputRef: textDraftInputRef,
-          selectedIds: selectedTextIds,
           interactive: toolMode === "selection",
           onSelect: selectTextAnnotation,
           onMoveStart: recordSnapshot,
