@@ -95,7 +95,6 @@ type MesurerOverlayProps = {
     draft: { x: number; y: number } | null
     draftValue: string
     draftInputRef: RefObject<HTMLTextAreaElement | null>
-    selectedIds: string[]
     interactive: boolean
     onSelect: (id: string) => void
     onMoveStart: () => void
