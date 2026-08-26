@@ -1,6 +1,12 @@
 # Mesurer Chrome Extension
 
-This extension toggles the Mesurer toolbar on the current page when you click the extension icon.
+UI Inspector & Visual Feedback
+
+Visual precision for building with coding agents.
+
+Measure, inspect, and capture exactly what you see in the browser.
+
+Click the extension icon to toggle the Mesurer toolbar on the current page.
 
 Settings are shared across sites with `chrome.storage.local`; guides and measurements are stored separately per page origin and browser tab.
 

@@ -34,8 +34,8 @@ function Header({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      {linkToHome ? (
-        <a href="/" className="w-fit">
+        {linkToHome ? (
+          <a href="/" className="w-fit">
           <img
             src="/logo.webp"
             alt="Mesurer"
@@ -91,7 +91,9 @@ function Header({
       </div>
       {showDescription && (
         <p className="max-w-xl leading-relaxed text-muted">
-          Measure and align everything on localhost.
+          Visual precision for building with coding agents.
+          <br />
+          Measure, inspect, and capture exactly what you see in the browser.
         </p>
       )}
     </div>
@@ -190,7 +192,7 @@ function HomeContent() {
               Chrome extension
             </p>
             <p className="mt-1 text-[15px] font-normal text-muted">
-              Best for fast and easy inspection of any page on the web.
+              Inspect and capture any interface directly in your browser.
             </p>
             <a
               href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
@@ -198,7 +200,7 @@ function HomeContent() {
               rel="noreferrer"
               className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
             >
-              Add to chrome
+              Add to Chrome
             </a>
           </div>
           <div className="rounded-[2px] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
@@ -206,11 +208,10 @@ function HomeContent() {
               <img src="/npm.svg" alt="" className="h-5 w-5" />
             </div>
             <p className="mt-3 text-[15px] font-medium text-strong">
-              Package
+              npm package
             </p>
             <p className="mt-1 text-[15px] font-normal text-muted">
-              Best for developers wanting to handle spacing seamlessly on
-              localhost.
+              Add Mesurer directly to your development environment.
             </p>
             <a
               href="#installation"

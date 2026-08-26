@@ -1,5 +1,13 @@
 # mesurer
 
+## 0.1.0
+
+- add screenshot region selection with clipboard copy and local download support
+- add Chrome extension visible-tab capture integration
+- add configurable screenshot copy and download settings
+- rename the public `Measurer` component and props type to `Mesurer` and `MesurerProps`
+- improve extension isolation, persistence, settings, guides, rulers, and visual inspection workflows
+
 ## 0.0.11
 
 - keep guides, select, and rulers on screen while Settings is open so styles can be edited live

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --dir ../../packages/mesurer build && tsup && node scripts/generate-manifest.mjs && node scripts/validate-build.mjs && node scripts/report-size.mjs"
+    "build": "node scripts/clean-dist.mjs && pnpm --dir ../../packages/mesurer build && tsup && node scripts/generate-manifest.mjs && node scripts/validate-build.mjs && node scripts/report-size.mjs"
   },
   "dependencies": {
     "mesurer": "workspace:*",

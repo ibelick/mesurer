@@ -1,7 +1,7 @@
 {
   "name": "mesurer",
-  "version": "0.0.11",
-  "description": "Measure and align elements on any website.",
+  "version": "0.1.0",
+  "description": "UI inspector and visual feedback tools for building with coding agents.",
   "license": "MIT",
   "author": "Julien Thibeaut",
   "type": "module",

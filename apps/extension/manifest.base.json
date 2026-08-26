@@ -1,14 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Mesurer",
-  "description": "Measure and align elements on any website.",
+  "name": "Mesurer - UI Inspector & Visual Feedback",
+  "description": "Measure, inspect, and capture UI in the browser. Share precise visual feedback with your coding agent.",
   "version": "0.0.0",
   "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],
   "host_permissions": [
     "http://localhost/*",
     "http://127.0.0.1/*",
-    "http://localhost:*/*",
-    "http://127.0.0.1:*/*",
     "https://mesurer.dev/*"
   ],
   "content_scripts": [
@@ -16,8 +14,6 @@
       "matches": [
         "http://localhost/*",
         "http://127.0.0.1/*",
-        "http://localhost:*/*",
-        "http://127.0.0.1:*/*",
         "https://mesurer.dev/*"
       ],
       "js": ["capture-bridge.js"],

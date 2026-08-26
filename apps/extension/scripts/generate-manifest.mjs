@@ -23,8 +23,9 @@ const pkg = JSON.parse(packageRaw);
 
 const manifest = {
   ...baseManifest,
-  name: "Mesurer",
-  description: pkg.description,
+  name: "Mesurer - UI Inspector & Visual Feedback",
+  description:
+    "Measure, inspect, and capture UI in the browser. Share precise visual feedback with your coding agent.",
   version: pkg.version,
 };
 
