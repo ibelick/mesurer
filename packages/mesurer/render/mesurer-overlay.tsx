@@ -1,5 +1,5 @@
 import type {
-  RefObject,
+  MutableRefObject,
   PointerEventHandler,
   PointerEvent as ReactPointerEvent,
 } from "react"
@@ -92,18 +92,19 @@ type MesurerOverlayProps = {
   }
   text: {
     items: TextAnnotation[]
-    draft: { x: number; y: number } | null
-    draftValue: string
-    draftInputRef: RefObject<HTMLTextAreaElement | null>
+    draft: { id?: string; key?: string; x: number; y: number; caretX?: number; caretY?: number } | null
+    draftInputRef: MutableRefObject<HTMLElement | null>
     interactive: boolean
+    editable: boolean
+    selectedIds: string[]
     onSelect: (id: string) => void
     onMoveStart: () => void
     onMove: (id: string, x: number, y: number) => void
-    onEdit: (id: string) => void
+    onEdit: (id: string, x: number, y: number) => void
     scrollOffset: { x: number; y: number }
-    onDraftChange: (value: string) => void
-    onDraftKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void
+    onDraftKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
     onDraftBlur: () => void
+    onActivateEditor: (element: HTMLElement) => void
   }
 }
 

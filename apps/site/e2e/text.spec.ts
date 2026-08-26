@@ -8,7 +8,6 @@ test("writes text anywhere on the page", async ({ page }) => {
   await page.getByRole("button", { name: "Text (T)" }).click();
   await page.mouse.click(220, 180);
   const input = page.getByRole("textbox", { name: "Text annotation" });
-  await expect(input).toHaveAttribute("rows", "1");
   await input.pressSequentially("Review this D G X P S");
   await input.press("Enter");
   await input.pressSequentially("second line");
@@ -17,7 +16,7 @@ test("writes text anywhere on the page", async ({ page }) => {
 
   await expect(textItems(page)).toHaveCount(1);
   await expect(textItems(page)).toHaveText("Review this D G X P S\nsecond line");
-  await expect(textItems(page)).not.toHaveClass(/msr:outline/);
+  await expect(textItems(page)).toHaveClass(/msr:outline/);
   await expect(page.locator('[data-mesurer-text-id]')).toHaveAttribute("data-mesurer-text-id", /.+/);
 });
 
@@ -83,6 +82,19 @@ test("moves a selected text annotation", async ({ page }) => {
   expect(after!.y).toBeGreaterThan(before!.y + 30);
 });
 
+test("shows a selection box when clicking text in Selection mode", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Select me");
+  await page.keyboard.press("Control+Enter");
+
+  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await textItems(page).click();
+
+  await expect(textItems(page)).toHaveClass(/outline-\[#0d99ff\]/);
+});
+
 test("double-clicks a text annotation to edit it in place", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Text (T)" }).click();
@@ -92,10 +104,184 @@ test("double-clicks a text annotation to edit it in place", async ({ page }) => 
 
   await textItems(page).dblclick();
   const input = page.getByRole("textbox", { name: "Text annotation" });
-  await expect(input).toHaveValue("Original");
+  await expect(input).toHaveText("Original");
   await input.fill("Edited");
   await page.keyboard.press("Escape");
 
   await expect(textItems(page)).toHaveCount(1);
   await expect(textItems(page)).toHaveText("Edited");
+});
+
+test("clicks a text annotation to edit it in Text mode", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Edit me");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  const text = textItems(page);
+  const box = await text.boundingBox();
+  if (!box) throw new Error("Text annotation is not visible");
+  await page.mouse.click(box.x + box.width - 1, box.y + box.height / 2);
+  await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveText("Edit me");
+});
+
+test("appends text when editing an existing annotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  const text = textItems(page);
+  const box = await text.boundingBox();
+  if (!box) throw new Error("Text annotation is not visible");
+  await page.mouse.click(box.x + box.width - 1, box.y + box.height / 2);
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.pressSequentially(" appended");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveText("Original appended");
+});
+
+test("inserts text where an existing annotation is clicked", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  const text = textItems(page);
+  const box = await text.boundingBox();
+  if (!box) throw new Error("Text annotation is not visible");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.getByRole("textbox", { name: "Text annotation" }).pressSequentially(" inserted");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveText("Orig insertedinal");
+});
+
+test("keeps a long line horizontal until Enter adds a line", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.pressSequentially("A".repeat(80));
+  const oneLine = await input.boundingBox();
+  expect(oneLine).not.toBeNull();
+
+  await input.press("Enter");
+  const twoLines = await input.boundingBox();
+  expect(twoLines).not.toBeNull();
+  expect(twoLines!.height).toBeGreaterThan(oneLine!.height);
+});
+
+test("rewrites existing text with a new line", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
+  await page.keyboard.press("Control+Enter");
+
+  await textItems(page).click();
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.fill("Rewritten");
+  await input.press("Enter");
+  await input.pressSequentially("second line");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveText("Rewritten\nsecond line");
+  await expect(textItems(page)).not.toHaveClass(/msr:outline/);
+});
+
+test("rewrites existing text with multiple new lines", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
+  await page.keyboard.press("Control+Enter");
+
+  await textItems(page).click();
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.fill("First");
+  await input.press("Enter");
+  await input.pressSequentially("Second");
+  await input.press("Enter");
+  await input.pressSequentially("Third");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveText("First\nSecond\nThird");
+});
+
+test("replaces all existing text and starts again", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
+  await page.keyboard.press("Control+Enter");
+
+  await textItems(page).click();
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.fill("");
+  await input.pressSequentially("Rewritten");
+  await input.press("Enter");
+  await input.pressSequentially("again");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveText("Rewritten\nagain");
+});
+
+test("keeps text when clicking elsewhere", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Keep me");
+
+  await page.mouse.click(420, 280);
+  await expect(textItems(page)).toHaveText("Keep me");
+  await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(1);
+});
+
+test("does not duplicate text when clicking an existing annotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Once");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await textItems(page).click();
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCount(1);
+  await expect(textItems(page)).toHaveText("Once");
+});
+
+test("does not duplicate text when clicking it after a new draft starts", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Once");
+  await page.mouse.click(420, 280);
+  await textItems(page).click();
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCount(1);
+  await expect(textItems(page)).toHaveText("Once");
+});
+
+test("does not duplicate text when reclicking the active editor", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.fill("Once");
+  await input.click();
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCount(1);
+  await expect(textItems(page)).toHaveText("Once");
 });
