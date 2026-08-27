@@ -501,14 +501,21 @@ export function App() {
           <HomeContent />
         )}
         {!isDocsPage && (
-          <div className="pt-6 text-muted">
+          <div className="flex gap-4 pt-6 text-muted">
             <a
               href="/changelog"
               className="transition-colors hover:text-strong"
             >
               Changelog
             </a>
-            <span className="px-2">·</span>
+            <a
+              href="https://github.com/ibelick/mesurer/issues/new?title=Feedback&body=**What%20happened%3F**%0A%0A%0A**What%20would%20help%3F**%0A%0A%0A**Context**%20%28browser%2C%20URL%29%0A"
+              target="_blank"
+              rel="noreferrer"
+              className="transition-colors hover:text-strong"
+            >
+              Feedback
+            </a>
             <a href="/privacy" className="transition-colors hover:text-strong">
               Privacy
             </a>
