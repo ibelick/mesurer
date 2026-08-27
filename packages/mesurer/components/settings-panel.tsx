@@ -85,6 +85,10 @@ type SettingsPanelProps = {
   arrows: {
     color: string
     setColor: Dispatch<SetStateAction<string>>
+    snapArrowsEnabled: boolean
+    setSnapArrowsEnabled: Dispatch<SetStateAction<boolean>>
+    arrowClickToPlace: boolean
+    setArrowClickToPlace: Dispatch<SetStateAction<boolean>>
   }
   focusSection?: SettingsFocusSection
   general: {
@@ -608,7 +612,14 @@ export function SettingsPanel({
   const { settings: screenshotSettings, setSettings: setScreenshotSettings } = camera
   const { settings: rulerSettings, setSettings: setRulerSettings } = rulers
   const { settings: textSettings, setSettings: setTextSettings } = text
-  const { color: arrowColor, setColor: setArrowColor } = arrows
+  const {
+    color: arrowColor,
+    setColor: setArrowColor,
+    snapArrowsEnabled,
+    setSnapArrowsEnabled,
+    arrowClickToPlace,
+    setArrowClickToPlace,
+  } = arrows
   const {
     highlightColor,
     setHighlightColor,
@@ -639,7 +650,6 @@ export function SettingsPanel({
   } = color
   const patternTooltip = useTooltip()
   const panelRef = useRef<HTMLDivElement>(null)
-  const spacerRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
     const panel = panelRef.current
@@ -647,11 +657,7 @@ export function SettingsPanel({
     const view = panel.ownerDocument.defaultView
 
     const align = () => {
-      const spacer = spacerRef.current
-      if (spacer) {
-        const nextHeight = `${Math.max(0, panel.clientHeight - 40)}px`
-        if (spacer.style.height !== nextHeight) spacer.style.height = nextHeight
-      }
+      panel.style.paddingBottom = "0px"
       if (!focusSection) {
         panel.scrollTop = 0
         return
@@ -660,8 +666,14 @@ export function SettingsPanel({
         `[data-mesurer-settings-section="${focusSection}"]`,
       )
       if (!section) return
-      panel.scrollTop +=
-        section.getBoundingClientRect().top - panel.getBoundingClientRect().top
+      const sectionTop = section.offsetTop
+      const maxScrollWithoutPadding = Math.max(0, panel.scrollHeight - panel.clientHeight)
+      const extraPadding = Math.max(0, sectionTop - maxScrollWithoutPadding)
+      if (extraPadding > 0) {
+        panel.style.paddingBottom = `${extraPadding}px`
+      }
+      const maxScroll = Math.max(0, panel.scrollHeight - panel.clientHeight)
+      panel.scrollTop = Math.min(sectionTop, maxScroll)
     }
 
     align()
@@ -729,6 +741,8 @@ export function SettingsPanel({
       <SectionDivider />
       <SettingsSection id="arrows" title="Arrows" ariaLabel="Arrow settings" focused={focusSection === "arrows"}>
         <ColorField label="Color" value={arrowColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setArrowColor} />
+        <div className="msr:col-span-2"><SettingsSwitch label="Snap" checked={snapArrowsEnabled} onChange={setSnapArrowsEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Click to place" checked={arrowClickToPlace} onChange={setArrowClickToPlace} /></div>
       </SettingsSection>
 
       <SectionDivider />
@@ -839,7 +853,6 @@ export function SettingsPanel({
           </button>
         </div>
       </SettingsSection>
-      <div ref={spacerRef} aria-hidden className="msr:pointer-events-none msr:shrink-0" />
     </div>
   )
 }

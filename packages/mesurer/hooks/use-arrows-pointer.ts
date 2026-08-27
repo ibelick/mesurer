@@ -1,7 +1,7 @@
-import { useCallback, useRef } from "react"
-import type { Dispatch, PointerEvent as ReactPointerEvent, SetStateAction } from "react"
+import { useCallback, useRef, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
+import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
-import type { Arrow, Point, ToolMode } from "../core/types"
+import type { Arrow, Guide, Point, ToolMode } from "../core/types"
 import { createId } from "../core/utils"
 
 const MIN_ARROW_LENGTH = 4
@@ -10,8 +10,13 @@ const SLIDE_THRESHOLD = 8
 type UseArrowsPointerOptions = {
   enabled: boolean
   settingsOpen: boolean
+  snapArrowsEnabled: boolean
+  arrowClickToPlace: boolean
   color: string
   width: number
+  overlayRef: RefObject<HTMLDivElement | null>
+  ownerDocument: Document
+  guides: Guide[]
   createActionCommit: () => () => void
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
@@ -29,8 +34,13 @@ type UseArrowsPointerOptions = {
 export const useArrowsPointer = ({
   enabled,
   settingsOpen,
+  snapArrowsEnabled,
+  arrowClickToPlace,
   color,
   width,
+  overlayRef,
+  ownerDocument,
+  guides,
   createActionCommit,
   setArrows,
   setSelectedArrowIds,
@@ -66,6 +76,19 @@ export const useArrowsPointer = ({
       y: event.clientY + scrollOffset.y,
     }),
     [scrollOffset],
+  )
+
+  const snapPoint = useCallback(
+    (point: Point) =>
+      getSnapArrowPoint({
+        point,
+        snapArrowsEnabled,
+        overlayNode: overlayRef.current,
+        guides,
+        scrollOffset,
+        document: ownerDocument,
+      }),
+    [guides, overlayRef, ownerDocument, scrollOffset, snapArrowsEnabled],
   )
 
   const clearDrawing = useCallback(() => {
@@ -110,7 +133,7 @@ export const useArrowsPointer = ({
       if (!arrowStart && event.target !== event.currentTarget) return
       event.preventDefault()
       event.stopPropagation()
-      const point = pagePoint(event)
+      const point = snapPoint(pagePoint(event))
       const fromStart = !arrowStart
       if (fromStart) {
         setArrowStart(point)
@@ -124,7 +147,7 @@ export const useArrowsPointer = ({
       }
       event.currentTarget.setPointerCapture(event.pointerId)
     },
-    [arrowStart, enabled, pagePoint, settingsOpen, setArrowPreviewEnd, setArrowStart, setSelectedArrowIds],
+    [arrowStart, enabled, pagePoint, settingsOpen, setArrowPreviewEnd, setArrowStart, setSelectedArrowIds, snapPoint],
   )
 
   const handlePointerMove = useCallback(
@@ -138,9 +161,9 @@ export const useArrowsPointer = ({
         if (!drawing.slid && travel >= SLIDE_THRESHOLD) drawing.slid = true
       }
       if (!arrowStart) return
-      setArrowPreviewEnd(pagePoint(event))
+      setArrowPreviewEnd(snapPoint(pagePoint(event)))
     },
-    [arrowStart, pagePoint, setArrowPreviewEnd],
+    [arrowStart, pagePoint, setArrowPreviewEnd, snapPoint],
   )
 
   const handlePointerUp = useCallback(
@@ -151,10 +174,11 @@ export const useArrowsPointer = ({
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
       drawingRef.current = null
-      const point = pagePoint(event)
+      const point = snapPoint(pagePoint(event))
       if (!arrowStart) return
 
       if (drawing.fromStart) {
+        if (arrowClickToPlace) return
         if (drawing.slid) {
           commitArrow(arrowStart, midpoint(arrowStart, point), point)
           clearDrawing()
@@ -163,6 +187,13 @@ export const useArrowsPointer = ({
       }
 
       if (!arrowMiddle) {
+        if (arrowClickToPlace) {
+          if (Math.hypot(point.x - arrowStart.x, point.y - arrowStart.y) >= MIN_ARROW_LENGTH) {
+            commitArrow(arrowStart, midpoint(arrowStart, point), point)
+            clearDrawing()
+          }
+          return
+        }
         if (Math.hypot(point.x - arrowStart.x, point.y - arrowStart.y) >= MIN_ARROW_LENGTH) {
           setArrowMiddle(point)
           setArrowPreviewEnd(point)
@@ -173,7 +204,7 @@ export const useArrowsPointer = ({
       commitArrow(arrowStart, arrowMiddle, point)
       clearDrawing()
     },
-    [arrowMiddle, arrowStart, clearDrawing, commitArrow, pagePoint, setArrowMiddle, setArrowPreviewEnd],
+    [arrowClickToPlace, arrowMiddle, arrowStart, clearDrawing, commitArrow, pagePoint, setArrowMiddle, setArrowPreviewEnd, snapPoint],
   )
 
   const handlePointerLeave = useCallback(() => undefined, [])
@@ -224,19 +255,26 @@ export const useArrowsPointer = ({
         if (arrow.id !== edit.arrowId) return arrow
         if (edit.action === "move") return translateArrow(edit.arrow, dx, dy)
         if (edit.action === "control") {
+          const control = snapPoint({
+            x: edit.arrow.control!.x + dx,
+            y: edit.arrow.control!.y + dy,
+          })
           return {
             ...arrow,
-            control: {
-              x: edit.arrow.control!.x + dx,
-              y: edit.arrow.control!.y + dy,
-            },
+            control,
           }
         }
         const start = edit.action === "start"
-          ? { x: edit.arrow.start.x + dx, y: edit.arrow.start.y + dy }
+          ? snapPoint({
+            x: edit.arrow.start.x + dx,
+            y: edit.arrow.start.y + dy,
+          })
           : edit.arrow.start
         const end = edit.action === "end"
-          ? { x: edit.arrow.end.x + dx, y: edit.arrow.end.y + dy }
+          ? snapPoint({
+            x: edit.arrow.end.x + dx,
+            y: edit.arrow.end.y + dy,
+          })
           : edit.arrow.end
         return {
           ...arrow,
@@ -247,7 +285,7 @@ export const useArrowsPointer = ({
       }))
       return true
     },
-    [createActionCommit, setArrows],
+    [createActionCommit, setArrows, snapPoint],
   )
 
   const handlePointerCancel = useCallback(

@@ -73,6 +73,8 @@ export type MesurerProps = {
   colorPickerClickFormat?: ColorPickerFormat;
   snapEnabled?: boolean;
   snapGuidesEnabled?: boolean;
+  snapArrowsEnabled?: boolean;
+  arrowClickToPlace?: boolean;
   selectNewGuideEnabled?: boolean;
   multiMeasureEnabled?: boolean;
   guideStyle?: Partial<GuideStyle>;
@@ -98,6 +100,8 @@ function MesurerClient({
   colorPickerClickFormat,
   snapEnabled: snapEnabledDefault,
   snapGuidesEnabled: snapGuidesEnabledDefault,
+  snapArrowsEnabled: snapArrowsEnabledDefault,
+  arrowClickToPlace: arrowClickToPlaceDefault,
   selectNewGuideEnabled: selectNewGuideEnabledDefault,
   multiMeasureEnabled: multiMeasureEnabledDefault,
   guideStyle: guideStyleDefault,
@@ -168,6 +172,10 @@ function MesurerClient({
     snapEnabledDefault: persistedSettings.snapEnabled ?? snapEnabledDefault,
     snapGuidesEnabledDefault:
       persistedSettings.snapGuidesEnabled ?? snapGuidesEnabledDefault,
+    snapArrowsEnabledDefault:
+      persistedSettings.snapArrowsEnabled ?? snapArrowsEnabledDefault,
+    arrowClickToPlaceDefault:
+      persistedSettings.arrowClickToPlace ?? arrowClickToPlaceDefault,
     selectNewGuideEnabledDefault:
       persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
     multiMeasureEnabledDefault:
@@ -215,6 +223,10 @@ function MesurerClient({
     multiMeasureEnabled,
     snapGuidesEnabled,
     setSnapGuidesEnabled,
+    snapArrowsEnabled,
+    setSnapArrowsEnabled,
+    arrowClickToPlace,
+    setArrowClickToPlace,
     selectNewGuideEnabled,
     setSelectNewGuideEnabled,
     setSnapEnabled,
@@ -319,6 +331,8 @@ function MesurerClient({
       textStyle: textStyleDefault,
       snapEnabled: snapEnabledDefault,
       snapGuidesEnabled: snapGuidesEnabledDefault,
+      snapArrowsEnabled: snapArrowsEnabledDefault,
+      arrowClickToPlace: arrowClickToPlaceDefault,
       selectNewGuideEnabled: selectNewGuideEnabledDefault,
       multiMeasureEnabled: multiMeasureEnabledDefault,
     },
@@ -327,6 +341,10 @@ function MesurerClient({
       setSnapEnabled,
       snapGuidesEnabled,
       setSnapGuidesEnabled,
+      snapArrowsEnabled,
+      setSnapArrowsEnabled,
+      arrowClickToPlace,
+      setArrowClickToPlace,
       selectNewGuideEnabled,
       setSelectNewGuideEnabled,
       multiMeasureEnabled,
@@ -1006,8 +1024,13 @@ function MesurerClient({
   const arrowsPointer = useArrowsPointer({
     enabled,
     settingsOpen,
+    snapArrowsEnabled,
+    arrowClickToPlace,
     color: settingsArrowColor,
     width: Math.max(settingsGuideStyle.width, 1),
+    overlayRef,
+    ownerDocument,
+    guides,
     createActionCommit,
     setArrows: setArrowsPersisted,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
@@ -1392,6 +1415,10 @@ function MesurerClient({
               arrows={{
                 color: settingsArrowColor,
                 setColor: setSettingsArrowColor,
+                snapArrowsEnabled,
+                setSnapArrowsEnabled,
+                arrowClickToPlace,
+                setArrowClickToPlace,
               }}
               general={{
                 persistOnReload: settingsPersistOnReload,
@@ -1420,6 +1447,8 @@ export default function Mesurer({
   colorPickerClickFormat = "hex",
   snapEnabled = true,
   snapGuidesEnabled = true,
+  snapArrowsEnabled = true,
+  arrowClickToPlace = false,
   selectNewGuideEnabled = true,
   multiMeasureEnabled = false,
   guideStyle,
@@ -1449,6 +1478,8 @@ export default function Mesurer({
       colorPickerClickFormat={colorPickerClickFormat}
       snapEnabled={snapEnabled}
       snapGuidesEnabled={snapGuidesEnabled}
+      snapArrowsEnabled={snapArrowsEnabled}
+      arrowClickToPlace={arrowClickToPlace}
       selectNewGuideEnabled={selectNewGuideEnabled}
       multiMeasureEnabled={multiMeasureEnabled}
       guideStyle={{ ...DEFAULT_GUIDE_STYLE, ...guideStyle }}

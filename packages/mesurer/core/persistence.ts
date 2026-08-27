@@ -61,6 +61,8 @@ export type MesurerStoredSettings = {
   colorPickerClickFormat?: ColorPickerFormat
   snapEnabled?: boolean
   snapGuidesEnabled?: boolean
+  snapArrowsEnabled?: boolean
+  arrowClickToPlace?: boolean
   selectNewGuideEnabled?: boolean
   multiMeasureEnabled?: boolean
   persistOnReload?: boolean
@@ -285,6 +287,8 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
       : {}),
     ...(typeof input.snapEnabled === "boolean" ? { snapEnabled: input.snapEnabled } : {}),
     ...(typeof input.snapGuidesEnabled === "boolean" ? { snapGuidesEnabled: input.snapGuidesEnabled } : {}),
+    ...(typeof input.snapArrowsEnabled === "boolean" ? { snapArrowsEnabled: input.snapArrowsEnabled } : {}),
+    ...(typeof input.arrowClickToPlace === "boolean" ? { arrowClickToPlace: input.arrowClickToPlace } : {}),
     ...(typeof input.selectNewGuideEnabled === "boolean" ? { selectNewGuideEnabled: input.selectNewGuideEnabled } : {}),
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),

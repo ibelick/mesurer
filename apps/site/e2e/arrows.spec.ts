@@ -75,12 +75,66 @@ test("opens settings on the arrows section from the Arrows tool", async ({ page 
     .toBeLessThan(12);
 });
 
+test("snaps arrow endpoints to nearby element edges", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+
+  await page.mouse.move(235, 290);
+  await page.mouse.down();
+  await page.mouse.move(500, 290, { steps: 5 });
+  await page.mouse.up();
+
+  const arrow = page.locator('[data-mesurer-arrow="true"]');
+  await expect(arrow).toHaveCount(1);
+  const d = await arrow.getAttribute("d");
+  const startX = d?.match(/^M\s+([\d.]+)/)?.[1];
+  expect(Number(startX)).toBeCloseTo(240, 0);
+});
+
+test("does not snap arrows when arrow snap is disabled", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByRole("switch", { name: "Snap" }).click();
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await page.mouse.move(235, 290);
+  await page.mouse.down();
+  await page.mouse.move(500, 290, { steps: 5 });
+  await page.mouse.up();
+
+  const arrow = page.locator('[data-mesurer-arrow="true"]');
+  await expect(arrow).toHaveCount(1);
+  const d = await arrow.getAttribute("d");
+  const startX = d?.match(/^M\s+([\d.]+)/)?.[1];
+  expect(Number(startX)).toBeCloseTo(235, 0);
+});
+
 test("does not create an arrow from only the first click", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await page.mouse.click(120, 160);
 
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
+});
+
+test("draws a straight arrow with two clicks when click to place is enabled", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByRole("switch", { name: "Click to place" }).click();
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await page.mouse.click(120, 160);
+  await page.mouse.click(320, 260);
+
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveAttribute(
+    "d",
+    "M 120 160 Q 220 210 320 260",
+  );
 });
 
 test("does not create an arrow from only two clicks", async ({ page }) => {

@@ -15,6 +15,8 @@ type UseMesurerWorkspaceStateOptions = {
   persistedState: MesurerStoredWorkspace | null;
   snapEnabledDefault: boolean;
   snapGuidesEnabledDefault: boolean;
+  snapArrowsEnabledDefault: boolean;
+  arrowClickToPlaceDefault: boolean;
   selectNewGuideEnabledDefault: boolean;
   multiMeasureEnabledDefault: boolean;
   initialTextAnnotations?: TextAnnotation[];
@@ -24,6 +26,8 @@ export const useMesurerWorkspaceState = ({
   persistedState,
   snapEnabledDefault,
   snapGuidesEnabledDefault,
+  snapArrowsEnabledDefault,
+  arrowClickToPlaceDefault,
   selectNewGuideEnabledDefault,
   multiMeasureEnabledDefault,
   initialTextAnnotations,
@@ -66,6 +70,8 @@ export const useMesurerWorkspaceState = ({
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
     initialSnapEnabled: snapEnabledDefault,
     initialSnapGuidesEnabled: snapGuidesEnabledDefault,
+    initialSnapArrowsEnabled: snapArrowsEnabledDefault,
+    initialArrowClickToPlace: arrowClickToPlaceDefault,
     initialSelectNewGuideEnabled: selectNewGuideEnabledDefault,
     initialMultiMeasureEnabled: multiMeasureEnabledDefault,
   });

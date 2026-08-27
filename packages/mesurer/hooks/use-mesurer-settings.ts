@@ -15,6 +15,10 @@ type ToggleState = {
   setSnapEnabled: Dispatch<SetStateAction<boolean>>;
   snapGuidesEnabled: boolean;
   setSnapGuidesEnabled: Dispatch<SetStateAction<boolean>>;
+  snapArrowsEnabled: boolean;
+  setSnapArrowsEnabled: Dispatch<SetStateAction<boolean>>;
+  arrowClickToPlace: boolean;
+  setArrowClickToPlace: Dispatch<SetStateAction<boolean>>;
   selectNewGuideEnabled: boolean;
   setSelectNewGuideEnabled: Dispatch<SetStateAction<boolean>>;
   multiMeasureEnabled: boolean;
@@ -38,6 +42,8 @@ type UseMesurerSettingsOptions = {
     textStyle: TextStyleSettings;
     snapEnabled: boolean;
     snapGuidesEnabled: boolean;
+    snapArrowsEnabled: boolean;
+    arrowClickToPlace: boolean;
     selectNewGuideEnabled: boolean;
     multiMeasureEnabled: boolean;
   };
@@ -102,6 +108,8 @@ export const useMesurerSettings = ({
     setColorPickerClickFormat(defaults.colorPickerClickFormat);
     toggles.setSnapEnabled(defaults.snapEnabled);
     toggles.setSnapGuidesEnabled(defaults.snapGuidesEnabled);
+    toggles.setSnapArrowsEnabled(defaults.snapArrowsEnabled);
+    toggles.setArrowClickToPlace(defaults.arrowClickToPlace);
     toggles.setSelectNewGuideEnabled(defaults.selectNewGuideEnabled);
     toggles.setMultiMeasureEnabled(defaults.multiMeasureEnabled);
     setGuideStyle({ ...defaults.guideStyle });
@@ -121,6 +129,8 @@ export const useMesurerSettings = ({
       colorPickerClickFormat,
       snapEnabled: toggles.snapEnabled,
       snapGuidesEnabled: toggles.snapGuidesEnabled,
+      snapArrowsEnabled: toggles.snapArrowsEnabled,
+      arrowClickToPlace: toggles.arrowClickToPlace,
       selectNewGuideEnabled: toggles.selectNewGuideEnabled,
       multiMeasureEnabled: toggles.multiMeasureEnabled,
       persistOnReload,
@@ -147,6 +157,8 @@ export const useMesurerSettings = ({
     toggles.selectNewGuideEnabled,
     toggles.snapEnabled,
     toggles.snapGuidesEnabled,
+    toggles.snapArrowsEnabled,
+    toggles.arrowClickToPlace,
   ]);
 
   const applyPersistedSettings = useCallback((settings: MesurerStoredSettings) => {
@@ -169,6 +181,12 @@ export const useMesurerSettings = ({
     if (settings.snapEnabled !== undefined) toggles.setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) {
       toggles.setSnapGuidesEnabled(settings.snapGuidesEnabled);
+    }
+    if (settings.snapArrowsEnabled !== undefined) {
+      toggles.setSnapArrowsEnabled(settings.snapArrowsEnabled);
+    }
+    if (settings.arrowClickToPlace !== undefined) {
+      toggles.setArrowClickToPlace(settings.arrowClickToPlace);
     }
     if (settings.selectNewGuideEnabled !== undefined) {
       toggles.setSelectNewGuideEnabled(settings.selectNewGuideEnabled);

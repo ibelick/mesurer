@@ -7,6 +7,8 @@ type MeasureToggleOptions = {
   initialRulersVisible?: boolean
   initialSnapEnabled?: boolean
   initialSnapGuidesEnabled?: boolean
+  initialSnapArrowsEnabled?: boolean
+  initialArrowClickToPlace?: boolean
   initialSelectNewGuideEnabled?: boolean
   initialMultiMeasureEnabled?: boolean
 }
@@ -26,6 +28,12 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
   )
   const [snapGuidesEnabled, setSnapGuidesEnabled] = useState(
     options.initialSnapGuidesEnabled ?? true,
+  )
+  const [snapArrowsEnabled, setSnapArrowsEnabled] = useState(
+    options.initialSnapArrowsEnabled ?? true,
+  )
+  const [arrowClickToPlace, setArrowClickToPlace] = useState(
+    options.initialArrowClickToPlace ?? false,
   )
   const [selectNewGuideEnabled, setSelectNewGuideEnabled] = useState(
     options.initialSelectNewGuideEnabled ?? true,
@@ -47,6 +55,10 @@ export const useMeasureToggles = (options: MeasureToggleOptions = {}) => {
     multiMeasureEnabled,
     snapGuidesEnabled,
     setSnapGuidesEnabled,
+    snapArrowsEnabled,
+    setSnapArrowsEnabled,
+    arrowClickToPlace,
+    setArrowClickToPlace,
     selectNewGuideEnabled,
     setSelectNewGuideEnabled,
     snapEnabled,
