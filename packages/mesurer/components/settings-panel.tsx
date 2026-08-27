@@ -8,6 +8,7 @@ import { cn } from "../core/utils"
 import { CheckIcon } from "./icons"
 import { Tooltip, useTooltip } from "./tooltip"
 import type { GuideStyle, RulerSettings, ScreenshotSettings } from "../core/persistence"
+import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 
 type SettingsSelectProps = {
   highlightColor: string
@@ -52,6 +53,10 @@ type SettingsPanelProps = {
   rulers: {
     settings: RulerSettings
     setSettings: Dispatch<SetStateAction<RulerSettings>>
+  }
+  text: {
+    settings: TextStyleSettings
+    setSettings: Dispatch<SetStateAction<TextStyleSettings>>
   }
   general: {
     persistOnReload: boolean
@@ -559,11 +564,13 @@ export function SettingsPanel({
   color,
   camera,
   rulers,
+  text,
   general,
 }: SettingsPanelProps) {
   const { persistOnReload, setPersistOnReload, onResetSettings, onClearWorkspace } = general
   const { settings: screenshotSettings, setSettings: setScreenshotSettings } = camera
   const { settings: rulerSettings, setSettings: setRulerSettings } = rulers
+  const { settings: textSettings, setSettings: setTextSettings } = text
   const {
     highlightColor,
     setHighlightColor,
@@ -637,6 +644,44 @@ export function SettingsPanel({
         <div className="msr:col-span-2"><SettingsSwitch label="Snap" checked={snapGuidesEnabled} onChange={setSnapGuidesEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Highlight" checked={guideHighlightEnabled} onChange={setGuideHighlightEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Select" checked={selectNewGuideEnabled} onChange={setSelectNewGuideEnabled} /></div>
+      </SettingsSection>
+
+      <SectionDivider />
+      <SettingsSection title="Text" ariaLabel="Text settings">
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Font</span>
+          <span className="msr:relative msr:block msr:w-full">
+            <select
+              aria-label="Font"
+              value={textSettings.font}
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+              onChange={(event) =>
+                setTextSettings((style) => ({ ...style, font: event.target.value as TextFont }))
+              }
+            >
+              {TEXT_FONT_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
+          </span>
+        </label>
+        {textSettings.font === "custom" ? (
+          <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+            <span>Family</span>
+            <input
+              aria-label="Family"
+              type="text"
+              spellCheck={false}
+              placeholder="Font name"
+              value={textSettings.customFamily}
+              className="msr:h-6 msr:w-full msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:placeholder:text-ink-400 msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+              onChange={(event) =>
+                setTextSettings((style) => ({ ...style, customFamily: event.target.value }))
+              }
+            />
+          </label>
+        ) : null}
       </SettingsSection>
 
       <SectionDivider />

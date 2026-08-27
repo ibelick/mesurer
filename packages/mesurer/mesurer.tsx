@@ -46,6 +46,7 @@ import {
   DEFAULT_RULER_SETTINGS,
   type RulerSettings,
 } from "./core/persistence";
+import { DEFAULT_TEXT_STYLE, resolveTextFontFamily, type TextStyleSettings } from "./core/text-style";
 import {
   getTabId,
   LEGACY_STORAGE_KEY,
@@ -71,6 +72,7 @@ export type MesurerProps = {
   multiMeasureEnabled?: boolean;
   guideStyle?: Partial<GuideStyle>;
   rulerSettings?: Partial<RulerSettings>;
+  textStyle?: Partial<TextStyleSettings>;
   persistence?: MesurerPersistence;
   onPersistenceError?: (error: unknown) => void;
   captureVisibleTab?: () => Promise<Blob>;
@@ -94,6 +96,7 @@ function MesurerClient({
   multiMeasureEnabled: multiMeasureEnabledDefault,
   guideStyle: guideStyleDefault,
   rulerSettings: rulerSettingsDefault,
+  textStyle: textStyleDefault,
   persistence,
   onPersistenceError,
   captureVisibleTab,
@@ -105,6 +108,7 @@ function MesurerClient({
     | "onPersistenceError"
     | "guideStyle"
     | "rulerSettings"
+    | "textStyle"
     | "captureVisibleTab"
   >
 > &
@@ -114,6 +118,7 @@ function MesurerClient({
   > & {
     guideStyle: GuideStyle;
     rulerSettings: RulerSettings;
+    textStyle: TextStyleSettings;
   }) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
@@ -283,6 +288,8 @@ function MesurerClient({
     setRulerSettings: setSettingsRulerSettings,
     screenshotSettings: settingsScreenshot,
     setScreenshotSettings: setSettingsScreenshot,
+    textStyle: settingsTextStyle,
+    setTextStyle: setSettingsTextStyle,
     resetSettings,
     persistSettings,
     applyPersistedSettings,
@@ -299,6 +306,7 @@ function MesurerClient({
       colorPickerClickFormat,
       guideStyle: guideStyleDefault,
       rulerSettings: rulerSettingsDefault,
+      textStyle: textStyleDefault,
       snapEnabled: snapEnabledDefault,
       snapGuidesEnabled: snapGuidesEnabledDefault,
       selectNewGuideEnabled: selectNewGuideEnabledDefault,
@@ -650,6 +658,7 @@ function MesurerClient({
     setArrowsPersisted([]);
     setSelectedArrowIdsPersisted([]);
     setTextAnnotationsPersisted([]);
+    setSelectedTextIds([]);
   }, [
     clearGuideDragHold,
     clearSelectionRect,
@@ -669,6 +678,7 @@ function MesurerClient({
     setTextAnnotationsPersisted,
     setSelectedMeasurement,
     setSelectedMeasurements,
+    setSelectedTextIds,
     setStart,
     textInspector,
     toolMode,
@@ -693,30 +703,43 @@ function MesurerClient({
     setToolModePersisted("selection");
   }, [clearGuideDragHold, clearSelectionRect, setArrowMiddle, setArrowPreviewEnd, setArrowStart, setEnd, setHoverElement, setHoverRect, setIsDragging, setSelectedArrowIdsPersisted, setSelectedElement, setStart, setTextDraft, setToolModePersisted]);
 
-  const removeSelectedGuides = useCallback(() => {
-    if (selectedGuideIds.length === 0) return false;
+  const removeSelected = useCallback(() => {
+    const hasGuides = selectedGuideIds.length > 0;
+    const hasArrows = selectedArrowIds.length > 0;
+    const hasText = selectedTextIds.length > 0;
+    if (!hasGuides && !hasArrows && !hasText) return false;
     recordSnapshot();
-    setGuidesPersisted((prev) =>
-      prev.filter((guide) => !selectedGuideIds.includes(guide.id)),
-    );
-    setSelectedGuideIdsPersisted([]);
+    if (hasGuides) {
+      setGuidesPersisted((prev) =>
+        prev.filter((guide) => !selectedGuideIds.includes(guide.id)),
+      );
+      setSelectedGuideIdsPersisted([]);
+    }
+    if (hasArrows) {
+      setArrowsPersisted((previous) =>
+        previous.filter((arrow) => !selectedArrowIds.includes(arrow.id)),
+      );
+      setSelectedArrowIdsPersisted([]);
+    }
+    if (hasText) {
+      setTextAnnotationsPersisted((previous) =>
+        previous.filter((item) => !selectedTextIds.includes(item.id)),
+      );
+      setSelectedTextIds([]);
+    }
     return true;
   }, [
     recordSnapshot,
+    selectedArrowIds,
     selectedGuideIds,
+    selectedTextIds,
+    setArrowsPersisted,
     setGuidesPersisted,
+    setSelectedArrowIdsPersisted,
     setSelectedGuideIdsPersisted,
+    setSelectedTextIds,
+    setTextAnnotationsPersisted,
   ]);
-
-  const removeSelectedArrows = useCallback(() => {
-    if (selectedArrowIds.length === 0) return false;
-    recordSnapshot();
-    setArrowsPersisted((previous) =>
-      previous.filter((arrow) => !selectedArrowIds.includes(arrow.id)),
-    );
-    setSelectedArrowIdsPersisted([]);
-    return true;
-  }, [recordSnapshot, selectedArrowIds, setArrowsPersisted, setSelectedArrowIdsPersisted]);
 
   const colorPicker = useColorPicker({
     ownerWindow,
@@ -759,8 +782,7 @@ function MesurerClient({
     cancelInteraction,
     undo,
     redo,
-    removeSelectedGuides,
-    removeSelectedArrows,
+    removeSelected,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
     setRulersVisible: setRulersVisiblePersisted,
@@ -1014,6 +1036,15 @@ function MesurerClient({
     ));
   }, [setTextAnnotationsPersisted]);
 
+  const transformTextAnnotation = useCallback((
+    id: string,
+    next: { x: number; y: number; scale?: number; rotation?: number },
+  ) => {
+    setTextAnnotationsPersisted((previous) => previous.map((item) =>
+      item.id === id ? { ...item, ...next } : item,
+    ));
+  }, [setTextAnnotationsPersisted]);
+
   const editTextAnnotation = useCallback((id: string, caretX: number, caretY: number) => {
     if (textDraftRef.current?.id === id) return;
     if (textDraftRef.current) finishTextDraft();
@@ -1214,11 +1245,13 @@ function MesurerClient({
           onSelect: selectTextAnnotation,
           onMoveStart: recordSnapshot,
           onMove: moveTextAnnotation,
+          onTransform: transformTextAnnotation,
           onEdit: editTextAnnotation,
           scrollOffset,
           onDraftKeyDown: handleTextKeyDown,
           onDraftBlur: finishTextDraft,
           onActivateEditor: activateTextEditor,
+          fontFamily: resolveTextFontFamily(settingsTextStyle),
         },
       }}
       colorPicker={{
@@ -1310,6 +1343,10 @@ function MesurerClient({
                 settings: settingsRulerSettings,
                 setSettings: setSettingsRulerSettings,
               }}
+              text={{
+                settings: settingsTextStyle,
+                setSettings: setSettingsTextStyle,
+              }}
               general={{
                 persistOnReload: settingsPersistOnReload,
                 setPersistOnReload: setSettingsPersistOnReload,
@@ -1340,6 +1377,7 @@ export default function Mesurer({
   multiMeasureEnabled = false,
   guideStyle,
   rulerSettings,
+  textStyle,
   persistence,
   onPersistenceError,
   captureVisibleTab,
@@ -1367,6 +1405,7 @@ export default function Mesurer({
       multiMeasureEnabled={multiMeasureEnabled}
       guideStyle={{ ...DEFAULT_GUIDE_STYLE, ...guideStyle }}
       rulerSettings={{ ...DEFAULT_RULER_SETTINGS, ...rulerSettings }}
+      textStyle={{ ...DEFAULT_TEXT_STYLE, ...textStyle }}
       persistence={persistence}
       onPersistenceError={onPersistenceError}
       captureVisibleTab={captureVisibleTab}

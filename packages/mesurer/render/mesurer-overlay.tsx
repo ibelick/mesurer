@@ -100,11 +100,16 @@ type MesurerOverlayProps = {
     onSelect: (id: string) => void
     onMoveStart: () => void
     onMove: (id: string, x: number, y: number) => void
+    onTransform: (
+      id: string,
+    next: { x: number; y: number; scale?: number; rotation?: number },
+    ) => void
     onEdit: (id: string, x: number, y: number) => void
     scrollOffset: { x: number; y: number }
     onDraftKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
     onDraftBlur: () => void
     onActivateEditor: (element: HTMLElement) => void
+    fontFamily: string
   }
 }
 

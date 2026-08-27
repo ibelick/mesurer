@@ -16,7 +16,7 @@ test("writes text anywhere on the page", async ({ page }) => {
 
   await expect(textItems(page)).toHaveCount(1);
   await expect(textItems(page)).toHaveText("Review this D G X P S\nsecond line");
-  await expect(textItems(page)).toHaveClass(/msr:outline/);
+  await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(1);
   await expect(page.locator('[data-mesurer-text-id]')).toHaveAttribute("data-mesurer-text-id", /.+/);
 });
 
@@ -71,9 +71,11 @@ test("moves a selected text annotation", async ({ page }) => {
   const text = textItems(page);
   const before = await text.boundingBox();
   expect(before).not.toBeNull();
-  await page.mouse.move(before!.x + 4, before!.y + 4);
+  const startX = before!.x + before!.width / 2;
+  const startY = before!.y + before!.height / 2;
+  await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(before!.x + 84, before!.y + 54, { steps: 4 });
+  await page.mouse.move(startX + 80, startY + 50, { steps: 4 });
   await page.mouse.up();
 
   const after = await text.boundingBox();
@@ -92,7 +94,7 @@ test("shows a selection box when clicking text in Selection mode", async ({ page
   await page.getByRole("button", { name: "Selection (O)" }).click();
   await textItems(page).click();
 
-  await expect(textItems(page)).toHaveClass(/outline-\[#0d99ff\]/);
+  await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(1);
 });
 
 test("double-clicks a text annotation to edit it in place", async ({ page }) => {
@@ -194,7 +196,7 @@ test("rewrites existing text with a new line", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await expect(textItems(page)).toHaveText("Rewritten\nsecond line");
-  await expect(textItems(page)).not.toHaveClass(/msr:outline/);
+  await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(0);
 });
 
 test("rewrites existing text with multiple new lines", async ({ page }) => {
@@ -284,4 +286,91 @@ test("does not duplicate text when reclicking the active editor", async ({ page 
 
   await expect(textItems(page)).toHaveCount(1);
   await expect(textItems(page)).toHaveText("Once");
+});
+
+test("resizes a selected text annotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Resize me");
+  await page.keyboard.press("Escape");
+
+  const before = await textItems(page).boundingBox();
+  expect(before).not.toBeNull();
+  const handle = page.locator('[data-mesurer-text-handle="se"]');
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox!.x + 80, handleBox!.y + 50, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await textItems(page).boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.width).toBeGreaterThan(before!.width + 20);
+  expect(after!.height).toBeGreaterThan(before!.height + 8);
+  await expect(textItems(page)).not.toHaveCSS("font-size", "16px");
+});
+
+test("deletes a selected text annotation with Backspace", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Remove me");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCount(1);
+  await page.keyboard.press("Backspace");
+  await expect(textItems(page)).toHaveCount(0);
+  await page.keyboard.press("Control+z");
+  await expect(textItems(page)).toHaveText("Remove me");
+});
+
+test("rotates a selected text annotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Rotate me");
+  await page.keyboard.press("Escape");
+
+  const handle = page.locator('[data-mesurer-text-handle="rotate"]');
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox!.x + 60, handleBox!.y + 40, { steps: 4 });
+  await page.mouse.up();
+
+  await expect(textItems(page)).toHaveCSS("transform", /matrix/);
+});
+
+test("applies the text font from settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByLabel("Font").selectOption("code");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Code face");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveAttribute("style", /ui-monospace/);
+});
+
+test("uses a custom font family from settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByLabel("Font").selectOption("custom");
+  await dialog.getByLabel("Family").fill("Georgia");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Serif custom");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveAttribute("style", /Georgia/);
 });

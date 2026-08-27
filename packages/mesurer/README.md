@@ -82,7 +82,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 | `V`                    | Set guide orientation to vertical.                    |
 | `Alt`                  | Temporarily enable option/guide measurement overlays. |
   | `Esc`                  | Cancel the current interaction and return to Selection. |
-| `Backspace` / `Delete` | Remove selected guides.                               |
+| `Backspace` / `Delete` | Remove selected guides, arrows, or text.              |
 | `Cmd/Ctrl + Z`         | Undo.                                                 |
 | `Cmd/Ctrl + Shift + Z` | Redo.                                                 |
 | `Cmd/Ctrl + ,`         | Open Settings.                                        |

@@ -8,6 +8,7 @@ import type {
   ScreenshotSettings,
 } from "../core/persistence";
 import { DEFAULT_SCREENSHOT_SETTINGS } from "../core/persistence";
+import { type TextStyleSettings } from "../core/text-style";
 
 type ToggleState = {
   snapEnabled: boolean;
@@ -33,6 +34,7 @@ type UseMesurerSettingsOptions = {
     colorPickerClickFormat: ColorPickerFormat;
     guideStyle: GuideStyle;
     rulerSettings: RulerSettings;
+    textStyle: TextStyleSettings;
     snapEnabled: boolean;
     snapGuidesEnabled: boolean;
     selectNewGuideEnabled: boolean;
@@ -80,6 +82,10 @@ export const useMesurerSettings = ({
     ...DEFAULT_SCREENSHOT_SETTINGS,
     ...persistedSettings.screenshotSettings,
   });
+  const [textStyle, setTextStyle] = useState<TextStyleSettings>({
+    ...defaults.textStyle,
+    ...persistedSettings.textStyle,
+  });
 
   const resetSettings = useCallback(() => {
     setHighlightColor(defaults.highlightColor);
@@ -96,6 +102,7 @@ export const useMesurerSettings = ({
     setGuideStyle({ ...defaults.guideStyle });
     setRulerSettings({ ...defaults.rulerSettings });
     setScreenshotSettings({ ...DEFAULT_SCREENSHOT_SETTINGS });
+    setTextStyle({ ...defaults.textStyle });
   }, [defaults, toggles]);
 
   const persistSettings = useCallback(() => {
@@ -114,6 +121,7 @@ export const useMesurerSettings = ({
       guideStyle,
       rulerSettings,
       screenshotSettings,
+      textStyle,
     });
   }, [
     activePersistence,
@@ -128,6 +136,7 @@ export const useMesurerSettings = ({
     persistOnReload,
     rulerSettings,
     screenshotSettings,
+    textStyle,
     toggles.selectNewGuideEnabled,
     toggles.snapEnabled,
     toggles.snapGuidesEnabled,
@@ -168,7 +177,10 @@ export const useMesurerSettings = ({
     if (settings.screenshotSettings !== undefined) {
       setScreenshotSettings({ ...DEFAULT_SCREENSHOT_SETTINGS, ...settings.screenshotSettings });
     }
-  }, [defaults.guideStyle, defaults.rulerSettings, toggles]);
+    if (settings.textStyle !== undefined) {
+      setTextStyle({ ...defaults.textStyle, ...settings.textStyle });
+    }
+  }, [defaults.guideStyle, defaults.rulerSettings, defaults.textStyle, toggles]);
 
   return {
     highlightColor,
@@ -191,6 +203,8 @@ export const useMesurerSettings = ({
     setRulerSettings,
     screenshotSettings,
     setScreenshotSettings,
+    textStyle,
+    setTextStyle,
     resetSettings,
     persistSettings,
     applyPersistedSettings,

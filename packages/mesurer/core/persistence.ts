@@ -7,6 +7,9 @@ import type {
   ToolMode,
 } from "./types"
 import type { ColorPickerFormat } from "./colors"
+import { normalizeTextStyle, type TextStyleSettings } from "./text-style"
+
+export type { TextFont, TextStyleSettings } from "./text-style"
 
 export const MESURER_STORAGE_VERSION = 2
 
@@ -63,6 +66,7 @@ export type MesurerStoredSettings = {
   guideStyle?: Partial<GuideStyle>
   rulerSettings?: Partial<RulerSettings>
   screenshotSettings?: Partial<ScreenshotSettings>
+  textStyle?: Partial<TextStyleSettings>
 }
 
 export type MesurerStoredWorkspace = {
@@ -224,7 +228,9 @@ const isTextAnnotation = (value: unknown): value is TextAnnotation => {
     isFiniteNumber(annotation.x) &&
     isFiniteNumber(annotation.y) &&
     typeof annotation.text === "string" &&
-    annotation.text.length > 0
+    annotation.text.length > 0 &&
+    (annotation.scale === undefined || (isFiniteNumber(annotation.scale) && annotation.scale > 0)) &&
+    (annotation.rotation === undefined || isFiniteNumber(annotation.rotation))
   )
 }
 
@@ -284,6 +290,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(normalizeScreenshotSettings(input.screenshotSettings)
       ? { screenshotSettings: normalizeScreenshotSettings(input.screenshotSettings) }
       : {}),
+    ...(normalizeTextStyle(input.textStyle) ? { textStyle: normalizeTextStyle(input.textStyle) } : {}),
   }
 }
 

@@ -7,8 +7,7 @@ type HotkeyOptions = {
   cancelInteraction: () => void
   undo: () => void
   redo: () => void
-  removeSelectedGuides: () => boolean
-  removeSelectedArrows: () => boolean
+  removeSelected: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
   setRulersVisible: Dispatch<SetStateAction<boolean>>
@@ -182,10 +181,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (event.key === "Backspace" || event.key === "Delete") {
-        const removed = current.removeSelectedGuides() || current.removeSelectedArrows()
-        if (removed) {
-          event.preventDefault()
-        }
+        if (current.removeSelected()) event.preventDefault()
       }
     }
 

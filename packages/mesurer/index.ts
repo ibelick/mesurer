@@ -29,4 +29,6 @@ export type {
   GuideStyle,
   RulerSettings,
   ScreenshotSettings,
+  TextFont,
+  TextStyleSettings,
 } from "./core/persistence";

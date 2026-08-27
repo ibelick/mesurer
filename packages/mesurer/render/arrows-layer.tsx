@@ -1,6 +1,7 @@
 import { memo } from "react"
 import { arrowHead, arrowPath, midpoint, quadraticPoint } from "../core/arrows"
 import type { Arrow, Point } from "../core/types"
+import { HandleNode } from "./handle-node"
 
 type ArrowsLayerProps = {
   arrows: Arrow[]
@@ -8,8 +9,6 @@ type ArrowsLayerProps = {
   preview: { start: Point; end: Point; control?: Point } | null
   scrollOffset: Point
 }
-
-const NODE_SIZE = 6
 
 const ArrowNode = ({
   x,
@@ -24,14 +23,10 @@ const ArrowNode = ({
   id?: string
   handle: "start" | "control" | "end"
 }) => (
-  <rect
-    x={x - NODE_SIZE / 2}
-    y={y - NODE_SIZE / 2}
-    width={NODE_SIZE}
-    height={NODE_SIZE}
-    fill="white"
-    stroke={color}
-    strokeWidth="1.5"
+  <HandleNode
+    x={x}
+    y={y}
+    color={color}
     pointerEvents="all"
     data-mesurer-arrow-node="true"
     data-mesurer-arrow-id={id}

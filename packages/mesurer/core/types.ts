@@ -17,6 +17,8 @@ export type TextAnnotation = {
   x: number
   y: number
   text: string
+  scale?: number
+  rotation?: number
 }
 
 export type Rect = {

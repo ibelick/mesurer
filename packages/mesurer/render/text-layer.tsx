@@ -9,6 +9,8 @@ import {
   type PointerEvent,
 } from "react"
 import type { TextAnnotation } from "../core/types"
+import { boxCenter, scaleBox, scaledFont, rotationFromPointer, type ResizeHandle } from "../core/text-transform"
+import { TextTransformFrame } from "./text-transform-frame"
 
 type TextDraft = { id?: string; key?: string; x: number; y: number; caretX?: number; caretY?: number }
 
@@ -23,11 +25,31 @@ type TextLayerProps = {
   onSelect: (id: string) => void
   onMoveStart: () => void
   onMove: (id: string, x: number, y: number) => void
+  onTransform: (
+    id: string,
+    next: { x: number; y: number; scale?: number; rotation?: number },
+  ) => void
   onEdit: (id: string, x: number, y: number) => void
   onDraftKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onDraftBlur: () => void
   onActivateEditor: (element: HTMLElement) => void
+  fontFamily: string
 }
+
+type TextDrag =
+  | { type: "move"; id: string; startX: number; startY: number; itemX: number; itemY: number; moved: boolean }
+  | {
+      type: "resize"
+      id: string
+      handle: ResizeHandle
+      width: number
+      height: number
+      x: number
+      y: number
+      rotation: number
+      scale: number
+    }
+  | { type: "rotate"; id: string; centerX: number; centerY: number; offset: number }
 
 const editorClassName =
   "msr:pointer-events-auto msr:absolute msr:min-h-6 msr:min-w-32 msr:w-max msr:h-max msr:overflow-hidden msr:whitespace-pre msr:border-0 msr:bg-transparent msr:px-0 msr:text-[16px] msr:leading-6 msr:text-black msr:outline-none msr:cursor-text"
@@ -115,9 +137,11 @@ export const TextLayer = memo(function TextLayer({
   onSelect,
   onMoveStart,
   onMove,
+  onTransform,
   onEdit,
+  fontFamily,
 }: TextLayerProps) {
-  const dragRef = useRef<{ id: string; startX: number; startY: number; itemX: number; itemY: number } | null>(null)
+  const dragRef = useRef<TextDrag | null>(null)
   const initializedDraftRef = useRef<object | null>(null)
 
   useLayoutEffect(() => {
@@ -169,11 +193,13 @@ export const TextLayer = memo(function TextLayer({
             onSelect={onSelect}
             onMoveStart={onMoveStart}
             onMove={onMove}
+            onTransform={onTransform}
             onEdit={onEdit}
             onKeyDown={onDraftKeyDown}
             onPaste={handleEditorPaste}
             onBlur={handleEditorBlur}
             onActivateEditor={onActivateEditor}
+            fontFamily={fontFamily}
           />
         )
       })}
@@ -195,7 +221,7 @@ export const TextLayer = memo(function TextLayer({
           onPaste={handleEditorPaste}
           onBlur={handleEditorBlur}
           className={editorClassName}
-          style={{ left: draft.x - scrollOffset.x, top: draft.y - scrollOffset.y }}
+          style={{ left: draft.x - scrollOffset.x, top: draft.y - scrollOffset.y, fontFamily }}
           data-mesurer-text-input="true"
         />
       ) : null}
@@ -215,11 +241,13 @@ function TextItem({
   onSelect,
   onMoveStart,
   onMove,
+  onTransform,
   onEdit,
   onKeyDown,
   onPaste,
   onBlur,
   onActivateEditor,
+  fontFamily,
 }: {
   item: TextAnnotation
   scrollOffset: { x: number; y: number }
@@ -228,18 +256,28 @@ function TextItem({
   interactive: boolean
   editable: boolean
   selected: boolean
-  dragRef: MutableRefObject<{ id: string; startX: number; startY: number; itemX: number; itemY: number } | null>
+  dragRef: MutableRefObject<TextDrag | null>
   onSelect: (id: string) => void
   onMoveStart: () => void
   onMove: (id: string, x: number, y: number) => void
+  onTransform: (
+    id: string,
+    next: { x: number; y: number; scale?: number; rotation?: number },
+  ) => void
   onEdit: (id: string, x: number, y: number) => void
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onPaste: (event: ClipboardEvent<HTMLElement>) => void
   onBlur: (event: FocusEvent<HTMLElement>) => void
   onActivateEditor: (element: HTMLElement) => void
+  fontFamily: string
 }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
+  const boxRef = useRef<HTMLDivElement | null>(null)
   const seededRef = useRef(false)
+  const lastPointerDownRef = useRef(0)
+  const rotation = item.rotation ?? 0
+  const scale = item.scale ?? 1
+  const typeStyle = scaledFont(scale)
 
   useLayoutEffect(() => {
     const node = nodeRef.current
@@ -249,50 +287,81 @@ function TextItem({
     }
   }, [editing, item.text])
 
+  const measureBox = () => {
+    const box = boxRef.current
+    return {
+      width: box?.offsetWidth ?? 32,
+      height: box?.offsetHeight ?? 24,
+    }
+  }
+
+  const pointerPage = (event: PointerEvent<HTMLElement>) => ({
+    x: event.clientX + scrollOffset.x,
+    y: event.clientY + scrollOffset.y,
+  })
+
+  const startMove = (event: PointerEvent<HTMLElement>) => {
+    onSelect(item.id)
+    dragRef.current = {
+      type: "move",
+      id: item.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      itemX: item.x,
+      itemY: item.y,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
   return (
     <div
-      ref={(element) => {
-        if (element && !seededRef.current) {
-          element.textContent = item.text
-          seededRef.current = true
-        }
-        nodeRef.current = element
-        if (editing && element) {
-          draftInputRef.current = element
-          onActivateEditor(element)
-        } else if (draftInputRef.current === element) {
-          draftInputRef.current = null
-        }
+      ref={boxRef}
+      style={{
+        left: item.x - scrollOffset.x,
+        top: item.y - scrollOffset.y,
+        transform: rotation ? `rotate(${rotation}deg)` : undefined,
+        transformOrigin: "center center",
+        fontFamily,
+        ...typeStyle,
       }}
-      role={editing ? "textbox" : undefined}
-      aria-label={editing ? "Text annotation" : undefined}
-      contentEditable={editing || editable ? "plaintext-only" : "false"}
-      suppressContentEditableWarning
-      spellCheck={false}
-      style={{ left: item.x - scrollOffset.x, top: item.y - scrollOffset.y }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         if (!interactive && !editable) return
         event.stopPropagation()
-        if (editable) {
-          if (!editing) onEdit(item.id, event.clientX, event.clientY)
+        if (editable) return
+        const previous = lastPointerDownRef.current
+        lastPointerDownRef.current = event.timeStamp
+        if (previous && event.timeStamp - previous < 400) {
+          dragRef.current = null
+          onEdit(item.id, event.clientX, event.clientY)
           return
         }
-        event.preventDefault()
-        onSelect(item.id)
-        onMoveStart()
-        dragRef.current = {
-          id: item.id,
-          startX: event.clientX,
-          startY: event.clientY,
-          itemX: item.x,
-          itemY: item.y,
-        }
-        event.currentTarget.setPointerCapture(event.pointerId)
+        startMove(event)
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current
         if (!drag || drag.id !== item.id) return
-        onMove(drag.id, drag.itemX + event.clientX - drag.startX, drag.itemY + event.clientY - drag.startY)
+        if (drag.type === "move") {
+          const dx = event.clientX - drag.startX
+          const dy = event.clientY - drag.startY
+          if (!drag.moved && Math.hypot(dx, dy) < 4) return
+          if (!drag.moved) {
+            onMoveStart()
+            dragRef.current = { ...drag, moved: true }
+          }
+          onMove(drag.id, drag.itemX + dx, drag.itemY + dy)
+          return
+        }
+        const pointer = pointerPage(event)
+        if (drag.type === "resize") {
+          onTransform(item.id, scaleBox({ ...drag, scale: drag.scale }, drag.handle, pointer))
+          return
+        }
+        onTransform(item.id, {
+          x: item.x,
+          y: item.y,
+          rotation: rotationFromPointer({ x: drag.centerX, y: drag.centerY }, pointer) - drag.offset,
+        })
       }}
       onPointerUp={(event) => {
         if (dragRef.current?.id !== item.id) return
@@ -301,21 +370,86 @@ function TextItem({
         }
         dragRef.current = null
       }}
-      onDoubleClick={(event) => {
-        if (!interactive) return
-        event.preventDefault()
-        event.stopPropagation()
-        onEdit(item.id, event.clientX, event.clientY)
-      }}
-      onKeyDown={editing || editable ? onKeyDown : undefined}
-      onPaste={editing || editable ? onPaste : undefined}
-      onBlur={editing ? onBlur : undefined}
-      className={`msr:absolute msr:whitespace-pre msr:w-max msr:h-max msr:text-[16px] msr:leading-6 msr:text-black ${
-        editing ? editorClassName : interactive || editable ? "msr:pointer-events-auto msr:cursor-text" : "msr:pointer-events-none"
-      } ${selected && !editing ? "msr:outline msr:outline-1 msr:outline-[#0d99ff] msr:outline-offset-1" : ""}`}
+      className={`msr:absolute msr:w-max msr:h-max ${
+        interactive || editable ? "msr:pointer-events-auto" : "msr:pointer-events-none"
+      } ${interactive ? "msr:cursor-default" : editable ? "msr:cursor-text" : ""}`}
       data-mesurer-text="true"
       data-mesurer-text-id={item.id}
-      data-mesurer-text-input={editing ? "true" : undefined}
-    />
+    >
+      <div
+        ref={(element) => {
+          if (element && !seededRef.current) {
+            element.textContent = item.text
+            seededRef.current = true
+          }
+          nodeRef.current = element
+          if (editing && element) {
+            draftInputRef.current = element
+            onActivateEditor(element)
+          } else if (draftInputRef.current === element) {
+            draftInputRef.current = null
+          }
+        }}
+        role={editing ? "textbox" : undefined}
+        aria-label={editing ? "Text annotation" : undefined}
+        contentEditable={editing || editable ? "plaintext-only" : "false"}
+        suppressContentEditableWarning
+        spellCheck={false}
+        onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+          if (!editable) return
+          event.stopPropagation()
+          if (!editing) onEdit(item.id, event.clientX, event.clientY)
+        }}
+        onDoubleClick={(event) => {
+          if (!interactive) return
+          event.preventDefault()
+          event.stopPropagation()
+          onEdit(item.id, event.clientX, event.clientY)
+        }}
+        onKeyDown={editing || editable ? onKeyDown : undefined}
+        onPaste={editing || editable ? onPaste : undefined}
+        onBlur={editing ? onBlur : undefined}
+        className={`msr:whitespace-pre msr:text-black ${
+          editing ? "msr:min-h-6 msr:min-w-32 msr:cursor-text msr:border-0 msr:bg-transparent msr:px-0 msr:outline-none" : ""
+        }`}
+        data-mesurer-text-input={editing ? "true" : undefined}
+      />
+      {selected && !editing && interactive ? (
+        <TextTransformFrame
+          rotation={rotation}
+          onResizeStart={(handle, event) => {
+            const size = measureBox()
+            onSelect(item.id)
+            onMoveStart()
+            dragRef.current = {
+              type: "resize",
+              id: item.id,
+              handle,
+              ...size,
+              x: item.x,
+              y: item.y,
+              rotation,
+              scale,
+            }
+            boxRef.current?.setPointerCapture(event.pointerId)
+          }}
+          onRotateStart={(event) => {
+            const size = measureBox()
+            const center = boxCenter(item.x, item.y, size.width, size.height)
+            const pointer = pointerPage(event)
+            onSelect(item.id)
+            onMoveStart()
+            dragRef.current = {
+              type: "rotate",
+              id: item.id,
+              centerX: center.x,
+              centerY: center.y,
+              offset: rotationFromPointer(center, pointer) - rotation,
+            }
+            boxRef.current?.setPointerCapture(event.pointerId)
+          }}
+        />
+      ) : null}
+    </div>
   )
 }
