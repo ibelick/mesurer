@@ -21,6 +21,7 @@ type SelectionLayerProps = {
   hoverEdges: EdgeVisibility | null
   selected: InspectMeasurement[]
   selectedEdges: EdgeVisibility[]
+  layoutDetailsEnabled: boolean
 }
 
 export function SelectionLayer({
@@ -35,6 +36,7 @@ export function SelectionLayer({
   hoverEdges,
   selected,
   selectedEdges,
+  layoutDetailsEnabled,
 }: SelectionLayerProps) {
   if (!visible) return null
 
@@ -83,6 +85,7 @@ export function SelectionLayer({
           edgeVisibility={selectedEdges[index]}
           outlineColor={outlineColor}
           fillColor={fillColor}
+          layoutDetailsEnabled={layoutDetailsEnabled}
         />
       ))}
     </>

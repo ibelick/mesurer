@@ -66,6 +66,7 @@ export type MesurerProps = {
   arrowColor?: string;
   guideHighlightEnabled?: boolean;
   hoverHighlightEnabled?: boolean;
+  layoutDetailsEnabled?: boolean;
   persistOnReload?: boolean;
   portalTarget?: HTMLElement | ShadowRoot;
   persistKey?: string;
@@ -93,6 +94,7 @@ function MesurerClient({
   arrowColor,
   guideHighlightEnabled,
   hoverHighlightEnabled,
+  layoutDetailsEnabled,
   persistOnReload,
   portalTarget,
   persistKey,
@@ -164,7 +166,9 @@ function MesurerClient({
   const persistedSettings = sanitizeStoredSettings(ownerWindow, storedState?.settings ?? {});
 
   const closeScreenshotRef = useRef<() => void>(() => {});
+  const closeColorPickerRef = useRef<() => void>(() => {});
   const cancelArrowInteractionRef = useRef<() => void>(() => {});
+  const hasArrowInteractionRef = useRef<() => boolean>(() => false);
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
   const workspace = useMesurerWorkspaceState({
@@ -297,6 +301,8 @@ function MesurerClient({
     setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
     hoverHighlightEnabled: settingsHoverHighlight,
     setHoverHighlightEnabled: setSettingsHoverHighlight,
+    layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+    setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
     persistOnReload: settingsPersistOnReload,
     setPersistOnReload: setSettingsPersistOnReload,
     colorPickerFormats: settingsColorFormats,
@@ -323,6 +329,7 @@ function MesurerClient({
       arrowColor,
       guideHighlightEnabled,
       hoverHighlightEnabled,
+      layoutDetailsEnabled,
       persistOnReload,
       colorPickerFormats,
       colorPickerClickFormat,
@@ -712,7 +719,7 @@ function MesurerClient({
     toolMode,
   ]);
 
-  const cancelInteraction = useCallback(() => {
+  const clearTransientState = useCallback(() => {
     cancelArrowInteractionRef.current();
     clearGuideDragHold();
     setStart(null);
@@ -720,16 +727,116 @@ function MesurerClient({
     setIsDragging(false);
     clearSelectionRect();
     setHoverRect(null);
+    setHoverPointer(null);
     setHoverElement(null);
-    setSelectedElement(null);
     setArrowStart(null);
     setArrowMiddle(null);
     setArrowPreviewEnd(null);
-    textDraftRef.current = null;
-    setTextDraft(null);
+    if (textDraftRef.current) {
+      textDraftRef.current = null;
+      setTextDraft(null);
+    }
+  }, [
+    clearGuideDragHold,
+    clearSelectionRect,
+    setArrowMiddle,
+    setArrowPreviewEnd,
+    setArrowStart,
+    setEnd,
+    setHoverElement,
+    setHoverPointer,
+    setHoverRect,
+    setIsDragging,
+    setStart,
+    setTextDraft,
+  ]);
+
+  const hasTransientInteraction = useCallback(
+    () =>
+      Boolean(
+        arrowStart ||
+        textDraft ||
+        isDragging ||
+        start ||
+        draggingGuideId ||
+        hasArrowInteractionRef.current(),
+      ),
+    [arrowStart, draggingGuideId, isDragging, start, textDraft],
+  );
+
+  const isActiveToolMode = useCallback(
+    () =>
+      (toolMode !== "none" && toolMode !== "selection") ||
+      xrayVisible ||
+      rulersVisible,
+    [rulersVisible, toolMode, xrayVisible],
+  );
+
+  const hasSelection = useCallback(
+    () =>
+      selectedGuideIds.length > 0 ||
+      selectedArrowIds.length > 0 ||
+      selectedTextIds.length > 0 ||
+      selectedMeasurements.length > 0 ||
+      Boolean(selectedElement) ||
+      Boolean(selectedMeasurement),
+    [
+      selectedArrowIds.length,
+      selectedElement,
+      selectedGuideIds.length,
+      selectedMeasurement,
+      selectedMeasurements.length,
+      selectedTextIds.length,
+    ],
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectedGuideIdsPersisted([]);
     setSelectedArrowIdsPersisted([]);
+    setSelectedTextIds([]);
+    setSelectedMeasurements([]);
+    setSelectedMeasurement(null);
+    setSelectedElement(null);
+    clearSelectionRect();
+    setStart(null);
+    setEnd(null);
+    setIsDragging(false);
+  }, [
+    clearSelectionRect,
+    setEnd,
+    setIsDragging,
+    setSelectedArrowIdsPersisted,
+    setSelectedElement,
+    setSelectedGuideIdsPersisted,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+    setSelectedTextIds,
+    setStart,
+  ]);
+
+  const exitActiveTool = useCallback(() => {
+    clearTransientState();
+    clearSelection();
+    setXrayVisible(false);
     setToolModePersisted("selection");
-  }, [clearGuideDragHold, clearSelectionRect, setArrowMiddle, setArrowPreviewEnd, setArrowStart, setEnd, setHoverElement, setHoverRect, setIsDragging, setSelectedArrowIdsPersisted, setSelectedElement, setStart, setTextDraft, setToolModePersisted]);
+  }, [clearSelection, clearTransientState, setToolModePersisted, setXrayVisible]);
+
+  const exitMesurerCompletely = useCallback(() => {
+    clearTransientState();
+    clearSelection();
+    closeColorPickerRef.current();
+    closeScreenshotRef.current();
+    setXrayVisible(false);
+    setRulersVisiblePersisted(false);
+    setToolModePersisted("none");
+  }, [
+    clearSelection,
+    clearTransientState,
+    setRulersVisiblePersisted,
+    setToolModePersisted,
+    setXrayVisible,
+  ]);
+
 
   const removeSelected = useCallback(() => {
     const hasGuides = selectedGuideIds.length > 0;
@@ -790,6 +897,7 @@ function MesurerClient({
     },
   });
   closeScreenshotRef.current = screenshot.closeUi;
+  closeColorPickerRef.current = () => colorPicker.setActive(false);
 
   const openColorPicker = useCallback(() => {
     screenshot.closeUi();
@@ -824,7 +932,13 @@ function MesurerClient({
 
   useHotkeys({
     eventTarget: ownerWindow,
-    cancelInteraction,
+    clearTransientState,
+    hasTransientInteraction,
+    isActiveToolMode,
+    hasSelection,
+    clearSelection,
+    exitActiveTool,
+    exitMesurerCompletely,
     undo,
     redo,
     removeSelected,
@@ -1045,6 +1159,7 @@ function MesurerClient({
     scrollOffset,
   });
   cancelArrowInteractionRef.current = arrowsPointer.cancelInteraction;
+  hasArrowInteractionRef.current = arrowsPointer.hasActiveInteraction;
 
   const finishTextDraft = useCallback((selectAfterCommit = false) => {
     const draft = textDraftRef.current;
@@ -1251,6 +1366,7 @@ function MesurerClient({
         isDragging,
         fillColor,
         outlineColor,
+        layoutDetailsEnabled: settingsLayoutDetailsEnabled,
           pointers: {
             ...pointerHandlers,
         },
@@ -1377,6 +1493,8 @@ function MesurerClient({
                 setHighlightColor: setSettingsHighlightColor,
                 hoverHighlight: settingsHoverHighlight,
                 setHoverHighlight: setSettingsHoverHighlight,
+                layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+                setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
                 snapEnabled,
                 setSnapEnabled,
                 multiMeasureEnabled,
@@ -1440,6 +1558,7 @@ export default function Mesurer({
   arrowColor = "oklch(0.63 0.26 29.23)",
   guideHighlightEnabled = true,
   hoverHighlightEnabled = true,
+  layoutDetailsEnabled = true,
   persistOnReload = false,
   portalTarget,
   persistKey,
@@ -1472,6 +1591,7 @@ export default function Mesurer({
       arrowColor={arrowColor}
       guideHighlightEnabled={guideHighlightEnabled}
       hoverHighlightEnabled={hoverHighlightEnabled}
+      layoutDetailsEnabled={layoutDetailsEnabled}
       persistOnReload={persistOnReload}
       persistKey={persistKey}
       colorPickerFormats={colorPickerFormats}

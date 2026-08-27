@@ -34,6 +34,7 @@ type UseMesurerSettingsOptions = {
     arrowColor: string;
     guideHighlightEnabled: boolean;
     hoverHighlightEnabled: boolean;
+    layoutDetailsEnabled: boolean;
     persistOnReload: boolean;
     colorPickerFormats: ColorPickerFormat[];
     colorPickerClickFormat: ColorPickerFormat;
@@ -71,6 +72,9 @@ export const useMesurerSettings = ({
   const [hoverHighlightEnabled, setHoverHighlightEnabled] = useState(
     persistedSettings.hoverHighlightEnabled ?? defaults.hoverHighlightEnabled,
   );
+  const [layoutDetailsEnabled, setLayoutDetailsEnabled] = useState(
+    persistedSettings.layoutDetailsEnabled ?? defaults.layoutDetailsEnabled,
+  );
   const [persistOnReload, setPersistOnReload] = useState(
     persistedSettings.persistOnReload ?? defaults.persistOnReload,
   );
@@ -103,6 +107,7 @@ export const useMesurerSettings = ({
     setArrowColor(defaults.arrowColor);
     setGuideHighlightEnabled(defaults.guideHighlightEnabled);
     setHoverHighlightEnabled(defaults.hoverHighlightEnabled);
+    setLayoutDetailsEnabled(defaults.layoutDetailsEnabled);
     setPersistOnReload(defaults.persistOnReload);
     setColorPickerFormats([...defaults.colorPickerFormats]);
     setColorPickerClickFormat(defaults.colorPickerClickFormat);
@@ -125,6 +130,7 @@ export const useMesurerSettings = ({
       arrowColor,
       guideHighlightEnabled,
       hoverHighlightEnabled,
+      layoutDetailsEnabled,
       colorPickerFormats,
       colorPickerClickFormat,
       snapEnabled: toggles.snapEnabled,
@@ -149,6 +155,7 @@ export const useMesurerSettings = ({
     guideStyle,
     highlightColor,
     hoverHighlightEnabled,
+    layoutDetailsEnabled,
     toggles.multiMeasureEnabled,
     persistOnReload,
     rulerSettings,
@@ -170,6 +177,9 @@ export const useMesurerSettings = ({
     }
     if (settings.hoverHighlightEnabled !== undefined) {
       setHoverHighlightEnabled(settings.hoverHighlightEnabled);
+    }
+    if (settings.layoutDetailsEnabled !== undefined) {
+      setLayoutDetailsEnabled(settings.layoutDetailsEnabled);
     }
     if (settings.colorPickerFormats !== undefined) {
       setColorPickerFormats(settings.colorPickerFormats);
@@ -219,6 +229,8 @@ export const useMesurerSettings = ({
     setGuideHighlightEnabled,
     hoverHighlightEnabled,
     setHoverHighlightEnabled,
+    layoutDetailsEnabled,
+    setLayoutDetailsEnabled,
     persistOnReload,
     setPersistOnReload,
     colorPickerFormats,

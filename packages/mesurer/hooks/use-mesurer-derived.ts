@@ -108,6 +108,8 @@ export const useMesurerDerived = ({
       rect: unionRect,
       paddingRect: unionRect,
       marginRect: unionRect,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      gap: null,
       originRect: selectionOriginRect ?? undefined,
     }
   }, [selectedMeasurements, selectionOriginRect])

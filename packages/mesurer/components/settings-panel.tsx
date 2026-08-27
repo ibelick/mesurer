@@ -39,6 +39,8 @@ type SettingsSelectProps = {
   setHighlightColor: Dispatch<SetStateAction<string>>
   hoverHighlight: boolean
   setHoverHighlight: Dispatch<SetStateAction<boolean>>
+  layoutDetailsEnabled: boolean
+  setLayoutDetailsEnabled: Dispatch<SetStateAction<boolean>>
   snapEnabled: boolean
   setSnapEnabled: Dispatch<SetStateAction<boolean>>
   multiMeasureEnabled: boolean
@@ -625,6 +627,8 @@ export function SettingsPanel({
     setHighlightColor,
     hoverHighlight,
     setHoverHighlight,
+    layoutDetailsEnabled,
+    setLayoutDetailsEnabled,
     snapEnabled,
     setSnapEnabled,
     multiMeasureEnabled,
@@ -772,6 +776,7 @@ export function SettingsPanel({
       <SettingsSection id="selection" title="Selection" ariaLabel="Selection settings" focused={focusSection === "selection"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="Layout details" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
       </SettingsSection>

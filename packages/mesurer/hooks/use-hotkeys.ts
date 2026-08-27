@@ -2,9 +2,17 @@ import type { Dispatch, SetStateAction } from "react"
 import { useEffect, useRef } from "react"
 import type { ToolMode } from "../core/types"
 
+const DOUBLE_ESCAPE_MS = 400
+
 type HotkeyOptions = {
   eventTarget: Window
-  cancelInteraction: () => void
+  clearTransientState: () => void
+  hasTransientInteraction: () => boolean
+  isActiveToolMode: () => boolean
+  hasSelection: () => boolean
+  clearSelection: () => void
+  exitActiveTool: () => void
+  exitMesurerCompletely: () => void
   undo: () => void
   redo: () => void
   removeSelected: () => boolean
@@ -29,6 +37,7 @@ type HotkeyOptions = {
 export const useHotkeys = (options: HotkeyOptions) => {
   const optionsRef = useRef(options)
   optionsRef.current = options
+  const lastEscapeAtRef = useRef(0)
 
   useEffect(() => {
     const target = options.eventTarget
@@ -70,7 +79,25 @@ export const useHotkeys = (options: HotkeyOptions) => {
           return
         }
         event.preventDefault()
-        current.cancelInteraction()
+        const now = Date.now()
+        const doubleEscape = now - lastEscapeAtRef.current < DOUBLE_ESCAPE_MS
+        lastEscapeAtRef.current = now
+        if (doubleEscape) {
+          current.exitMesurerCompletely()
+          return
+        }
+        if (current.hasTransientInteraction()) {
+          current.clearTransientState()
+          return
+        }
+        if (current.isActiveToolMode()) {
+          current.exitActiveTool()
+          return
+        }
+        if (current.hasSelection()) {
+          current.clearSelection()
+          return
+        }
         return
       }
 

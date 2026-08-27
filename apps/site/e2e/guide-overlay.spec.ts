@@ -762,3 +762,55 @@ test("ruler-created guides snap to regular guides", async ({ page }) => {
   expect(second).not.toBeNull();
   expect(Math.abs(first!.x - second!.x)).toBeLessThanOrEqual(1);
 });
+
+test("shows layout gap and padding when layout details is enabled", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Select (S)" }).click();
+
+  const target = page.getByTestId("layout-flex");
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  const details = page.locator("[data-mesurer-layout-details]");
+  await expect(details).toBeVisible();
+  await expect(details).toContainText("gap");
+  await expect(details).toContainText("8px");
+  await expect(details).toContainText("padding");
+  await expect(details).toContainText("16px");
+});
+
+test("hides layout details when the setting is disabled", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("switch", { name: "Layout details" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Select (S)" }).click();
+
+  const target = page.getByTestId("layout-flex");
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  await expect(page.locator("[data-mesurer-layout-details]")).toHaveCount(0);
+});
+
+test("cycles through nested elements on repeated clicks", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("switch", { name: "Element snap" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Select (S)" }).click();
+
+  const target = page.getByTestId("nested-target");
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  const x = box!.x + box!.width / 2;
+  const y = box!.y + box!.height / 2;
+
+  await page.mouse.click(x, y);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("160 x 80");
+
+  await page.mouse.click(x, y);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 120");
+});

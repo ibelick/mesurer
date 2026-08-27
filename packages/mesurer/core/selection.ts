@@ -1,4 +1,4 @@
-import { MIN_MULTI_TARGET_SIZE } from "./constants"
+import { CLICK_CYCLE_THRESHOLD, MIN_MULTI_TARGET_SIZE } from "./constants"
 import {
   getBodyElementsCached,
   getFrameToken,
@@ -7,6 +7,12 @@ import {
 import { rectsOverlap } from "./geometry"
 import { pickMultiTargets, pickPointTarget, pickSingleTarget } from "./targets"
 import type { Point, Rect } from "./types"
+
+export type ClickCycleState = {
+  point: Point
+  index: number
+  stack: HTMLElement[]
+}
 
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
   if (!overlayNode) return null
@@ -39,44 +45,65 @@ const getDeepestElementAt = (
   return current
 }
 
-export const getTargetElement = (
+const isSelectableElement = (
+  element: Element,
+  overlayNode: HTMLDivElement | null,
+  overlayHost: Element | null,
+  ownerDocument: Document,
+): element is HTMLElement => {
+  const HTMLElementConstructor =
+    ownerDocument.defaultView?.HTMLElement ?? HTMLElement
+  if (!(element instanceof HTMLElementConstructor)) return false
+  if (isOverlayElement(element, overlayNode, overlayHost)) return false
+  if (element === ownerDocument.body || element === ownerDocument.documentElement) {
+    return false
+  }
+  const rect = element.getBoundingClientRect()
+  if (rect.width <= 2 || rect.height <= 2) return false
+  return true
+}
+
+const readElementsFromPoint = (
   point: Point,
   overlayNode: HTMLDivElement | null,
-  ownerDocument: Document = document,
+  ownerDocument: Document,
 ) => {
-  const overlayHost = getOverlayHost(overlayNode)
-
   if (overlayNode) {
     const previous = overlayNode.style.pointerEvents
     overlayNode.style.pointerEvents = "none"
     const elements = ownerDocument.elementsFromPoint(point.x, point.y)
     overlayNode.style.pointerEvents = previous
-
-    for (const rawElement of elements) {
-      const element = getDeepestElementAt(rawElement, point)
-      if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
-      if (isOverlayElement(element, overlayNode, overlayHost)) continue
-      if (element === ownerDocument.body || element === ownerDocument.documentElement)
-        continue
-      const rect = element.getBoundingClientRect()
-      if (rect.width <= 2 || rect.height <= 2) continue
-      return element
-    }
-    return null
+    return elements
   }
+  return ownerDocument.elementsFromPoint(point.x, point.y)
+}
 
-  const elements = ownerDocument.elementsFromPoint(point.x, point.y)
-  for (const rawElement of elements) {
+export const getElementsAtPoint = (
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
+) => {
+  const overlayHost = getOverlayHost(overlayNode)
+  const elements: HTMLElement[] = []
+  const seen = new Set<HTMLElement>()
+
+  for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
     const element = getDeepestElementAt(rawElement, point)
-    if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
-    if (isOverlayElement(element, overlayNode, overlayHost)) continue
-    if (element === ownerDocument.body || element === ownerDocument.documentElement)
-      continue
-    const rect = element.getBoundingClientRect()
-    if (rect.width <= 2 || rect.height <= 2) continue
-    return element
+    if (!isSelectableElement(element, overlayNode, overlayHost, ownerDocument)) continue
+    if (seen.has(element)) continue
+    seen.add(element)
+    elements.push(element)
   }
-  return null
+
+  return elements
+}
+
+export const getTargetElement = (
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
+) => {
+  return getElementsAtPoint(point, overlayNode, ownerDocument)[0] ?? null
 }
 
 export const getShiftClickTarget = (
@@ -118,6 +145,70 @@ export const getSnappedClickTarget = (
     pickSingleTarget(probeRect, point, entries) ??
     getTargetElement(point, overlayNode, ownerDocument)
   )
+}
+
+const isSameClickSpot = (a: Point, b: Point) =>
+  Math.abs(a.x - b.x) <= CLICK_CYCLE_THRESHOLD &&
+  Math.abs(a.y - b.y) <= CLICK_CYCLE_THRESHOLD
+
+const buildClickCycleStack = (
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  initial: HTMLElement,
+  ownerDocument: Document,
+) => {
+  const stack = getElementsAtPoint(point, overlayNode, ownerDocument)
+  if (stack.includes(initial)) return stack
+  return [initial, ...stack]
+}
+
+export const getCycledClickTarget = (
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  snapEnabled: boolean,
+  ownerDocument: Document = document,
+  cycle: ClickCycleState | null = null,
+): { target: HTMLElement | null; cycle: ClickCycleState | null } => {
+  if (
+    cycle &&
+    isSameClickSpot(point, cycle.point) &&
+    cycle.stack.length > 0
+  ) {
+    const nextIndex = (cycle.index + 1) % cycle.stack.length
+    return {
+      target: cycle.stack[nextIndex] ?? null,
+      cycle: {
+        point,
+        index: nextIndex,
+        stack: cycle.stack,
+      },
+    }
+  }
+
+  const initial = getSnappedClickTarget(
+    point,
+    overlayNode,
+    snapEnabled,
+    ownerDocument,
+  )
+  if (!initial) return { target: null, cycle: null }
+
+  const stack = buildClickCycleStack(
+    point,
+    overlayNode,
+    initial,
+    ownerDocument,
+  )
+  const index = stack.indexOf(initial)
+
+  return {
+    target: initial,
+    cycle: {
+      point,
+      index: index >= 0 ? index : 0,
+      stack,
+    },
+  }
 }
 
 export const getElementsInRect = (

@@ -1,5 +1,6 @@
 import { denormalizeRect, getViewportSize, normalizeRect } from "./geometry"
-import type { InspectMeasurement, Measurement, Rect } from "./types"
+import { isLayoutContainerDisplay } from "./layout-details"
+import type { InspectMeasurement, LayoutGap, Measurement, Rect } from "./types"
 import { createId } from "./utils"
 
 const getElementLabel = (element: HTMLElement) => {
@@ -12,6 +13,14 @@ const getElementLabel = (element: HTMLElement) => {
 }
 
 const parseEdge = (value: string) => Number.parseFloat(value) || 0
+
+const readLayoutGap = (style: CSSStyleDeclaration): LayoutGap | null => {
+  if (!isLayoutContainerDisplay(style.display)) return null
+  const row = parseEdge(style.rowGap)
+  const column = parseEdge(style.columnGap)
+  if (row === 0 && column === 0) return null
+  return { row, column }
+}
 
 export const getRectFromDom = (element: Element): Rect => {
   const rect = element.getBoundingClientRect()
@@ -104,6 +113,7 @@ export const getInspectMeasurement = (
     width: rect.width + margin.left + margin.right,
     height: rect.height + margin.top + margin.bottom,
   }
+  const gap = readLayoutGap(style)
   return {
     id: createId(),
     rect: {
@@ -116,6 +126,7 @@ export const getInspectMeasurement = (
     marginRect,
     padding,
     margin,
+    gap,
     label: getElementLabel(element),
     elementRef: element,
   }

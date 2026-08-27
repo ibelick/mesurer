@@ -8,9 +8,11 @@ import { getInspectMeasurement } from "../core/dom"
 import { getRectFromPoints } from "../core/geometry"
 import { getSnapGuidePosition } from "../core/guides"
 import {
+  getCycledClickTarget,
   getElementsInRectCached,
   getSnappedClickTarget,
   getTargetElement,
+  type ClickCycleState,
 } from "../core/selection"
 import { getSelectedMeasurementHit } from "../core/selection-helpers"
 import type {
@@ -141,6 +143,7 @@ export const useMesurerPointer = ({
   })
   const shiftDragRef = useRef(false)
   const shiftToggleElementRef = useRef<HTMLElement | null>(null)
+  const clickCycleRef = useRef<ClickCycleState | null>(null)
 
   const updateHoverTarget = useCallback(
     (point: Point) => {
@@ -454,6 +457,7 @@ export const useMesurerPointer = ({
         event.shiftKey && dragDx <= shiftThreshold && dragDy <= shiftThreshold
 
       if (isDragging && !isShiftClick) {
+        clickCycleRef.current = null
         const selectionRect = getRectFromPoints(start, point)
         selectionRectRef.current = selectionRect
         setSelectionOriginRect(selectionRect)
@@ -551,10 +555,23 @@ export const useMesurerPointer = ({
         return
       }
 
-      const target = event.shiftKey
-        ? (getTargetElement(point, overlayRef.current, document) ??
-          getSnappedClickTarget(point, overlayRef.current, snapEnabled, document))
-        : getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
+      let target: HTMLElement | null = null
+      if (event.shiftKey) {
+        target =
+          getTargetElement(point, overlayRef.current, document) ??
+          getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
+        clickCycleRef.current = null
+      } else {
+        const cycled = getCycledClickTarget(
+          point,
+          overlayRef.current,
+          snapEnabled,
+          document,
+          clickCycleRef.current,
+        )
+        target = cycled.target
+        clickCycleRef.current = cycled.cycle
+      }
 
       if (target) {
         const inspectMeasurement = getInspectMeasurement(target, window)
@@ -606,6 +623,7 @@ export const useMesurerPointer = ({
         setSelectedMeasurement(null)
         setSelectedMeasurements([])
         clearSelectionRect()
+        clickCycleRef.current = null
       }
 
       resetDragState()

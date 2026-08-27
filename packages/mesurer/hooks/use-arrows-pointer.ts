@@ -336,6 +336,11 @@ export const useArrowsPointer = ({
     [],
   )
 
+  const hasActiveInteraction = useCallback(
+    () => Boolean(drawingRef.current || editRef.current),
+    [],
+  )
+
   return {
     handlePointerDown,
     handlePointerMove,
@@ -343,6 +348,7 @@ export const useArrowsPointer = ({
     handlePointerLeave,
     handlePointerCancel,
     cancelInteraction,
+    hasActiveInteraction,
     handleSelectionPointerDown,
     handleSelectionPointerMove,
     handleSelectionPointerUp,

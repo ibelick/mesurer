@@ -2,29 +2,18 @@
 
 import { memo } from "react"
 import type { EdgeVisibility } from "../core/edge-visibility"
+import { formatLayoutDetailParts } from "../core/layout-details"
+import type { InspectMeasurement } from "../core/types"
 import { MeasureTag } from "./measure-tag"
 
-type Rect = {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-type SelectedMeasurement = {
-  rect: Rect
-  paddingRect: Rect
-  marginRect: Rect
-  originRect?: Rect
-}
-
 type SelectedMeasurementBoxProps = {
-  measurement: SelectedMeasurement
+  measurement: InspectMeasurement
   transitionMs: number
   labelOffset: number
   edgeVisibility?: EdgeVisibility
   outlineColor: string
   fillColor: string
+  layoutDetailsEnabled: boolean
 }
 
 const formatValue = (value: number) => Math.round(value)
@@ -36,11 +25,19 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
   edgeVisibility,
   outlineColor,
   fillColor,
+  layoutDetailsEnabled,
 }: SelectedMeasurementBoxProps) {
   const edges =
     edgeVisibility ??
     ({ top: true, right: true, bottom: true, left: true } as EdgeVisibility)
   const displayRect = measurement.rect
+  const layoutDetails = layoutDetailsEnabled
+    ? formatLayoutDetailParts({
+        padding: measurement.padding,
+        gap: measurement.gap,
+      })
+    : []
+
   return (
     <div className="msr:pointer-events-none" data-mesurer-selected-measurement="true">
       <div
@@ -87,7 +84,27 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
           transition: `left ${transitionMs}ms ease, top ${transitionMs}ms ease`,
         }}
       >
-        {formatValue(displayRect.width)} x {formatValue(displayRect.height)}
+        <div className="msr:text-center">
+          <div>
+            {formatValue(displayRect.width)} x {formatValue(displayRect.height)}
+          </div>
+          {layoutDetails.length > 0 ? (
+            <div
+              className="msr:flex msr:justify-center msr:gap-2.5 msr:text-[10px] msr:leading-3"
+              data-mesurer-layout-details="true"
+            >
+              {layoutDetails.map((part) => (
+                <span
+                  key={part.label}
+                  className="msr:inline-flex msr:items-baseline msr:gap-1"
+                >
+                  <span className="msr:text-ink-200">{part.label}</span>
+                  <span className="msr:text-ink-50">{part.value}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </MeasureTag>
     </div>
   )

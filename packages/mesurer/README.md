@@ -49,6 +49,7 @@ function App() {
 | `highlightColor`        | Base color for selection/hover overlays (defaults to `oklch(0.62 0.18 255)`). |
 | `guideColor`            | Base color for guides (defaults to `oklch(0.63 0.26 29.23)`).                 |
 | `hoverHighlightEnabled` | Disables hover highlight and deselects on click when `false`.                 |
+| `layoutDetailsEnabled`  | Shows gap and padding under selected dimensions. Default `true`.              |
 | `persistOnReload`       | Persists workspace state across reloads when `true`.                          |
 | `persistKey`            | Optional workspace storage key; default workspaces are isolated per browser tab. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |

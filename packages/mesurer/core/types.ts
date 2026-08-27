@@ -54,6 +54,11 @@ export type BoxEdges = {
   left: number
 }
 
+export type LayoutGap = {
+  row: number
+  column: number
+}
+
 export type InspectMeasurement = {
   id: string
   rect: Rect
@@ -61,6 +66,7 @@ export type InspectMeasurement = {
   marginRect: Rect
   padding: BoxEdges
   margin: BoxEdges
+  gap: LayoutGap | null
   label: string
   elementRef?: HTMLElement | null
   originRect?: Rect

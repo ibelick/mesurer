@@ -425,7 +425,7 @@ export default function RootLayout({ children }) {
               <code className="code">Esc</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Close settings or picker; else clear all
+              Exit the active tool; press twice to exit completely
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">

@@ -367,7 +367,7 @@ test("escape cancels an active arrow drawing", async ({ page }) => {
   await page.mouse.up();
 
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -401,6 +401,27 @@ test("escape cancels the current interaction without clearing arrows", async ({ 
   await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
     "aria-pressed",
     "true",
+  );
+});
+
+test("escape exits the active tool and double escape exits completely", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
   );
 });
 

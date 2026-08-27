@@ -80,6 +80,7 @@ type MesurerOverlayProps = {
   isDragging: boolean
   fillColor: string
   outlineColor: string
+  layoutDetailsEnabled: boolean
   pointers: OverlayPointers
   selection: OverlaySelection
   distances: OverlayDistances
@@ -124,6 +125,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   isDragging,
   fillColor,
   outlineColor,
+  layoutDetailsEnabled,
   pointers,
   selection,
   distances,
@@ -178,6 +180,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         hoverEdges={selection.hoverEdges}
         selected={selection.selected}
         selectedEdges={selection.selectedEdges}
+        layoutDetailsEnabled={layoutDetailsEnabled}
       />
 
       <ArrowsLayer

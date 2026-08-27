@@ -57,6 +57,7 @@ export type MesurerStoredSettings = {
   arrowColor?: string
   guideHighlightEnabled?: boolean
   hoverHighlightEnabled?: boolean
+  layoutDetailsEnabled?: boolean
   colorPickerFormats?: ColorPickerFormat[]
   colorPickerClickFormat?: ColorPickerFormat
   snapEnabled?: boolean
@@ -279,6 +280,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.arrowColor === "string" ? { arrowColor: input.arrowColor } : {}),
     ...(typeof input.guideHighlightEnabled === "boolean" ? { guideHighlightEnabled: input.guideHighlightEnabled } : {}),
     ...(typeof input.hoverHighlightEnabled === "boolean" ? { hoverHighlightEnabled: input.hoverHighlightEnabled } : {}),
+    ...(typeof input.layoutDetailsEnabled === "boolean" ? { layoutDetailsEnabled: input.layoutDetailsEnabled } : {}),
     ...(Array.isArray(input.colorPickerFormats) && input.colorPickerFormats.some(isFormat)
       ? { colorPickerFormats: input.colorPickerFormats.filter(isFormat) }
       : {}),
