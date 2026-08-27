@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
@@ -9,6 +9,30 @@ import { CheckIcon } from "./icons"
 import { Tooltip, useTooltip } from "./tooltip"
 import type { GuideStyle, RulerSettings, ScreenshotSettings } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
+import type { ToolMode } from "../core/types"
+
+export type SettingsFocusSection =
+  | "guides"
+  | "arrows"
+  | "text"
+  | "selection"
+  | "color"
+  | "screenshot"
+  | "rulers"
+
+export const settingsFocusSection = (
+  toolMode: ToolMode,
+  options: { colorPicker?: boolean; screenshot?: boolean; rulersVisible?: boolean } = {},
+): SettingsFocusSection | undefined => {
+  if (options.screenshot) return "screenshot"
+  if (options.colorPicker) return "color"
+  if (toolMode === "guides") return "guides"
+  if (toolMode === "arrows") return "arrows"
+  if (toolMode === "text") return "text"
+  if (toolMode === "select" || toolMode === "selection") return "selection"
+  if (toolMode === "rulers" || (options.rulersVisible && toolMode === "none")) return "rulers"
+  return undefined
+}
 
 type SettingsSelectProps = {
   highlightColor: string
@@ -58,6 +82,11 @@ type SettingsPanelProps = {
     settings: TextStyleSettings
     setSettings: Dispatch<SetStateAction<TextStyleSettings>>
   }
+  arrows: {
+    color: string
+    setColor: Dispatch<SetStateAction<string>>
+  }
+  focusSection?: SettingsFocusSection
   general: {
     persistOnReload: boolean
     setPersistOnReload: Dispatch<SetStateAction<boolean>>
@@ -402,17 +431,23 @@ function SectionDivider() {
 }
 
 function SettingsSection({
+  id,
   title,
   ariaLabel,
+  focused = false,
   children,
 }: {
+  id: string
   title: string
   ariaLabel: string
+  focused?: boolean
   children: ReactNode
 }) {
   return (
     <section
-      className={`msr:grid msr:w-full ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:px-3 msr:py-2`}
+      data-mesurer-settings-section={id}
+      data-focused={focused ? "true" : undefined}
+      className={`msr:grid msr:w-full ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:px-3 msr:py-2 msr:outline-none`}
       aria-label={ariaLabel}
     >
       <h2 className="msr:col-span-2 msr:flex msr:h-8 msr:items-center msr:text-[11px] msr:font-semibold msr:text-ink-500">
@@ -565,12 +600,15 @@ export function SettingsPanel({
   camera,
   rulers,
   text,
+  arrows,
+  focusSection,
   general,
 }: SettingsPanelProps) {
   const { persistOnReload, setPersistOnReload, onResetSettings, onClearWorkspace } = general
   const { settings: screenshotSettings, setSettings: setScreenshotSettings } = camera
   const { settings: rulerSettings, setSettings: setRulerSettings } = rulers
   const { settings: textSettings, setSettings: setTextSettings } = text
+  const { color: arrowColor, setColor: setArrowColor } = arrows
   const {
     highlightColor,
     setHighlightColor,
@@ -600,10 +638,52 @@ export function SettingsPanel({
     setColorClickFormat,
   } = color
   const patternTooltip = useTooltip()
+  const panelRef = useRef<HTMLDivElement>(null)
+  const spacerRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+    const view = panel.ownerDocument.defaultView
+
+    const align = () => {
+      const spacer = spacerRef.current
+      if (spacer) {
+        const nextHeight = `${Math.max(0, panel.clientHeight - 40)}px`
+        if (spacer.style.height !== nextHeight) spacer.style.height = nextHeight
+      }
+      if (!focusSection) {
+        panel.scrollTop = 0
+        return
+      }
+      const section = panel.querySelector<HTMLElement>(
+        `[data-mesurer-settings-section="${focusSection}"]`,
+      )
+      if (!section) return
+      panel.scrollTop +=
+        section.getBoundingClientRect().top - panel.getBoundingClientRect().top
+    }
+
+    align()
+    const frame = view?.requestAnimationFrame(() => {
+      align()
+      view.requestAnimationFrame(align)
+    })
+    const observer = new ResizeObserver(align)
+    observer.observe(panel)
+    return () => {
+      observer.disconnect()
+      if (frame) view?.cancelAnimationFrame(frame)
+    }
+  }, [focusSection])
 
   return (
-    <div className="mesurer-settings-panel msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto" onPointerDown={(event) => event.stopPropagation()}>
-      <SettingsSection title="Guides" ariaLabel="Guide settings">
+    <div
+      ref={panelRef}
+      className="mesurer-settings-panel msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <SettingsSection id="guides" title="Guides" ariaLabel="Guide settings" focused={focusSection === "guides"}>
         <ColorField label="Color" value={guideColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setGuideColor} />
         <SliderControl label="Weight" min={1} inputMin={0.01} max={4} step={1} value={guideStyle.width} formatValue={(value) => `${value}px`} parseInput={(input) => Number.parseFloat(input)} onChange={(value) => setGuideStyle((style) => ({ ...style, width: value }))} />
       <div className="msr:col-span-2 msr:grid msr:grid-cols-[78px_minmax(0,1fr)] msr:items-center msr:gap-0">
@@ -647,7 +727,13 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="Text" ariaLabel="Text settings">
+      <SettingsSection id="arrows" title="Arrows" ariaLabel="Arrow settings" focused={focusSection === "arrows"}>
+        <ColorField label="Color" value={arrowColor} fallback="#f97316" ownerWindow={ownerWindow} onChange={setArrowColor} />
+      </SettingsSection>
+
+      <SectionDivider />
+      <SettingsSection id="text" title="Text" ariaLabel="Text settings" focused={focusSection === "text"}>
+        <ColorField label="Color" value={textSettings.color} fallback="#000000" ownerWindow={ownerWindow} onChange={(color) => setTextSettings((style) => ({ ...style, color }))} />
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Font</span>
           <span className="msr:relative msr:block msr:w-full">
@@ -666,26 +752,10 @@ export function SettingsPanel({
             <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
           </span>
         </label>
-        {textSettings.font === "custom" ? (
-          <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
-            <span>Family</span>
-            <input
-              aria-label="Family"
-              type="text"
-              spellCheck={false}
-              placeholder="Font name"
-              value={textSettings.customFamily}
-              className="msr:h-6 msr:w-full msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:placeholder:text-ink-400 msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
-              onChange={(event) =>
-                setTextSettings((style) => ({ ...style, customFamily: event.target.value }))
-              }
-            />
-          </label>
-        ) : null}
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="Selection" ariaLabel="Selection settings">
+      <SettingsSection id="selection" title="Selection" ariaLabel="Selection settings" focused={focusSection === "selection"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
@@ -693,7 +763,7 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="Color picker" ariaLabel="Color settings">
+      <SettingsSection id="color" title="Color picker" ariaLabel="Color settings" focused={focusSection === "color"}>
         <div className={`msr:col-span-2 msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-start msr:gap-0`}>
           <span className="msr:flex msr:h-8 msr:items-center msr:text-[12px] msr:text-ink-700">Format</span>
           <FormatMultiSelect ownerWindow={ownerWindow} formats={COLOR_FORMATS} selectedFormats={colorFormats} onChange={setColorFormats} />
@@ -710,7 +780,7 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="Screenshot" ariaLabel="Screenshot settings">
+      <SettingsSection id="screenshot" title="Screenshot" ariaLabel="Screenshot settings" focused={focusSection === "screenshot"}>
         <div className="msr:col-span-2">
           <SettingsSwitch
             label="Copy"
@@ -738,13 +808,13 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="Rulers" ariaLabel="Ruler settings">
+      <SettingsSection id="rulers" title="Rulers" ariaLabel="Ruler settings" focused={focusSection === "rulers"}>
         <SliderControl label="Opacity" min={0.2} max={1} step={0.05} value={rulerSettings.opacity} formatValue={(value) => `${Math.round(value * 100)}%`} parseInput={(input) => Number.parseFloat(input) / 100} onChange={(value) => setRulerSettings((settings) => ({ ...settings, opacity: value }))} />
         <div className="msr:col-span-2"><SettingsSwitch label="Edge reveal" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection title="General" ariaLabel="General settings">
+      <SettingsSection id="general" title="General" ariaLabel="General settings">
         <div className="msr:col-span-2"><SettingsSwitch label="Persist" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Version</span>
@@ -769,6 +839,7 @@ export function SettingsPanel({
           </button>
         </div>
       </SettingsSection>
+      <div ref={spacerRef} aria-hidden className="msr:pointer-events-none msr:shrink-0" />
     </div>
   )
 }

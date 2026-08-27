@@ -5,8 +5,12 @@ export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw"
 export const BASE_FONT_SIZE = 16
 export const BASE_LINE_HEIGHT = 24
 export const MIN_SCALE = 0.35
+export const MIN_BOX_WIDTH = 48
 
 export const RESIZE_HANDLES: ResizeHandle[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+
+export const isWidthHandle = (handle: ResizeHandle): handle is "e" | "w" =>
+  handle === "e" || handle === "w"
 
 const HANDLE_CURSOR: Record<ResizeHandle, string> = {
   n: "ns-resize",
@@ -60,11 +64,19 @@ export const scaledFont = (scale: number) => ({
 })
 
 export const scaleBox = (
-  box: { x: number; y: number; width: number; height: number; rotation: number; scale: number },
+  box: {
+    x: number
+    y: number
+    width: number
+    height: number
+    rotation: number
+    scale: number
+    boxWidth?: number
+  },
   handle: ResizeHandle,
   pointer: Point,
 ) => {
-  const { x, y, width, height, rotation, scale } = box
+  const { x, y, width, height, rotation, scale, boxWidth } = box
   const center = boxCenter(x, y, width, height)
   const localPointer = rotatePoint(pointer, center, -rotation)
   const { ax, ay } = ANCHOR[handle]
@@ -96,5 +108,35 @@ export const scaleBox = (
     x: nextCenter.x - nextWidth / 2,
     y: nextCenter.y - nextHeight / 2,
     scale: nextScale,
+    ...(typeof boxWidth === "number"
+      ? { boxWidth: Math.max(MIN_BOX_WIDTH, boxWidth * applied) }
+      : {}),
+  }
+}
+
+export const resizeWidthBox = (
+  box: { x: number; y: number; width: number; height: number; rotation: number },
+  handle: "e" | "w",
+  pointer: Point,
+) => {
+  const { x, y, width, height, rotation } = box
+  const center = boxCenter(x, y, width, height)
+  const localPointer = rotatePoint(pointer, center, -rotation)
+  const { ax } = ANCHOR[handle]
+  const anchorX = x + ax * width
+  const nextWidth = Math.max(
+    MIN_BOX_WIDTH,
+    ax === 0 ? localPointer.x - x : anchorX - localPointer.x,
+  )
+  const nextLeft = ax === 0 ? x : anchorX - nextWidth
+  const nextCenter = rotatePoint(
+    { x: nextLeft + nextWidth / 2, y: y + height / 2 },
+    center,
+    rotation,
+  )
+  return {
+    x: nextCenter.x - nextWidth / 2,
+    y: nextCenter.y - height / 2,
+    boxWidth: nextWidth,
   }
 }

@@ -9,7 +9,15 @@ import {
   type PointerEvent,
 } from "react"
 import type { TextAnnotation } from "../core/types"
-import { boxCenter, scaleBox, scaledFont, rotationFromPointer, type ResizeHandle } from "../core/text-transform"
+import {
+  boxCenter,
+  isWidthHandle,
+  resizeWidthBox,
+  scaleBox,
+  scaledFont,
+  rotationFromPointer,
+  type ResizeHandle,
+} from "../core/text-transform"
 import { TextTransformFrame } from "./text-transform-frame"
 
 type TextDraft = { id?: string; key?: string; x: number; y: number; caretX?: number; caretY?: number }
@@ -27,13 +35,14 @@ type TextLayerProps = {
   onMove: (id: string, x: number, y: number) => void
   onTransform: (
     id: string,
-    next: { x: number; y: number; scale?: number; rotation?: number },
+    next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
   ) => void
   onEdit: (id: string, x: number, y: number) => void
   onDraftKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onDraftBlur: () => void
   onActivateEditor: (element: HTMLElement) => void
   fontFamily: string
+  color: string
 }
 
 type TextDrag =
@@ -48,11 +57,12 @@ type TextDrag =
       y: number
       rotation: number
       scale: number
+      boxWidth?: number
     }
   | { type: "rotate"; id: string; centerX: number; centerY: number; offset: number }
 
 const editorClassName =
-  "msr:pointer-events-auto msr:absolute msr:min-h-6 msr:min-w-32 msr:w-max msr:h-max msr:overflow-hidden msr:whitespace-pre msr:border-0 msr:bg-transparent msr:px-0 msr:text-[16px] msr:leading-6 msr:text-black msr:outline-none msr:cursor-text"
+  "msr:pointer-events-auto msr:absolute msr:min-h-6 msr:min-w-32 msr:w-max msr:h-max msr:overflow-hidden msr:whitespace-pre msr:border-0 msr:bg-transparent msr:px-0 msr:text-[16px] msr:leading-6 msr:outline-none msr:cursor-text"
 
 export const readEditableText = (element: HTMLElement | null) => {
   if (!element) return ""
@@ -140,6 +150,7 @@ export const TextLayer = memo(function TextLayer({
   onTransform,
   onEdit,
   fontFamily,
+  color,
 }: TextLayerProps) {
   const dragRef = useRef<TextDrag | null>(null)
   const initializedDraftRef = useRef<object | null>(null)
@@ -200,6 +211,7 @@ export const TextLayer = memo(function TextLayer({
             onBlur={handleEditorBlur}
             onActivateEditor={onActivateEditor}
             fontFamily={fontFamily}
+            color={color}
           />
         )
       })}
@@ -221,7 +233,7 @@ export const TextLayer = memo(function TextLayer({
           onPaste={handleEditorPaste}
           onBlur={handleEditorBlur}
           className={editorClassName}
-          style={{ left: draft.x - scrollOffset.x, top: draft.y - scrollOffset.y, fontFamily }}
+          style={{ left: draft.x - scrollOffset.x, top: draft.y - scrollOffset.y, fontFamily, color }}
           data-mesurer-text-input="true"
         />
       ) : null}
@@ -248,6 +260,7 @@ function TextItem({
   onBlur,
   onActivateEditor,
   fontFamily,
+  color,
 }: {
   item: TextAnnotation
   scrollOffset: { x: number; y: number }
@@ -262,7 +275,7 @@ function TextItem({
   onMove: (id: string, x: number, y: number) => void
   onTransform: (
     id: string,
-    next: { x: number; y: number; scale?: number; rotation?: number },
+    next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
   ) => void
   onEdit: (id: string, x: number, y: number) => void
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
@@ -270,6 +283,7 @@ function TextItem({
   onBlur: (event: FocusEvent<HTMLElement>) => void
   onActivateEditor: (element: HTMLElement) => void
   fontFamily: string
+  color: string
 }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
@@ -277,6 +291,7 @@ function TextItem({
   const lastPointerDownRef = useRef(0)
   const rotation = item.rotation ?? 0
   const scale = item.scale ?? 1
+  const boxWidth = item.boxWidth
   const typeStyle = scaledFont(scale)
 
   useLayoutEffect(() => {
@@ -323,6 +338,8 @@ function TextItem({
         transform: rotation ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: "center center",
         fontFamily,
+        color,
+        width: boxWidth,
         ...typeStyle,
       }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
@@ -354,7 +371,12 @@ function TextItem({
         }
         const pointer = pointerPage(event)
         if (drag.type === "resize") {
-          onTransform(item.id, scaleBox({ ...drag, scale: drag.scale }, drag.handle, pointer))
+          onTransform(
+            item.id,
+            isWidthHandle(drag.handle)
+              ? resizeWidthBox(drag, drag.handle, pointer)
+              : scaleBox({ ...drag, scale: drag.scale, boxWidth: drag.boxWidth }, drag.handle, pointer),
+          )
           return
         }
         onTransform(item.id, {
@@ -370,7 +392,7 @@ function TextItem({
         }
         dragRef.current = null
       }}
-      className={`msr:absolute msr:w-max msr:h-max ${
+      className={`msr:absolute msr:h-max ${boxWidth ? "msr:w-auto" : "msr:w-max"} ${
         interactive || editable ? "msr:pointer-events-auto" : "msr:pointer-events-none"
       } ${interactive ? "msr:cursor-default" : editable ? "msr:cursor-text" : ""}`}
       data-mesurer-text="true"
@@ -392,7 +414,7 @@ function TextItem({
         }}
         role={editing ? "textbox" : undefined}
         aria-label={editing ? "Text annotation" : undefined}
-        contentEditable={editing || editable ? "plaintext-only" : "false"}
+        contentEditable={editing ? "plaintext-only" : "false"}
         suppressContentEditableWarning
         spellCheck={false}
         onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
@@ -406,11 +428,11 @@ function TextItem({
           event.stopPropagation()
           onEdit(item.id, event.clientX, event.clientY)
         }}
-        onKeyDown={editing || editable ? onKeyDown : undefined}
-        onPaste={editing || editable ? onPaste : undefined}
+        onKeyDown={editing ? onKeyDown : undefined}
+        onPaste={editing ? onPaste : undefined}
         onBlur={editing ? onBlur : undefined}
-        className={`msr:whitespace-pre msr:text-black ${
-          editing ? "msr:min-h-6 msr:min-w-32 msr:cursor-text msr:border-0 msr:bg-transparent msr:px-0 msr:outline-none" : ""
+        className={`${boxWidth ? "msr:w-full msr:whitespace-pre-wrap msr:break-words" : "msr:whitespace-pre"} ${
+          editing ? "msr:min-h-6 msr:min-w-0 msr:cursor-text msr:border-0 msr:bg-transparent msr:px-0 msr:outline-none" : ""
         }`}
         data-mesurer-text-input={editing ? "true" : undefined}
       />
@@ -430,6 +452,7 @@ function TextItem({
               y: item.y,
               rotation,
               scale,
+              boxWidth,
             }
             boxRef.current?.setPointerCapture(event.pointerId)
           }}

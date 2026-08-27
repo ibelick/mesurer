@@ -19,6 +19,7 @@ export type TextAnnotation = {
   text: string
   scale?: number
   rotation?: number
+  boxWidth?: number
 }
 
 export type Rect = {

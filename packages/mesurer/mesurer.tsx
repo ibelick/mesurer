@@ -10,7 +10,11 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { ensureMesurerStyles } from "./runtime/style-inject";
 import { MESURER_STYLES } from "./styles.generated";
-import { SettingsPanel } from "./components/settings-panel";
+import {
+  SettingsPanel,
+  settingsFocusSection,
+  type SettingsFocusSection,
+} from "./components/settings-panel";
 import { MesurerPortal } from "./components/mesurer-portal";
 import { useColorPicker } from "./hooks/use-color-picker";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
@@ -59,6 +63,7 @@ import {
 export type MesurerProps = {
   highlightColor?: string;
   guideColor?: string;
+  arrowColor?: string;
   guideHighlightEnabled?: boolean;
   hoverHighlightEnabled?: boolean;
   persistOnReload?: boolean;
@@ -83,6 +88,7 @@ let mesurerInstanceCount = 0;
 function MesurerClient({
   highlightColor,
   guideColor,
+  arrowColor,
   guideHighlightEnabled,
   hoverHighlightEnabled,
   persistOnReload,
@@ -262,16 +268,19 @@ function MesurerClient({
     guideOrientation,
     setGuideOrientation,
   } = workspace;
-  const textInspector = useTextInspector(portalTarget, toolMode);
+  const textInspector = useTextInspector(portalTarget, toolMode, settingsOpen);
   const textDraftInputRef = useRef<HTMLElement | null>(null);
   const textDraftRef = useRef(textDraft);
   const committedTextEditorsRef = useRef(new WeakSet<HTMLElement>());
+  const suppressTextCreateRef = useRef(false);
   textDraftRef.current = textDraft;
   const {
     highlightColor: settingsHighlightColor,
     setHighlightColor: setSettingsHighlightColor,
     guideColor: settingsGuideColor,
     setGuideColor: setSettingsGuideColor,
+    arrowColor: settingsArrowColor,
+    setArrowColor: setSettingsArrowColor,
     guideHighlightEnabled: settingsGuideHighlightEnabled,
     setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
     hoverHighlightEnabled: settingsHoverHighlight,
@@ -299,6 +308,7 @@ function MesurerClient({
     defaults: {
       highlightColor,
       guideColor,
+      arrowColor,
       guideHighlightEnabled,
       hoverHighlightEnabled,
       persistOnReload,
@@ -768,14 +778,31 @@ function MesurerClient({
     void colorPicker.open();
   }, [colorPicker.open, screenshot.closeUi]);
 
+  const [settingsFocus, setSettingsFocus] = useState<SettingsFocusSection | undefined>();
+
   const toggleSettings = useCallback(() => {
-    screenshot.closeUi();
     if (settingsOpen) {
+      screenshot.closeUi();
       setSettingsOpen(false);
       return;
     }
+    setSettingsFocus(
+      settingsFocusSection(toolMode, {
+        colorPicker: colorPicker.active,
+        screenshot: screenshot.active,
+        rulersVisible,
+      }),
+    );
+    screenshot.closeUi();
     setSettingsOpen(true);
-  }, [screenshot.closeUi, settingsOpen]);
+  }, [
+    colorPicker.active,
+    rulersVisible,
+    screenshot.active,
+    screenshot.closeUi,
+    settingsOpen,
+    toolMode,
+  ]);
 
   useHotkeys({
     eventTarget: ownerWindow,
@@ -979,7 +1006,7 @@ function MesurerClient({
   const arrowsPointer = useArrowsPointer({
     enabled,
     settingsOpen,
-    color: settingsGuideColor,
+    color: settingsArrowColor,
     width: Math.max(settingsGuideStyle.width, 1),
     createActionCommit,
     setArrows: setArrowsPersisted,
@@ -1005,6 +1032,10 @@ function MesurerClient({
     textDraftRef.current = null;
     if (editor) committedTextEditorsRef.current.add(editor);
     setTextDraft(null);
+    suppressTextCreateRef.current = true;
+    queueMicrotask(() => {
+      suppressTextCreateRef.current = false;
+    });
     if (value.trim()) {
       recordSnapshot();
       const id = draft.id ?? createId();
@@ -1027,8 +1058,9 @@ function MesurerClient({
   }, []);
 
   const selectTextAnnotation = useCallback((id: string) => {
+    if (textDraftRef.current) finishTextDraft();
     setSelectedTextIds([id]);
-  }, [setSelectedTextIds]);
+  }, [finishTextDraft, setSelectedTextIds]);
 
   const moveTextAnnotation = useCallback((id: string, x: number, y: number) => {
     setTextAnnotationsPersisted((previous) => previous.map((item) =>
@@ -1038,7 +1070,7 @@ function MesurerClient({
 
   const transformTextAnnotation = useCallback((
     id: string,
-    next: { x: number; y: number; scale?: number; rotation?: number },
+    next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
   ) => {
     setTextAnnotationsPersisted((previous) => previous.map((item) =>
       item.id === id ? { ...item, ...next } : item,
@@ -1065,11 +1097,18 @@ function MesurerClient({
   const handleTextPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     event.preventDefault();
-    if (textDraftRef.current) finishTextDraft();
+    const suppressCreate = suppressTextCreateRef.current;
+    suppressTextCreateRef.current = false;
+    if (textDraftRef.current) {
+      finishTextDraft();
+      return;
+    }
+    if (suppressCreate) return;
+    setSelectedTextIds([]);
     const next = { key: createId(), x: event.clientX + scrollOffset.x, y: event.clientY + scrollOffset.y };
     textDraftRef.current = next;
     setTextDraft(next);
-  }, [finishTextDraft, scrollOffset.x, scrollOffset.y, setTextDraft]);
+  }, [finishTextDraft, scrollOffset.x, scrollOffset.y, setSelectedTextIds, setTextDraft]);
 
   const handleTextKeyDown = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -1234,6 +1273,7 @@ function MesurerClient({
           selectedIds: selectedArrowIds,
           preview: arrowsPointer.preview,
           scrollOffset,
+          color: settingsArrowColor,
         },
         text: {
           items: textAnnotations,
@@ -1252,6 +1292,7 @@ function MesurerClient({
           onDraftBlur: finishTextDraft,
           onActivateEditor: activateTextEditor,
           fontFamily: resolveTextFontFamily(settingsTextStyle),
+          color: settingsTextStyle.color,
         },
       }}
       colorPicker={{
@@ -1307,6 +1348,7 @@ function MesurerClient({
           panel: (
             <SettingsPanel
               ownerWindow={ownerWindow}
+              focusSection={settingsFocus}
               select={{
                 highlightColor: settingsHighlightColor,
                 setHighlightColor: setSettingsHighlightColor,
@@ -1347,6 +1389,10 @@ function MesurerClient({
                 settings: settingsTextStyle,
                 setSettings: setSettingsTextStyle,
               }}
+              arrows={{
+                color: settingsArrowColor,
+                setColor: setSettingsArrowColor,
+              }}
               general={{
                 persistOnReload: settingsPersistOnReload,
                 setPersistOnReload: setSettingsPersistOnReload,
@@ -1364,6 +1410,7 @@ function MesurerClient({
 export default function Mesurer({
   highlightColor = "oklch(0.62 0.18 255)",
   guideColor = "oklch(0.63 0.26 29.23)",
+  arrowColor = "oklch(0.63 0.26 29.23)",
   guideHighlightEnabled = true,
   hoverHighlightEnabled = true,
   persistOnReload = false,
@@ -1393,6 +1440,7 @@ export default function Mesurer({
     <MesurerClient
       highlightColor={highlightColor}
       guideColor={guideColor}
+      arrowColor={arrowColor}
       guideHighlightEnabled={guideHighlightEnabled}
       hoverHighlightEnabled={hoverHighlightEnabled}
       persistOnReload={persistOnReload}

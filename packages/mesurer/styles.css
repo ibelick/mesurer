@@ -165,6 +165,9 @@
 }
 
 .mesurer-settings-panel {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior-x: none;
   scrollbar-width: none;

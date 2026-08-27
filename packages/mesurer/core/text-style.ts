@@ -1,13 +1,13 @@
-export type TextFont = "handwritten" | "code" | "serif" | "sans-serif" | "custom"
+export type TextFont = "handwritten" | "code" | "serif" | "sans-serif"
 
 export type TextStyleSettings = {
   font: TextFont
-  customFamily: string
+  color: string
 }
 
 export const DEFAULT_TEXT_STYLE: TextStyleSettings = {
   font: "sans-serif",
-  customFamily: "",
+  color: "#000000",
 }
 
 export const TEXT_FONT_OPTIONS: Array<{ value: TextFont; label: string }> = [
@@ -15,10 +15,9 @@ export const TEXT_FONT_OPTIONS: Array<{ value: TextFont; label: string }> = [
   { value: "code", label: "Code" },
   { value: "serif", label: "Serif" },
   { value: "sans-serif", label: "Sans-serif" },
-  { value: "custom", label: "Custom" },
 ]
 
-const FONT_STACKS: Record<Exclude<TextFont, "custom">, string> = {
+const FONT_STACKS: Record<TextFont, string> = {
   handwritten:
     '"Segoe Script", "Bradley Hand", "Apple Chancery", "Snell Roundhand", "Comic Sans MS", cursive',
   code: 'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace',
@@ -27,30 +26,15 @@ const FONT_STACKS: Record<Exclude<TextFont, "custom">, string> = {
 }
 
 const isTextFont = (value: unknown): value is TextFont =>
-  value === "handwritten" ||
-  value === "code" ||
-  value === "serif" ||
-  value === "sans-serif" ||
-  value === "custom"
+  value === "handwritten" || value === "code" || value === "serif" || value === "sans-serif"
 
-export const sanitizeCustomFamily = (value: string) =>
-  value.trim().replace(/["';{}\\\n\r]/g, "").slice(0, 64)
-
-export const resolveTextFontFamily = (style: TextStyleSettings) => {
-  if (style.font !== "custom") return FONT_STACKS[style.font]
-  const custom = sanitizeCustomFamily(style.customFamily)
-  if (!custom) return FONT_STACKS["sans-serif"]
-  return `"${custom}", ${FONT_STACKS["sans-serif"]}`
-}
+export const resolveTextFontFamily = (style: TextStyleSettings) => FONT_STACKS[style.font]
 
 export const normalizeTextStyle = (value: unknown): TextStyleSettings | undefined => {
   if (!value || typeof value !== "object") return undefined
   const input = value as Record<string, unknown>
   return {
     font: isTextFont(input.font) ? input.font : DEFAULT_TEXT_STYLE.font,
-    customFamily:
-      typeof input.customFamily === "string"
-        ? sanitizeCustomFamily(input.customFamily)
-        : DEFAULT_TEXT_STYLE.customFamily,
+    color: typeof input.color === "string" && input.color ? input.color : DEFAULT_TEXT_STYLE.color,
   }
 }

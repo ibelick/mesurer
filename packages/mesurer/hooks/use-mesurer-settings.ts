@@ -27,6 +27,7 @@ type UseMesurerSettingsOptions = {
   defaults: {
     highlightColor: string;
     guideColor: string;
+    arrowColor: string;
     guideHighlightEnabled: boolean;
     hoverHighlightEnabled: boolean;
     persistOnReload: boolean;
@@ -54,6 +55,9 @@ export const useMesurerSettings = ({
   );
   const [guideColor, setGuideColor] = useState(
     persistedSettings.guideColor ?? defaults.guideColor,
+  );
+  const [arrowColor, setArrowColor] = useState(
+    persistedSettings.arrowColor ?? defaults.arrowColor,
   );
   const [guideHighlightEnabled, setGuideHighlightEnabled] = useState(
     persistedSettings.guideHighlightEnabled ?? defaults.guideHighlightEnabled,
@@ -90,6 +94,7 @@ export const useMesurerSettings = ({
   const resetSettings = useCallback(() => {
     setHighlightColor(defaults.highlightColor);
     setGuideColor(defaults.guideColor);
+    setArrowColor(defaults.arrowColor);
     setGuideHighlightEnabled(defaults.guideHighlightEnabled);
     setHoverHighlightEnabled(defaults.hoverHighlightEnabled);
     setPersistOnReload(defaults.persistOnReload);
@@ -109,6 +114,7 @@ export const useMesurerSettings = ({
     activePersistence.saveSettings({
       highlightColor,
       guideColor,
+      arrowColor,
       guideHighlightEnabled,
       hoverHighlightEnabled,
       colorPickerFormats,
@@ -128,6 +134,7 @@ export const useMesurerSettings = ({
     colorPickerClickFormat,
     colorPickerFormats,
     guideColor,
+    arrowColor,
     guideHighlightEnabled,
     guideStyle,
     highlightColor,
@@ -145,6 +152,7 @@ export const useMesurerSettings = ({
   const applyPersistedSettings = useCallback((settings: MesurerStoredSettings) => {
     if (settings.highlightColor !== undefined) setHighlightColor(settings.highlightColor);
     if (settings.guideColor !== undefined) setGuideColor(settings.guideColor);
+    if (settings.arrowColor !== undefined) setArrowColor(settings.arrowColor);
     if (settings.guideHighlightEnabled !== undefined) {
       setGuideHighlightEnabled(settings.guideHighlightEnabled);
     }
@@ -187,6 +195,8 @@ export const useMesurerSettings = ({
     setHighlightColor,
     guideColor,
     setGuideColor,
+    arrowColor,
+    setArrowColor,
     guideHighlightEnabled,
     setGuideHighlightEnabled,
     hoverHighlightEnabled,

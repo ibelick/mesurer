@@ -89,6 +89,7 @@ type MesurerOverlayProps = {
     selectedIds: string[]
     preview: { start: { x: number; y: number }; end: { x: number; y: number }; control?: { x: number; y: number } } | null
     scrollOffset: { x: number; y: number }
+    color: string
   }
   text: {
     items: TextAnnotation[]
@@ -102,7 +103,7 @@ type MesurerOverlayProps = {
     onMove: (id: string, x: number, y: number) => void
     onTransform: (
       id: string,
-    next: { x: number; y: number; scale?: number; rotation?: number },
+      next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
     ) => void
     onEdit: (id: string, x: number, y: number) => void
     scrollOffset: { x: number; y: number }
@@ -110,6 +111,7 @@ type MesurerOverlayProps = {
     onDraftBlur: () => void
     onActivateEditor: (element: HTMLElement) => void
     fontFamily: string
+    color: string
   }
 }
 
@@ -183,6 +185,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selectedIds={arrows.selectedIds}
         preview={arrows.preview}
         scrollOffset={arrows.scrollOffset}
+        color={arrows.color}
       />
 
       <TextLayer {...text} />

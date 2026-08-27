@@ -50,7 +50,9 @@ const createInspectorStyles = (
   cursor: help !important;
 }
 .${bodyModeClass} #${extensionHostId},
-.${bodyModeClass} #${extensionHostId} * {
+.${bodyModeClass} #${extensionHostId} *,
+.${bodyModeClass} .mesurer-root,
+.${bodyModeClass} .mesurer-root * {
   cursor: auto !important;
 }
 #${overlayId} .mesurer-ti-card--pinned {
@@ -112,6 +114,7 @@ export type TextInspectorAPI = {
   inspect: (element: HTMLElement) => boolean;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  setPaused: (paused: boolean) => void;
 };
 
 export type TextInspectorOptions = {
@@ -201,6 +204,7 @@ export const createTextInspector = (
   const future: PinSnapshot[][] = [];
 
   let enabled = false;
+  let paused = false;
   let overlay: HTMLDivElement | null = null;
   let hoverBox: InspectorBox | null = null;
   let hoverCard: InspectorCard | null = null;
@@ -229,14 +233,27 @@ export const createTextInspector = (
     !(el instanceof SVGElementConstructor) &&
     hasDirectText(el);
 
+  const isMesurerChrome = (element: Element) =>
+    element.id === OVERLAY_ID ||
+    element.id === EXTENSION_HOST_ID ||
+    element.classList.contains("mesurer-root") ||
+    element.classList.contains("mesurer-toolbar-surface") ||
+    element.classList.contains("mesurer-menu-surface") ||
+    element.classList.contains("mesurer-settings-panel") ||
+    element.classList.contains("mesurer-toast-surface") ||
+    element.classList.contains("mesurer-ti-card") ||
+    element.classList.contains("mesurer-ti-box") ||
+    element.hasAttribute("data-mesurer-inspector-ui");
+
+  const composedParent = (node: Node): Node | null => {
+    if (node.parentNode) return node.parentNode;
+    const root = node.getRootNode();
+    return root instanceof ShadowRoot ? root.host : null;
+  };
+
   const isOverlayNode = (node: Node | null) => {
-    for (let current = node; current; current = current.parentNode) {
-      if (current instanceof HTMLElementConstructor) {
-        const element = current as HTMLElement;
-        if (element.id === OVERLAY_ID || element.id === EXTENSION_HOST_ID) {
-          return true;
-        }
-      }
+    for (let current = node; current; current = composedParent(current)) {
+      if (current instanceof Element && isMesurerChrome(current)) return true;
     }
     return false;
   };
@@ -247,15 +264,11 @@ export const createTextInspector = (
     ) ?? null;
   };
 
-  const pointerOverToolbar = (x: number, y: number) => {
+  const pointerOverMesurerUi = (x: number, y: number) => {
+    const hits = [...document.elementsFromPoint(x, y)];
     const shadow = document.getElementById(EXTENSION_HOST_ID)?.shadowRoot;
-    const element = shadow?.elementFromPoint(x, y);
-    if (!element) return false;
-    for (let node: Element | null = element; node; node = node.parentElement) {
-      if (node.classList.contains("mesurer-toolbar-surface")) return true;
-      if (node.hasAttribute("data-mesurer-inspector-ui")) return true;
-    }
-    return false;
+    if (shadow) hits.push(...shadow.elementsFromPoint(x, y));
+    return hits.some((element) => isOverlayNode(element));
   };
 
   const ensureStyles = () => {
@@ -330,7 +343,7 @@ export const createTextInspector = (
   };
 
   const updateHover = () => {
-    if (!enabled || pointerOverToolbar(pointerX, pointerY)) {
+    if (!enabled || paused || pointerOverMesurerUi(pointerX, pointerY)) {
       hideHover();
       return;
     }
@@ -600,13 +613,20 @@ export const createTextInspector = (
             element.classList.contains("mesurer-ti-box") ||
             element.classList.contains("mesurer-ti-close") ||
             element.classList.contains("mesurer-toolbar-surface") ||
+            element.classList.contains("mesurer-root") ||
+            element.classList.contains("mesurer-menu-surface") ||
+            element.classList.contains("mesurer-settings-panel") ||
             element.hasAttribute("data-mesurer-inspector-ui")
           );
         })(),
     );
 
   const onClick = (event: MouseEvent) => {
-    if (isInspectorUIEvent(event) || pointerOverToolbar(event.clientX, event.clientY)) {
+    if (
+      paused ||
+      isInspectorUIEvent(event) ||
+      pointerOverMesurerUi(event.clientX, event.clientY)
+    ) {
       return;
     }
     event.preventDefault();
@@ -618,7 +638,11 @@ export const createTextInspector = (
   };
 
   const onAuxClick = (event: MouseEvent) => {
-    if (isInspectorUIEvent(event) || pointerOverToolbar(event.clientX, event.clientY)) {
+    if (
+      paused ||
+      isInspectorUIEvent(event) ||
+      pointerOverMesurerUi(event.clientX, event.clientY)
+    ) {
       return;
     }
     event.preventDefault();
@@ -662,6 +686,11 @@ export const createTextInspector = (
     document.body.classList.remove(BODY_MODE_CLASS);
   };
 
+  const setPaused = (next: boolean) => {
+    paused = next;
+    if (paused) hideHover();
+  };
+
   const cleanup = () => {
     disable();
     overlay?.remove();
@@ -684,6 +713,7 @@ export const createTextInspector = (
     clear,
     inspect,
     isEnabled: () => enabled,
+    setPaused,
     cleanup,
     destroy: cleanup,
   };

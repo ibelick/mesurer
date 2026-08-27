@@ -54,6 +54,7 @@ export const DEFAULT_SCREENSHOT_SETTINGS: ScreenshotSettings = {
 export type MesurerStoredSettings = {
   highlightColor?: string
   guideColor?: string
+  arrowColor?: string
   guideHighlightEnabled?: boolean
   hoverHighlightEnabled?: boolean
   colorPickerFormats?: ColorPickerFormat[]
@@ -230,7 +231,8 @@ const isTextAnnotation = (value: unknown): value is TextAnnotation => {
     typeof annotation.text === "string" &&
     annotation.text.length > 0 &&
     (annotation.scale === undefined || (isFiniteNumber(annotation.scale) && annotation.scale > 0)) &&
-    (annotation.rotation === undefined || isFiniteNumber(annotation.rotation))
+    (annotation.rotation === undefined || isFiniteNumber(annotation.rotation)) &&
+    (annotation.boxWidth === undefined || (isFiniteNumber(annotation.boxWidth) && annotation.boxWidth > 0))
   )
 }
 
@@ -272,6 +274,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
   return {
     ...(typeof input.highlightColor === "string" ? { highlightColor: input.highlightColor } : {}),
     ...(typeof input.guideColor === "string" ? { guideColor: input.guideColor } : {}),
+    ...(typeof input.arrowColor === "string" ? { arrowColor: input.arrowColor } : {}),
     ...(typeof input.guideHighlightEnabled === "boolean" ? { guideHighlightEnabled: input.guideHighlightEnabled } : {}),
     ...(typeof input.hoverHighlightEnabled === "boolean" ? { hoverHighlightEnabled: input.hoverHighlightEnabled } : {}),
     ...(Array.isArray(input.colorPickerFormats) && input.colorPickerFormats.some(isFormat)

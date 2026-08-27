@@ -45,5 +45,9 @@ export const sanitizeStoredSettings = (
       ? {}
       : { highlightColor: undefined }),
     ...(supportsColor(settings.guideColor) ? {} : { guideColor: undefined }),
+    ...(supportsColor(settings.arrowColor) ? {} : { arrowColor: undefined }),
+    ...(settings.textStyle?.color && !supportsColor(settings.textStyle.color)
+      ? { textStyle: { ...settings.textStyle, color: undefined } }
+      : {}),
   }
 }

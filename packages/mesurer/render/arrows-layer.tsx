@@ -8,6 +8,7 @@ type ArrowsLayerProps = {
   selectedIds: string[]
   preview: { start: Point; end: Point; control?: Point } | null
   scrollOffset: Point
+  color: string
 }
 
 const ArrowNode = ({
@@ -181,6 +182,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
   selectedIds,
   preview,
   scrollOffset,
+  color,
 }: ArrowsLayerProps) {
   if (arrows.length === 0 && !preview) return null
 
@@ -196,7 +198,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           start={{ x: arrow.start.x - scrollOffset.x, y: arrow.start.y - scrollOffset.y }}
           end={{ x: arrow.end.x - scrollOffset.x, y: arrow.end.y - scrollOffset.y }}
           control={arrow.control ? { x: arrow.control.x - scrollOffset.x, y: arrow.control.y - scrollOffset.y } : undefined}
-          color={arrow.color}
+          color={color}
           width={arrow.width}
           selected={selectedIds.includes(arrow.id)}
           id={arrow.id}

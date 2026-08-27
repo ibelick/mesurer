@@ -31,6 +31,50 @@ test("draws an arrow with a transient preview", async ({ page }) => {
   await expect(page.locator('[data-mesurer-arrow-node="true"]')).toHaveCount(0);
 });
 
+test("uses the arrow color from settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByLabel("Color hex value").fill("FF0000");
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await drawArrow(page);
+
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveAttribute("stroke", /#ff0000/i);
+});
+
+test("updates existing arrows when the arrow color changes", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await drawArrow(page);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByLabel("Color hex value").fill("00AAFF");
+  await page.keyboard.press("Escape");
+
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveAttribute("stroke", /#00aaff/i);
+});
+
+test("opens settings on the arrows section from the Arrows tool", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const panel = page.locator(".mesurer-settings-panel");
+  const section = panel.locator('[data-mesurer-settings-section="arrows"]');
+  await expect(section).toHaveAttribute("data-focused", "true");
+  await expect
+    .poll(async () => {
+      const panelBox = await panel.boundingBox();
+      const sectionBox = await section.boundingBox();
+      if (!panelBox || !sectionBox) return Number.POSITIVE_INFINITY;
+      return sectionBox.y - panelBox.y;
+    })
+    .toBeLessThan(12);
+});
+
 test("does not create an arrow from only the first click", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);

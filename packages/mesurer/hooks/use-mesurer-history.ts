@@ -215,7 +215,7 @@ export const useMesurerHistory = ({
       snapshot.draggingGuideId ?? "",
       snapshot.arrows.map((arrow) => `${arrow.id}:${arrow.start.x},${arrow.start.y},${arrow.control?.x ?? ""},${arrow.control?.y ?? ""},${arrow.end.x},${arrow.end.y}`).join(","),
       snapshot.selectedArrowIds.join(","),
-      snapshot.textAnnotations.map((item) => `${item.id}:${item.x},${item.y},${item.scale ?? ""},${item.rotation ?? ""}:${item.text}`).join(","),
+      snapshot.textAnnotations.map((item) => `${item.id}:${item.x},${item.y},${item.scale ?? ""},${item.rotation ?? ""},${item.boxWidth ?? ""}:${item.text}`).join(","),
     ].join("|")
   }, [])
 

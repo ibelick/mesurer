@@ -125,7 +125,7 @@ test("clicks a text annotation to edit it in Text mode", async ({ page }) => {
   const text = textItems(page);
   const box = await text.boundingBox();
   if (!box) throw new Error("Text annotation is not visible");
-  await page.mouse.click(box.x + box.width - 1, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveText("Edit me");
 });
 
@@ -140,8 +140,9 @@ test("appends text when editing an existing annotation", async ({ page }) => {
   const text = textItems(page);
   const box = await text.boundingBox();
   if (!box) throw new Error("Text annotation is not visible");
-  await page.mouse.click(box.x + box.width - 1, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   const input = page.getByRole("textbox", { name: "Text annotation" });
+  await input.press("End");
   await input.pressSequentially(" appended");
   await page.keyboard.press("Escape");
 
@@ -244,7 +245,25 @@ test("keeps text when clicking elsewhere", async ({ page }) => {
 
   await page.mouse.click(420, 280);
   await expect(textItems(page)).toHaveText("Keep me");
-  await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(1);
+  await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(0);
+});
+
+test("needs a second click to start a new note after writing", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("First");
+
+  await page.mouse.click(420, 280);
+  await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(0);
+
+  await page.mouse.click(420, 280);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Second");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCount(2);
+  await expect(textItems(page).nth(0)).toHaveText("First");
+  await expect(textItems(page).nth(1)).toHaveText("Second");
 });
 
 test("does not duplicate text when clicking an existing annotation", async ({ page }) => {
@@ -312,6 +331,53 @@ test("resizes a selected text annotation", async ({ page }) => {
   await expect(textItems(page)).not.toHaveCSS("font-size", "16px");
 });
 
+test("widens a text box from the side without scaling type", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Side resize wraps this line");
+  await page.keyboard.press("Escape");
+
+  const before = await textItems(page).boundingBox();
+  expect(before).not.toBeNull();
+  const handle = page.locator('[data-mesurer-text-handle="e"]');
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox!.x + 90, handleBox!.y + handleBox!.height / 2, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await textItems(page).boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.width).toBeGreaterThan(before!.width + 40);
+  await expect(textItems(page)).toHaveCSS("font-size", "16px");
+});
+
+test("wraps text when the side handles shrink the box", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Wrap this long annotation line");
+  await page.keyboard.press("Escape");
+
+  const before = await textItems(page).boundingBox();
+  expect(before).not.toBeNull();
+  const handle = page.locator('[data-mesurer-text-handle="w"]');
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox!.x + before!.width - 48, handleBox!.y + handleBox!.height / 2, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await textItems(page).boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.width).toBeLessThan(before!.width - 20);
+  expect(after!.height).toBeGreaterThan(before!.height + 8);
+  await expect(textItems(page)).toHaveCSS("font-size", "16px");
+});
+
 test("deletes a selected text annotation with Backspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Text (T)" }).click();
@@ -359,18 +425,35 @@ test("applies the text font from settings", async ({ page }) => {
   await expect(textItems(page)).toHaveAttribute("style", /ui-monospace/);
 });
 
-test("uses a custom font family from settings", async ({ page }) => {
+test("updates existing text when the text color changes", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Settings" }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings" });
-  await dialog.getByLabel("Font").selectOption("custom");
-  await dialog.getByLabel("Family").fill("Georgia");
-  await page.keyboard.press("Escape");
-
   await page.getByRole("button", { name: "Text (T)" }).click();
   await page.mouse.click(220, 180);
-  await page.getByRole("textbox", { name: "Text annotation" }).fill("Serif custom");
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Color me");
   await page.keyboard.press("Escape");
 
-  await expect(textItems(page)).toHaveAttribute("style", /Georgia/);
+  await page.getByRole("button", { name: "Settings" }).click();
+  const text = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Text settings']");
+  await text.getByLabel("Color hex value").fill("FF0000");
+  await page.keyboard.press("Escape");
+
+  await expect(textItems(page)).toHaveCSS("color", "rgb(255, 0, 0)");
+});
+
+test("opens settings on the text section from the Text tool", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const panel = page.locator(".mesurer-settings-panel");
+  const section = panel.locator('[data-mesurer-settings-section="text"]');
+  await expect(section).toHaveAttribute("data-focused", "true");
+  await expect
+    .poll(async () => {
+      const panelBox = await panel.boundingBox();
+      const sectionBox = await section.boundingBox();
+      if (!panelBox || !sectionBox) return Number.POSITIVE_INFINITY;
+      return sectionBox.y - panelBox.y;
+    })
+    .toBeLessThan(12);
 });

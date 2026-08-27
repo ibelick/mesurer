@@ -1,4 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+const expectSettingsSectionPinned = async (page: Page, id: string) => {
+  const panel = page.locator(".mesurer-settings-panel");
+  const section = panel.locator(`[data-mesurer-settings-section="${id}"]`);
+  await expect(section).toHaveAttribute("data-focused", "true");
+  await expect
+    .poll(async () => {
+      const panelBox = await panel.boundingBox();
+      const sectionBox = await section.boundingBox();
+      if (!panelBox || !sectionBox) return Number.POSITIVE_INFINITY;
+      return sectionBox.y - panelBox.y;
+    })
+    .toBeLessThan(12);
+};
 
 test("placed guides remain visible while host-app clicks pass through", async ({
   page,
@@ -92,6 +106,20 @@ test("font inspector refreshes styles and brings repeated pins to front", async 
   await expect(
     page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)"),
   ).toContainText("24px");
+});
+
+test("text inspector does not inspect settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const heading = page.getByRole("heading", { name: "Guides" });
+  await heading.hover();
+  await expect(page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)")).toHaveCount(0);
+
+  await heading.click();
+  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });
 
 test("removing a source element silently removes its pinned card", async ({
@@ -361,12 +389,54 @@ test("settings opens with all sections visible", async ({ page }) => {
 
   await page.getByRole("button", { name: "Guides (G)" }).click();
   await settings.click();
-  await expect(page.getByRole("heading", { name: "Guides" })).toBeVisible();
+  await expectSettingsSectionPinned(page, "guides");
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Select (S)" }).click();
   await settings.click();
-  await expect(page.getByRole("heading", { name: "Selection" })).toBeVisible();
+  await expectSettingsSectionPinned(page, "selection");
+});
+
+test("opening settings with a tool active pins that tool section", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return new Promise(() => undefined);
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const settings = page.getByRole("button", { name: "Settings" });
+
+  await page.getByRole("button", { name: "Arrows (D)" }).click();
+  await settings.click();
+  await expectSettingsSectionPinned(page, "arrows");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await settings.click();
+  await expectSettingsSectionPinned(page, "text");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await settings.click();
+  await expectSettingsSectionPinned(page, "selection");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Color picker (P)" }).click();
+  await settings.click();
+  await expectSettingsSectionPinned(page, "color");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Screenshot (C)" }).click();
+  await page.keyboard.press("Control+,");
+  await expectSettingsSectionPinned(page, "screenshot");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Rulers (R)" }).click();
+  await settings.click();
+  await expectSettingsSectionPinned(page, "rulers");
 });
 
 test("color format multi-select supports keyboard navigation", async ({ page }) => {

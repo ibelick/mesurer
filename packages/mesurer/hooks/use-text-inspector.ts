@@ -8,6 +8,7 @@ import {
 export const useTextInspector = (
   portalTarget: HTMLElement | ShadowRoot,
   toolMode: ToolMode,
+  settingsOpen = false,
 ): TextInspectorAPI => {
   const textInspectorRef = useRef<TextInspectorAPI | null>(null)
   if (!textInspectorRef.current) {
@@ -24,6 +25,12 @@ export const useTextInspector = (
     } else if (previous === "text-inspector") {
       textInspector.disable()
     }
+  }
+
+  const pausedRef = useRef(false)
+  if (pausedRef.current !== settingsOpen) {
+    pausedRef.current = settingsOpen
+    textInspector.setPaused(settingsOpen)
   }
 
   useEffect(() => {
