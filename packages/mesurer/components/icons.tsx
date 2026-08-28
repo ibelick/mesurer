@@ -61,6 +61,12 @@ export const ArrowIcon = ({ size = 20, ...props }: IconProps) => (
   </IconBase>
 )
 
+export const PenIcon = ({ size = 20, ...props }: IconProps) => (
+  <IconBase size={size} {...props}>
+    <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" d="m40 196 24-68L164 28a28 28 0 0 1 40 40L104 168l-64 28Zm24-68 40 40" />
+  </IconBase>
+)
+
 export const XrayIcon = ({ size = 20, ...props }: IconProps) => (
   <IconBase size={size} {...props}>
     <path

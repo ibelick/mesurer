@@ -22,6 +22,7 @@ import type { OptionContainerLines } from "./option-container-lines"
 import { SelectionLayer } from "./selection-layer"
 import { ArrowsLayer } from "./arrows-layer"
 import { TextLayer } from "./text-layer"
+import { PenLayer } from "./pen-layer"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -92,6 +93,16 @@ type MesurerOverlayProps = {
     scrollOffset: { x: number; y: number }
     color: string
   }
+  pen: {
+    strokes: import("../core/types").PenStroke[]
+    preview: { x: number; y: number }[]
+    scrollOffset: { x: number; y: number }
+    selectionMode: boolean
+    selectedIds: string[]
+    onSelect: (id: string) => void
+    onChange: (stroke: import("../core/types").PenStroke) => void
+    onChangeStart: () => void
+  }
   text: {
     items: TextAnnotation[]
     draft: { id?: string; key?: string; x: number; y: number; caretX?: number; caretY?: number } | null
@@ -132,6 +143,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   guides,
   arrows,
   text,
+  pen,
 }: MesurerOverlayProps) {
   const overlayVisible = enabled
   const overlayInteractive =
@@ -190,6 +202,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         scrollOffset={arrows.scrollOffset}
         color={arrows.color}
       />
+
+      <PenLayer {...pen} />
 
       <TextLayer {...text} />
 

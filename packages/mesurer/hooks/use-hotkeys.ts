@@ -180,6 +180,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
         }
 
+        if (key === "n") {
+          current.onCloseScreenshot()
+          current.setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
+          current.onInteract()
+        }
+
         if (key === "t") {
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "text" ? "none" : "text"))

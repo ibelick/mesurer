@@ -19,6 +19,7 @@ import { Tooltip } from "./tooltip";
 import {
   CaretDownIcon,
   ArrowIcon,
+  PenIcon,
   BoxSelectIcon,
   CheckIcon,
   CameraIcon,
@@ -259,6 +260,14 @@ function ToolbarComponent(
     setColorPickerActive(false)
     onCancelScreenshot()
     setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
+    onInteract()
+  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode])
+
+  const penMode = useCallback(() => {
+    setEnabled(true)
+    setColorPickerActive(false)
+    onCancelScreenshot()
+    setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
     onInteract()
   }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode])
 
@@ -612,6 +621,20 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <ArrowIcon size={20} aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        id="pen"
+        active={toolMode === "pen"}
+        label="Pen"
+        shortcut="N"
+        onClick={penMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "pen"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <PenIcon size={20} aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton
         id="text"

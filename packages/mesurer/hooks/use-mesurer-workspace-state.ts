@@ -8,6 +8,7 @@ import { useMeasureToggles } from "./use-measure-toggles";
 import { useMeasurementState } from "./use-measurement-state";
 import { useMesurerLocalState } from "./use-mesurer-local-state";
 import { useArrowState } from "./use-arrow-state";
+import { usePenState } from "./use-pen-state";
 import { useTextAnnotationState } from "./use-text-annotation-state";
 import { useOverlayRefs } from "./use-overlay-refs";
 
@@ -55,6 +56,8 @@ export const useMesurerWorkspaceState = ({
   const selectedGuideIdsRef = useRef<string[]>(persistedState?.selectedGuideIds ?? []);
   const arrowsRef = useRef(persistedState?.arrows ?? []);
   const selectedArrowIdsRef = useRef(persistedState?.selectedArrowIds ?? []);
+  const penStrokesRef = useRef(persistedState?.penStrokes ?? []);
+  const selectedPenStrokeIdsRef = useRef<string[]>([]);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const localState = useMesurerLocalState({
@@ -89,6 +92,7 @@ export const useMesurerWorkspaceState = ({
     initialArrows: persistedState?.arrows,
     initialSelectedArrowIds: persistedState?.selectedArrowIds,
   });
+  const pen = usePenState(persistedState?.penStrokes);
   const text = useTextAnnotationState(initialTextAnnotations);
   const [toolbarActive, setToolbarActive] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -111,6 +115,8 @@ export const useMesurerWorkspaceState = ({
     selectedGuideIdsRef,
     arrowsRef,
     selectedArrowIdsRef,
+    penStrokesRef,
+    selectedPenStrokeIdsRef,
     overlayRef,
     selectedElementRef,
     hoverElementRef,
@@ -120,6 +126,7 @@ export const useMesurerWorkspaceState = ({
     ...measurements,
     ...guides,
     ...arrows,
+    ...pen,
     ...text,
     toolbarActive,
     setToolbarActive,

@@ -12,6 +12,14 @@ export type Arrow = {
   width: number
 }
 
+export type PenStroke = {
+  id: string
+  points: Point[]
+  color: string
+  width: number
+  rotation?: number
+}
+
 export type TextAnnotation = {
   id: string
   x: number
@@ -121,4 +129,5 @@ export type ToolMode =
   | "xray"
   | "rulers"
   | "arrows"
+  | "pen"
   | "text"

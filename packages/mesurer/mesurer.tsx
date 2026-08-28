@@ -35,6 +35,7 @@ import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cl
 import { useTextInspector } from "./hooks/use-text-inspector";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
+import { usePenPointer } from "./hooks/use-pen-pointer";
 import { createPersistedSetter } from "./core/persisted-setter";
 import { createId } from "./core/utils";
 import { readEditableText } from "./render/text-layer";
@@ -169,6 +170,8 @@ function MesurerClient({
   const closeColorPickerRef = useRef<() => void>(() => {});
   const cancelArrowInteractionRef = useRef<() => void>(() => {});
   const hasArrowInteractionRef = useRef<() => boolean>(() => false);
+  const cancelPenInteractionRef = useRef<() => void>(() => {});
+  const hasPenInteractionRef = useRef<() => boolean>(() => false);
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
   const workspace = useMesurerWorkspaceState({
@@ -200,6 +203,14 @@ function MesurerClient({
     selectedGuideIdsRef,
     arrowsRef,
     selectedArrowIdsRef,
+    penStrokesRef,
+    selectedPenStrokeIdsRef,
+    penStrokes,
+    selectedPenStrokeIds,
+    setSelectedPenStrokeIds,
+    setPenStrokes,
+    penPreview,
+    setPenPreview,
     textAnnotationsRef,
     overlayRef,
     selectedElementRef,
@@ -393,6 +404,8 @@ function MesurerClient({
   selectedGuideIdsRef.current = selectedGuideIds;
   arrowsRef.current = arrows;
   selectedArrowIdsRef.current = selectedArrowIds;
+  penStrokesRef.current = penStrokes;
+  selectedPenStrokeIdsRef.current = selectedPenStrokeIds;
   textAnnotationsRef.current = textAnnotations;
 
   const saveWorkspace = useCallback(() => {
@@ -407,6 +420,7 @@ function MesurerClient({
       selectedGuideIds: selectedGuideIdsRef.current,
       arrows: arrowsRef.current,
       selectedArrowIds: selectedArrowIdsRef.current,
+      penStrokes: penStrokesRef.current,
       textAnnotations: textAnnotationsRef.current,
       measurements: measurementsRef.current.map(stripMeasurement),
       activeMeasurement: activeMeasurementRef.current
@@ -441,6 +455,8 @@ function MesurerClient({
     arrowsRef.current = [];
     selectedArrowIdsRef.current = [];
     textAnnotationsRef.current = [];
+    penStrokesRef.current = [];
+    selectedPenStrokeIdsRef.current = [];
     closeScreenshotRef.current();
     setEnabled(false);
     setToolMode("none");
@@ -457,7 +473,9 @@ function MesurerClient({
     setArrows([]);
     setSelectedArrowIds([]);
     setTextAnnotations([]);
-  }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setTextAnnotations, setToolMode]);
+      setPenStrokes([]);
+      setSelectedPenStrokeIds([]);
+  }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setTextAnnotations, setToolMode]);
 
   const clearWorkspace = useCallback(() => {
     clearPersistedWorkspace();
@@ -477,6 +495,7 @@ function MesurerClient({
     selectedGuideIdsRef.current = workspace.selectedGuideIds;
     arrowsRef.current = workspace.arrows;
     selectedArrowIdsRef.current = workspace.selectedArrowIds;
+    penStrokesRef.current = workspace.penStrokes;
     textAnnotationsRef.current = workspace.textAnnotations;
     if (!workspace.enabled) closeScreenshotRef.current();
     setEnabled(workspace.enabled);
@@ -490,6 +509,8 @@ function MesurerClient({
     setSelectedGuideIds(workspace.selectedGuideIds);
     setArrows(workspace.arrows);
     setSelectedArrowIds(workspace.selectedArrowIds);
+    setPenStrokes(workspace.penStrokes);
+    setSelectedPenStrokeIds([]);
     setTextAnnotations(workspace.textAnnotations);
     setHeldDistances(workspace.heldDistances);
   }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setTextAnnotations, setToolMode]);
@@ -601,6 +622,11 @@ function MesurerClient({
     [persistState, setTextAnnotations],
   );
 
+  const setPenStrokesPersisted = useCallback(
+    createPersistedSetter(penStrokesRef, setPenStrokes, persistState),
+    [persistState, setPenStrokes],
+  );
+
   const {
     recordSnapshot,
     createActionCommit,
@@ -647,6 +673,12 @@ function MesurerClient({
     text: {
       textAnnotations,
       setTextAnnotations: setTextAnnotationsPersisted,
+    },
+    pen: {
+      penStrokes,
+      setPenStrokes: setPenStrokesPersisted,
+      selectedPenStrokeIds,
+      setSelectedPenStrokeIds,
     },
     transient: {
       setStart,
@@ -721,6 +753,7 @@ function MesurerClient({
 
   const clearTransientState = useCallback(() => {
     cancelArrowInteractionRef.current();
+    cancelPenInteractionRef.current();
     clearGuideDragHold();
     setStart(null);
     setEnd(null);
@@ -759,7 +792,8 @@ function MesurerClient({
         isDragging ||
         start ||
         draggingGuideId ||
-        hasArrowInteractionRef.current(),
+        hasArrowInteractionRef.current() ||
+        hasPenInteractionRef.current(),
       ),
     [arrowStart, draggingGuideId, isDragging, start, textDraft],
   );
@@ -777,6 +811,7 @@ function MesurerClient({
       selectedGuideIds.length > 0 ||
       selectedArrowIds.length > 0 ||
       selectedTextIds.length > 0 ||
+      selectedPenStrokeIds.length > 0 ||
       selectedMeasurements.length > 0 ||
       Boolean(selectedElement) ||
       Boolean(selectedMeasurement),
@@ -787,6 +822,7 @@ function MesurerClient({
       selectedMeasurement,
       selectedMeasurements.length,
       selectedTextIds.length,
+      selectedPenStrokeIds.length,
     ],
   );
 
@@ -794,6 +830,7 @@ function MesurerClient({
     setSelectedGuideIdsPersisted([]);
     setSelectedArrowIdsPersisted([]);
     setSelectedTextIds([]);
+    setSelectedPenStrokeIds([]);
     setSelectedMeasurements([]);
     setSelectedMeasurement(null);
     setSelectedElement(null);
@@ -811,6 +848,7 @@ function MesurerClient({
     setSelectedMeasurement,
     setSelectedMeasurements,
     setSelectedTextIds,
+    setSelectedPenStrokeIds,
     setStart,
   ]);
 
@@ -842,7 +880,8 @@ function MesurerClient({
     const hasGuides = selectedGuideIds.length > 0;
     const hasArrows = selectedArrowIds.length > 0;
     const hasText = selectedTextIds.length > 0;
-    if (!hasGuides && !hasArrows && !hasText) return false;
+    const hasPen = selectedPenStrokeIds.length > 0;
+    if (!hasGuides && !hasArrows && !hasText && !hasPen) return false;
     recordSnapshot();
     if (hasGuides) {
       setGuidesPersisted((prev) =>
@@ -862,18 +901,25 @@ function MesurerClient({
       );
       setSelectedTextIds([]);
     }
+    if (hasPen) {
+      setPenStrokesPersisted((previous) => previous.filter((stroke) => !selectedPenStrokeIds.includes(stroke.id)));
+      setSelectedPenStrokeIds([]);
+    }
     return true;
   }, [
     recordSnapshot,
     selectedArrowIds,
     selectedGuideIds,
     selectedTextIds,
+    selectedPenStrokeIds,
     setArrowsPersisted,
     setGuidesPersisted,
     setSelectedArrowIdsPersisted,
     setSelectedGuideIdsPersisted,
     setSelectedTextIds,
     setTextAnnotationsPersisted,
+    setPenStrokesPersisted,
+    setSelectedPenStrokeIds,
   ]);
 
   const colorPicker = useColorPicker({
@@ -1016,6 +1062,7 @@ function MesurerClient({
       setSelectedMeasurement(null);
       setSelectedMeasurements([]);
       clearSelectionRect();
+      setSelectedPenStrokeIds([]);
     }
   }
 
@@ -1160,6 +1207,34 @@ function MesurerClient({
   });
   cancelArrowInteractionRef.current = arrowsPointer.cancelInteraction;
   hasArrowInteractionRef.current = arrowsPointer.hasActiveInteraction;
+
+  const penPointer = usePenPointer({
+    enabled,
+    settingsOpen,
+    toolMode,
+    color: settingsArrowColor,
+    scrollOffset,
+    createActionCommit,
+    setPenStrokes: setPenStrokesPersisted,
+    setPenPreview,
+  });
+  cancelPenInteractionRef.current = penPointer.cancelInteraction;
+  hasPenInteractionRef.current = penPointer.hasActiveInteraction;
+
+  const selectPenStroke = useCallback((id: string) => {
+    setSelectedGuideIdsPersisted([]);
+    setSelectedArrowIdsPersisted([]);
+    setSelectedTextIds([]);
+    setSelectedMeasurements([]);
+    setSelectedMeasurement(null);
+    setSelectedElement(null);
+    clearSelectionRect();
+    setSelectedPenStrokeIds([id]);
+  }, [clearSelectionRect, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
+
+  const changePenStroke = useCallback((next: import("./core/types").PenStroke) => {
+    setPenStrokesPersisted((previous) => previous.map((stroke) => stroke.id === next.id ? next : stroke));
+  }, [setPenStrokesPersisted]);
 
   const finishTextDraft = useCallback((selectAfterCommit = false) => {
     const draft = textDraftRef.current;
@@ -1306,6 +1381,14 @@ function MesurerClient({
         onPointerLeave: arrowsPointer.handlePointerLeave,
         onPointerCancel: arrowsPointer.handlePointerCancel,
       }
+      : toolMode === "pen"
+        ? {
+            onPointerDown: penPointer.handlePointerDown,
+            onPointerMove: penPointer.handlePointerMove,
+            onPointerUp: penPointer.handlePointerUp,
+            onPointerLeave: penPointer.handlePointerLeave,
+            onPointerCancel: penPointer.handlePointerCancel,
+          }
       : toolMode === "text"
         ? {
             onPointerDown: handleTextPointerDown,
@@ -1413,6 +1496,16 @@ function MesurerClient({
           preview: arrowsPointer.preview,
           scrollOffset,
           color: settingsArrowColor,
+        },
+        pen: {
+          strokes: penStrokes,
+          preview: penPreview,
+          scrollOffset,
+          selectionMode: toolMode === "selection",
+          selectedIds: selectedPenStrokeIds,
+          onSelect: selectPenStroke,
+          onChange: changePenStroke,
+          onChangeStart: recordSnapshot,
         },
         text: {
           items: textAnnotations,

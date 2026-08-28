@@ -340,12 +340,12 @@ test("widens a text box from the side without scaling type", async ({ page }) =>
 
   const before = await textItems(page).boundingBox();
   expect(before).not.toBeNull();
-  const handle = page.locator('[data-mesurer-text-handle="e"]');
-  const handleBox = await handle.boundingBox();
-  expect(handleBox).not.toBeNull();
-  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  const frame = page.locator('[data-mesurer-text-frame="true"]');
+  const frameBox = await frame.boundingBox();
+  expect(frameBox).not.toBeNull();
+  await page.mouse.move(frameBox!.x + frameBox!.width, frameBox!.y + frameBox!.height / 2);
   await page.mouse.down();
-  await page.mouse.move(handleBox!.x + 90, handleBox!.y + handleBox!.height / 2, { steps: 4 });
+  await page.mouse.move(frameBox!.x + frameBox!.width + 90, frameBox!.y + frameBox!.height / 2, { steps: 4 });
   await page.mouse.up();
 
   const after = await textItems(page).boundingBox();

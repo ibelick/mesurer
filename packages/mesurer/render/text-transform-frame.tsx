@@ -1,5 +1,5 @@
 import type { PointerEvent } from "react"
-import { RESIZE_HANDLES, resizeCursor, type ResizeHandle } from "../core/text-transform"
+import { resizeCursor, type ResizeHandle } from "../core/text-transform"
 import { HandleNodeMark } from "./handle-node"
 
 const HANDLE_COLOR = "#0d99ff"
@@ -17,22 +17,35 @@ const HANDLE_POSITION: Record<ResizeHandle, { left: string; top: string }> = {
   nw: { left: "0%", top: "0%" },
 }
 
+const CORNER_HANDLES: ResizeHandle[] = ["ne", "se", "sw", "nw"]
+const EDGE_HANDLES: Array<{
+  handle: "n" | "e" | "s" | "w"
+  className: string
+}> = [
+  { handle: "n", className: "msr:-top-1 msr:left-1 msr:right-1 msr:h-2" },
+  { handle: "e", className: "msr:-right-1 msr:bottom-1 msr:top-1 msr:w-2" },
+  { handle: "s", className: "msr:-bottom-1 msr:left-1 msr:right-1 msr:h-2" },
+  { handle: "w", className: "msr:-left-1 msr:bottom-1 msr:top-1 msr:w-2" },
+]
+
 type TextTransformFrameProps = {
   rotation: number
-  onResizeStart: (handle: ResizeHandle, event: PointerEvent<HTMLButtonElement>) => void
+  frameDataAttribute?: "data-mesurer-text-frame" | "data-mesurer-pen-frame"
+  handleDataAttribute?: "data-mesurer-text-handle" | "data-mesurer-pen-handle"
+  onResizeStart: (handle: ResizeHandle, event: PointerEvent<HTMLElement>) => void
   onRotateStart: (event: PointerEvent<HTMLButtonElement>) => void
 }
 
-export const TextTransformFrame = ({ rotation, onResizeStart, onRotateStart }: TextTransformFrameProps) => (
+export const TextTransformFrame = ({ rotation, frameDataAttribute = "data-mesurer-text-frame", handleDataAttribute = "data-mesurer-text-handle", onResizeStart, onRotateStart }: TextTransformFrameProps) => (
   <div
     className="msr:pointer-events-none msr:absolute msr:-inset-1 msr:outline msr:outline-1 msr:outline-[#0d99ff]"
-    data-mesurer-text-frame="true"
+    {...{ [frameDataAttribute]: "true" }}
   >
     <div className="msr:absolute msr:left-1/2 msr:top-0 msr:h-3 msr:w-px msr:-translate-x-1/2 msr:-translate-y-full msr:bg-[#0d99ff]" />
     <button
       type="button"
       aria-label="Rotate text"
-      data-mesurer-text-handle="rotate"
+      {...{ [handleDataAttribute]: "rotate" }}
       className={`${HANDLE_HIT} msr:cursor-grab`}
       style={{ left: "50%", top: "-12px" }}
       onPointerDown={(event) => {
@@ -43,13 +56,28 @@ export const TextTransformFrame = ({ rotation, onResizeStart, onRotateStart }: T
     >
       <HandleNodeMark color={HANDLE_COLOR} />
     </button>
-    {RESIZE_HANDLES.map((handle) => (
+    {EDGE_HANDLES.map(({ handle, className }) => (
       <button
         key={handle}
         type="button"
         aria-label={`Resize ${handle}`}
-        data-mesurer-text-handle={handle}
-        className={HANDLE_HIT}
+        {...{ [handleDataAttribute]: handle }}
+        className={`msr:absolute msr:z-10 msr:border-0 msr:bg-transparent msr:pointer-events-auto ${className}`}
+        style={{ cursor: resizeCursor(handle, rotation) }}
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onResizeStart(handle, event)
+        }}
+      />
+    ))}
+    {CORNER_HANDLES.map((handle) => (
+      <button
+        key={handle}
+        type="button"
+        aria-label={`Resize ${handle}`}
+        {...{ [handleDataAttribute]: handle }}
+        className={`${HANDLE_HIT} msr:z-20`}
         style={{ ...HANDLE_POSITION[handle], cursor: resizeCursor(handle, rotation) }}
         onPointerDown={(event) => {
           event.preventDefault()
