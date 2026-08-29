@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
 import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
+import { arrowBounds } from "../core/arrow-transform"
 import type { Arrow, Guide, Point, ToolMode } from "../core/types"
+import { boxCenter, rotatePoint } from "../core/text-transform"
 import { createId } from "../core/utils"
 
 const MIN_ARROW_LENGTH = 4
@@ -122,10 +124,9 @@ export const useArrowsPointer = ({
           width,
         },
       ])
-      setSelectedArrowIds([])
-      setToolMode("selection")
+       setSelectedArrowIds([])
     },
-    [color, createActionCommit, setArrows, setSelectedArrowIds, setToolMode, width],
+     [color, createActionCommit, setArrows, setSelectedArrowIds, width],
   )
 
   const handlePointerDown = useCallback(
@@ -235,8 +236,10 @@ export const useArrowsPointer = ({
           : [...previous, arrowId])
         return true
       }
-      if (!alreadySelected) clearOtherSelections?.()
-      setSelectedArrowIds((previous) => alreadySelected ? previous : [arrowId])
+       if (!alreadySelected) {
+         clearOtherSelections?.()
+         setSelectedArrowIds([arrowId])
+       }
       pointerIdRef.current = event.pointerId
       const snapshot = {
         ...arrow,
@@ -268,36 +271,48 @@ export const useArrowsPointer = ({
         createActionCommit()()
         edit.changed = true
       }
-      if (!edit.changed) return true
-      if (edit.action === "move" && onMove) {
+       if (!edit.changed) return true
+       if (edit.action === "move" && onMove) {
         onMove(edit.arrowId, event.clientX - edit.last.x, event.clientY - edit.last.y)
         edit.last = { x: event.clientX, y: event.clientY }
-        return true
-      }
-      setArrows((previous) => previous.map((arrow) => {
+         return true
+       }
+       const bounds = arrowBounds(edit.arrow)
+       const center = boxCenter(bounds.x, bounds.y, bounds.width, bounds.height)
+       const rotation = edit.arrow.rotation ?? 0
+       const origin = {
+         x: edit.origin.x + scrollOffset.x,
+         y: edit.origin.y + scrollOffset.y,
+       }
+       const localOrigin = rotatePoint(origin, center, -rotation)
+       const localPointer = rotatePoint(pagePoint(event), center, -rotation)
+       const localDx = rotation === 0 ? dx : localPointer.x - localOrigin.x
+       const localDy = rotation === 0 ? dy : localPointer.y - localOrigin.y
+       const nextPoint = (point: Point) => point
+       setArrows((previous) => previous.map((arrow) => {
         if (arrow.id !== edit.arrowId) return arrow
         if (edit.action === "move") return translateArrow(edit.arrow, dx, dy)
-        if (edit.action === "control") {
-          const control = snapPoint({
-            x: edit.arrow.control!.x + dx,
-            y: edit.arrow.control!.y + dy,
-          })
+         if (edit.action === "control") {
+           const control = nextPoint({
+             x: edit.arrow.control!.x + localDx,
+             y: edit.arrow.control!.y + localDy,
+           })
           return {
             ...arrow,
             control,
           }
         }
-        const start = edit.action === "start"
-          ? snapPoint({
-            x: edit.arrow.start.x + dx,
-            y: edit.arrow.start.y + dy,
-          })
+         const start = edit.action === "start"
+           ? nextPoint({
+             x: edit.arrow.start.x + localDx,
+             y: edit.arrow.start.y + localDy,
+           })
           : edit.arrow.start
-        const end = edit.action === "end"
-          ? snapPoint({
-            x: edit.arrow.end.x + dx,
-            y: edit.arrow.end.y + dy,
-          })
+         const end = edit.action === "end"
+           ? nextPoint({
+             x: edit.arrow.end.x + localDx,
+             y: edit.arrow.end.y + localDy,
+           })
           : edit.arrow.end
         return {
           ...arrow,
@@ -308,7 +323,7 @@ export const useArrowsPointer = ({
       }))
       return true
     },
-    [createActionCommit, onMove, setArrows, snapPoint],
+    [createActionCommit, onMove, pagePoint, scrollOffset, setArrows, snapPoint],
   )
 
   const handlePointerCancel = useCallback(

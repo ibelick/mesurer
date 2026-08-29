@@ -86,7 +86,9 @@ type MesurerOverlayProps = {
   groupBounds: Rect | null
   groupFrameRotation: number
   selectionCount: number
-  onResizeSelection: (handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => void
+   onResizeSelection: (handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => void
+   onMoveSelection: (dx: number, dy: number) => void
+   onMoveSelectionStart: () => void
   onStartGroupResize: (handle: ResizeHandle, rect: Rect, rotation: number) => void
   onEndGroupResize: () => void
   onStartGroupRotate: (center: { x: number; y: number }, startAngle: number, rect: Rect) => void
@@ -156,7 +158,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   groupBounds,
   groupFrameRotation,
   selectionCount,
-  onResizeSelection,
+   onResizeSelection,
+   onMoveSelection,
+   onMoveSelectionStart,
   onStartGroupResize,
   onEndGroupResize,
   onStartGroupRotate,
@@ -227,6 +231,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         <MarqueeRect rect={marqueeRect} color={outlineColor} />
       ) : null}
 
+      <PenLayer {...pen} selectionCount={selectionCount} />
+
       <ArrowsLayer
         arrows={arrows.items}
         selectedIds={arrows.selectedIds}
@@ -240,8 +246,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selectionCount={selectionCount}
       />
 
-      <PenLayer {...pen} selectionCount={selectionCount} />
-
       <TextLayer {...text} selectionCount={selectionCount} />
 
       {toolMode === "selection" && groupBounds ? (
@@ -249,7 +253,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           rect={groupBounds}
           rotation={groupFrameRotation}
           scrollOffset={arrows.scrollOffset}
-          onResize={onResizeSelection}
+           onResize={onResizeSelection}
+           onMove={onMoveSelection}
+           onMoveStart={onMoveSelectionStart}
           onResizeStart={onStartGroupResize}
           onResizeEnd={onEndGroupResize}
           onRotateStart={onStartGroupRotate}

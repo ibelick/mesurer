@@ -857,6 +857,51 @@ function MesurerClient({
     setStart,
   ]);
 
+  useEffect(() => {
+    if (!enabled || toolMode !== "selection") return;
+    const gesture = { pointerId: -1, x: 0, y: 0, moved: false };
+    const isInside = (x: number, y: number, rect: { left: number; top: number; width: number; height: number }) =>
+      x >= rect.left && x <= rect.left + rect.width && y >= rect.top && y <= rect.top + rect.height;
+    const isAnnotationAt = (x: number, y: number) => {
+      if (textAnnotations.some((item) => {
+        const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${item.id}"]`);
+        return node instanceof HTMLElement && isInside(x, y, node.getBoundingClientRect());
+      })) return true;
+      if (penStrokes.some((stroke) => {
+        const bounds = transformedPenBounds(stroke);
+        return isInside(x, y, { left: bounds.x - scrollOffset.x, top: bounds.y - scrollOffset.y, width: bounds.width, height: bounds.height });
+      })) return true;
+      return arrows.some((arrow) => {
+        const bounds = transformedArrowBounds(arrow);
+        return isInside(x, y, { left: bounds.x - scrollOffset.x, top: bounds.y - scrollOffset.y, width: bounds.width, height: bounds.height });
+      });
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      gesture.pointerId = event.pointerId;
+      gesture.x = event.clientX;
+      gesture.y = event.clientY;
+      gesture.moved = false;
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== gesture.pointerId) return;
+      gesture.moved ||= Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 4;
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== gesture.pointerId || gesture.moved) return;
+      const target = event.target;
+      if (target instanceof Node && toolbarRef.current?.contains(target)) return;
+      if (!isAnnotationAt(event.clientX, event.clientY)) clearSelection();
+    };
+    ownerDocument.addEventListener("pointerdown", onPointerDown);
+    ownerDocument.addEventListener("pointermove", onPointerMove);
+    ownerDocument.addEventListener("pointerup", onPointerUp);
+    return () => {
+      ownerDocument.removeEventListener("pointerdown", onPointerDown);
+      ownerDocument.removeEventListener("pointermove", onPointerMove);
+      ownerDocument.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [arrows, clearSelection, enabled, ownerDocument, overlayRef, penStrokes, scrollOffset.x, scrollOffset.y, textAnnotations, toolbarRef, toolMode]);
+
   const exitActiveTool = useCallback(() => {
     clearTransientState();
     clearSelection();
@@ -1416,8 +1461,8 @@ function MesurerClient({
       setSelectedMeasurement(null);
       setSelectedElement(null);
       clearSelectionRect();
+      setSelectedPenStrokeIds([id]);
     }
-    setSelectedPenStrokeIds((previous) => previous.includes(id) ? previous : [id]);
   }, [clearSelectionRect, selectedPenStrokeIds, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
 
   const changePenStroke = useCallback((next: import("./core/types").PenStroke) => {
@@ -1474,8 +1519,8 @@ function MesurerClient({
       setSelectedMeasurement(null);
       setSelectedElement(null);
       clearSelectionRect();
+      setSelectedTextIds([id]);
     }
-    setSelectedTextIds((previous) => previous.includes(id) ? previous : [id]);
   }, [clearSelectionRect, finishTextDraft, selectedTextIds, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
 
   const moveTextAnnotation = useCallback((id: string, x: number, y: number) => {
@@ -1661,8 +1706,10 @@ function MesurerClient({
         groupFrameRotation: selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length > 1
           ? groupRotateFrame?.rotation ?? 0
           : 0,
-        selectionCount: selectedGuideIds.length + selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length,
-        onResizeSelection: resizeSelectedAnnotations,
+         selectionCount: selectedGuideIds.length + selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length,
+         onResizeSelection: resizeSelectedAnnotations,
+         onMoveSelection: moveSelectedAnnotations,
+         onMoveSelectionStart: recordSnapshot,
         onStartGroupResize: startGroupResize,
         onEndGroupResize: endGroupResize,
         onStartGroupRotate: startGroupRotate,

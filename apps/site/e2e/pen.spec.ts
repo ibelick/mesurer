@@ -90,6 +90,7 @@ test("marquee-selects text and pen annotations in Selection mode", async ({ page
 
   await expect(page.locator('[data-mesurer-text="true"]')).toHaveAttribute("style", /left: 330px/);
   await expect(strokes(page)).toHaveAttribute("d", /M 150 190/);
+
 });
 
 test("Cmd+A selects every overlay annotation in Selection mode", async ({ page }) => {

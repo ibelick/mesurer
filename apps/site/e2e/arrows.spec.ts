@@ -3,6 +3,9 @@ import { devices, expect, test, type Page } from "@playwright/test";
 const activateArrows = async (page: Page) => {
   await page.getByRole("button", { name: "Arrows (D)" }).click();
 };
+const activateSelection = async (page: Page) => {
+  await page.getByRole("button", { name: "Selection (O)" }).click();
+};
 
 const drawArrow = async (
   page: Page,
@@ -40,6 +43,7 @@ test("uses the arrow color from settings", async ({ page }) => {
 
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveAttribute("stroke", /#ff0000/i);
 });
@@ -48,6 +52,7 @@ test("updates existing arrows when the arrow color changes", async ({ page }) =>
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.getByRole("button", { name: "Settings" }).click();
   const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
@@ -164,6 +169,7 @@ test("supports undo, redo, and deleting the selected arrow", async ({ page }) =>
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(1);
 
   await page.keyboard.press("Control+z");
@@ -175,15 +181,16 @@ test("supports undo, redo, and deleting the selected arrow", async ({ page }) =>
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
 });
 
-test("returns to object selection mode and moves an arrow by its shaft", async ({ page }) => {
+test("stays on the arrow tool until selection is requested", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
 
+  await activateSelection(page);
   await page.mouse.move(180, 190);
   await page.mouse.down();
   await page.mouse.move(270, 240, { steps: 4 });
@@ -197,6 +204,7 @@ test("selects an arrow from the expanded shaft touch zone", async ({ page }) => 
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.click(180, 196);
   await expect(page.locator('[data-mesurer-arrow-node="true"]')).toHaveCount(3);
@@ -207,6 +215,7 @@ test("selects an arrow by clicking its visible arrowhead", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.click(308, 254);
   await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(1);
@@ -216,6 +225,7 @@ test("resizes an arrow from its endpoint handle", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.click(220, 210);
   const endHandle = page.locator('circle[data-mesurer-arrow-handle="end"][data-mesurer-arrow-hit="true"]');
@@ -234,6 +244,7 @@ test("resizes an arrow from its start endpoint", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.click(220, 210);
   const startHandle = page.locator('circle[data-mesurer-arrow-handle="start"][data-mesurer-arrow-hit="true"]');
@@ -254,6 +265,7 @@ test("bends an arrow with its middle node", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.click(220, 210);
   const controlHandle = page.locator('[data-mesurer-arrow-handle="control"][data-mesurer-arrow-hit="true"]');
@@ -296,6 +308,7 @@ test("rotates multiple arrows from the parent handle", async ({ page }) => {
   await drawArrow(page, { x: 120, y: 160 }, { x: 320, y: 260 });
   await activateArrows(page);
   await drawArrow(page, { x: 420, y: 160 }, { x: 620, y: 260 });
+  await activateSelection(page);
   await page.keyboard.press("Control+a");
   const arrows = page.locator('[data-mesurer-arrow="true"]');
   const before = await arrows.evaluateAll((items) => items.map((item) => item.getAttribute("d")));

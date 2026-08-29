@@ -85,7 +85,7 @@ export const PenLayer = memo(function PenLayer({
             : undefined}
           data-mesurer-pen-transform={stroke.id}
         >
-          <path d={pathForPoints(translate(stroke.points))} fill="none" stroke="transparent" strokeWidth={Math.max(16, stroke.width + 12)} strokeLinecap="round" strokeLinejoin="round" pointerEvents={selectionMode ? "stroke" : "none"} onPointerDown={(event) => startMove(stroke, event)} />
+          <path d={pathForPoints(translate(stroke.points))} fill="none" stroke="transparent" strokeWidth={Math.max(28, stroke.width + 20)} strokeLinecap="round" strokeLinejoin="round" pointerEvents={selectionMode ? "stroke" : "none"} onPointerDown={(event) => startMove(stroke, event)} data-mesurer-pen-id={stroke.id} />
           <path d={pathForPoints(translate(stroke.points))} fill="none" stroke={stroke.color} strokeWidth={stroke.width} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" data-mesurer-pen="true" data-mesurer-pen-id={stroke.id} />
         </g>
       ))}

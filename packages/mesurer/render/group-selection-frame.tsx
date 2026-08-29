@@ -9,7 +9,9 @@ export const GroupSelectionFrame = ({
   scrollOffset,
   onResizeStart,
   onResize,
-  onResizeEnd,
+   onResizeEnd,
+   onMove,
+   onMoveStart,
   onRotateStart,
   onRotate,
   onRotateEnd,
@@ -19,13 +21,15 @@ export const GroupSelectionFrame = ({
   scrollOffset: { x: number; y: number }
   onResizeStart: (handle: ResizeHandle, rect: Rect, rotation: number) => void
   onResize: (handle: ResizeHandle, event: PointerEvent<HTMLElement>) => void
-  onResizeEnd: () => void
+   onResizeEnd: () => void
+   onMove: (dx: number, dy: number) => void
+   onMoveStart: () => void
   onRotateStart: (center: Point, startAngle: number, rect: Rect) => void
   onRotate: (pointerAngle: number) => void
   onRotateEnd: () => void
 }) => {
   const frameRef = useRef<HTMLDivElement>(null)
-  const transform = useRef<{ type: "resize" | "rotate"; handle?: ResizeHandle } | null>(null)
+  const transform = useRef<{ type: "resize" | "rotate" | "move"; handle?: ResizeHandle; last?: Point } | null>(null)
 
   const captureFrame = (event: PointerEvent<HTMLElement>) => {
     frameRef.current?.setPointerCapture(event.pointerId)
@@ -49,6 +53,11 @@ export const GroupSelectionFrame = ({
       onRotate(rotationFromPointer(center, pointerPage(event)))
       return
     }
+    if (transform.current?.type === "move" && transform.current.last) {
+      const point = pointerPage(event)
+      onMove(point.x - transform.current.last.x, point.y - transform.current.last.y)
+      transform.current.last = point
+    }
   }
 
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
@@ -66,7 +75,7 @@ export const GroupSelectionFrame = ({
   return (
     <div
       ref={frameRef}
-      className="msr:pointer-events-none msr:absolute msr:border msr:border-dashed msr:border-[#0d99ff]"
+       className="msr:pointer-events-auto msr:absolute msr:border msr:border-dashed msr:border-[#0d99ff]"
       style={{
         left: rect.left - scrollOffset.x,
         top: rect.top - scrollOffset.y,
@@ -79,6 +88,15 @@ export const GroupSelectionFrame = ({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       data-mesurer-group-frame="true"
+      onPointerDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        event.stopPropagation()
+        onMoveStart()
+        const point = pointerPage(event)
+        transform.current = { type: "move", last: point }
+        captureFrame(event)
+      }}
     >
       <TextTransformFrame
         frameDataAttribute="data-mesurer-group-controls"
