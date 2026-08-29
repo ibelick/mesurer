@@ -158,9 +158,12 @@ function MesurerClient({
   persistenceErrorHandlerRef.current = onPersistenceError;
   const activePersistence = useMemo(() => {
     const next = persistence ?? createLocalStoragePersistence(ownerWindow, storageKey, SETTINGS_STORAGE_KEY, legacyStorageKey);
-    next.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error));
     return next;
   }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
+  useEffect(() => {
+    activePersistence.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error));
+    return () => activePersistence.setErrorHandler?.(undefined);
+  }, [activePersistence]);
   const storedState = useMemo(
     () => activePersistence.load(),
     [activePersistence],
@@ -572,14 +575,19 @@ function MesurerClient({
       if (Object.is(next, toolModeRef.current)) return;
       toolModeRef.current = next;
       setToolMode(next);
-      if (next === "text-inspector") {
-        textInspector.enable();
-      } else {
-        textInspector.disable();
+      if (next !== "select") {
+        setSelectedElement(null);
+        setHoverElement(null);
+        setHoverRect(null);
+        setHoverPointer(null);
+        setSelectedMeasurement(null);
+        setSelectedMeasurements([]);
+        clearSelectionRect();
+        setSelectedPenStrokeIds([]);
       }
       persistState();
     },
-    [persistState, setToolMode, textInspector],
+    [clearSelectionRect, persistState, setHoverElement, setHoverPointer, setHoverRect, setSelectedElement, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setToolMode],
   );
 
   const setGuideOrientationPersisted = useCallback(
@@ -857,23 +865,33 @@ function MesurerClient({
     setStart,
   ]);
 
+  const selectionOutsideStateRef = useRef({
+    arrows,
+    penStrokes,
+    textAnnotations,
+    scrollOffset,
+    clearSelection,
+  });
+  selectionOutsideStateRef.current = { arrows, penStrokes, textAnnotations, scrollOffset, clearSelection };
+
   useEffect(() => {
     if (!enabled || toolMode !== "selection") return;
     const gesture = { pointerId: -1, x: 0, y: 0, moved: false };
     const isInside = (x: number, y: number, rect: { left: number; top: number; width: number; height: number }) =>
       x >= rect.left && x <= rect.left + rect.width && y >= rect.top && y <= rect.top + rect.height;
     const isAnnotationAt = (x: number, y: number) => {
-      if (textAnnotations.some((item) => {
+      const current = selectionOutsideStateRef.current;
+      if (current.textAnnotations.some((item) => {
         const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${item.id}"]`);
         return node instanceof HTMLElement && isInside(x, y, node.getBoundingClientRect());
       })) return true;
-      if (penStrokes.some((stroke) => {
+      if (current.penStrokes.some((stroke) => {
         const bounds = transformedPenBounds(stroke);
-        return isInside(x, y, { left: bounds.x - scrollOffset.x, top: bounds.y - scrollOffset.y, width: bounds.width, height: bounds.height });
+        return isInside(x, y, { left: bounds.x - current.scrollOffset.x, top: bounds.y - current.scrollOffset.y, width: bounds.width, height: bounds.height });
       })) return true;
-      return arrows.some((arrow) => {
+      return current.arrows.some((arrow) => {
         const bounds = transformedArrowBounds(arrow);
-        return isInside(x, y, { left: bounds.x - scrollOffset.x, top: bounds.y - scrollOffset.y, width: bounds.width, height: bounds.height });
+        return isInside(x, y, { left: bounds.x - current.scrollOffset.x, top: bounds.y - current.scrollOffset.y, width: bounds.width, height: bounds.height });
       });
     };
     const onPointerDown = (event: PointerEvent) => {
@@ -890,7 +908,7 @@ function MesurerClient({
       if (event.pointerId !== gesture.pointerId || gesture.moved) return;
       const target = event.target;
       if (target instanceof Node && toolbarRef.current?.contains(target)) return;
-      if (!isAnnotationAt(event.clientX, event.clientY)) clearSelection();
+      if (!isAnnotationAt(event.clientX, event.clientY)) selectionOutsideStateRef.current.clearSelection();
     };
     ownerDocument.addEventListener("pointerdown", onPointerDown);
     ownerDocument.addEventListener("pointermove", onPointerMove);
@@ -900,7 +918,7 @@ function MesurerClient({
       ownerDocument.removeEventListener("pointermove", onPointerMove);
       ownerDocument.removeEventListener("pointerup", onPointerUp);
     };
-  }, [arrows, clearSelection, enabled, ownerDocument, overlayRef, penStrokes, scrollOffset.x, scrollOffset.y, textAnnotations, toolbarRef, toolMode]);
+  }, [enabled, ownerDocument, overlayRef, toolbarRef, toolMode]);
 
   const exitActiveTool = useCallback(() => {
     clearTransientState();
@@ -1255,22 +1273,6 @@ function MesurerClient({
     setToolbarActive,
   });
 
-  const selectionToolRef = useRef(toolMode);
-
-  if (selectionToolRef.current !== toolMode) {
-    selectionToolRef.current = toolMode;
-    if (toolMode !== "select") {
-      setSelectedElement(null);
-      setHoverElement(null);
-      setHoverRect(null);
-      setHoverPointer(null);
-      setSelectedMeasurement(null);
-      setSelectedMeasurements([]);
-      clearSelectionRect();
-      setSelectedPenStrokeIds([]);
-    }
-  }
-
   useSelectionAnimationCleanup({
     ownerWindow,
     selectionOriginRect,
@@ -1419,7 +1421,6 @@ function MesurerClient({
       clearSelectionRect();
       ownerDocument.defaultView?.getSelection()?.removeAllRanges();
     },
-    setToolMode: setToolModePersisted,
     arrows,
     selectedArrowIds,
     arrowStart,

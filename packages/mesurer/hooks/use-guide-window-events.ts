@@ -79,13 +79,16 @@ export const useGuideWindowEvents = ({
     overlayRef,
   }
 
-  if (!enabled && guideUserSelectRef.current !== null) {
-    ownerDocument.documentElement.style.userSelect = guideUserSelectRef.current
-    guideUserSelectRef.current = null
-    guideDragRef.current = null
-  }
-
   useEffect(() => {
+    if (!enabled) {
+      guideDragRef.current = null
+      if (guideUserSelectRef.current !== null) {
+        ownerDocument.documentElement.style.userSelect = guideUserSelectRef.current
+        guideUserSelectRef.current = null
+        guideDragRef.current = null
+      }
+      return
+    }
     const handleScroll = () => {
       const next = {
         x: ownerWindow.scrollX,
@@ -227,6 +230,7 @@ export const useGuideWindowEvents = ({
           guideUserSelectRef.current
         guideUserSelectRef.current = null
       }
+      guideDragRef.current = null
     }
-  }, [ownerDocument, ownerWindow])
+  }, [enabled, ownerDocument, ownerWindow])
 }

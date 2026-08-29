@@ -39,7 +39,8 @@ export const useSelectionAnimationCleanup = ({
       ].join("|")
     : ""
 
-  if (keyRef.current !== key) {
+  useEffect(() => {
+    if (keyRef.current === key) return
     keyRef.current = key
     if (timeoutRef.current !== null) {
       ownerWindow.clearTimeout(timeoutRef.current)
@@ -66,14 +67,11 @@ export const useSelectionAnimationCleanup = ({
         })
       }, MEASURE_TRANSITION_MS)
     }
-  }
-
-  useEffect(() => {
     return () => {
       if (timeoutRef.current !== null) {
         ownerWindow.clearTimeout(timeoutRef.current)
         timeoutRef.current = null
       }
     }
-  }, [ownerWindow])
+  }, [hasSelectionAnimationState, key, ownerWindow, setSelectedMeasurement, setSelectedMeasurements, setSelectionOriginRect])
 }

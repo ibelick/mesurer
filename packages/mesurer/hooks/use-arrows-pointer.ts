@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
 import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
-import { arrowBounds, transformedArrowPoints } from "../core/arrow-transform"
-import type { Arrow, Guide, Point, ToolMode } from "../core/types"
-import { boxCenter, rotatePoint } from "../core/text-transform"
+import { transformedArrowPoints } from "../core/arrow-transform"
+import type { Arrow, Guide, Point } from "../core/types"
 import { createId } from "../core/utils"
 
 const MIN_ARROW_LENGTH = 4
@@ -23,7 +22,6 @@ type UseArrowsPointerOptions = {
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
   clearOtherSelections?: () => void
-  setToolMode: (value: ToolMode) => void
   arrows: Arrow[]
   selectedArrowIds: string[]
   arrowStart: Point | null
@@ -50,7 +48,6 @@ export const useArrowsPointer = ({
   setArrows,
   setSelectedArrowIds,
   clearOtherSelections,
-  setToolMode,
   arrows,
   selectedArrowIds,
   arrowStart,
@@ -285,10 +282,16 @@ export const useArrowsPointer = ({
         edit.last = { x: event.clientX, y: event.clientY }
          return true
        }
-       const bounds = arrowBounds(edit.arrow)
-       const center = boxCenter(bounds.x, bounds.y, bounds.width, bounds.height)
-       const rotation = edit.arrow.rotation ?? 0
-       const localPointer = rotatePoint(pagePoint(event), center, -rotation)
+        const localPointer = (() => {
+          const dx = event.clientX - edit.origin.x
+          const dy = event.clientY - edit.origin.y
+          const anchor = edit.action === "start"
+            ? edit.arrow.start
+            : edit.action === "control"
+              ? edit.arrow.control ?? midpoint(edit.arrow.start, edit.arrow.end)
+              : edit.arrow.end
+          return { x: anchor.x + dx, y: anchor.y + dy }
+        })()
        setArrows((previous) => previous.map((arrow) => {
         if (arrow.id !== edit.arrowId) return arrow
         if (edit.action === "move") return translateArrow(edit.arrow, dx, dy)

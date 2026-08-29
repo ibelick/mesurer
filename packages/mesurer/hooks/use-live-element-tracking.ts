@@ -158,7 +158,6 @@ export const useLiveElementTracking = (params: LiveParams) => {
       }
       frameRef.current = ownerWindow.requestAnimationFrame(tick)
     }
-      frameRef.current = ownerWindow.requestAnimationFrame(tick)
 
     return () => {
       if (frameRef.current) {

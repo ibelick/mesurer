@@ -34,10 +34,11 @@ export const usePersistenceLifecycle = ({
   workspacePersistTimeoutRef,
 }: PersistenceLifecycleOptions) => {
   const previousPersistenceRef = useRef(activePersistence)
-  if (previousPersistenceRef.current !== activePersistence) {
+  useEffect(() => {
+    if (previousPersistenceRef.current === activePersistence) return
     previousPersistenceRef.current = activePersistence
     applyPersistenceSnapshot(storedState ?? null)
-  }
+  }, [activePersistence, applyPersistenceSnapshot, storedState])
 
   const persistSettingsRef = useRef<(() => void) | null>(null)
 

@@ -1,7 +1,7 @@
 "use client"
 
 import type { MutableRefObject } from "react"
-import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { Tooltip, useTooltip } from "./tooltip"
@@ -113,7 +113,7 @@ export function ColorPicker({
     [copiedId, ownerWindow, tooltip],
   )
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!active) return
     const panel = panelRef.current
     const toolbar = toolbarRef.current
@@ -152,20 +152,16 @@ export function ColorPicker({
     resizeObserver.observe(panel)
     return () => {
       if (scheduled) ownerWindow.cancelAnimationFrame(frame)
+      if (copyTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(copyTimeoutRef.current)
+        copyTimeoutRef.current = null
+      }
       resizeObserver.disconnect()
       ownerWindow.removeEventListener("resize", schedulePosition)
       ownerWindow.removeEventListener("scroll", schedulePosition, true)
       ownerWindow.removeEventListener("pointermove", schedulePosition, true)
     }
-  }, [active, ownerWindow, toolbarRef, formats, sample, unsupported, favoriteFormat])
-
-  useLayoutEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(copyTimeoutRef.current)
-      }
-    }
-  }, [ownerWindow])
+  }, [active, ownerWindow, toolbarRef])
 
   if (!active || (!sample && !unsupported)) return null
 

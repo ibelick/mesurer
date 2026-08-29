@@ -681,15 +681,17 @@ export function SettingsPanel({
     }
 
     align()
+    let followUpFrame = 0
     const frame = view?.requestAnimationFrame(() => {
       align()
-      view.requestAnimationFrame(align)
+      followUpFrame = view.requestAnimationFrame(align)
     })
     const observer = new ResizeObserver(align)
     observer.observe(panel)
     return () => {
       observer.disconnect()
       if (frame) view?.cancelAnimationFrame(frame)
+      if (followUpFrame) view?.cancelAnimationFrame(followUpFrame)
     }
   }, [focusSection])
 

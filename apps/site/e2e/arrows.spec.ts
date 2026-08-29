@@ -1,7 +1,8 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 
 const activateArrows = async (page: Page) => {
-  await page.getByRole("button", { name: "Arrows (D)" }).click();
+  const button = page.getByRole("button", { name: "Arrows (D)" });
+  if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 const activateSelection = async (page: Page) => {
   await page.getByRole("button", { name: "Selection (O)" }).click();
@@ -169,13 +170,13 @@ test("supports undo, redo, and deleting the selected arrow", async ({ page }) =>
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
-  await activateSelection(page);
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(1);
 
   await page.keyboard.press("Control+z");
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
   await page.keyboard.press("Control+Shift+z");
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(1);
+  await activateSelection(page);
   await page.mouse.click(180, 190);
   await page.keyboard.press("Delete");
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
@@ -223,6 +224,7 @@ test("selects an arrow by clicking its visible arrowhead", async ({ page }) => {
 
 test("resizes an arrow from its endpoint handle", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => window.scrollTo(0, 0));
   await activateArrows(page);
   await drawArrow(page);
   await activateSelection(page);
@@ -237,7 +239,7 @@ test("resizes an arrow from its endpoint handle", async ({ page }) => {
   await page.mouse.up();
 
   const arrow = page.locator('[data-mesurer-arrow="true"]');
-  await expect(arrow).toHaveAttribute("d", "M 120 160 Q 250 230 380 300");
+  await expect(arrow).toHaveAttribute("d", "M 120 160 Q 260 230 400 300");
 });
 
 test("resizes an arrow from its start endpoint", async ({ page }) => {
@@ -388,6 +390,7 @@ test("persists arrow edits after reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html?persist");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
 
   await page.mouse.move(180, 190);
   await page.mouse.down();
@@ -409,6 +412,7 @@ test("undoes and redoes arrow edits", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
+  await activateSelection(page);
   await page.mouse.move(180, 190);
   await page.mouse.down();
   await page.mouse.move(270, 240, { steps: 4 });

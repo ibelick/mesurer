@@ -744,6 +744,8 @@ test("keeps persisted workspaces independent between tabs", async ({ page }) => 
   const secondPage = await page.context().newPage();
   await page.goto("/e2e/fixtures/guide-overlay.html?persist");
   await secondPage.goto("/e2e/fixtures/guide-overlay.html?persist");
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await expect(secondPage.getByRole("button", { name: "Settings" })).toBeVisible();
 
   const firstTabId = await page.evaluate(() => sessionStorage.getItem("mesurer:tab-id"));
   const secondTabId = await secondPage.evaluate(() => sessionStorage.getItem("mesurer:tab-id"));
@@ -762,16 +764,36 @@ test("keeps persisted workspaces independent between tabs", async ({ page }) => 
 
 test("ruler-created guides snap to regular guides", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Guides (G)" })).toBeVisible();
   await page.getByRole("button", { name: "Guides (G)" }).click();
   await page.mouse.click(300, 200);
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 
   await page.getByRole("button", { name: "Rulers" }).click();
-  await page.waitForTimeout(50);
-  await page.mouse.move(9, 200, { steps: 5 });
-  await page.mouse.down();
-  await page.mouse.move(304, 200, { steps: 20 });
-  await page.mouse.up();
+  const verticalRuler = page.locator('[data-mesurer-rulers="true"] > div').nth(1);
+  await expect(verticalRuler).toBeVisible();
+  const rulerBox = await verticalRuler.boundingBox();
+  expect(rulerBox).not.toBeNull();
+  const rulerX = rulerBox!.x + rulerBox!.width / 2;
+  await verticalRuler.dispatchEvent("pointerdown", {
+    button: 0,
+    pointerId: 1,
+    clientX: rulerX,
+    clientY: 200,
+  });
+  await verticalRuler.dispatchEvent("pointermove", {
+    button: 0,
+    buttons: 1,
+    pointerId: 1,
+    clientX: 304,
+    clientY: 200,
+  });
+  await verticalRuler.dispatchEvent("pointerup", {
+    button: 0,
+    pointerId: 1,
+    clientX: 304,
+    clientY: 200,
+  });
 
   const guides = page.locator("[data-mesurer-guide]");
   await expect(guides).toHaveCount(2);
