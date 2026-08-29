@@ -184,6 +184,7 @@ function MesurerClient({
   const applyingExternalPersistenceRef = useRef(false);
   const workspace = useMesurerWorkspaceState({
     persistedState,
+    initialToolMode: persistedSettings.lastToolMode ?? "select",
     snapEnabledDefault: persistedSettings.snapEnabled ?? snapEnabledDefault,
     snapGuidesEnabledDefault:
       persistedSettings.snapGuidesEnabled ?? snapGuidesEnabledDefault,
@@ -324,6 +325,7 @@ function MesurerClient({
     setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
     persistOnReload: settingsPersistOnReload,
     setPersistOnReload: setSettingsPersistOnReload,
+    setLastToolMode: setSettingsLastToolMode,
     colorPickerFormats: settingsColorFormats,
     setColorPickerFormats: setSettingsColorFormats,
     colorPickerClickFormat: settingsColorClickFormat,
@@ -377,6 +379,11 @@ function MesurerClient({
       setMultiMeasureEnabled,
     },
   });
+  useEffect(() => {
+    if (toolMode === "select" || toolMode === "selection" || toolMode === "guides" || toolMode === "arrows" || toolMode === "pen" || toolMode === "text") {
+      setSettingsLastToolMode(toolMode);
+    }
+  }, [setSettingsLastToolMode, toolMode]);
   const { clearGuideDragHold, scheduleGuideDragHold } = useGuideDragHold(ownerWindow);
   const [guidePreview, setGuidePreview] = useState<{
     orientation: "vertical" | "horizontal";

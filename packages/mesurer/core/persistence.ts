@@ -5,6 +5,7 @@ import type {
   PenStroke,
   Measurement,
   TextAnnotation,
+  PersistentToolMode,
   ToolMode,
 } from "./types"
 import type { ColorPickerFormat } from "./colors"
@@ -53,6 +54,7 @@ export const DEFAULT_SCREENSHOT_SETTINGS: ScreenshotSettings = {
 }
 
 export type MesurerStoredSettings = {
+  lastToolMode?: PersistentToolMode
   highlightColor?: string
   guideColor?: string
   arrowColor?: string
@@ -288,6 +290,9 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
   if (!value || typeof value !== "object") return {}
   const input = value as Record<string, unknown>
   return {
+    ...(input.lastToolMode === "select" || input.lastToolMode === "selection" || input.lastToolMode === "guides" || input.lastToolMode === "arrows" || input.lastToolMode === "pen" || input.lastToolMode === "text"
+      ? { lastToolMode: input.lastToolMode }
+      : {}),
     ...(typeof input.highlightColor === "string" ? { highlightColor: input.highlightColor } : {}),
     ...(typeof input.guideColor === "string" ? { guideColor: input.guideColor } : {}),
     ...(typeof input.arrowColor === "string" ? { arrowColor: input.arrowColor } : {}),

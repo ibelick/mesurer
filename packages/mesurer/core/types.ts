@@ -132,3 +132,5 @@ export type ToolMode =
   | "arrows"
   | "pen"
   | "text"
+
+export type PersistentToolMode = Exclude<ToolMode, "none" | "text-inspector" | "xray" | "rulers">

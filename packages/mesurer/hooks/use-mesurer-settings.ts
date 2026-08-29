@@ -7,6 +7,7 @@ import type {
   RulerSettings,
   ScreenshotSettings,
 } from "../core/persistence";
+import type { PersistentToolMode } from "../core/types";
 import { DEFAULT_SCREENSHOT_SETTINGS } from "../core/persistence";
 import { type TextStyleSettings } from "../core/text-style";
 
@@ -78,6 +79,9 @@ export const useMesurerSettings = ({
   const [persistOnReload, setPersistOnReload] = useState(
     persistedSettings.persistOnReload ?? defaults.persistOnReload,
   );
+  const [lastToolMode, setLastToolMode] = useState<PersistentToolMode>(
+    persistedSettings.lastToolMode ?? "select",
+  );
   const [colorPickerFormats, setColorPickerFormats] = useState(
     persistedSettings.colorPickerFormats ?? defaults.colorPickerFormats,
   );
@@ -140,6 +144,7 @@ export const useMesurerSettings = ({
       selectNewGuideEnabled: toggles.selectNewGuideEnabled,
       multiMeasureEnabled: toggles.multiMeasureEnabled,
       persistOnReload,
+      lastToolMode,
       guideStyle,
       rulerSettings,
       screenshotSettings,
@@ -158,6 +163,7 @@ export const useMesurerSettings = ({
     layoutDetailsEnabled,
     toggles.multiMeasureEnabled,
     persistOnReload,
+    lastToolMode,
     rulerSettings,
     screenshotSettings,
     textStyle,
@@ -188,6 +194,7 @@ export const useMesurerSettings = ({
       setColorPickerClickFormat(settings.colorPickerClickFormat);
     }
     if (settings.persistOnReload !== undefined) setPersistOnReload(settings.persistOnReload);
+    if (settings.lastToolMode !== undefined) setLastToolMode(settings.lastToolMode);
     if (settings.snapEnabled !== undefined) toggles.setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) {
       toggles.setSnapGuidesEnabled(settings.snapGuidesEnabled);
@@ -233,6 +240,8 @@ export const useMesurerSettings = ({
     setLayoutDetailsEnabled,
     persistOnReload,
     setPersistOnReload,
+    lastToolMode,
+    setLastToolMode,
     colorPickerFormats,
     setColorPickerFormats,
     colorPickerClickFormat,

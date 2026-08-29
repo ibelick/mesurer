@@ -14,6 +14,7 @@ import { useOverlayRefs } from "./use-overlay-refs";
 
 type UseMesurerWorkspaceStateOptions = {
   persistedState: MesurerStoredWorkspace | null;
+  initialToolMode: ToolMode;
   snapEnabledDefault: boolean;
   snapGuidesEnabledDefault: boolean;
   snapArrowsEnabledDefault: boolean;
@@ -25,6 +26,7 @@ type UseMesurerWorkspaceStateOptions = {
 
 export const useMesurerWorkspaceState = ({
   persistedState,
+  initialToolMode,
   snapEnabledDefault,
   snapGuidesEnabledDefault,
   snapArrowsEnabledDefault,
@@ -36,7 +38,7 @@ export const useMesurerWorkspaceState = ({
   const selectionRectRef = useRef<Rect | null>(null);
   const enabledRef = useRef(false);
   const toolModeRef = useRef<ToolMode>(
-    persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? "none",
+    persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialToolMode,
   );
   const rulersVisibleRef = useRef(
     persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
@@ -68,7 +70,7 @@ export const useMesurerWorkspaceState = ({
   const toggles = useMeasureToggles({
     initialEnabled: persistedState?.enabled,
     initialToolMode:
-      persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode,
+      persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialToolMode,
     initialRulersVisible:
       persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
     initialSnapEnabled: snapEnabledDefault,

@@ -1,5 +1,48 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const activateSelect = async (page: Page) => {
+  const button = page.getByRole("button", { name: "Select (S)" });
+  if (await button.getAttribute("aria-pressed") !== "true") await button.click();
+};
+
+test("starts with the Select tool active", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("remembers the last tool after reload", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const arrows = page.getByRole("button", { name: "Arrows (D)" });
+  await arrows.click();
+  await expect(arrows).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("falls back to Select for an invalid stored tool", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    localStorage.setItem("mesurer-settings", JSON.stringify({
+      version: 2,
+      settings: { lastToolMode: "invalid" },
+      workspace: null,
+    }));
+  });
+  await page.reload();
+
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
 const expectSettingsSectionPinned = async (page: Page, id: string) => {
   const panel = page.locator(".mesurer-settings-panel");
   const section = panel.locator(`[data-mesurer-settings-section="${id}"]`);
@@ -486,6 +529,7 @@ test("color format multi-select supports keyboard navigation", async ({ page }) 
 
 test("guide sliders do not drag the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
   await page.getByRole("button", { name: "Settings" }).click();
 
   const toolbar = page.locator(".mesurer-toolbar-surface");
@@ -583,7 +627,7 @@ test("guide settings show a live preview when no guides are placed", async ({
 
 test("selection stays visible while settings is open", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+   await activateSelect(page);
   const target = page.getByRole("button", { name: "Underlying app button" });
   const targetBox = await target.boundingBox();
   expect(targetBox).not.toBeNull();
@@ -608,7 +652,7 @@ test("rulers stay visible while settings is open", async ({ page }) => {
 
 test("guides mode never selects page elements", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+   await activateSelect(page);
   const target = page.getByRole("button", { name: "Underlying app button" });
   const targetBox = await target.boundingBox();
   expect(targetBox).not.toBeNull();
@@ -806,7 +850,7 @@ test("ruler-created guides snap to regular guides", async ({ page }) => {
 
 test("shows layout gap and padding when layout details is enabled", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+   await activateSelect(page);
 
   const target = page.getByTestId("layout-flex");
   const box = await target.boundingBox();
@@ -826,7 +870,7 @@ test("hides layout details when the setting is disabled", async ({ page }) => {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("switch", { name: "Layout details" }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+   await activateSelect(page);
 
   const target = page.getByTestId("layout-flex");
   const box = await target.boundingBox();
@@ -841,7 +885,7 @@ test("cycles through nested elements on repeated clicks", async ({ page }) => {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("switch", { name: "Element snap" }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+   await activateSelect(page);
 
   const target = page.getByTestId("nested-target");
   const box = await target.boundingBox();
