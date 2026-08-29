@@ -15,46 +15,54 @@ export const PenLayer = memo(function PenLayer({
   onSelect,
   onChange,
   onChangeStart,
+  onMove,
+  selectionCount,
 }: {
   strokes: PenStroke[]
   preview: Point[]
   scrollOffset: Point
   selectionMode: boolean
   selectedIds: string[]
-  onSelect: (id: string) => void
+  onSelect: (id: string, additive?: boolean) => void
   onChange: (stroke: PenStroke) => void
   onChangeStart: () => void
+  onMove?: (id: string, dx: number, dy: number) => void
+  selectionCount: number
 }) {
-  const dragRef = useRef<{ id: string; type: "move" | "resize" | "rotate"; start: Point; stroke: PenStroke; handle?: ResizeHandle; offset?: number } | null>(null)
+  const dragRef = useRef<{ id: string; type: "move" | "resize" | "rotate"; start: Point; last: Point; stroke: PenStroke; handle?: ResizeHandle; offset?: number } | null>(null)
   if (strokes.length === 0 && preview.length === 0) return null
   const translate = (points: Point[]) => points.map((point) => ({ x: point.x - scrollOffset.x, y: point.y - scrollOffset.y }))
-  const selected = strokes.find((stroke) => selectedIds.includes(stroke.id))
-  const selectedBox = selected ? penBounds(selected) : null
+  const selectedStrokes = strokes.filter((stroke) => selectedIds.includes(stroke.id))
   const pointerPage = (event: PointerEvent<Element>) => ({ x: event.clientX + scrollOffset.x, y: event.clientY + scrollOffset.y })
   const startMove = (stroke: PenStroke, event: PointerEvent<Element>) => {
     event.stopPropagation()
-    onSelect(stroke.id)
+    onSelect(stroke.id, event.shiftKey)
+    if (event.shiftKey) return
     onChangeStart()
-    dragRef.current = { id: stroke.id, type: "move", start: pointerPage(event), stroke }
+    dragRef.current = { id: stroke.id, type: "move", start: pointerPage(event), last: pointerPage(event), stroke }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-  const startResize = (handle: ResizeHandle, event: PointerEvent<HTMLElement>) => {
-    if (!selected) return
+  const startResize = (stroke: PenStroke, handle: ResizeHandle, event: PointerEvent<HTMLElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId)
     onChangeStart()
-    dragRef.current = { id: selected.id, type: "resize", start: pointerPage(event), stroke: selected, handle }
+    dragRef.current = { id: stroke.id, type: "resize", start: pointerPage(event), last: pointerPage(event), stroke, handle }
   }
-  const startRotate = (event: PointerEvent<HTMLButtonElement>) => {
-    if (!selected || !selectedBox) return
-    const center = boxCenter(selectedBox.x, selectedBox.y, selectedBox.width, selectedBox.height)
+  const startRotate = (stroke: PenStroke, event: PointerEvent<HTMLButtonElement>) => {
+    const box = penBounds(stroke)
+    const center = boxCenter(box.x, box.y, box.width, box.height)
     onChangeStart()
-    dragRef.current = { id: selected.id, type: "rotate", start: pointerPage(event), stroke: selected, offset: rotationFromPointer(center, pointerPage(event)) - (selected.rotation ?? 0) }
+    dragRef.current = { id: stroke.id, type: "rotate", start: pointerPage(event), last: pointerPage(event), stroke, offset: rotationFromPointer(center, pointerPage(event)) - (stroke.rotation ?? 0) }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const handleMove = (event: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag) return
     const pointer = pointerPage(event)
+    if (drag.type === "move" && onMove) {
+      onMove(drag.id, pointer.x - drag.last.x, pointer.y - drag.last.y)
+      drag.last = pointer
+      return
+    }
     const next = drag.type === "move"
       ? movePenStroke(drag.stroke, pointer.x - drag.start.x, pointer.y - drag.start.y)
       : drag.type === "resize"
@@ -85,11 +93,15 @@ export const PenLayer = memo(function PenLayer({
         <path d={pathForPoints(translate(preview))} fill="none" stroke="#0d99ff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.65} data-mesurer-pen-preview="true" />
       ) : null}
     </svg>
-    {selectionMode && selected && selectedBox ? (
-      <div className="msr:absolute msr:pointer-events-auto" style={{ left: selectedBox.x - scrollOffset.x, top: selectedBox.y - scrollOffset.y, width: selectedBox.width, height: selectedBox.height, transform: `rotate(${selected.rotation ?? 0}deg)`, transformOrigin: "center center" }} onPointerDown={(event) => startMove(selected, event)} onPointerMove={handleMove} onPointerUp={endDrag}>
-        <TextTransformFrame frameDataAttribute="data-mesurer-pen-frame" handleDataAttribute="data-mesurer-pen-handle" rotation={selected.rotation ?? 0} onResizeStart={startResize} onRotateStart={startRotate} />
-      </div>
-    ) : null}
+    {selectionMode ? selectedStrokes.map((stroke) => {
+      const box = penBounds(stroke)
+      const showControls = selectionCount === 1
+      return (
+        <div key={stroke.id} className={`msr:absolute ${showControls ? "msr:pointer-events-auto" : "msr:pointer-events-none"}`} style={{ left: box.x - scrollOffset.x, top: box.y - scrollOffset.y, width: box.width, height: box.height, transform: `rotate(${stroke.rotation ?? 0}deg)`, transformOrigin: "center center" }} onPointerDown={showControls ? (event) => startMove(stroke, event) : undefined} onPointerMove={showControls ? handleMove : undefined} onPointerUp={showControls ? endDrag : undefined}>
+           <TextTransformFrame frameDataAttribute="data-mesurer-pen-frame" handleDataAttribute="data-mesurer-pen-handle" rotation={stroke.rotation ?? 0} showControls={showControls} showOutline onResizeStart={(handle, event) => startResize(stroke, handle, event)} onRotateStart={(event) => startRotate(stroke, event)} />
+        </div>
+      )
+    }) : null}
     </div>
   )
-})
+  })

@@ -62,6 +62,209 @@ test("selects a stroke and shows a transform frame", async ({ page }) => {
   await expect(page.locator('[data-mesurer-pen-handle="se"]')).toHaveCount(1);
 });
 
+test("marquee-selects text and pen annotations in Selection mode", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(300, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Select both");
+  await page.keyboard.press("Control+Enter");
+
+  await activateSelection(page);
+  await page.mouse.move(80, 120);
+  await page.mouse.down();
+  await page.mouse.move(380, 240, { steps: 4 });
+  await expect(page.locator('[data-mesurer-overlay-marquee="true"]')).toHaveCount(1);
+  await page.mouse.up();
+
+  await expect(page.locator('[data-mesurer-text-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
+
+  await page.mouse.move(320, 185);
+  await page.mouse.down();
+  await page.mouse.move(350, 215, { steps: 3 });
+  await page.mouse.up();
+
+  await expect(page.locator('[data-mesurer-text="true"]')).toHaveAttribute("style", /left: 330px/);
+  await expect(strokes(page)).toHaveAttribute("d", /M 150 190/);
+});
+
+test("Cmd+A selects every overlay annotation in Selection mode", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.mouse.move(420, 320);
+  await page.mouse.down();
+  await page.mouse.move(500, 340, { steps: 3 });
+  await page.mouse.up();
+
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(300, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Select all");
+  await page.keyboard.press("Control+Enter");
+
+  await activateSelection(page);
+  await page.keyboard.press("Control+a");
+
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-text-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(2);
+});
+
+test("uses plain click for one item and Shift-click for multiple items", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.mouse.move(420, 320);
+  await page.mouse.down();
+  await page.mouse.move(500, 340, { steps: 3 });
+  await page.mouse.up();
+  await page.mouse.move(600, 360);
+  await page.mouse.down();
+  await page.mouse.move(680, 380, { steps: 3 });
+  await page.mouse.up();
+
+  await activateSelection(page);
+  await page.mouse.click(180, 190);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(0);
+
+  await page.keyboard.down("Shift");
+  await page.mouse.click(460, 330);
+  await page.keyboard.up("Shift");
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(2);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
+
+  await page.mouse.click(640, 370);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(0);
+
+  await page.mouse.click(760, 500);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(0);
+});
+
+test("rotates multiple annotations from the parent handle", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(300, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Rotate both");
+  await page.keyboard.press("Control+Enter");
+  await activateSelection(page);
+  await page.mouse.move(80, 120);
+  await page.mouse.down();
+  await page.mouse.move(380, 240, { steps: 4 });
+  await page.mouse.up();
+
+  const rotate = page.locator('[data-mesurer-group-handle="rotate"]');
+  const penPath = page.locator('[data-mesurer-pen="true"]');
+  const beforePath = await penPath.getAttribute("d");
+  const box = await rotate.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 60, box!.y + box!.height / 2 + 20, { steps: 4 });
+  await page.mouse.up();
+
+  await expect(page.locator('[data-mesurer-text="true"]')).toHaveAttribute("style", /rotate\(/);
+  await expect.poll(() => penPath.getAttribute("d")).not.toBe(beforePath);
+});
+
+test("resizes multiple annotations after rotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(300, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Resize both");
+  await page.keyboard.press("Control+Enter");
+  await activateSelection(page);
+  await page.mouse.move(80, 120);
+  await page.mouse.down();
+  await page.mouse.move(380, 240, { steps: 4 });
+  await page.mouse.up();
+
+  const rotate = page.locator('[data-mesurer-group-handle="rotate"]');
+  const rotateBox = await rotate.boundingBox();
+  expect(rotateBox).not.toBeNull();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2, rotateBox!.y + rotateBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2 + 45, rotateBox!.y + rotateBox!.height / 2 + 25, { steps: 4 });
+  await page.mouse.up();
+
+  const resize = page.locator('[data-mesurer-group-handle="se"]');
+  const box = await resize.boundingBox();
+  expect(box).not.toBeNull();
+  const before = await page.locator('[data-mesurer-pen="true"]').getAttribute("d");
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 60, box!.y + box!.height / 2 + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.locator('[data-mesurer-pen="true"]').getAttribute("d")).not.toBe(before);
+});
+
+test("resizes a rotated multi-selection from one edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(300, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Edge resize");
+  await page.keyboard.press("Control+Enter");
+  await activateSelection(page);
+  await page.mouse.move(80, 120);
+  await page.mouse.down();
+  await page.mouse.move(400, 250, { steps: 4 });
+  await page.mouse.up();
+
+  const rotate = page.locator('[data-mesurer-group-handle="rotate"]');
+  const rotateBox = await rotate.boundingBox();
+  expect(rotateBox).not.toBeNull();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2, rotateBox!.y + rotateBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2 + 45, rotateBox!.y + rotateBox!.height / 2 + 25, { steps: 4 });
+  await page.mouse.up();
+
+  const frame = page.locator('[data-mesurer-group-frame="true"]');
+  const before = await frame.evaluate((node) => ({ width: (node as HTMLElement).offsetWidth, height: (node as HTMLElement).offsetHeight }));
+  const edge = page.locator('[data-mesurer-group-handle="e"]');
+  const edgeBox = await edge.boundingBox();
+  expect(edgeBox).not.toBeNull();
+  const angle = await frame.evaluate((node) => Number.parseFloat((node as HTMLElement).style.transform.match(/-?\d+(?:\.\d+)?/)?.[0] ?? "0"));
+  const radians = angle * Math.PI / 180;
+  const x = edgeBox!.x + edgeBox!.width / 2;
+  const y = edgeBox!.y + edgeBox!.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + Math.cos(radians) * 60, y + Math.sin(radians) * 60, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await frame.evaluate((node) => ({ width: (node as HTMLElement).offsetWidth, height: (node as HTMLElement).offsetHeight }));
+  expect(after.width).toBeGreaterThan(before.width);
+  expect(after.height).toBeGreaterThan(before.height);
+  expect(after.width / after.height).toBeCloseTo(before.width / before.height, 1);
+  const parentBox = await frame.boundingBox();
+  const children = page.locator('[data-mesurer-text-frame="true"], [data-mesurer-pen-frame="true"]');
+  const childBoxes = await Promise.all(Array.from({ length: await children.count() }, (_, index) => children.nth(index).boundingBox()));
+  expect(parentBox).not.toBeNull();
+  for (const child of childBoxes) {
+    expect(child).not.toBeNull();
+    if (!child) continue;
+    expect(child.x).toBeGreaterThanOrEqual(parentBox!.x - 2);
+    expect(child.y).toBeGreaterThanOrEqual(parentBox!.y - 2);
+    expect(child.x + child.width).toBeLessThanOrEqual(parentBox!.x + parentBox!.width + 2);
+    expect(child.y + child.height).toBeLessThanOrEqual(parentBox!.y + parentBox!.height + 2);
+  }
+
+  await page.mouse.click(780, 520);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-text-frame="true"], [data-mesurer-pen-frame="true"]')).toHaveCount(0);
+});
+
 test("moves, resizes, and rotates a selected stroke", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activatePen(page);

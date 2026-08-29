@@ -37,8 +37,13 @@ import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { createPersistedSetter } from "./core/persisted-setter";
+import { getRectFromPoints } from "./core/geometry";
+import { applyGroupResize, applyGroupRotation, type GroupResizeSnapshot, type GroupRotateSnapshot } from "./core/group-transform";
+import { textAnnotationBounds, type ResizeHandle } from "./core/text-transform";
 import { createId } from "./core/utils";
 import { readEditableText } from "./render/text-layer";
+import { arrowBounds, transformedArrowBounds } from "./core/arrow-transform";
+import { penBounds, transformedPenBounds } from "./core/pen-transform";
 import type { ColorPickerFormat } from "./core/colors";
 import {
   createLocalStoragePersistence,
@@ -271,8 +276,8 @@ function MesurerClient({
     selectedGuideIds,
     setSelectedGuideIds,
     arrows,
-    setArrows,
     selectedArrowIds,
+    setArrows,
     setSelectedArrowIds,
     textAnnotations,
     setTextAnnotations,
@@ -922,6 +927,160 @@ function MesurerClient({
     setSelectedPenStrokeIds,
   ]);
 
+  const selectAllAnnotations = useCallback(() => {
+    if (toolMode !== "selection") return false;
+    recordSnapshot();
+    setSelectedGuideIdsPersisted(guides.map((guide) => guide.id));
+    setSelectedArrowIdsPersisted(arrows.map((arrow) => arrow.id));
+    setSelectedTextIds(textAnnotations.map((item) => item.id));
+    setSelectedPenStrokeIds(penStrokes.map((stroke) => stroke.id));
+    setSelectedMeasurements([]);
+    setSelectedMeasurement(null);
+    setSelectedElement(null);
+    clearSelectionRect();
+    ownerDocument.defaultView?.getSelection()?.removeAllRanges();
+    return true;
+  }, [arrows, clearSelectionRect, guides, ownerDocument, penStrokes, recordSnapshot, setSelectedArrowIdsPersisted, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds, textAnnotations, toolMode]);
+
+  const groupBounds = useMemo(() => {
+    if (toolMode !== "selection") return null;
+    const renderedTextBounds = (id: string) => {
+      const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${id}"]`);
+      if (!(node instanceof HTMLElement)) return null;
+      const rect = node.getBoundingClientRect();
+      return { x: rect.left + scrollOffset.x, y: rect.top + scrollOffset.y, width: rect.width, height: rect.height };
+    };
+    const rects = [
+      ...arrows.filter((item) => selectedArrowIds.includes(item.id)).map((item) => transformedArrowBounds(item)),
+      ...penStrokes.filter((item) => selectedPenStrokeIds.includes(item.id)).map((item) => transformedPenBounds(item)),
+      ...textAnnotations.filter((item) => selectedTextIds.includes(item.id)).map((item) => renderedTextBounds(item.id) ?? textAnnotationBounds(item)),
+    ];
+    if (rects.length < 2) return null;
+    const left = Math.min(...rects.map((rect) => rect.x));
+    const top = Math.min(...rects.map((rect) => rect.y));
+    const right = Math.max(...rects.map((rect) => rect.x + rect.width));
+    const bottom = Math.max(...rects.map((rect) => rect.y + rect.height));
+    return { left, top, width: right - left, height: bottom - top };
+  }, [arrows, penStrokes, scrollOffset.x, scrollOffset.y, selectedArrowIds, selectedPenStrokeIds, selectedTextIds, textAnnotations, toolMode]);
+
+  const groupRotateSnapshotRef = useRef<GroupRotateSnapshot | null>(null);
+  const groupResizeSnapshotRef = useRef<GroupResizeSnapshot | null>(null);
+  const groupSelectionKeyRef = useRef("");
+  const [groupRotateFrame, setGroupRotateFrame] = useState<{
+    rect: { left: number; top: number; width: number; height: number };
+    rotation: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const key = [selectedArrowIds, selectedPenStrokeIds, selectedTextIds]
+      .map((ids) => [...ids].sort().join(","))
+      .join("|");
+    if (groupSelectionKeyRef.current && groupSelectionKeyRef.current !== key && !groupRotateSnapshotRef.current && !groupResizeSnapshotRef.current) {
+      setGroupRotateFrame(null);
+    }
+    groupSelectionKeyRef.current = key;
+  }, [selectedArrowIds, selectedPenStrokeIds, selectedTextIds]);
+
+  const moveSelectedAnnotations = useCallback((dx: number, dy: number) => {
+    setGroupRotateFrame((frame) => frame ? { ...frame, rect: { ...frame.rect, left: frame.rect.left + dx, top: frame.rect.top + dy } } : frame);
+    setGuidesPersisted((previous) => previous.map((guide) => selectedGuideIds.includes(guide.id)
+      ? { ...guide, position: guide.position + (guide.orientation === "vertical" ? dx : dy) }
+      : guide));
+    setArrowsPersisted((previous) => previous.map((arrow) => selectedArrowIds.includes(arrow.id)
+      ? { ...arrow, start: { x: arrow.start.x + dx, y: arrow.start.y + dy }, end: { x: arrow.end.x + dx, y: arrow.end.y + dy }, control: arrow.control ? { x: arrow.control.x + dx, y: arrow.control.y + dy } : undefined }
+      : arrow));
+    setTextAnnotationsPersisted((previous) => previous.map((item) => selectedTextIds.includes(item.id)
+      ? { ...item, x: item.x + dx, y: item.y + dy }
+      : item));
+    setPenStrokesPersisted((previous) => previous.map((stroke) => selectedPenStrokeIds.includes(stroke.id)
+      ? { ...stroke, points: stroke.points.map((point) => ({ x: point.x + dx, y: point.y + dy })) }
+      : stroke));
+  }, [selectedArrowIds, selectedGuideIds, selectedPenStrokeIds, selectedTextIds, setArrowsPersisted, setGuidesPersisted, setPenStrokesPersisted, setTextAnnotationsPersisted]);
+
+  const startGroupRotate = useCallback((center: { x: number; y: number }, startAngle: number, rect: { left: number; top: number; width: number; height: number }) => {
+    const selectedTexts = textAnnotations.filter((item) => selectedTextIds.includes(item.id));
+    recordSnapshot();
+    groupRotateSnapshotRef.current = {
+      center,
+      startAngle,
+      rect,
+      arrows: arrows.filter((item) => selectedArrowIds.includes(item.id)),
+      penStrokes: penStrokes.filter((item) => selectedPenStrokeIds.includes(item.id)),
+      texts: selectedTexts.map((item) => {
+        const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${item.id}"]`);
+        const bounds = node instanceof HTMLElement
+          ? { x: item.x, y: item.y, width: node.offsetWidth, height: node.offsetHeight }
+          : textAnnotationBounds(item);
+        return { item, bounds };
+      }),
+      initialRotation: groupRotateFrame?.rotation ?? 0,
+    };
+    setGroupRotateFrame({ rect, rotation: groupRotateFrame?.rotation ?? 0 });
+  }, [
+    arrows,
+    groupBounds,
+    groupRotateFrame,
+    penStrokes,
+    recordSnapshot,
+    selectedArrowIds,
+    selectedPenStrokeIds,
+    selectedTextIds,
+    textAnnotations,
+  ]);
+
+  const updateGroupRotate = useCallback((pointerAngle: number) => {
+    const snapshot = groupRotateSnapshotRef.current;
+    if (!snapshot) return;
+    const rotated = applyGroupRotation(snapshot, pointerAngle);
+    setGroupRotateFrame({ rect: snapshot.rect, rotation: (snapshot.initialRotation ?? 0) + rotated.degrees });
+    setArrowsPersisted((previous) =>
+      previous.map((arrow) => rotated.arrows.get(arrow.id) ?? arrow),
+    );
+    setPenStrokesPersisted((previous) =>
+      previous.map((stroke) => rotated.penStrokes.get(stroke.id) ?? stroke),
+    );
+    setTextAnnotationsPersisted((previous) =>
+      previous.map((item) => rotated.texts.get(item.id) ?? item),
+    );
+  }, [setArrowsPersisted, setPenStrokesPersisted, setTextAnnotationsPersisted]);
+
+  const endGroupRotate = useCallback(() => {
+    groupRotateSnapshotRef.current = null;
+  }, []);
+
+  const startGroupResize = useCallback((handle: ResizeHandle, rect: { left: number; top: number; width: number; height: number }, rotation: number) => {
+    const selectedTexts = textAnnotations.filter((item) => selectedTextIds.includes(item.id));
+    groupResizeSnapshotRef.current = {
+      rect,
+      rotation,
+      arrows: arrows.filter((item) => selectedArrowIds.includes(item.id)),
+      penStrokes: penStrokes.filter((item) => selectedPenStrokeIds.includes(item.id)),
+      texts: selectedTexts.map((item) => {
+        const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${item.id}"]`);
+        const bounds = node instanceof HTMLElement
+          ? { x: item.x, y: item.y, width: node.offsetWidth, height: node.offsetHeight }
+          : textAnnotationBounds(item);
+        return { item, bounds };
+      }),
+    };
+    recordSnapshot();
+  }, [arrows, penStrokes, recordSnapshot, selectedArrowIds, selectedPenStrokeIds, selectedTextIds, textAnnotations]);
+
+  const resizeSelectedAnnotations = useCallback((handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => {
+    const snapshot = groupResizeSnapshotRef.current;
+    if (!snapshot) return;
+    const pointer = { x: event.clientX + scrollOffset.x, y: event.clientY + scrollOffset.y };
+    const resized = applyGroupResize(snapshot, handle, pointer);
+    setGroupRotateFrame((frame) => frame ? { ...frame, rect: resized.rect } : frame);
+    setArrowsPersisted((previous) => previous.map((arrow) => resized.arrows.get(arrow.id) ?? arrow));
+    setPenStrokesPersisted((previous) => previous.map((stroke) => resized.penStrokes.get(stroke.id) ?? stroke));
+    setTextAnnotationsPersisted((previous) => previous.map((item) => resized.texts.get(item.id) ?? item));
+  }, [scrollOffset.x, scrollOffset.y, setArrowsPersisted, setPenStrokesPersisted, setTextAnnotationsPersisted]);
+
+  const endGroupResize = useCallback(() => {
+    groupResizeSnapshotRef.current = null;
+  }, []);
+
   const colorPicker = useColorPicker({
     ownerWindow,
     clickFormat: settingsColorClickFormat,
@@ -988,6 +1147,7 @@ function MesurerClient({
     undo,
     redo,
     removeSelected,
+    selectAllAnnotations,
     setEnabled: setEnabledWithHistory,
     setToolMode: setToolModeWithHistory,
     setRulersVisible: setRulersVisiblePersisted,
@@ -1180,6 +1340,14 @@ function MesurerClient({
     setHoverElement,
     setHoverPointer,
     clearSelectionRect,
+    selectionMode: toolMode === "selection",
+    scrollOffset,
+    textAnnotations,
+    arrows,
+    penStrokes,
+    setSelectedTextIds,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setSelectedPenStrokeIds,
   });
 
   const arrowsPointer = useArrowsPointer({
@@ -1194,9 +1362,21 @@ function MesurerClient({
     guides,
     createActionCommit,
     setArrows: setArrowsPersisted,
+    onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    clearOtherSelections: () => {
+      setSelectedGuideIdsPersisted([]);
+      setSelectedTextIds([]);
+      setSelectedPenStrokeIds([]);
+      setSelectedMeasurements([]);
+      setSelectedMeasurement(null);
+      setSelectedElement(null);
+      clearSelectionRect();
+      ownerDocument.defaultView?.getSelection()?.removeAllRanges();
+    },
     setToolMode: setToolModePersisted,
     arrows,
+    selectedArrowIds,
     arrowStart,
     arrowMiddle,
     arrowPreviewEnd,
@@ -1221,16 +1401,24 @@ function MesurerClient({
   cancelPenInteractionRef.current = penPointer.cancelInteraction;
   hasPenInteractionRef.current = penPointer.hasActiveInteraction;
 
-  const selectPenStroke = useCallback((id: string) => {
-    setSelectedGuideIdsPersisted([]);
-    setSelectedArrowIdsPersisted([]);
-    setSelectedTextIds([]);
-    setSelectedMeasurements([]);
-    setSelectedMeasurement(null);
-    setSelectedElement(null);
-    clearSelectionRect();
-    setSelectedPenStrokeIds([id]);
-  }, [clearSelectionRect, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
+  const selectPenStroke = useCallback((id: string, additive = false) => {
+    if (additive) {
+      setSelectedPenStrokeIds((previous) => previous.includes(id)
+        ? previous.filter((selectedId) => selectedId !== id)
+        : [...previous, id]);
+      return;
+    }
+    if (!selectedPenStrokeIds.includes(id)) {
+      setSelectedGuideIdsPersisted([]);
+      setSelectedArrowIdsPersisted([]);
+      setSelectedTextIds([]);
+      setSelectedMeasurements([]);
+      setSelectedMeasurement(null);
+      setSelectedElement(null);
+      clearSelectionRect();
+    }
+    setSelectedPenStrokeIds((previous) => previous.includes(id) ? previous : [id]);
+  }, [clearSelectionRect, selectedPenStrokeIds, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
 
   const changePenStroke = useCallback((next: import("./core/types").PenStroke) => {
     setPenStrokesPersisted((previous) => previous.map((stroke) => stroke.id === next.id ? next : stroke));
@@ -1270,16 +1458,31 @@ function MesurerClient({
     committedTextEditorsRef.current.delete(element);
   }, []);
 
-  const selectTextAnnotation = useCallback((id: string) => {
+  const selectTextAnnotation = useCallback((id: string, additive = false) => {
     if (textDraftRef.current) finishTextDraft();
-    setSelectedTextIds([id]);
-  }, [finishTextDraft, setSelectedTextIds]);
+    if (additive) {
+      setSelectedTextIds((previous) => previous.includes(id)
+        ? previous.filter((selectedId) => selectedId !== id)
+        : [...previous, id]);
+      return;
+    }
+    if (!selectedTextIds.includes(id)) {
+      setSelectedGuideIdsPersisted([]);
+      setSelectedArrowIdsPersisted([]);
+      setSelectedPenStrokeIds([]);
+      setSelectedMeasurements([]);
+      setSelectedMeasurement(null);
+      setSelectedElement(null);
+      clearSelectionRect();
+    }
+    setSelectedTextIds((previous) => previous.includes(id) ? previous : [id]);
+  }, [clearSelectionRect, finishTextDraft, selectedTextIds, setSelectedArrowIdsPersisted, setSelectedElement, setSelectedGuideIdsPersisted, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setSelectedTextIds]);
 
   const moveTextAnnotation = useCallback((id: string, x: number, y: number) => {
-    setTextAnnotationsPersisted((previous) => previous.map((item) =>
-      item.id === id ? { ...item, x, y } : item,
-    ));
-  }, [setTextAnnotationsPersisted]);
+    const item = textAnnotations.find((candidate) => candidate.id === id);
+    if (!item) return;
+    moveSelectedAnnotations(x - item.x, y - item.y);
+  }, [moveSelectedAnnotations, textAnnotations]);
 
   const transformTextAnnotation = useCallback((
     id: string,
@@ -1400,22 +1603,26 @@ function MesurerClient({
         : {
         onPointerDown: toolMode === "selection"
           ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerDown(event)) handlePointerDown(event)
             }
           : handlePointerDown,
         onPointerMove: toolMode === "selection"
           ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerMove(event)) handlePointerMove(event)
             }
           : handlePointerMove,
         onPointerUp: toolMode === "selection"
           ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
             }
           : handlePointerUp,
         onPointerLeave: handlePointerLeave,
         onPointerCancel: toolMode === "selection"
           ? (event: ReactPointerEvent<HTMLDivElement>) => {
+              if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
             }
           : handlePointerUp,
@@ -1447,11 +1654,25 @@ function MesurerClient({
         guidesEnabled,
         altPressed,
         isDragging,
+        marqueeRect: isDragging && start && end ? getRectFromPoints(start, end) : null,
+        groupBounds: selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length > 1
+          ? groupRotateFrame?.rect ?? groupBounds
+          : null,
+        groupFrameRotation: selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length > 1
+          ? groupRotateFrame?.rotation ?? 0
+          : 0,
+        selectionCount: selectedGuideIds.length + selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length,
+        onResizeSelection: resizeSelectedAnnotations,
+        onStartGroupResize: startGroupResize,
+        onEndGroupResize: endGroupResize,
+        onStartGroupRotate: startGroupRotate,
+        onUpdateGroupRotate: updateGroupRotate,
+        onEndGroupRotate: endGroupRotate,
         fillColor,
         outlineColor,
         layoutDetailsEnabled: settingsLayoutDetailsEnabled,
-          pointers: {
-            ...pointerHandlers,
+        pointers: {
+          ...pointerHandlers,
         },
         selection: {
           measurements: displayedMeasurements,
@@ -1496,6 +1717,10 @@ function MesurerClient({
           preview: arrowsPointer.preview,
           scrollOffset,
           color: settingsArrowColor,
+          onSelect: (id) => setSelectedArrowIdsPersisted([id]),
+          onChange: (arrow) => setArrowsPersisted((previous) => previous.map((item) => item.id === arrow.id ? arrow : item)),
+          onChangeStart: recordSnapshot,
+          editingArrowId: arrowsPointer.editingArrowId,
         },
         pen: {
           strokes: penStrokes,
@@ -1506,6 +1731,7 @@ function MesurerClient({
           onSelect: selectPenStroke,
           onChange: changePenStroke,
           onChangeStart: recordSnapshot,
+          onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
         },
         text: {
           items: textAnnotations,

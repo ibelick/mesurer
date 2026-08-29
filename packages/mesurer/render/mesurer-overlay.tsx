@@ -15,6 +15,7 @@ import type {
   ToolMode,
   TextAnnotation,
 } from "../core/types"
+import type { ResizeHandle } from "../core/text-transform"
 import type { GuideStyle } from "../core/persistence"
 import { DistancesLayer } from "./distances-layer"
 import { GuidesLayer } from "./guides-layer"
@@ -23,6 +24,8 @@ import { SelectionLayer } from "./selection-layer"
 import { ArrowsLayer } from "./arrows-layer"
 import { TextLayer } from "./text-layer"
 import { PenLayer } from "./pen-layer"
+import { MarqueeRect } from "./marquee-rect"
+import { GroupSelectionFrame } from "./group-selection-frame"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -79,6 +82,16 @@ type MesurerOverlayProps = {
   guidesEnabled: boolean
   altPressed: boolean
   isDragging: boolean
+  marqueeRect: Rect | null
+  groupBounds: Rect | null
+  groupFrameRotation: number
+  selectionCount: number
+  onResizeSelection: (handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => void
+  onStartGroupResize: (handle: ResizeHandle, rect: Rect, rotation: number) => void
+  onEndGroupResize: () => void
+  onStartGroupRotate: (center: { x: number; y: number }, startAngle: number, rect: Rect) => void
+  onUpdateGroupRotate: (pointerAngle: number) => void
+  onEndGroupRotate: () => void
   fillColor: string
   outlineColor: string
   layoutDetailsEnabled: boolean
@@ -92,6 +105,10 @@ type MesurerOverlayProps = {
     preview: { start: { x: number; y: number }; end: { x: number; y: number }; control?: { x: number; y: number } } | null
     scrollOffset: { x: number; y: number }
     color: string
+    onSelect: (id: string, additive?: boolean) => void
+    onChange: (arrow: Arrow) => void
+    onChangeStart: () => void
+    editingArrowId: string | null
   }
   pen: {
     strokes: import("../core/types").PenStroke[]
@@ -99,9 +116,10 @@ type MesurerOverlayProps = {
     scrollOffset: { x: number; y: number }
     selectionMode: boolean
     selectedIds: string[]
-    onSelect: (id: string) => void
+    onSelect: (id: string, additive?: boolean) => void
     onChange: (stroke: import("../core/types").PenStroke) => void
     onChangeStart: () => void
+    onMove: (id: string, dx: number, dy: number) => void
   }
   text: {
     items: TextAnnotation[]
@@ -134,6 +152,16 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   guidesEnabled,
   altPressed,
   isDragging,
+  marqueeRect,
+  groupBounds,
+  groupFrameRotation,
+  selectionCount,
+  onResizeSelection,
+  onStartGroupResize,
+  onEndGroupResize,
+  onStartGroupRotate,
+  onUpdateGroupRotate,
+  onEndGroupRotate,
   fillColor,
   outlineColor,
   layoutDetailsEnabled,
@@ -195,17 +223,40 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         layoutDetailsEnabled={layoutDetailsEnabled}
       />
 
+      {toolMode === "selection" && marqueeRect ? (
+        <MarqueeRect rect={marqueeRect} color={outlineColor} />
+      ) : null}
+
       <ArrowsLayer
         arrows={arrows.items}
         selectedIds={arrows.selectedIds}
         preview={arrows.preview}
         scrollOffset={arrows.scrollOffset}
         color={arrows.color}
+        onSelect={arrows.onSelect}
+        onChange={arrows.onChange}
+        onChangeStart={arrows.onChangeStart}
+        editingArrowId={arrows.editingArrowId}
+        selectionCount={selectionCount}
       />
 
-      <PenLayer {...pen} />
+      <PenLayer {...pen} selectionCount={selectionCount} />
 
-      <TextLayer {...text} />
+      <TextLayer {...text} selectionCount={selectionCount} />
+
+      {toolMode === "selection" && groupBounds ? (
+        <GroupSelectionFrame
+          rect={groupBounds}
+          rotation={groupFrameRotation}
+          scrollOffset={arrows.scrollOffset}
+          onResize={onResizeSelection}
+          onResizeStart={onStartGroupResize}
+          onResizeEnd={onEndGroupResize}
+          onRotateStart={onStartGroupRotate}
+          onRotate={onUpdateGroupRotate}
+          onRotateEnd={onEndGroupRotate}
+        />
+      ) : null}
 
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer

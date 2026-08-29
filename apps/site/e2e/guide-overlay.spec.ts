@@ -48,6 +48,25 @@ test("placed guides remain visible while host-app clicks pass through", async ({
   await expect(overlay).toHaveCSS("pointer-events", "auto");
 });
 
+test("Selection mode draws a selection rectangle while dragging", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Selection (O)" }).click();
+
+  await page.mouse.move(180, 180);
+  await page.mouse.down();
+  await page.mouse.move(420, 360, { steps: 4 });
+
+  const rectangle = page.locator('[data-mesurer-overlay-marquee="true"]');
+  await expect(rectangle).toHaveCount(1);
+  const box = await rectangle.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeGreaterThan(0);
+  expect(box!.height).toBeGreaterThan(0);
+
+  await page.mouse.up();
+  await expect(rectangle).toHaveCount(0);
+});
+
 test("font inspector mode participates in undo and redo history", async ({
   page,
 }) => {

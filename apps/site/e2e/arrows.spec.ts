@@ -200,6 +200,16 @@ test("selects an arrow from the expanded shaft touch zone", async ({ page }) => 
 
   await page.mouse.click(180, 196);
   await expect(page.locator('[data-mesurer-arrow-node="true"]')).toHaveCount(3);
+  await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(1);
+});
+
+test("selects an arrow by clicking its visible arrowhead", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await drawArrow(page);
+
+  await page.mouse.click(308, 254);
+  await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(1);
 });
 
 test("resizes an arrow from its endpoint handle", async ({ page }) => {
@@ -278,6 +288,25 @@ test("supports multiple arrows", async ({ page }) => {
   await drawArrow(page, { x: 420, y: 160 }, { x: 620, y: 260 });
 
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(2);
+});
+
+test("rotates multiple arrows from the parent handle", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await drawArrow(page, { x: 120, y: 160 }, { x: 320, y: 260 });
+  await activateArrows(page);
+  await drawArrow(page, { x: 420, y: 160 }, { x: 620, y: 260 });
+  await page.keyboard.press("Control+a");
+  const arrows = page.locator('[data-mesurer-arrow="true"]');
+  const before = await arrows.evaluateAll((items) => items.map((item) => item.getAttribute("d")));
+  const rotate = page.locator('[data-mesurer-group-handle="rotate"]');
+  const box = await rotate.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 50, box!.y + box!.height / 2 + 30, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => arrows.evaluateAll((items) => items.map((item) => item.getAttribute("d")))).not.toEqual(before);
 });
 
 test("persists arrows after reload", async ({ page }) => {

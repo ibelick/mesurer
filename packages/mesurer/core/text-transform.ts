@@ -1,4 +1,18 @@
-import type { Point } from "./types"
+import type { Point, TextAnnotation } from "./types"
+
+export const textAnnotationBounds = (
+  item: Pick<TextAnnotation, "x" | "y" | "text" | "boxWidth">,
+) => ({
+  x: item.x,
+  y: item.y,
+  width:
+    item.boxWidth ??
+    Math.max(
+      32,
+      item.text.split("\n").reduce((longest, line) => Math.max(longest, line.length), 0) * 9,
+    ),
+  height: 24 * Math.max(1, item.text.split("\n").length),
+})
 
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw"
 

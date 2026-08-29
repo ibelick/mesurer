@@ -11,6 +11,22 @@ export const penBounds = (stroke: PenStroke): PenBounds => {
   return { x, y, width: Math.max(1, Math.max(...xs) - x), height: Math.max(1, Math.max(...ys) - y) }
 }
 
+export const transformedPenBounds = (stroke: PenStroke): PenBounds => {
+  const bounds = penBounds(stroke)
+  const center = boxCenter(bounds.x, bounds.y, bounds.width, bounds.height)
+  const points = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height },
+  ].map((point) => rotatePoint(point, center, stroke.rotation ?? 0))
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return { x, y, width: Math.max(1, Math.max(...xs) - x), height: Math.max(1, Math.max(...ys) - y) }
+}
+
 export const movePenStroke = (stroke: PenStroke, dx: number, dy: number): PenStroke => ({
   ...stroke,
   points: stroke.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
@@ -76,6 +92,27 @@ export const rotatePenStroke = (stroke: PenStroke, pointer: Point, offset: numbe
   const nextRotation = rotationFromPointer(center, pointer) - offset
   return {
     ...stroke,
+    rotation: nextRotation,
+  }
+}
+
+export const rotatePenStrokeAround = (
+  stroke: PenStroke,
+  center: Point,
+  degrees: number,
+): PenStroke => {
+  const box = penBounds(stroke)
+  const strokeCenter = boxCenter(box.x, box.y, box.width, box.height)
+  const rotation = stroke.rotation ?? 0
+  const nextCenter = rotatePoint(strokeCenter, center, degrees)
+  const nextRotation = rotation + degrees
+  const rotated = stroke.points
+    .map((point) => rotatePoint(point, strokeCenter, rotation))
+    .map((point) => rotatePoint(point, center, degrees))
+    .map((point) => rotatePoint(point, nextCenter, -nextRotation))
+  return {
+    ...stroke,
+    points: rotated,
     rotation: nextRotation,
   }
 }

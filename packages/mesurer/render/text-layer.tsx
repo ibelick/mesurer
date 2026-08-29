@@ -30,7 +30,7 @@ type TextLayerProps = {
   interactive: boolean
   editable: boolean
   selectedIds: string[]
-  onSelect: (id: string) => void
+  onSelect: (id: string, additive?: boolean) => void
   onMoveStart: () => void
   onMove: (id: string, x: number, y: number) => void
   onTransform: (
@@ -43,6 +43,7 @@ type TextLayerProps = {
   onActivateEditor: (element: HTMLElement) => void
   fontFamily: string
   color: string
+  selectionCount: number
 }
 
 type TextDrag =
@@ -151,6 +152,7 @@ export const TextLayer = memo(function TextLayer({
   onEdit,
   fontFamily,
   color,
+  selectionCount,
 }: TextLayerProps) {
   const dragRef = useRef<TextDrag | null>(null)
   const initializedDraftRef = useRef<object | null>(null)
@@ -200,6 +202,8 @@ export const TextLayer = memo(function TextLayer({
             interactive={interactive}
             editable={editable}
             selected={selectedIds.includes(item.id)}
+            showTransformControls={selectedIds.length === 1}
+            selectionCount={selectionCount}
             dragRef={dragRef}
             onSelect={onSelect}
             onMoveStart={onMoveStart}
@@ -249,6 +253,7 @@ function TextItem({
   interactive,
   editable,
   selected,
+  showTransformControls,
   dragRef,
   onSelect,
   onMoveStart,
@@ -261,6 +266,7 @@ function TextItem({
   onActivateEditor,
   fontFamily,
   color,
+  selectionCount,
 }: {
   item: TextAnnotation
   scrollOffset: { x: number; y: number }
@@ -269,8 +275,10 @@ function TextItem({
   interactive: boolean
   editable: boolean
   selected: boolean
+  showTransformControls: boolean
+  selectionCount: number
   dragRef: MutableRefObject<TextDrag | null>
-  onSelect: (id: string) => void
+  onSelect: (id: string, additive?: boolean) => void
   onMoveStart: () => void
   onMove: (id: string, x: number, y: number) => void
   onTransform: (
@@ -316,7 +324,8 @@ function TextItem({
   })
 
   const startMove = (event: PointerEvent<HTMLElement>) => {
-    onSelect(item.id)
+    onSelect(item.id, event.shiftKey)
+    if (event.shiftKey) return
     dragRef.current = {
       type: "move",
       id: item.id,
@@ -439,6 +448,7 @@ function TextItem({
       {selected && !editing && interactive ? (
         <TextTransformFrame
           rotation={rotation}
+          showControls={showTransformControls && selectionCount === 1}
           onResizeStart={(handle, event) => {
             const size = measureBox()
             onSelect(item.id)

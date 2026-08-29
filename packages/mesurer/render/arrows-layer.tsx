@@ -1,7 +1,10 @@
-import { memo } from "react"
+import { memo, useRef, type PointerEvent } from "react"
 import { arrowHead, arrowPath, midpoint, quadraticPoint } from "../core/arrows"
 import type { Arrow, Point } from "../core/types"
+import { arrowBounds, moveArrow, resizeArrow, rotateArrow, transformedArrowPoints } from "../core/arrow-transform"
+import { boxCenter, rotationFromPointer, type ResizeHandle } from "../core/text-transform"
 import { HandleNode } from "./handle-node"
+import { TextTransformFrame } from "./text-transform-frame"
 
 type ArrowsLayerProps = {
   arrows: Arrow[]
@@ -9,6 +12,11 @@ type ArrowsLayerProps = {
   preview: { start: Point; end: Point; control?: Point } | null
   scrollOffset: Point
   color: string
+  onSelect: (id: string) => void
+  onChange: (arrow: Arrow) => void
+  onChangeStart: () => void
+  editingArrowId: string | null
+  selectionCount: number
 }
 
 const ArrowNode = ({
@@ -44,6 +52,7 @@ const ArrowLine = ({
   color,
   width,
   selected,
+  showNodes = true,
   preview = false,
   id,
 }: {
@@ -53,6 +62,7 @@ const ArrowLine = ({
   color: string
   width: number
   selected?: boolean
+  showNodes?: boolean
   preview?: boolean
   id?: string
 }) => {
@@ -83,8 +93,9 @@ const ArrowLine = ({
         stroke={color}
         opacity="0"
         strokeWidth={Math.max(width, 24)}
-        pointerEvents="none"
+        pointerEvents={preview ? "none" : "all"}
         data-mesurer-arrow-id={id}
+        data-mesurer-arrow-hit="true"
       />
       <path
         d={path}
@@ -105,10 +116,12 @@ const ArrowLine = ({
         strokeWidth={width}
         strokeLinecap="round"
         strokeLinejoin="round"
-        pointerEvents="none"
+        pointerEvents={preview ? "none" : "all"}
         opacity={preview ? 0.65 : 1}
+        data-mesurer-arrow-id={id}
+        data-mesurer-arrow-hit="true"
       />
-      {selected ? (
+      {selected && showNodes ? (
         <>
           <ArrowNode
             x={start.x}
@@ -133,7 +146,7 @@ const ArrowLine = ({
           />
         </>
       ) : null}
-      {selected ? (
+      {selected && showNodes ? (
         <>
           <circle
             cx={start.x}
@@ -183,24 +196,74 @@ export const ArrowsLayer = memo(function ArrowsLayer({
   preview,
   scrollOffset,
   color,
+  onSelect,
+  onChange,
+  onChangeStart,
+  editingArrowId,
+  selectionCount,
 }: ArrowsLayerProps) {
+  const dragRef = useRef<{
+    type: "resize" | "rotate"
+    arrow: Arrow
+    start: Point
+    handle?: ResizeHandle
+    offset?: number
+  } | null>(null)
   if (arrows.length === 0 && !preview) return null
 
+  const pagePoint = (event: PointerEvent<Element>) => ({ x: event.clientX + scrollOffset.x, y: event.clientY + scrollOffset.y })
+  const startResize = (arrow: Arrow, handle: ResizeHandle, event: PointerEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    onSelect(arrow.id)
+    onChangeStart()
+    dragRef.current = { type: "resize", arrow, start: pagePoint(event), handle }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const startRotate = (arrow: Arrow, event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    onSelect(arrow.id)
+    onChangeStart()
+    const bounds = arrowBounds(arrow)
+    const center = boxCenter(bounds.x, bounds.y, bounds.width, bounds.height)
+    dragRef.current = {
+      type: "rotate",
+      arrow,
+      start: pagePoint(event),
+      offset: rotationFromPointer(center, pagePoint(event)) - (arrow.rotation ?? 0),
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const handleMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const pointer = pagePoint(event)
+    onChange(drag.type === "resize"
+      ? resizeArrow(drag.arrow, drag.handle!, pointer)
+      : rotateArrow(drag.arrow, pointer, drag.offset!))
+  }
+  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current && event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    dragRef.current = null
+  }
+
   return (
-    <svg
-      aria-hidden="true"
-      className="msr:pointer-events-none msr:absolute msr:inset-0 msr:size-full"
-      data-mesurer-arrows-layer="true"
-    >
+    <div className="msr:pointer-events-none msr:absolute msr:inset-0" data-mesurer-arrows-layer="true" onPointerMove={handleMove} onPointerUp={endDrag}>
+      <svg
+        aria-hidden="true"
+        className="msr:pointer-events-none msr:absolute msr:inset-0 msr:size-full"
+      >
       {arrows.map((arrow) => (
         <ArrowLine
           key={arrow.id}
-          start={{ x: arrow.start.x - scrollOffset.x, y: arrow.start.y - scrollOffset.y }}
-          end={{ x: arrow.end.x - scrollOffset.x, y: arrow.end.y - scrollOffset.y }}
-          control={arrow.control ? { x: arrow.control.x - scrollOffset.x, y: arrow.control.y - scrollOffset.y } : undefined}
+          start={{ x: transformedArrowPoints(arrow)[0]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[0]!.y - scrollOffset.y }}
+          end={{ x: transformedArrowPoints(arrow)[2]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[2]!.y - scrollOffset.y }}
+          control={{ x: transformedArrowPoints(arrow)[1]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[1]!.y - scrollOffset.y }}
           color={color}
           width={arrow.width}
-          selected={selectedIds.includes(arrow.id)}
+           selected={selectedIds.includes(arrow.id)}
+           showNodes={selectionCount === 1}
           id={arrow.id}
         />
       ))}
@@ -214,6 +277,31 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           preview
         />
       ) : null}
-    </svg>
+      </svg>
+      {arrows.filter((arrow) => selectedIds.includes(arrow.id) && arrow.id !== editingArrowId).map((arrow) => {
+        const bounds = arrowBounds(arrow)
+        const left = bounds.x - scrollOffset.x
+        const top = bounds.y - scrollOffset.y
+        const width = bounds.width
+        const height = bounds.height
+        return (
+          <div
+            key={`frame-${arrow.id}`}
+            className="msr:absolute msr:pointer-events-none"
+            style={{ left, top, width, height, transform: `rotate(${arrow.rotation ?? 0}deg)`, transformOrigin: "center center" }}
+          >
+            <TextTransformFrame
+              rotation={arrow.rotation ?? 0}
+              showControls={selectionCount === 1}
+              handleOffset={8}
+              frameDataAttribute="data-mesurer-arrow-frame"
+              handleDataAttribute="data-mesurer-arrow-handle"
+              onResizeStart={(handle, event) => startResize(arrow, handle, event)}
+              onRotateStart={(event) => startRotate(arrow, event)}
+            />
+          </div>
+        )
+      })}
+    </div>
   )
 })

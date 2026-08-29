@@ -16,6 +16,7 @@ type HotkeyOptions = {
   undo: () => void
   redo: () => void
   removeSelected: () => boolean
+  selectAllAnnotations: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
   setRulersVisible: Dispatch<SetStateAction<boolean>>
@@ -102,6 +103,10 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (event.metaKey || event.ctrlKey) {
+        if (event.key.toLowerCase() === "a") {
+          if (current.selectAllAnnotations()) event.preventDefault()
+          return
+        }
         if (event.key === ",") {
           event.preventDefault()
           current.onCloseScreenshot()

@@ -10,6 +10,7 @@ export type Arrow = {
   control?: Point
   color: string
   width: number
+  rotation?: number
 }
 
 export type PenStroke = {

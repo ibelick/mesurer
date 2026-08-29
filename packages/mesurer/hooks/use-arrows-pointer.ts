@@ -1,4 +1,4 @@
-import { useCallback, useRef, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
+import { useCallback, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
 import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
 import type { Arrow, Guide, Point, ToolMode } from "../core/types"
@@ -20,8 +20,10 @@ type UseArrowsPointerOptions = {
   createActionCommit: () => () => void
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
+  clearOtherSelections?: () => void
   setToolMode: (value: ToolMode) => void
   arrows: Arrow[]
+  selectedArrowIds: string[]
   arrowStart: Point | null
   arrowMiddle: Point | null
   arrowPreviewEnd: Point | null
@@ -29,6 +31,7 @@ type UseArrowsPointerOptions = {
   setArrowMiddle: Dispatch<SetStateAction<Point | null>>
   setArrowPreviewEnd: Dispatch<SetStateAction<Point | null>>
   scrollOffset: Point
+  onMove?: (id: string, dx: number, dy: number) => void
 }
 
 export const useArrowsPointer = ({
@@ -44,8 +47,10 @@ export const useArrowsPointer = ({
   createActionCommit,
   setArrows,
   setSelectedArrowIds,
+  clearOtherSelections,
   setToolMode,
   arrows,
+  selectedArrowIds,
   arrowStart,
   arrowMiddle,
   arrowPreviewEnd,
@@ -53,7 +58,9 @@ export const useArrowsPointer = ({
   setArrowMiddle,
   setArrowPreviewEnd,
   scrollOffset,
+  onMove,
 }: UseArrowsPointerOptions) => {
+  const [editingArrowId, setEditingArrowId] = useState<string | null>(null)
   const pointerIdRef = useRef<number | null>(null)
   const drawingRef = useRef<{
     pointerId: number
@@ -68,6 +75,7 @@ export const useArrowsPointer = ({
     arrow: Arrow
     basis: ReturnType<typeof relativeControl> | null
     changed: boolean
+    last: Point
   } | null>(null)
 
   const pagePoint = useCallback(
@@ -220,7 +228,15 @@ export const useArrowsPointer = ({
       const handle = event.target.getAttribute("data-mesurer-arrow-handle")
       event.preventDefault()
       event.stopPropagation()
-      setSelectedArrowIds([arrowId])
+      const alreadySelected = selectedArrowIds.includes(arrowId)
+      if (event.shiftKey) {
+        setSelectedArrowIds((previous) => alreadySelected
+          ? previous.filter((id) => id !== arrowId)
+          : [...previous, arrowId])
+        return true
+      }
+      if (!alreadySelected) clearOtherSelections?.()
+      setSelectedArrowIds((previous) => alreadySelected ? previous : [arrowId])
       pointerIdRef.current = event.pointerId
       const snapshot = {
         ...arrow,
@@ -233,11 +249,13 @@ export const useArrowsPointer = ({
         arrow: snapshot,
         basis: relativeControl(snapshot.start, snapshot.end, snapshot.control),
         changed: false,
+        last: { x: event.clientX, y: event.clientY },
       }
+      if (handle === "start" || handle === "control" || handle === "end") setEditingArrowId(arrowId)
       event.currentTarget.setPointerCapture(event.pointerId)
       return true
     },
-    [arrows, enabled, settingsOpen, setSelectedArrowIds],
+    [arrows, clearOtherSelections, enabled, selectedArrowIds, settingsOpen, setSelectedArrowIds],
   )
 
   const handleSelectionPointerMove = useCallback(
@@ -251,6 +269,11 @@ export const useArrowsPointer = ({
         edit.changed = true
       }
       if (!edit.changed) return true
+      if (edit.action === "move" && onMove) {
+        onMove(edit.arrowId, event.clientX - edit.last.x, event.clientY - edit.last.y)
+        edit.last = { x: event.clientX, y: event.clientY }
+        return true
+      }
       setArrows((previous) => previous.map((arrow) => {
         if (arrow.id !== edit.arrowId) return arrow
         if (edit.action === "move") return translateArrow(edit.arrow, dx, dy)
@@ -285,7 +308,7 @@ export const useArrowsPointer = ({
       }))
       return true
     },
-    [createActionCommit, setArrows, snapPoint],
+    [createActionCommit, onMove, setArrows, snapPoint],
   )
 
   const handlePointerCancel = useCallback(
@@ -295,6 +318,7 @@ export const useArrowsPointer = ({
           event.currentTarget.releasePointerCapture(event.pointerId)
         }
         editRef.current = null
+        setEditingArrowId(null)
         pointerIdRef.current = null
         return
       }
@@ -316,6 +340,7 @@ export const useArrowsPointer = ({
       ))
     }
     editRef.current = null
+    setEditingArrowId(null)
     drawingRef.current = null
     pointerIdRef.current = null
     clearDrawing()
@@ -331,6 +356,7 @@ export const useArrowsPointer = ({
       }
       editRef.current = null
       pointerIdRef.current = null
+      setEditingArrowId(null)
       return true
     },
     [],
@@ -352,6 +378,7 @@ export const useArrowsPointer = ({
     handleSelectionPointerDown,
     handleSelectionPointerMove,
     handleSelectionPointerUp,
+    editingArrowId,
     preview: arrowStart && arrowPreviewEnd
       ? {
           start: arrowStart,

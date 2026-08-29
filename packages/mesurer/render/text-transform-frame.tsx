@@ -30,19 +30,22 @@ const EDGE_HANDLES: Array<{
 
 type TextTransformFrameProps = {
   rotation: number
-  frameDataAttribute?: "data-mesurer-text-frame" | "data-mesurer-pen-frame"
-  handleDataAttribute?: "data-mesurer-text-handle" | "data-mesurer-pen-handle"
+  showControls?: boolean
+  showOutline?: boolean
+  handleOffset?: number
+  frameDataAttribute?: "data-mesurer-text-frame" | "data-mesurer-pen-frame" | "data-mesurer-arrow-frame" | "data-mesurer-group-controls"
+  handleDataAttribute?: "data-mesurer-text-handle" | "data-mesurer-pen-handle" | "data-mesurer-arrow-handle" | "data-mesurer-group-handle"
   onResizeStart: (handle: ResizeHandle, event: PointerEvent<HTMLElement>) => void
   onRotateStart: (event: PointerEvent<HTMLButtonElement>) => void
 }
 
-export const TextTransformFrame = ({ rotation, frameDataAttribute = "data-mesurer-text-frame", handleDataAttribute = "data-mesurer-text-handle", onResizeStart, onRotateStart }: TextTransformFrameProps) => (
+export const TextTransformFrame = ({ rotation, showControls = true, showOutline = true, handleOffset = 0, frameDataAttribute = "data-mesurer-text-frame", handleDataAttribute = "data-mesurer-text-handle", onResizeStart, onRotateStart }: TextTransformFrameProps) => (
   <div
-    className="msr:pointer-events-none msr:absolute msr:-inset-1 msr:outline msr:outline-1 msr:outline-[#0d99ff]"
+    className={`msr:pointer-events-none msr:absolute msr:inset-0 ${showOutline ? "msr:outline msr:outline-1 msr:outline-[#0d99ff]" : ""}`}
     {...{ [frameDataAttribute]: "true" }}
   >
-    <div className="msr:absolute msr:left-1/2 msr:top-0 msr:h-3 msr:w-px msr:-translate-x-1/2 msr:-translate-y-full msr:bg-[#0d99ff]" />
-    <button
+    {showControls ? <div className="msr:absolute msr:left-1/2 msr:top-0 msr:h-3 msr:w-px msr:-translate-x-1/2 msr:-translate-y-full msr:bg-[#0d99ff]" /> : null}
+    {showControls ? <button
       type="button"
       aria-label="Rotate text"
       {...{ [handleDataAttribute]: "rotate" }}
@@ -55,30 +58,30 @@ export const TextTransformFrame = ({ rotation, frameDataAttribute = "data-mesure
       }}
     >
       <HandleNodeMark color={HANDLE_COLOR} />
-    </button>
-    {EDGE_HANDLES.map(({ handle, className }) => (
+    </button> : null}
+    {showControls ? EDGE_HANDLES.map(({ handle, className }) => (
       <button
         key={handle}
         type="button"
         aria-label={`Resize ${handle}`}
         {...{ [handleDataAttribute]: handle }}
         className={`msr:absolute msr:z-10 msr:border-0 msr:bg-transparent msr:pointer-events-auto ${className}`}
-        style={{ cursor: resizeCursor(handle, rotation) }}
+         style={{ cursor: resizeCursor(handle, rotation), transform: handleOffset ? `translate(${handle === "e" ? handleOffset : handle === "w" ? -handleOffset : 0}px, ${handle === "s" ? handleOffset : handle === "n" ? -handleOffset : 0}px)` : undefined }}
         onPointerDown={(event) => {
           event.preventDefault()
           event.stopPropagation()
           onResizeStart(handle, event)
         }}
       />
-    ))}
-    {CORNER_HANDLES.map((handle) => (
+    )) : null}
+    {showControls ? CORNER_HANDLES.map((handle) => (
       <button
         key={handle}
         type="button"
         aria-label={`Resize ${handle}`}
         {...{ [handleDataAttribute]: handle }}
         className={`${HANDLE_HIT} msr:z-20`}
-        style={{ ...HANDLE_POSITION[handle], cursor: resizeCursor(handle, rotation) }}
+         style={{ ...HANDLE_POSITION[handle], cursor: resizeCursor(handle, rotation), transform: handleOffset ? `translate(calc(-50% + ${handle.includes("e") ? handleOffset : handle.includes("w") ? -handleOffset : 0}px), calc(-50% + ${handle.includes("s") ? handleOffset : handle.includes("n") ? -handleOffset : 0}px))` : undefined }}
         onPointerDown={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -87,6 +90,6 @@ export const TextTransformFrame = ({ rotation, frameDataAttribute = "data-mesure
       >
         <HandleNodeMark color={HANDLE_COLOR} />
       </button>
-    ))}
+    )) : null}
   </div>
 )

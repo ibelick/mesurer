@@ -26,6 +26,7 @@ export function ActiveSelectionRect({
     <>
       <div
         className="msr:pointer-events-none msr:absolute"
+        data-mesurer-active-selection="true"
         style={{
           left,
           top,
