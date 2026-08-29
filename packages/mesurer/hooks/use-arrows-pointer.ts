@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react"
 import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
-import { arrowBounds } from "../core/arrow-transform"
+import { arrowBounds, transformedArrowPoints } from "../core/arrow-transform"
 import type { Arrow, Guide, Point, ToolMode } from "../core/types"
 import { boxCenter, rotatePoint } from "../core/text-transform"
 import { createId } from "../core/utils"
@@ -241,10 +241,18 @@ export const useArrowsPointer = ({
          setSelectedArrowIds([arrowId])
        }
       pointerIdRef.current = event.pointerId
-      const snapshot = {
-        ...arrow,
-        control: arrow.control ?? midpoint(arrow.start, arrow.end),
-      }
+       const snapshot = {
+         ...arrow,
+         control: arrow.control ?? midpoint(arrow.start, arrow.end),
+       }
+       if (handle === "start" || handle === "control" || handle === "end") {
+         const points = transformedArrowPoints(arrow)
+         snapshot.start = points[0]!
+         snapshot.control = points[1]!
+         snapshot.end = points[2]!
+         snapshot.rotation = 0
+         setArrows((previous) => previous.map((item) => item.id === arrow.id ? snapshot : item))
+       }
       editRef.current = {
         arrowId,
         action: handle === "start" || handle === "control" || handle === "end" ? handle : "move",
@@ -280,39 +288,22 @@ export const useArrowsPointer = ({
        const bounds = arrowBounds(edit.arrow)
        const center = boxCenter(bounds.x, bounds.y, bounds.width, bounds.height)
        const rotation = edit.arrow.rotation ?? 0
-       const origin = {
-         x: edit.origin.x + scrollOffset.x,
-         y: edit.origin.y + scrollOffset.y,
-       }
-       const localOrigin = rotatePoint(origin, center, -rotation)
        const localPointer = rotatePoint(pagePoint(event), center, -rotation)
-       const localDx = rotation === 0 ? dx : localPointer.x - localOrigin.x
-       const localDy = rotation === 0 ? dy : localPointer.y - localOrigin.y
-       const nextPoint = (point: Point) => point
        setArrows((previous) => previous.map((arrow) => {
         if (arrow.id !== edit.arrowId) return arrow
         if (edit.action === "move") return translateArrow(edit.arrow, dx, dy)
          if (edit.action === "control") {
-           const control = nextPoint({
-             x: edit.arrow.control!.x + localDx,
-             y: edit.arrow.control!.y + localDy,
-           })
+           const control = localPointer
           return {
             ...arrow,
             control,
           }
         }
          const start = edit.action === "start"
-           ? nextPoint({
-             x: edit.arrow.start.x + localDx,
-             y: edit.arrow.start.y + localDy,
-           })
+           ? localPointer
           : edit.arrow.start
          const end = edit.action === "end"
-           ? nextPoint({
-             x: edit.arrow.end.x + localDx,
-             y: edit.arrow.end.y + localDy,
-           })
+           ? localPointer
           : edit.arrow.end
         return {
           ...arrow,

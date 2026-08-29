@@ -282,6 +282,33 @@ test("bends an arrow with its middle node", async ({ page }) => {
   );
 });
 
+test("moves an arrow node reliably after rotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await drawArrow(page);
+  await activateSelection(page);
+  await page.mouse.click(220, 210);
+
+  const rotate = page.locator('[data-mesurer-arrow-handle="rotate"]');
+  const rotateBox = await rotate.boundingBox();
+  expect(rotateBox).not.toBeNull();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2, rotateBox!.y + rotateBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rotateBox!.x + rotateBox!.width / 2 + 30, rotateBox!.y + rotateBox!.height / 2 + 40, { steps: 4 });
+  await page.mouse.up();
+
+  const before = await page.locator('[data-mesurer-arrow="true"]').getAttribute("d");
+  const end = page.locator('circle[data-mesurer-arrow-handle="end"][data-mesurer-arrow-hit="true"]');
+  const endBox = await end.boundingBox();
+  expect(endBox).not.toBeNull();
+  await page.mouse.move(endBox!.x + endBox!.width / 2, endBox!.y + endBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(endBox!.x + 40, endBox!.y + 20, { steps: 4 });
+  await page.mouse.up();
+
+  await expect.poll(() => page.locator('[data-mesurer-arrow="true"]').getAttribute("d")).not.toBe(before);
+});
+
 test("selects an existing arrow before deleting it", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
