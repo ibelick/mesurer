@@ -76,6 +76,13 @@ function Fixture() {
         Secondary app button
       </button>
       <output data-testid="underlying-click-count">{clicks}</output>
+      <svg
+        data-testid="svg-target"
+        viewBox="0 0 240 120"
+        style={{ position: "absolute", left: 40, top: 100, width: 240, height: 120 }}
+      >
+        <rect data-testid="svg-rect" x="20" y="20" width="200" height="80" fill="#a1a1aa" />
+      </svg>
     </>
   );
 }

@@ -43,6 +43,14 @@ test("falls back to Select for an invalid stored tool", async ({ page }) => {
   );
 });
 
+test("Select tool can inspect SVG elements", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Select (S)" })).toBeVisible();
+  await page.getByTestId("svg-rect").click({ force: true });
+
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 80");
+});
+
 const expectSettingsSectionPinned = async (page: Page, id: string) => {
   const panel = page.locator(".mesurer-settings-panel");
   const section = panel.locator(`[data-mesurer-settings-section="${id}"]`);

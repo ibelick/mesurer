@@ -3,7 +3,7 @@ import { isLayoutContainerDisplay } from "./layout-details"
 import type { InspectMeasurement, LayoutGap, Measurement, Rect } from "./types"
 import { createId } from "./utils"
 
-const getElementLabel = (element: HTMLElement) => {
+const getElementLabel = (element: Element) => {
   const tag = element.tagName.toLowerCase()
   const id = element.id ? `#${element.id}` : ""
   const className = element.className
@@ -48,7 +48,7 @@ export const getRectFromDomCached = (element: Element) => {
   return rect
 }
 
-let cachedElements: HTMLElement[] = []
+let cachedElements: Element[] = []
 let cachedFrame = -1
 let cachedDocument: Document | null = null
 
@@ -64,14 +64,13 @@ export const getBodyElementsCached = (ownerDocument: Document = document) => {
   }
   cachedFrame = frame
   cachedDocument = ownerDocument
-  const elements: HTMLElement[] = []
-  const HTMLElementConstructor =
-    ownerDocument.defaultView?.HTMLElement ?? HTMLElement
-  const visit = (root: Document | ShadowRoot | HTMLElement) => {
+  const elements: Element[] = []
+  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
+  const visit = (root: Document | ShadowRoot | Element) => {
     const walker = ownerDocument.createTreeWalker(root, 1)
     let node = walker.nextNode()
     while (node) {
-      if (node instanceof HTMLElementConstructor) {
+      if (node instanceof ElementConstructor) {
         elements.push(node)
         if (node.shadowRoot) visit(node.shadowRoot)
       }
@@ -84,7 +83,7 @@ export const getBodyElementsCached = (ownerDocument: Document = document) => {
 }
 
 export const getInspectMeasurement = (
-  element: HTMLElement,
+  element: Element,
   ownerWindow: Window = window,
 ): InspectMeasurement => {
   const rect = element.getBoundingClientRect()

@@ -18,7 +18,7 @@ type ResizeParams = {
   setHeldDistances: Dispatch<SetStateAction<DistanceOverlay[]>>
   setSelectedMeasurement: Dispatch<SetStateAction<InspectMeasurement | null>>
   setGuides: Dispatch<SetStateAction<Guide[]>>
-  selectedElementRef: RefObject<HTMLElement | null>
+  selectedElementRef: RefObject<Element | null>
 }
 
 export const useResizeSync = (params: ResizeParams) => {

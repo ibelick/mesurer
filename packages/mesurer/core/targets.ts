@@ -9,7 +9,7 @@ import { getDistanceToRect, intersectionArea, rectArea } from "./geometry"
 import type { Point, Rect } from "./types"
 
 type MultiCandidate = {
-  element: HTMLElement
+  element: Element
   rect: Rect
   overlapArea: number
   elementCoverage: number
@@ -17,7 +17,7 @@ type MultiCandidate = {
 
 export const pickMultiTargets = (
   selectionRect: Rect,
-  items: Array<{ element: HTMLElement; rect: Rect }>
+  items: Array<{ element: Element; rect: Rect }>
 ) => {
   const candidates: MultiCandidate[] = items
     .map(({ element, rect }) => {
@@ -63,7 +63,7 @@ export const pickMultiTargets = (
 export const pickSingleTarget = (
   selectionRect: Rect,
   point: Point,
-  items: Array<{ element: HTMLElement; rect: Rect }>
+  items: Array<{ element: Element; rect: Rect }>
 ) => {
   const selectionArea = Math.max(1, rectArea(selectionRect))
 
@@ -108,7 +108,7 @@ export const pickSingleTarget = (
 
 export const pickPointTarget = (
   point: Point,
-  items: Array<{ element: HTMLElement; rect: Rect }>
+  items: Array<{ element: Element; rect: Rect }>
 ) => {
   const scored = items
     .filter(({ rect }) => {

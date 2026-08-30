@@ -35,8 +35,8 @@ export const getOptionPairOverlay = (params: {
   primarySelectedMeasurement: InspectMeasurement | null
   selectedGuide: Guide | null
   hoverGuide: Guide | null
-  hoverElement: HTMLElement | null
-  selectedElementRef: HTMLElement | null
+  hoverElement: Element | null
+  selectedElementRef: Element | null
 }) => {
   const ownerDocument = params.document ?? document
   const ownerWindow = params.window ?? window
@@ -106,8 +106,8 @@ export const getOptionContainerLines = (params: {
   primarySelectedMeasurement: InspectMeasurement | null
   optionPairOverlay: ReturnType<typeof getDistanceOverlay> | null
   selectedGuideIds: string[]
-  selectedElement: HTMLElement | null
-  hoverElement: HTMLElement | null
+  selectedElement: Element | null
+  hoverElement: Element | null
 }) => {
   const ownerDocument = params.document ?? document
   const ownerWindow = params.window ?? window
@@ -119,7 +119,7 @@ export const getOptionContainerLines = (params: {
     return null
   if (params.selectedGuideIds.length > 0) return null
 
-  let containerElement: HTMLElement | null =
+  let containerElement: Element | null =
     params.selectedElement?.parentElement ?? null
   if (
     params.selectedElement &&

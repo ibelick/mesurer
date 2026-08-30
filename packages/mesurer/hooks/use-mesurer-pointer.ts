@@ -79,9 +79,9 @@ type UseMesurerPointerArgs = {
     value: SetStateAction<InspectMeasurement | null>
   ) => void
   setSelectionOriginRect: (value: SetStateAction<Rect | null>) => void
-  setSelectedElement: (value: HTMLElement | null) => void
+  setSelectedElement: (value: Element | null) => void
   setHoverRect: (value: SetStateAction<Rect | null>) => void
-  setHoverElement: (value: HTMLElement | null) => void
+  setHoverElement: (value: Element | null) => void
   setHoverPointer: (value: SetStateAction<Point | null>) => void
   clearSelectionRect: () => void
   selectionMode: boolean
@@ -154,12 +154,12 @@ export const useMesurerPointer = ({
   const hoverPointRef = useRef<Point | null>(null)
   const selectionCacheRef = useRef({
     key: "",
-    entries: [] as Array<{ element: HTMLElement; rect: Rect }>,
+    entries: [] as Array<{ element: Element; rect: Rect }>,
     overlayNode: null as HTMLDivElement | null,
     frame: -1,
   })
   const shiftDragRef = useRef(false)
-  const shiftToggleElementRef = useRef<HTMLElement | null>(null)
+  const shiftToggleElementRef = useRef<Element | null>(null)
   const clickCycleRef = useRef<ClickCycleState | null>(null)
 
   const clearDomSelection = useCallback(() => {
@@ -617,7 +617,7 @@ export const useMesurerPointer = ({
         return
       }
 
-      let target: HTMLElement | null = null
+      let target: Element | null = null
       if (event.shiftKey) {
         target =
           getTargetElement(point, overlayRef.current, document) ??

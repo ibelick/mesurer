@@ -99,8 +99,8 @@ type UseMesurerHistoryArgs = {
         height: number
       } | null>
     ) => void
-    setHoverElement: (value: HTMLElement | null) => void
-    setSelectedElement: (value: HTMLElement | null) => void
+    setHoverElement: (value: Element | null) => void
+    setSelectedElement: (value: Element | null) => void
     clearSelectionRect: () => void
   }
 }

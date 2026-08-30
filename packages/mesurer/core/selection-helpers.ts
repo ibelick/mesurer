@@ -22,8 +22,7 @@ export const getSelectedMeasurementHit = (params: {
   document?: Document
 }) => {
   const ownerDocument = params.document ?? document
-  const HTMLElementConstructor =
-    ownerDocument.defaultView?.HTMLElement ?? HTMLElement
+  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
   const overlayHost = getOverlayHost(params.overlayNode)
   const candidates = params.selectedMeasurements
     .map((measurement) => {
@@ -44,7 +43,7 @@ export const getSelectedMeasurementHit = (params: {
 
   const stack = ownerDocument.elementsFromPoint(params.point.x, params.point.y)
   for (const element of stack) {
-    if (!(element instanceof HTMLElementConstructor)) continue
+    if (!(element instanceof ElementConstructor)) continue
     if (params.overlayNode && params.overlayNode.contains(element)) continue
     if (overlayHost && element === overlayHost) continue
     for (const candidate of candidates) {

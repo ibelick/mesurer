@@ -3,8 +3,8 @@ import type { MutableRefObject } from "react"
 import type { Point, Rect } from "../core/types"
 
 type UseMesurerLocalStateArgs = {
-  selectedElementRef: MutableRefObject<HTMLElement | null>
-  hoverElementRef: MutableRefObject<HTMLElement | null>
+  selectedElementRef: MutableRefObject<Element | null>
+  hoverElementRef: MutableRefObject<Element | null>
   selectionRectRef: MutableRefObject<Rect | null>
 }
 
@@ -17,14 +17,14 @@ export const useMesurerLocalState = ({
     null
   )
   const [hoverPointer, setHoverPointer] = useState<Point | null>(null)
-  const [hoverElement, setHoverElementState] = useState<HTMLElement | null>(
+  const [hoverElement, setHoverElementState] = useState<Element | null>(
     null
   )
   const [selectedElement, setSelectedElementState] =
-    useState<HTMLElement | null>(null)
+    useState<Element | null>(null)
 
   const setSelectedElement = useCallback(
-    (element: HTMLElement | null) => {
+    (element: Element | null) => {
       selectedElementRef.current = element
       setSelectedElementState(element)
     },
@@ -32,7 +32,7 @@ export const useMesurerLocalState = ({
   )
 
   const setHoverElement = useCallback(
-    (element: HTMLElement | null) => {
+    (element: Element | null) => {
       hoverElementRef.current = element
       setHoverElementState(element)
     },

@@ -15,8 +15,8 @@ type LiveParams = {
   window: Window
   enabled: boolean
   selectionEnabled: boolean
-  selectedElementRef: RefObject<HTMLElement | null>
-  hoverElementRef: RefObject<HTMLElement | null>
+  selectedElementRef: RefObject<Element | null>
+  hoverElementRef: RefObject<Element | null>
   setSelectedMeasurement: Dispatch<SetStateAction<InspectMeasurement | null>>
   setSelectedMeasurements: Dispatch<SetStateAction<InspectMeasurement[]>>
   setHoverRect: Dispatch<SetStateAction<Rect | null>>

@@ -28,8 +28,8 @@ type UseMesurerDerivedArgs = {
   selectedGuideIds: string[]
   hoverPointer: Point | null
   hoverRect: Rect | null
-  hoverElement: HTMLElement | null
-  selectedElement: HTMLElement | null
+  hoverElement: Element | null
+  selectedElement: Element | null
   altPressed: boolean
   guidesEnabled: boolean
   guidePreview: {

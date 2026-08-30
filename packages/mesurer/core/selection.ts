@@ -11,7 +11,7 @@ import type { Point, Rect } from "./types"
 export type ClickCycleState = {
   point: Point
   index: number
-  stack: HTMLElement[]
+  stack: Element[]
 }
 
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
@@ -21,7 +21,7 @@ const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
 }
 
 const isOverlayElement = (
-  element: HTMLElement,
+  element: Element,
   overlayNode: HTMLDivElement | null,
   overlayHost: Element | null
 ) => {
@@ -35,9 +35,8 @@ const getDeepestElementAt = (
   point: Point,
 ): Element => {
   let current = element
-  const HTMLElementConstructor =
-    element.ownerDocument.defaultView?.HTMLElement ?? HTMLElement
-  while (current instanceof HTMLElementConstructor && current.shadowRoot) {
+  const ElementConstructor = element.ownerDocument.defaultView?.Element ?? Element
+  while (current instanceof ElementConstructor && current.shadowRoot) {
     const nested = current.shadowRoot.elementFromPoint(point.x, point.y)
     if (!nested || nested === current) break
     current = nested
@@ -50,10 +49,9 @@ const isSelectableElement = (
   overlayNode: HTMLDivElement | null,
   overlayHost: Element | null,
   ownerDocument: Document,
-): element is HTMLElement => {
-  const HTMLElementConstructor =
-    ownerDocument.defaultView?.HTMLElement ?? HTMLElement
-  if (!(element instanceof HTMLElementConstructor)) return false
+): boolean => {
+  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
+  if (!(element instanceof ElementConstructor)) return false
   if (isOverlayElement(element, overlayNode, overlayHost)) return false
   if (element === ownerDocument.body || element === ownerDocument.documentElement) {
     return false
@@ -84,8 +82,8 @@ export const getElementsAtPoint = (
   ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
-  const elements: HTMLElement[] = []
-  const seen = new Set<HTMLElement>()
+  const elements: Element[] = []
+  const seen = new Set<Element>()
 
   for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
     const element = getDeepestElementAt(rawElement, point)
@@ -115,7 +113,7 @@ export const getShiftClickTarget = (
   const elements = ownerDocument.elementsFromPoint(point.x, point.y)
   for (let i = elements.length - 1; i >= 0; i -= 1) {
     const element = getDeepestElementAt(elements[i], point)
-    if (!(element instanceof (ownerDocument.defaultView?.HTMLElement ?? HTMLElement))) continue
+    if (!(element instanceof (ownerDocument.defaultView?.Element ?? Element))) continue
     if (isOverlayElement(element, overlayNode, overlayHost)) continue
     if (element === ownerDocument.body || element === ownerDocument.documentElement)
       continue
@@ -154,7 +152,7 @@ const isSameClickSpot = (a: Point, b: Point) =>
 const buildClickCycleStack = (
   point: Point,
   overlayNode: HTMLDivElement | null,
-  initial: HTMLElement,
+  initial: Element,
   ownerDocument: Document,
 ) => {
   const stack = getElementsAtPoint(point, overlayNode, ownerDocument)
@@ -168,7 +166,7 @@ export const getCycledClickTarget = (
   snapEnabled: boolean,
   ownerDocument: Document = document,
   cycle: ClickCycleState | null = null,
-): { target: HTMLElement | null; cycle: ClickCycleState | null } => {
+): { target: Element | null; cycle: ClickCycleState | null } => {
   if (
     cycle &&
     isSameClickSpot(point, cycle.point) &&
@@ -215,7 +213,7 @@ export const getElementsInRect = (
   rect: Rect,
   overlayNode: HTMLDivElement | null,
   ownerDocument: Document = document,
-): HTMLElement[] => {
+): Element[] => {
   const entries = getSelectionEntries(rect, overlayNode, ownerDocument)
   if (entries.length === 0) return []
   return pickMultiTargets(rect, entries)
@@ -273,13 +271,13 @@ export const getSelectionEntries = (
 
 let cachedSelectionFrame = -1
 let cachedSelectionKey = ""
-let cachedSelectionEntries: Array<{ element: HTMLElement; rect: Rect }> = []
+let cachedSelectionEntries: Array<{ element: Element; rect: Rect }> = []
 let cachedOverlayNode: HTMLDivElement | null = null
 let cachedSelectionDocument: Document | null = null
 
 export type SelectionEntriesCache = {
   key: string
-  entries: Array<{ element: HTMLElement; rect: Rect }>
+  entries: Array<{ element: Element; rect: Rect }>
   overlayNode: HTMLDivElement | null
   frame: number
 }

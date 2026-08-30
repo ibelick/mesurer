@@ -10,8 +10,8 @@ import { createId } from "./utils"
 export const getDistanceOverlay = (
   rectA: Rect,
   rectB: Rect,
-  elementRefA?: HTMLElement | null,
-  elementRefB?: HTMLElement | null,
+  elementRefA?: Element | null,
+  elementRefB?: Element | null,
   ownerWindow: Window = window,
 ): DistanceOverlay => {
   const viewport = getViewportSize(ownerWindow)
