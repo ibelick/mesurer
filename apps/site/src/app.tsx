@@ -109,7 +109,7 @@ function HomeContent() {
     },
     {
       icon: <CursorIcon size={16} weight="light" />,
-      title: "Select mode",
+      title: "Inspect mode",
       description: "Click elements to measure their bounds",
     },
     {
@@ -139,7 +139,7 @@ function HomeContent() {
     },
     {
       icon: <EyedropperIcon size={16} weight="light" />,
-      title: "Color picker",
+      title: "Sample color",
       description: "Sample colors and copy values in your chosen format",
     },
     {
@@ -287,7 +287,7 @@ export default function RootLayout({ children }) {
               <code className="code">hoverHighlightEnabled</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Enables hover highlighting in Select mode
+              Enables hover highlighting in Inspect mode
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
@@ -365,16 +365,16 @@ export default function RootLayout({ children }) {
               <code className="code">S</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Toggle Select mode
+              Toggle Inspect mode
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">A</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Text Inspector mode</div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Typography mode</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">P</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Open the native Color picker</div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Open the native color sampler</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">C</code></div>

@@ -154,6 +154,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       if (current.isOverlayActive()) {
         if (key === "a") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) =>
             prev === "text-inspector" ? "none" : "text-inspector",
@@ -161,43 +162,50 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
         }
 
-        if (key === "s") {
+        if (key === "i") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "select" ? "none" : "select"))
           current.onInteract()
         }
 
-        if (key === "o") {
+        if (key === "s") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "selection" ? "none" : "selection"))
           current.onInteract()
         }
 
         if (key === "g") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "guides" ? "none" : "guides"))
           current.onInteract()
         }
 
         if (key === "d") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
           current.onInteract()
         }
 
         if (key === "n") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
           current.onInteract()
         }
 
         if (key === "t") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "text" ? "none" : "text"))
           current.onInteract()
         }
 
         if (key === "r") {
+          current.clearTransientState()
           current.onCloseScreenshot()
           current.setRulersVisible((prev) => !prev)
           current.onInteract()

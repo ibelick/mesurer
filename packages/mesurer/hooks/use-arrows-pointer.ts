@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type Dispatch, type PointerEvent as Reac
 import { getSnapArrowPoint } from "../core/arrows-snap"
 import { midpoint, relativeControl, controlFromRelative, translateArrow } from "../core/arrows"
 import { transformedArrowPoints } from "../core/arrow-transform"
-import type { Arrow, Guide, Point } from "../core/types"
+import type { Arrow, Guide, Point, ToolMode } from "../core/types"
 import { createId } from "../core/utils"
 
 const MIN_ARROW_LENGTH = 4
@@ -19,6 +19,7 @@ type UseArrowsPointerOptions = {
   ownerDocument: Document
   guides: Guide[]
   createActionCommit: () => () => void
+  setToolMode: Dispatch<SetStateAction<ToolMode>>
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
   clearOtherSelections?: () => void
@@ -45,6 +46,7 @@ export const useArrowsPointer = ({
   ownerDocument,
   guides,
   createActionCommit,
+  setToolMode,
   setArrows,
   setSelectedArrowIds,
   clearOtherSelections,
@@ -122,8 +124,9 @@ export const useArrowsPointer = ({
         },
       ])
        setSelectedArrowIds([])
-    },
-     [color, createActionCommit, setArrows, setSelectedArrowIds, width],
+       setToolMode("selection")
+     },
+      [color, createActionCommit, setArrows, setSelectedArrowIds, setToolMode, width],
   )
 
   const handlePointerDown = useCallback(

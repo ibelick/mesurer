@@ -7,7 +7,7 @@ const activatePen = async (page: Page) => {
 };
 
 const activateSelection = async (page: Page) => {
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
 };
 
 const drawStroke = async (page: Page) => {
@@ -361,7 +361,7 @@ test("cancels an active stroke on Escape and mode changes", async ({ page }) => 
   await page.mouse.move(120, 160);
   await page.mouse.down();
   await page.mouse.move(180, 190, { steps: 3 });
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
   await page.mouse.up();
   await expect(strokes(page)).toHaveCount(0);
 });

@@ -1415,6 +1415,7 @@ function MesurerClient({
     ownerDocument,
     guides,
     createActionCommit,
+    setToolMode: setToolModeWithHistory,
     setArrows: setArrowsPersisted,
     onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
@@ -1828,6 +1829,7 @@ function MesurerClient({
       toolbar={{
         eventTarget: ownerWindow,
         onInteract: () => setToolbarActive(true),
+        onCancelTransient: clearTransientState,
         tools: {
           mode: toolMode,
           setMode: setToolModeWithHistory,

@@ -1,13 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const activateSelect = async (page: Page) => {
-  const button = page.getByRole("button", { name: "Select (S)" });
+  const button = page.getByRole("button", { name: "Inspect (I)" });
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 
 test("starts with the Select tool active", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -37,7 +37,7 @@ test("falls back to Select for an invalid stored tool", async ({ page }) => {
   });
   await page.reload();
 
-  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -45,7 +45,7 @@ test("falls back to Select for an invalid stored tool", async ({ page }) => {
 
 test("Select tool can inspect SVG elements", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await expect(page.getByRole("button", { name: "Select (S)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
   await page.getByTestId("svg-rect").click({ force: true });
 
   await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 80");
@@ -101,7 +101,7 @@ test("placed guides remain visible while host-app clicks pass through", async ({
 
 test("Selection mode draws a selection rectangle while dragging", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
 
   await page.mouse.move(180, 180);
   await page.mouse.down();
@@ -124,7 +124,7 @@ test("font inspector mode participates in undo and redo history", async ({
   await page.goto("/e2e/fixtures/guide-overlay.html");
 
   const textInspectorButton = page.getByRole("button", {
-    name: "Text inspector (A)",
+    name: "Typography (A)",
   });
 
   await textInspectorButton.click();
@@ -156,7 +156,7 @@ test("font inspector refreshes styles and brings repeated pins to front", async 
   page,
 }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.getByRole("button", { name: "Typography (A)" }).click();
 
   await page.mouse.click(300, 280);
   await page.mouse.click(300, 560);
@@ -180,7 +180,7 @@ test("font inspector refreshes styles and brings repeated pins to front", async 
 
 test("text inspector does not inspect settings", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.getByRole("button", { name: "Typography (A)" }).click();
   await page.getByRole("button", { name: "Settings" }).click();
 
   const heading = page.getByRole("heading", { name: "Guides" });
@@ -196,7 +196,7 @@ test("removing a source element silently removes its pinned card", async ({
   page,
 }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text inspector (A)" }).click();
+  await page.getByRole("button", { name: "Typography (A)" }).click();
   await page.mouse.click(300, 280);
 
   const pinnedCards = page.locator(".mesurer-ti-card--pinned");
@@ -220,7 +220,7 @@ test("x-ray mode outlines the page without hiding the toolbar", async ({
   await expect(page.locator("body")).toHaveClass(/xray-mode/);
   await expect(xrayButton).toHaveCSS("background-color", "rgb(13, 153, 255)");
   await expect(xrayButton).toBeVisible();
-  await expect(page.getByRole("button", { name: "Select (S)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
   await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
@@ -243,7 +243,7 @@ test("native color picker shows color formats", async ({ page }) => {
   });
   await page.goto("/e2e/fixtures/guide-overlay.html");
 
-  await page.getByRole("button", { name: "Color picker (P)" }).click();
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
 
   const picker = page.locator(".mesurer-color-picker");
   await expect(picker).toBeVisible();
@@ -271,7 +271,7 @@ test("falls back to default color formats when persisted formats are invalid", a
     }));
   });
   await page.reload();
-  await page.getByRole("button", { name: "Color picker (P)" }).click();
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
 
   const picker = page.locator(".mesurer-color-picker");
   await expect(picker).toContainText("#ff0000");
@@ -310,7 +310,7 @@ test("P opens the native color picker", async ({ page }) => {
     (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
   });
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await expect(page.getByRole("button", { name: "Color picker (P)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sample color (P)" })).toBeVisible();
   await page.keyboard.press("p");
 
   await expect(page.locator(".mesurer-color-picker")).toContainText("#00ff00");
@@ -451,7 +451,7 @@ test("settings button opens and dismisses its popover", async ({ page }) => {
 
 test("settings opens with all sections visible", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  const settings = page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" });
+  const settings = page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ });
 
   await settings.click();
   await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
@@ -462,7 +462,7 @@ test("settings opens with all sections visible", async ({ page }) => {
   await expectSettingsSectionPinned(page, "guides");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Select (S)" }).click();
+  await page.getByRole("button", { name: "Inspect (I)" }).click();
   await settings.click();
   await expectSettingsSectionPinned(page, "selection");
 });
@@ -489,12 +489,12 @@ test("opening settings with a tool active pins that tool section", async ({ page
   await expectSettingsSectionPinned(page, "text");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
   await settings.click();
   await expectSettingsSectionPinned(page, "selection");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Color picker (P)" }).click();
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
   await settings.click();
   await expectSettingsSectionPinned(page, "color");
   await page.keyboard.press("Escape");
@@ -688,7 +688,7 @@ test("Escape closes settings without clearing the workspace", async ({ page }) =
 
 test("Cmd/Ctrl comma opens settings", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await expect(page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ })).toBeVisible();
   await page.keyboard.press("Control+,");
 
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
@@ -711,7 +711,7 @@ test("settings preferences survive a reload", async ({ page }) => {
 
 test("persist on reload keeps the workspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
   await page.getByRole("switch", { name: "Persist" }).click();
   await page.keyboard.press("Escape");
 
@@ -725,7 +725,7 @@ test("persist on reload keeps the workspace", async ({ page }) => {
 
 test("near-edge rulers reveal when the pointer approaches the edge", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Settings (⌘/Ctrl+,)" }).click();
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
   await page.getByRole("switch", { name: "Edge reveal" }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Rulers (R)" }).click();

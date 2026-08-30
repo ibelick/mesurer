@@ -23,7 +23,7 @@ test("writes text anywhere on the page", async ({ page }) => {
 test("activates text with T and Escape cancels the draft", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Text (T)" }).click();
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
   await page.keyboard.press("t");
   await expect(page.getByRole("button", { name: "Text (T)" })).toHaveAttribute("aria-pressed", "true");
   await page.mouse.click(220, 180);
@@ -31,7 +31,7 @@ test("activates text with T and Escape cancels the draft", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await expect(textItems(page)).toHaveText("Keep me");
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -91,7 +91,7 @@ test("shows a selection box when clicking text in Selection mode", async ({ page
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Select me");
   await page.keyboard.press("Control+Enter");
 
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  await page.getByRole("button", { name: "Select (S)" }).click();
   await textItems(page).click();
 
   await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(1);

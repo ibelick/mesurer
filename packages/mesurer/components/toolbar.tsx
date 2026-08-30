@@ -73,6 +73,7 @@ type ToolbarSettings = {
 type ToolbarProps = {
   eventTarget: Window;
   onInteract: () => void;
+  onCancelTransient: () => void;
   tools: ToolbarTools;
   colorPicker: ToolbarColorPicker;
   screenshot: ToolbarScreenshot;
@@ -80,6 +81,10 @@ type ToolbarProps = {
 };
 const GUIDE_MENU_WIDTH = 176;
 const VIEWPORT_PADDING = 8;
+const getSettingsShortcut = (eventTarget: Window) =>
+  /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform)
+    ? "⌘ ,"
+    : "Ctrl + ,";
 
 type ToolbarButtonProps = {
   id: string;
@@ -149,6 +154,7 @@ function ToolbarComponent(
   {
     eventTarget,
     onInteract,
+    onCancelTransient,
     tools,
     colorPicker,
     screenshot,
@@ -207,6 +213,7 @@ function ToolbarComponent(
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
+  const settingsShortcut = getSettingsShortcut(eventTarget);
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();
@@ -244,46 +251,52 @@ function ToolbarComponent(
     });
 
   const selectMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "select" ? "none" : "select"));
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const selectionMode = useCallback(() => {
+    onCancelTransient()
     setEnabled(true)
     setColorPickerActive(false)
     onCancelScreenshot()
     setToolMode((prev) => (prev === "selection" ? "none" : "selection"))
     onInteract()
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode])
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
 
   const guidesMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "guides" ? "none" : "guides"));
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const arrowsMode = useCallback(() => {
+    onCancelTransient()
     setEnabled(true)
     setColorPickerActive(false)
     onCancelScreenshot()
     setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
     onInteract()
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode])
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
 
   const penMode = useCallback(() => {
+    onCancelTransient()
     setEnabled(true)
     setColorPickerActive(false)
     onCancelScreenshot()
     setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
     onInteract()
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode])
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
 
   const textInspectorMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
@@ -291,25 +304,28 @@ function ToolbarComponent(
       prev === "text-inspector" ? "none" : "text-inspector",
     );
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const textMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "text" ? "none" : "text"));
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const xrayMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setXrayVisible((prev) => !prev);
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setXrayVisible]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setXrayVisible]);
 
   const colorPickerMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setToolMode("none");
     onCancelScreenshot();
@@ -320,25 +336,28 @@ function ToolbarComponent(
       onColorPickerClick();
     }
     onInteract();
-  }, [colorPickerActive, onCancelScreenshot, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [colorPickerActive, onCancelScreenshot, onCancelTransient, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const screenshotMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onScreenshotClick();
     onInteract();
-  }, [onInteract, onScreenshotClick, setColorPickerActive, setEnabled]);
+  }, [onCancelTransient, onInteract, onScreenshotClick, setColorPickerActive, setEnabled]);
 
   const rulersMode = useCallback(() => {
+    onCancelTransient();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setRulersVisible((prev) => !prev);
     onInteract();
-  }, [onCancelScreenshot, onInteract, setColorPickerActive, setEnabled, setRulersVisible]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setRulersVisible]);
 
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
+      onCancelTransient();
       setEnabled(true);
       onCancelScreenshot();
       setToolMode("guides");
@@ -346,7 +365,7 @@ function ToolbarComponent(
       onInteract();
       setGuideMenuOpen(false);
     },
-    [onCancelScreenshot, onInteract, setEnabled, setGuideOrientation, setToolMode],
+    [onCancelScreenshot, onCancelTransient, onInteract, setEnabled, setGuideOrientation, setToolMode],
   );
 
   useLayoutEffect(() => {
@@ -417,8 +436,8 @@ function ToolbarComponent(
       <ToolbarButton
         id="select"
         active={toolMode === "select"}
-        label="Select"
-        shortcut="S"
+        label="Inspect"
+        shortcut="I"
         onClick={selectMode}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
         tooltipInstant={tooltipInstant}
@@ -610,7 +629,7 @@ function ToolbarComponent(
       <ToolbarButton
         id="text-inspector"
         active={toolMode === "text-inspector"}
-        label="Text inspector"
+        label="Typography"
         shortcut="A"
         onClick={textInspectorMode}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
@@ -624,7 +643,7 @@ function ToolbarComponent(
       <ToolbarButton
         id="color-picker"
         active={colorPickerActive}
-        label="Color picker"
+        label="Sample color"
         shortcut="P"
         onClick={colorPickerMode}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
@@ -641,8 +660,8 @@ function ToolbarComponent(
       <ToolbarButton
         id="selection"
         active={toolMode === "selection"}
-        label="Selection"
-        shortcut="O"
+        label="Select"
+        shortcut="S"
         onClick={selectionMode}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
         tooltipInstant={tooltipInstant}
@@ -736,7 +755,7 @@ function ToolbarComponent(
           id="settings"
           active={settingsOpen}
           label="Settings"
-          shortcut="⌘/Ctrl+,"
+          shortcut={settingsShortcut}
           onClick={() => {
             onCancelScreenshot();
             onInteract();

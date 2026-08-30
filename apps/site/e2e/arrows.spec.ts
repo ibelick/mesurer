@@ -5,7 +5,8 @@ const activateArrows = async (page: Page) => {
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 const activateSelection = async (page: Page) => {
-  await page.getByRole("button", { name: "Selection (O)" }).click();
+  const button = page.getByRole("button", { name: "Select (S)" });
+  if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 
 const drawArrow = async (
@@ -125,6 +126,50 @@ test("does not create an arrow from only the first click", async ({ page }) => {
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
 });
 
+test("cancels an incomplete arrow when switching tools", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByRole("switch", { name: "Click to place" }).click();
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await page.mouse.click(120, 160);
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Select (S)" }).click();
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
+
+  await activateArrows(page);
+  await page.mouse.click(120, 160);
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
+});
+
+test("cancels an incomplete arrow when switching tools by shortcut", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const arrows = page.getByRole("dialog", { name: "Settings" }).locator("section[aria-label='Arrow settings']");
+  await arrows.getByRole("switch", { name: "Click to place" }).click();
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await page.mouse.click(120, 160);
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(1);
+
+  await page.keyboard.press("s");
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
+
+  await activateArrows(page);
+  await page.mouse.click(120, 160);
+  await page.keyboard.press("t");
+  await expect(page.locator("[data-mesurer-arrow-preview]")).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
+});
+
 test("draws a straight arrow with two clicks when click to place is enabled", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
@@ -182,11 +227,11 @@ test("supports undo, redo, and deleting the selected arrow", async ({ page }) =>
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(0);
 });
 
-test("stays on the arrow tool until selection is requested", async ({ page }) => {
+test("switches to Select after drawing an arrow", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await drawArrow(page);
-  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -471,7 +516,7 @@ test("escape cancels the current interaction without clearing arrows", async ({ 
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-mesurer-arrow="true"]')).toHaveCount(1);
   await expect(page.locator("[data-mesurer-arrow-node]")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -481,7 +526,7 @@ test("escape exits the active tool and double escape exits completely", async ({
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -492,7 +537,7 @@ test("escape exits the active tool and double escape exits completely", async ({
 
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Selection (O)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
