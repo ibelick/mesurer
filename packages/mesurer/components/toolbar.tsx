@@ -133,6 +133,18 @@ function ToolbarButton({
   );
 }
 
+function ToolbarGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} className="msr:flex msr:items-center msr:gap-1">
+      {children}
+    </div>
+  );
+}
+
+function ToolbarDivider() {
+  return <div aria-hidden="true" className="msr:mx-1 msr:h-5 msr:w-px msr:bg-black/12" />;
+}
+
 function ToolbarComponent(
   {
     eventTarget,
@@ -401,6 +413,7 @@ function ToolbarComponent(
       onClickCapture={onClickCapture}
       onMouseLeave={onToolbarLeave}
     >
+      <ToolbarGroup label="Select and inspect">
       <ToolbarButton
         id="select"
         active={toolMode === "select"}
@@ -414,20 +427,6 @@ function ToolbarComponent(
         onTooltipLeave={onTooltipLeave}
       >
         <BoxSelectIcon size={20} />
-      </ToolbarButton>
-      <ToolbarButton
-        id="selection"
-        active={toolMode === "selection"}
-        label="Selection"
-        shortcut="O"
-        onClick={selectionMode}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
-      >
-        <CursorIcon size={20} />
       </ToolbarButton>
       <ToolbarButton
         id="xray"
@@ -609,6 +608,51 @@ function ToolbarComponent(
         ) : null}
       </div>
       <ToolbarButton
+        id="text-inspector"
+        active={toolMode === "text-inspector"}
+        label="Text inspector"
+        shortcut="A"
+        onClick={textInspectorMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <TextInspectorIcon size={20} aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        id="color-picker"
+        active={colorPickerActive}
+        label="Color picker"
+        shortcut="P"
+        onClick={colorPickerMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <ColorPickerIcon size={20} aria-hidden="true" />
+      </ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarDivider />
+      <ToolbarGroup label="Annotate">
+      <ToolbarButton
+        id="selection"
+        active={toolMode === "selection"}
+        label="Selection"
+        shortcut="O"
+        onClick={selectionMode}
+        tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
+        tooltipInstant={tooltipInstant}
+        tooltipSide={tooltipSide}
+        onTooltipEnter={onTooltipEnter}
+        onTooltipLeave={onTooltipLeave}
+      >
+        <CursorIcon size={20} />
+      </ToolbarButton>
+      <ToolbarButton
         id="arrows"
         active={toolMode === "arrows"}
         label="Arrows"
@@ -650,34 +694,9 @@ function ToolbarComponent(
       >
         <TextIcon size={20} aria-hidden="true" />
       </ToolbarButton>
-      <ToolbarButton
-        id="text-inspector"
-        active={toolMode === "text-inspector"}
-        label="Text inspector"
-        shortcut="A"
-        onClick={textInspectorMode}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
-      >
-        <TextInspectorIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
-      <ToolbarButton
-        id="color-picker"
-        active={colorPickerActive}
-        label="Color picker"
-        shortcut="P"
-        onClick={colorPickerMode}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
-      >
-        <ColorPickerIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarDivider />
+      <ToolbarGroup label="Capture and settings">
       <div className="msr:relative">
       <ToolbarButton
         id="screenshot"
@@ -757,6 +776,7 @@ function ToolbarComponent(
           </div>
         ) : null}
       </div>
+      </ToolbarGroup>
     </div>
       {screenshotError ? (
         <div

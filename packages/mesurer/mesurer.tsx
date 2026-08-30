@@ -174,11 +174,11 @@ function MesurerClient({
       : null;
   const persistedSettings = sanitizeStoredSettings(ownerWindow, storedState?.settings ?? {});
 
-  const closeScreenshotRef = useRef<() => void>(() => {});
-  const closeColorPickerRef = useRef<() => void>(() => {});
-  const cancelArrowInteractionRef = useRef<() => void>(() => {});
+  const closeScreenshotRef = useRef<() => void>(() => { });
+  const closeColorPickerRef = useRef<() => void>(() => { });
+  const cancelArrowInteractionRef = useRef<() => void>(() => { });
   const hasArrowInteractionRef = useRef<() => boolean>(() => false);
-  const cancelPenInteractionRef = useRef<() => void>(() => {});
+  const cancelPenInteractionRef = useRef<() => void>(() => { });
   const hasPenInteractionRef = useRef<() => boolean>(() => false);
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
@@ -488,8 +488,8 @@ function MesurerClient({
     setArrows([]);
     setSelectedArrowIds([]);
     setTextAnnotations([]);
-      setPenStrokes([]);
-      setSelectedPenStrokeIds([]);
+    setPenStrokes([]);
+    setSelectedPenStrokeIds([]);
   }, [setActiveMeasurement, setArrows, setEnabled, setGuideOrientation, setGuides, setHeldDistances, setMeasurements, setRulersVisible, setSelectedArrowIds, setSelectedGuideIds, setSelectedMeasurement, setSelectedMeasurements, setSelectedPenStrokeIds, setTextAnnotations, setToolMode]);
 
   const clearWorkspace = useCallback(() => {
@@ -1631,55 +1631,55 @@ function MesurerClient({
   const overlayInteractive = enabled && !settingsOpen;
   const pointerHandlers = toolMode === "arrows"
     ? {
-        onPointerDown: arrowsPointer.handlePointerDown,
-        onPointerMove: arrowsPointer.handlePointerMove,
-        onPointerUp: arrowsPointer.handlePointerUp,
-        onPointerLeave: arrowsPointer.handlePointerLeave,
-        onPointerCancel: arrowsPointer.handlePointerCancel,
+      onPointerDown: arrowsPointer.handlePointerDown,
+      onPointerMove: arrowsPointer.handlePointerMove,
+      onPointerUp: arrowsPointer.handlePointerUp,
+      onPointerLeave: arrowsPointer.handlePointerLeave,
+      onPointerCancel: arrowsPointer.handlePointerCancel,
+    }
+    : toolMode === "pen"
+      ? {
+        onPointerDown: penPointer.handlePointerDown,
+        onPointerMove: penPointer.handlePointerMove,
+        onPointerUp: penPointer.handlePointerUp,
+        onPointerLeave: penPointer.handlePointerLeave,
+        onPointerCancel: penPointer.handlePointerCancel,
       }
-      : toolMode === "pen"
-        ? {
-            onPointerDown: penPointer.handlePointerDown,
-            onPointerMove: penPointer.handlePointerMove,
-            onPointerUp: penPointer.handlePointerUp,
-            onPointerLeave: penPointer.handlePointerLeave,
-            onPointerCancel: penPointer.handlePointerCancel,
-          }
       : toolMode === "text"
         ? {
-            onPointerDown: handleTextPointerDown,
-            onPointerMove: handlePointerMove,
-            onPointerUp: handlePointerUp,
-            onPointerLeave: handlePointerLeave,
-            onPointerCancel: handlePointerUp,
-          }
+          onPointerDown: handleTextPointerDown,
+          onPointerMove: handlePointerMove,
+          onPointerUp: handlePointerUp,
+          onPointerLeave: handlePointerLeave,
+          onPointerCancel: handlePointerUp,
+        }
         : {
-        onPointerDown: toolMode === "selection"
-          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+          onPointerDown: toolMode === "selection"
+            ? (event: ReactPointerEvent<HTMLDivElement>) => {
               if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerDown(event)) handlePointerDown(event)
             }
-          : handlePointerDown,
-        onPointerMove: toolMode === "selection"
-          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+            : handlePointerDown,
+          onPointerMove: toolMode === "selection"
+            ? (event: ReactPointerEvent<HTMLDivElement>) => {
               if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerMove(event)) handlePointerMove(event)
             }
-          : handlePointerMove,
-        onPointerUp: toolMode === "selection"
-          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+            : handlePointerMove,
+          onPointerUp: toolMode === "selection"
+            ? (event: ReactPointerEvent<HTMLDivElement>) => {
               if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
             }
-          : handlePointerUp,
-        onPointerLeave: handlePointerLeave,
-        onPointerCancel: toolMode === "selection"
-          ? (event: ReactPointerEvent<HTMLDivElement>) => {
+            : handlePointerUp,
+          onPointerLeave: handlePointerLeave,
+          onPointerCancel: toolMode === "selection"
+            ? (event: ReactPointerEvent<HTMLDivElement>) => {
               if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return
               if (!arrowsPointer.handleSelectionPointerUp(event)) handlePointerUp(event)
             }
-          : handlePointerUp,
-      };
+            : handlePointerUp,
+        };
 
   return (
     <MesurerPortal
@@ -1714,10 +1714,10 @@ function MesurerClient({
         groupFrameRotation: selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length > 1
           ? groupRotateFrame?.rotation ?? 0
           : 0,
-         selectionCount: selectedGuideIds.length + selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length,
-         onResizeSelection: resizeSelectedAnnotations,
-         onMoveSelection: moveSelectedAnnotations,
-         onMoveSelectionStart: recordSnapshot,
+        selectionCount: selectedGuideIds.length + selectedArrowIds.length + selectedTextIds.length + selectedPenStrokeIds.length,
+        onResizeSelection: resizeSelectedAnnotations,
+        onMoveSelection: moveSelectedAnnotations,
+        onMoveSelectionStart: recordSnapshot,
         onStartGroupResize: startGroupResize,
         onEndGroupResize: endGroupResize,
         onStartGroupRotate: startGroupRotate,
