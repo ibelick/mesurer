@@ -487,14 +487,7 @@ function ToolbarComponent(
         onTooltipEnter={onTooltipEnter}
         onTooltipLeave={onTooltipLeave}
       >
-        <RulerIcon
-          size={20}
-          className={cn(
-            guideOrientation === "vertical"
-              ? "msr:rotate-[135deg]"
-              : "msr:rotate-[45deg]",
-          )}
-        />
+        <RulerIcon size={20} />
       </ToolbarButton>
       <div
         className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
