@@ -89,6 +89,31 @@ const getSettingsShortcut = (eventTarget: Window) =>
     ? "⌘ ,"
     : "Ctrl + ,";
 
+const toolGroupForMode = (
+  mode: ToolMode,
+  colorPickerActive: boolean,
+): ToolGroup | null => {
+  if (colorPickerActive) return "inspect";
+  if (
+    mode === "select" ||
+    mode === "text-inspector" ||
+    mode === "guides" ||
+    mode === "xray" ||
+    mode === "rulers"
+  ) {
+    return "inspect";
+  }
+  if (
+    mode === "selection" ||
+    mode === "arrows" ||
+    mode === "pen" ||
+    mode === "text"
+  ) {
+    return "annotate";
+  }
+  return null;
+};
+
 type ToolbarTooltipProps = {
   tooltipInstant: boolean;
   tooltipSide: "top" | "bottom";
@@ -229,6 +254,8 @@ function ToolbarComponent(
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
+  const xrayWasVisibleRef = useRef(xrayVisible);
+  const rulersWereVisibleRef = useRef(rulersVisible);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
@@ -243,6 +270,32 @@ function ToolbarComponent(
     },
     [onInteract, toolGroup],
   );
+
+  useLayoutEffect(() => {
+    const fromMode = toolGroupForMode(toolMode, colorPickerActive);
+    if (fromMode) {
+      setToolGroup(fromMode);
+    } else if (xrayVisible && !xrayWasVisibleRef.current) {
+      setToolGroup("inspect");
+    } else if (rulersVisible && !rulersWereVisibleRef.current) {
+      setToolGroup("inspect");
+    }
+    xrayWasVisibleRef.current = xrayVisible;
+    rulersWereVisibleRef.current = rulersVisible;
+  }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
+
+  useLayoutEffect(() => {
+    const stage = toolStageRef.current;
+    if (!stage || stage.dataset.ready !== "true") return;
+    if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    stage.dataset.resizing = "true";
+    const timeout = eventTarget.setTimeout(() => {
+      delete stage.dataset.resizing;
+    }, 200);
+    return () => eventTarget.clearTimeout(timeout);
+  }, [eventTarget, toolGroup]);
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();

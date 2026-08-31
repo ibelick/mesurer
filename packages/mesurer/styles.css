@@ -76,7 +76,7 @@
   flex: none;
   min-width: 0;
   width: var(--msr-inspect-w, auto);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .mesurer-toolbar-tool-stage[data-group="annotate"] {
@@ -95,6 +95,10 @@
   transition: transform var(--msr-toolbar-motion);
 }
 
+.mesurer-toolbar-tool-stage[data-resizing="true"] {
+  overflow: hidden;
+}
+
 .mesurer-toolbar-tool-stage:has([role="menu"]) {
   overflow: visible;
 }
@@ -107,6 +111,11 @@
 
 .mesurer-toolbar-tool-slot:not([data-open="true"]) {
   pointer-events: none;
+  visibility: hidden;
+}
+
+.mesurer-toolbar-tool-stage[data-resizing="true"] .mesurer-toolbar-tool-slot:not([data-open="true"]) {
+  visibility: visible;
 }
 
 .mesurer-toolbar-tool-panel {
