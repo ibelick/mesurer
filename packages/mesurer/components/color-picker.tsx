@@ -1,7 +1,7 @@
 "use client"
 
 import type { MutableRefObject } from "react"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { Tooltip, useTooltip } from "./tooltip"
@@ -113,7 +113,7 @@ export function ColorPicker({
     [copiedId, ownerWindow, tooltip],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return
     const panel = panelRef.current
     const toolbar = toolbarRef.current
@@ -161,7 +161,7 @@ export function ColorPicker({
       ownerWindow.removeEventListener("scroll", schedulePosition, true)
       ownerWindow.removeEventListener("pointermove", schedulePosition, true)
     }
-  }, [active, ownerWindow, toolbarRef])
+  }, [active, ownerWindow, sample, toolbarRef, unsupported])
 
   if (!active || (!sample && !unsupported)) return null
 
