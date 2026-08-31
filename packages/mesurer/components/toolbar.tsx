@@ -81,10 +81,19 @@ type ToolbarProps = {
 };
 const GUIDE_MENU_WIDTH = 176;
 const VIEWPORT_PADDING = 8;
+const TOOLBAR_HEIGHT = 40;
+const TOOLTIP_HEIGHT_WITH_GAP = 34;
 const getSettingsShortcut = (eventTarget: Window) =>
   /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform)
     ? "⌘ ,"
     : "Ctrl + ,";
+
+type ToolbarTooltipProps = {
+  tooltipInstant: boolean;
+  tooltipSide: "top" | "bottom";
+  onTooltipEnter: (id: string) => void;
+  onTooltipLeave: (id: string) => void;
+};
 
 type ToolbarButtonProps = {
   id: string;
@@ -93,10 +102,7 @@ type ToolbarButtonProps = {
   shortcut?: string;
   onClick: () => void;
   tooltipVisible: boolean;
-  tooltipInstant: boolean;
-  tooltipSide: "top" | "bottom";
-  onTooltipEnter: (id: string) => void;
-  onTooltipLeave: (id: string) => void;
+  tooltip: ToolbarTooltipProps;
   children: ReactNode;
 };
 
@@ -107,17 +113,14 @@ function ToolbarButton({
   shortcut,
   onClick,
   tooltipVisible,
-  tooltipInstant,
-  tooltipSide,
-  onTooltipEnter,
-  onTooltipLeave,
+  tooltip,
   children,
 }: ToolbarButtonProps) {
   return (
     <div
       className="msr:relative"
-      onMouseEnter={() => onTooltipEnter(id)}
-      onMouseLeave={() => onTooltipLeave(id)}
+      onMouseEnter={() => tooltip.onTooltipEnter(id)}
+      onMouseLeave={() => tooltip.onTooltipLeave(id)}
     >
       <button
         type="button"
@@ -133,7 +136,13 @@ function ToolbarButton({
       >
         {children}
       </button>
-      <Tooltip label={label} shortcut={shortcut} visible={tooltipVisible} instant={tooltipInstant} side={tooltipSide} />
+      <Tooltip
+        label={label}
+        shortcut={shortcut}
+        visible={tooltipVisible}
+        instant={tooltip.tooltipInstant}
+        side={tooltip.tooltipSide}
+      />
     </div>
   );
 }
@@ -237,10 +246,18 @@ function ToolbarComponent(
 
   const viewportHeight =
     eventTarget.innerHeight || 0;
-  const nearTop = position.y < 56;
   const nearBottom = viewportHeight > 0 && position.y > viewportHeight - 56;
   const tooltipSide: "top" | "bottom" =
-    nearTop && !nearBottom ? "bottom" : "top";
+    viewportHeight > 0 &&
+    position.y + TOOLBAR_HEIGHT + TOOLTIP_HEIGHT_WITH_GAP > viewportHeight
+      ? "top"
+      : "bottom";
+  const toolbarTooltip = {
+    tooltipInstant,
+    tooltipSide,
+    onTooltipEnter,
+    onTooltipLeave,
+  };
   const menuSide: "top" | "bottom" = nearBottom ? "top" : "bottom";
   const { menuRef: settingsMenuRef, placement: settingsPlacement } =
     useSettingsMenuPlacement({
@@ -439,11 +456,8 @@ function ToolbarComponent(
         label="Inspect"
         shortcut="I"
         onClick={selectMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <BoxSelectIcon size={20} />
       </ToolbarButton>
@@ -453,11 +467,8 @@ function ToolbarComponent(
         label="X-ray"
         shortcut="X"
         onClick={xrayMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <XrayIcon size={20} />
       </ToolbarButton>
@@ -467,11 +478,8 @@ function ToolbarComponent(
         label="Rulers"
         shortcut="R"
         onClick={rulersMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <RulersIcon size={20} />
       </ToolbarButton>
@@ -481,11 +489,8 @@ function ToolbarComponent(
         label="Guides"
         shortcut="G"
         onClick={guidesMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <RulerIcon size={20} />
       </ToolbarButton>
@@ -625,11 +630,8 @@ function ToolbarComponent(
         label="Typography"
         shortcut="A"
         onClick={textInspectorMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <TextInspectorIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -639,11 +641,8 @@ function ToolbarComponent(
         label="Sample color"
         shortcut="P"
         onClick={colorPickerMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <ColorPickerIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -656,11 +655,8 @@ function ToolbarComponent(
         label="Select"
         shortcut="S"
         onClick={selectionMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <CursorIcon size={20} />
       </ToolbarButton>
@@ -670,11 +666,8 @@ function ToolbarComponent(
         label="Arrows"
         shortcut="D"
         onClick={arrowsMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "arrows"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <ArrowIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -684,11 +677,8 @@ function ToolbarComponent(
         label="Pen"
         shortcut="N"
         onClick={penMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "pen"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <PenIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -698,11 +688,8 @@ function ToolbarComponent(
         label="Text"
         shortcut="T"
         onClick={textMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "text"}
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <TextIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -716,15 +703,12 @@ function ToolbarComponent(
         label="Screenshot"
         shortcut="C"
         onClick={screenshotMode}
+        tooltip={toolbarTooltip}
         tooltipVisible={
           tooltipsEnabled &&
           !screenshotPreviewUrl &&
           visibleTooltipId === "screenshot"
         }
-        tooltipInstant={tooltipInstant}
-        tooltipSide={tooltipSide}
-        onTooltipEnter={onTooltipEnter}
-        onTooltipLeave={onTooltipLeave}
       >
         <CameraIcon size={20} aria-hidden="true" />
       </ToolbarButton>
@@ -754,11 +738,8 @@ function ToolbarComponent(
             onInteract();
             onToggleSettings();
           }}
+          tooltip={toolbarTooltip}
           tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
-          tooltipInstant={tooltipInstant}
-          tooltipSide={tooltipSide}
-          onTooltipEnter={onTooltipEnter}
-          onTooltipLeave={onTooltipLeave}
         >
           <GearIcon size={20} aria-hidden="true" />
         </ToolbarButton>

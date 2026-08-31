@@ -24,10 +24,14 @@ export function Tooltip({
       className={cn(
         "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
         instant && "msr:transition-none",
-        side === "top" ? "msr:bottom-full msr:mb-2" : "msr:top-full msr:mt-2",
         visible === undefined ? null : visible ? "msr:opacity-100" : "msr:opacity-0",
         className,
       )}
+      style={
+        side === "top"
+          ? { bottom: "100%", marginBottom: "0.5rem" }
+          : { top: "100%", marginTop: "0.5rem" }
+      }
     >
       {label}{shortcut ? <> <kbd className="msr:text-white/60">{shortcut}</kbd></> : null}
     </span>

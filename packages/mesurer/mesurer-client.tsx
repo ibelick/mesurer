@@ -1,0 +1,1310 @@
+"use client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+  SettingsPanel,
+  settingsFocusSection,
+  type SettingsFocusSection,
+} from "./components/settings-panel";
+import { MesurerPortal } from "./components/mesurer-portal";
+import { useColorPicker } from "./hooks/use-color-picker";
+import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
+import { useGuideWindowEvents } from "./hooks/use-guide-window-events";
+import { useInteractionLifecycle } from "./hooks/use-interaction-lifecycle";
+import { useWorkspaceLifecycle } from "./hooks/use-workspace-lifecycle";
+import { useOverlayPointerHandlers } from "./hooks/use-overlay-pointer-handlers";
+import { useLiveElementTracking } from "./hooks/use-live-element-tracking";
+import { useMesurerDerived } from "./hooks/use-mesurer-derived";
+import { useMesurerHistory } from "./hooks/use-mesurer-history";
+import { useMesurerSettings } from "./hooks/use-mesurer-settings";
+import { useMesurerWorkspaceState } from "./hooks/use-mesurer-workspace-state";
+import { useMesurerPointer } from "./hooks/use-mesurer-pointer";
+import { usePersistenceLifecycle } from "./hooks/use-persistence-lifecycle";
+import { useResizeSync } from "./hooks/use-resize-sync";
+import { useRulerGuides } from "./hooks/use-ruler-guides";
+import { useScreenshot } from "./hooks/use-screenshot";
+import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
+import { useTextInspector } from "./hooks/use-text-inspector";
+import { useXray } from "./hooks/use-xray";
+import { useArrowsPointer } from "./hooks/use-arrows-pointer";
+import { usePenPointer } from "./hooks/use-pen-pointer";
+import { getRectFromPoints } from "./core/geometry";
+import { useAnnotationSelection } from "./hooks/use-annotation-selection";
+import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
+import type { ColorPickerFormat } from "./core/colors";
+import {
+  createLocalStoragePersistence,
+  type MesurerPersistence,
+  type GuideStyle,
+  type RulerSettings,
+} from "./core/persistence";
+import {
+  resolveTextFontFamily,
+  type TextStyleSettings,
+} from "./core/text-style";
+import {
+  getTabId,
+  LEGACY_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+  sanitizeStoredSettings,
+  stripDistance,
+  stripMeasurement,
+} from "./core/workspace";
+export type MesurerProps = {
+  highlightColor?: string;
+  guideColor?: string;
+  arrowColor?: string;
+  guideHighlightEnabled?: boolean;
+  hoverHighlightEnabled?: boolean;
+  layoutDetailsEnabled?: boolean;
+  persistOnReload?: boolean;
+  portalTarget?: HTMLElement | ShadowRoot;
+  persistKey?: string;
+  colorPickerFormats?: ColorPickerFormat[];
+  colorPickerClickFormat?: ColorPickerFormat;
+  snapEnabled?: boolean;
+  snapGuidesEnabled?: boolean;
+  snapArrowsEnabled?: boolean;
+  arrowClickToPlace?: boolean;
+  selectNewGuideEnabled?: boolean;
+  multiMeasureEnabled?: boolean;
+  guideStyle?: Partial<GuideStyle>;
+  rulerSettings?: Partial<RulerSettings>;
+  textStyle?: Partial<TextStyleSettings>;
+  persistence?: MesurerPersistence;
+  onPersistenceError?: (error: unknown) => void;
+  captureVisibleTab?: () => Promise<Blob>;
+};
+let mesurerInstanceCount = 0;
+export function MesurerClient({
+  highlightColor,
+  guideColor,
+  arrowColor,
+  guideHighlightEnabled,
+  hoverHighlightEnabled,
+  layoutDetailsEnabled,
+  persistOnReload,
+  portalTarget,
+  persistKey,
+  colorPickerFormats,
+  colorPickerClickFormat,
+  snapEnabled: snapEnabledDefault,
+  snapGuidesEnabled: snapGuidesEnabledDefault,
+  snapArrowsEnabled: snapArrowsEnabledDefault,
+  arrowClickToPlace: arrowClickToPlaceDefault,
+  selectNewGuideEnabled: selectNewGuideEnabledDefault,
+  multiMeasureEnabled: multiMeasureEnabledDefault,
+  guideStyle: guideStyleDefault,
+  rulerSettings: rulerSettingsDefault,
+  textStyle: textStyleDefault,
+  persistence,
+  onPersistenceError,
+  captureVisibleTab,
+}: Required<
+  Omit<
+    MesurerProps,
+    | "persistKey"
+    | "persistence"
+    | "onPersistenceError"
+    | "guideStyle"
+    | "rulerSettings"
+    | "textStyle"
+    | "captureVisibleTab"
+  >
+> &
+  Pick<
+    MesurerProps,
+    "persistKey" | "persistence" | "onPersistenceError" | "captureVisibleTab"
+  > & {
+    guideStyle: GuideStyle;
+    rulerSettings: RulerSettings;
+    textStyle: TextStyleSettings;
+  }) {
+  const instanceIdRef = useRef<number | null>(null);
+  if (instanceIdRef.current === null) {
+    instanceIdRef.current = ++mesurerInstanceCount;
+  }
+  const ownerDocument = portalTarget.ownerDocument ?? document;
+  const ownerWindow = ownerDocument.defaultView ?? window;
+  const tabIdRef = useRef<string | null>(null);
+  if (tabIdRef.current === null) tabIdRef.current = getTabId(ownerWindow);
+  const storageKey =
+    persistKey ??
+    (instanceIdRef.current === 1
+      ? `mesurer-state:${tabIdRef.current}`
+      : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
+  const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const persistenceErrorHandlerRef = useRef(onPersistenceError);
+  persistenceErrorHandlerRef.current = onPersistenceError;
+  const activePersistence = useMemo(() => {
+    const next =
+      persistence ??
+      createLocalStoragePersistence(
+        ownerWindow,
+        storageKey,
+        SETTINGS_STORAGE_KEY,
+        legacyStorageKey,
+      );
+    return next;
+  }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
+  useEffect(() => {
+    activePersistence.setErrorHandler?.((error) =>
+      persistenceErrorHandlerRef.current?.(error),
+    );
+    return () => activePersistence.setErrorHandler?.(undefined);
+  }, [activePersistence]);
+  const storedState = useMemo(
+    () => activePersistence.load(),
+    [activePersistence],
+  );
+  const persistedState =
+    persistOnReload || storedState?.settings.persistOnReload
+      ? (storedState?.workspace ?? null)
+      : null;
+  const persistedSettings = sanitizeStoredSettings(
+    ownerWindow,
+    storedState?.settings ?? {},
+  );
+  const closeScreenshotRef = useRef<() => void>(() => {});
+  const closeColorPickerRef = useRef<() => void>(() => {});
+  const cancelArrowInteractionRef = useRef<() => void>(() => {});
+  const hasArrowInteractionRef = useRef<() => boolean>(() => false);
+  const cancelPenInteractionRef = useRef<() => void>(() => {});
+  const hasPenInteractionRef = useRef<() => boolean>(() => false);
+  const workspacePersistTimeoutRef = useRef<number | null>(null);
+  const applyingExternalPersistenceRef = useRef(false);
+  const workspace = useMesurerWorkspaceState({
+    persistedState,
+    initialToolMode: persistedSettings.lastToolMode ?? "select",
+    snapEnabledDefault: persistedSettings.snapEnabled ?? snapEnabledDefault,
+    snapGuidesEnabledDefault:
+      persistedSettings.snapGuidesEnabled ?? snapGuidesEnabledDefault,
+    snapArrowsEnabledDefault:
+      persistedSettings.snapArrowsEnabled ?? snapArrowsEnabledDefault,
+    arrowClickToPlaceDefault:
+      persistedSettings.arrowClickToPlace ?? arrowClickToPlaceDefault,
+    selectNewGuideEnabledDefault:
+      persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
+    multiMeasureEnabledDefault:
+      persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
+    initialTextAnnotations: persistedState?.textAnnotations,
+  });
+  const {
+    selectionRectRef,
+    enabledRef,
+    toolModeRef,
+    rulersVisibleRef,
+    xrayVisibleRef,
+    guideOrientationRef,
+    measurementsRef,
+    activeMeasurementRef,
+    heldDistancesRef,
+    guidesRef,
+    selectedGuideIdsRef,
+    arrowsRef,
+    selectedArrowIdsRef,
+    penStrokesRef,
+    selectedPenStrokeIdsRef,
+    penStrokes,
+    selectedPenStrokeIds,
+    setSelectedPenStrokeIds,
+    setPenStrokes,
+    penPreview,
+    setPenPreview,
+    textAnnotationsRef,
+    overlayRef,
+    selectedElementRef,
+    hoverElementRef,
+    selectionOriginRect,
+    setSelectionOriginRect,
+    hoverPointer,
+    setHoverPointer,
+    hoverElement,
+    setHoverElement,
+    selectedElement,
+    setSelectedElement,
+    clearSelectionRect,
+    enabled,
+    setEnabled,
+    holdEnabled,
+    snapEnabled,
+    altPressed,
+    setAltPressed,
+    toolMode,
+    setToolMode,
+    rulersVisible,
+    setRulersVisible,
+    guidesEnabled,
+    multiMeasureEnabled,
+    snapGuidesEnabled,
+    setSnapGuidesEnabled,
+    snapArrowsEnabled,
+    setSnapArrowsEnabled,
+    arrowClickToPlace,
+    setArrowClickToPlace,
+    selectNewGuideEnabled,
+    setSelectNewGuideEnabled,
+    setSnapEnabled,
+    setMultiMeasureEnabled,
+    start,
+    setStart,
+    end,
+    setEnd,
+    isDragging,
+    setIsDragging,
+    activeMeasurement,
+    setActiveMeasurement,
+    measurements,
+    setMeasurements,
+    selectedMeasurement,
+    setSelectedMeasurement,
+    selectedMeasurements,
+    setSelectedMeasurements,
+    hoverRect,
+    setHoverRect,
+    heldDistances,
+    setHeldDistances,
+    guides,
+    setGuides,
+    draggingGuideId,
+    setDraggingGuideId,
+    selectedGuideIds,
+    setSelectedGuideIds,
+    arrows,
+    selectedArrowIds,
+    setArrows,
+    setSelectedArrowIds,
+    textAnnotations,
+    setTextAnnotations,
+    textDraft,
+    setTextDraft,
+    selectedTextIds,
+    setSelectedTextIds,
+    arrowStart,
+    setArrowStart,
+    arrowMiddle,
+    setArrowMiddle,
+    arrowPreviewEnd,
+    setArrowPreviewEnd,
+    toolbarActive,
+    setToolbarActive,
+    settingsOpen,
+    setSettingsOpen,
+    xrayVisible,
+    setXrayVisible,
+    guideOrientation,
+    setGuideOrientation,
+  } = workspace;
+  const textInspector = useTextInspector(portalTarget, toolMode, settingsOpen);
+  const textDraftInputRef = useRef<HTMLElement | null>(null);
+  const textDraftRef = useRef(textDraft);
+  const committedTextEditorsRef = useRef(new WeakSet<HTMLElement>());
+  const suppressTextCreateRef = useRef(false);
+  textDraftRef.current = textDraft;
+  const {
+    highlightColor: settingsHighlightColor,
+    setHighlightColor: setSettingsHighlightColor,
+    guideColor: settingsGuideColor,
+    setGuideColor: setSettingsGuideColor,
+    arrowColor: settingsArrowColor,
+    setArrowColor: setSettingsArrowColor,
+    guideHighlightEnabled: settingsGuideHighlightEnabled,
+    setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
+    hoverHighlightEnabled: settingsHoverHighlight,
+    setHoverHighlightEnabled: setSettingsHoverHighlight,
+    layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+    setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
+    persistOnReload: settingsPersistOnReload,
+    setPersistOnReload: setSettingsPersistOnReload,
+    setLastToolMode: setSettingsLastToolMode,
+    colorPickerFormats: settingsColorFormats,
+    setColorPickerFormats: setSettingsColorFormats,
+    colorPickerClickFormat: settingsColorClickFormat,
+    setColorPickerClickFormat: setSettingsColorClickFormat,
+    guideStyle: settingsGuideStyle,
+    setGuideStyle: setSettingsGuideStyle,
+    rulerSettings: settingsRulerSettings,
+    setRulerSettings: setSettingsRulerSettings,
+    screenshotSettings: settingsScreenshot,
+    setScreenshotSettings: setSettingsScreenshot,
+    textStyle: settingsTextStyle,
+    setTextStyle: setSettingsTextStyle,
+    resetSettings,
+    persistSettings,
+    applyPersistedSettings,
+  } = useMesurerSettings({
+    activePersistence,
+    persistedSettings,
+    defaults: {
+      highlightColor,
+      guideColor,
+      arrowColor,
+      guideHighlightEnabled,
+      hoverHighlightEnabled,
+      layoutDetailsEnabled,
+      persistOnReload,
+      colorPickerFormats,
+      colorPickerClickFormat,
+      guideStyle: guideStyleDefault,
+      rulerSettings: rulerSettingsDefault,
+      textStyle: textStyleDefault,
+      snapEnabled: snapEnabledDefault,
+      snapGuidesEnabled: snapGuidesEnabledDefault,
+      snapArrowsEnabled: snapArrowsEnabledDefault,
+      arrowClickToPlace: arrowClickToPlaceDefault,
+      selectNewGuideEnabled: selectNewGuideEnabledDefault,
+      multiMeasureEnabled: multiMeasureEnabledDefault,
+    },
+    toggles: {
+      snapEnabled,
+      setSnapEnabled,
+      snapGuidesEnabled,
+      setSnapGuidesEnabled,
+      snapArrowsEnabled,
+      setSnapArrowsEnabled,
+      arrowClickToPlace,
+      setArrowClickToPlace,
+      selectNewGuideEnabled,
+      setSelectNewGuideEnabled,
+      multiMeasureEnabled,
+      setMultiMeasureEnabled,
+    },
+  });
+  useEffect(() => {
+    if (
+      toolMode === "select" ||
+      toolMode === "selection" ||
+      toolMode === "guides" ||
+      toolMode === "arrows" ||
+      toolMode === "pen" ||
+      toolMode === "text"
+    ) {
+      setSettingsLastToolMode(toolMode);
+    }
+  }, [setSettingsLastToolMode, toolMode]);
+  const workspaceLifecycle = useWorkspaceLifecycle({
+    ownerWindow,
+    activePersistence,
+    settings: {
+      persistOnReload: settingsPersistOnReload,
+      applyPersistedSettings,
+      persistSettings,
+    },
+    workspace,
+    closeScreenshotRef,
+    applyingExternalPersistenceRef,
+    workspacePersistTimeoutRef,
+    storedState,
+  });
+  const {
+    saveWorkspace,
+    persistState,
+    applyPersistenceSnapshot,
+    clearWorkspace,
+    setEnabledPersisted,
+    setToolModePersisted,
+    setRulersVisiblePersisted,
+    setGuideOrientationPersisted,
+    setMeasurementsPersisted,
+    setActiveMeasurementPersisted,
+    setHeldDistancesPersisted,
+    setGuidesPersisted,
+    setSelectedGuideIdsPersisted,
+    setArrowsPersisted,
+    setSelectedArrowIdsPersisted,
+    setTextAnnotationsPersisted,
+    setPenStrokesPersisted,
+  } = workspaceLifecycle;
+  usePersistenceLifecycle({
+    ownerWindow,
+    activePersistence,
+    persistSettings,
+    persistState,
+    settingsPersistOnReload,
+    saveWorkspace,
+    applyPersistenceSnapshot,
+    storedState,
+    applyingExternalPersistenceRef,
+    workspacePersistTimeoutRef,
+  });
+  const { clearGuideDragHold, scheduleGuideDragHold } =
+    useGuideDragHold(ownerWindow);
+  const [guidePreview, setGuidePreview] = useState<{
+    orientation: "vertical" | "horizontal";
+    position: number;
+  } | null>(null);
+  const [scrollOffset, setScrollOffset] = useState({
+    x: ownerWindow.scrollX,
+    y: ownerWindow.scrollY,
+  });
+  useEffect(() => {
+    const updateScrollOffset = () => {
+      setScrollOffset({ x: ownerWindow.scrollX, y: ownerWindow.scrollY });
+    };
+    updateScrollOffset();
+    ownerWindow.addEventListener("scroll", updateScrollOffset, true);
+    ownerWindow.addEventListener("resize", updateScrollOffset);
+    return () => {
+      ownerWindow.removeEventListener("scroll", updateScrollOffset, true);
+      ownerWindow.removeEventListener("resize", updateScrollOffset);
+    };
+  }, [ownerWindow]);
+  enabledRef.current = enabled;
+  xrayVisibleRef.current = xrayVisible;
+  toolModeRef.current = toolMode;
+  rulersVisibleRef.current = rulersVisible;
+  guideOrientationRef.current = guideOrientation;
+  measurementsRef.current = measurements;
+  activeMeasurementRef.current = activeMeasurement;
+  heldDistancesRef.current = heldDistances;
+  guidesRef.current = guides;
+  selectedGuideIdsRef.current = selectedGuideIds;
+  arrowsRef.current = arrows;
+  selectedArrowIdsRef.current = selectedArrowIds;
+  penStrokesRef.current = penStrokes;
+  selectedPenStrokeIdsRef.current = selectedPenStrokeIds;
+  textAnnotationsRef.current = textAnnotations;
+  const {
+    recordSnapshot,
+    createActionCommit,
+    setToolModeWithHistory,
+    setGuideOrientationWithHistory,
+    setEnabledWithHistory,
+    undo: undoHistory,
+    redo: redoHistory,
+  } = useMesurerHistory({
+    toggles: {
+      enabled,
+      setEnabled: setEnabledPersisted,
+      toolMode,
+      setToolMode: setToolModePersisted,
+      guideOrientation,
+      setGuideOrientation: setGuideOrientationPersisted,
+    },
+    measurements: {
+      measurements,
+      setMeasurements: setMeasurementsPersisted,
+      activeMeasurement,
+      setActiveMeasurement: setActiveMeasurementPersisted,
+      selectedMeasurements,
+      setSelectedMeasurements,
+      selectedMeasurement,
+      setSelectedMeasurement,
+      heldDistances,
+      setHeldDistances: setHeldDistancesPersisted,
+    },
+    guides: {
+      guides,
+      setGuides: setGuidesPersisted,
+      selectedGuideIds,
+      setSelectedGuideIds: setSelectedGuideIdsPersisted,
+      draggingGuideId,
+      setDraggingGuideId,
+    },
+    arrows: {
+      arrows,
+      setArrows: setArrowsPersisted,
+      selectedArrowIds,
+      setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    },
+    text: {
+      textAnnotations,
+      setTextAnnotations: setTextAnnotationsPersisted,
+    },
+    pen: {
+      penStrokes,
+      setPenStrokes: setPenStrokesPersisted,
+      selectedPenStrokeIds,
+      setSelectedPenStrokeIds,
+    },
+    transient: {
+      setStart,
+      setEnd,
+      setIsDragging,
+      setGuidePreview,
+      setHoverRect,
+      setHoverElement,
+      setSelectedElement,
+      clearSelectionRect,
+    },
+  });
+  const undo = useCallback(() => {
+    if (toolMode === "text-inspector" && textInspector.undo()) return;
+    undoHistory();
+  }, [textInspector, toolMode, undoHistory]);
+  const redo = useCallback(() => {
+    if (toolMode === "text-inspector" && textInspector.redo()) return;
+    redoHistory();
+  }, [redoHistory, textInspector, toolMode]);
+  const clearAll = useCallback(() => {
+    if (toolMode === "text-inspector") {
+      textInspector.clear();
+    }
+    recordSnapshot();
+    clearGuideDragHold();
+    setStart(null);
+    setEnd(null);
+    setIsDragging(false);
+    setActiveMeasurementPersisted(null);
+    setMeasurementsPersisted([]);
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
+    clearSelectionRect();
+    setSelectedElement(null);
+    setHoverRect(null);
+    setHoverElement(null);
+    setGuidesPersisted([]);
+    setSelectedGuideIdsPersisted([]);
+    setHeldDistancesPersisted([]);
+    setArrowsPersisted([]);
+    setSelectedArrowIdsPersisted([]);
+    setTextAnnotationsPersisted([]);
+    setSelectedTextIds([]);
+  }, [
+    clearGuideDragHold,
+    clearSelectionRect,
+    recordSnapshot,
+    setActiveMeasurementPersisted,
+    setEnd,
+    setGuidesPersisted,
+    setHeldDistancesPersisted,
+    setHoverElement,
+    setHoverRect,
+    setIsDragging,
+    setMeasurementsPersisted,
+    setSelectedElement,
+    setSelectedGuideIdsPersisted,
+    setArrowsPersisted,
+    setSelectedArrowIdsPersisted,
+    setTextAnnotationsPersisted,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+    setSelectedTextIds,
+    setStart,
+    textInspector,
+    toolMode,
+  ]);
+  const annotationSelection = useAnnotationSelection({
+    enabled,
+    toolMode,
+    ownerDocument,
+    overlayRef,
+    toolbarRef,
+    scrollOffset,
+    guides,
+    arrows,
+    penStrokes,
+    textAnnotations,
+    selectedGuideIds,
+    selectedArrowIds,
+    selectedPenStrokeIds,
+    selectedTextIds,
+    clearSelectionRect,
+    setStart,
+    setEnd,
+    setIsDragging,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setSelectedTextIds,
+    setSelectedPenStrokeIds,
+    setSelectedMeasurements,
+    setSelectedMeasurement,
+    setSelectedElement,
+    setGuides: setGuidesPersisted,
+    setArrows: setArrowsPersisted,
+    setPenStrokes: setPenStrokesPersisted,
+    setTextAnnotations: setTextAnnotationsPersisted,
+    recordSnapshot,
+  });
+  const {
+    clearSelection,
+    removeSelected,
+    selectAllAnnotations,
+    groupBounds,
+    groupRotateFrame,
+    moveSelectedAnnotations,
+    startGroupRotate,
+    updateGroupRotate,
+    endGroupRotate,
+    startGroupResize,
+    resizeSelectedAnnotations,
+    endGroupResize,
+  } = annotationSelection;
+  const colorPicker = useColorPicker({
+    ownerWindow,
+    clickFormat: settingsColorClickFormat,
+    setEnabled: (value) => setEnabledWithHistory(value),
+    setToolModeNone: () => setToolModeWithHistory("none"),
+  });
+  const screenshot = useScreenshot({
+    ownerDocument,
+    ownerWindow,
+    overlayRef,
+    captureVisibleTab,
+    settings: settingsScreenshot,
+    setEnabled: (value) => setEnabledWithHistory(value),
+    setToolbarActive,
+    onPrepare: () => {
+      colorPicker.setActive(false);
+      setSettingsOpen(false);
+    },
+  });
+  closeScreenshotRef.current = screenshot.closeUi;
+  closeColorPickerRef.current = () => colorPicker.setActive(false);
+  const openColorPicker = useCallback(() => {
+    screenshot.closeUi();
+    void colorPicker.open();
+  }, [colorPicker.open, screenshot.closeUi]);
+  const [settingsFocus, setSettingsFocus] = useState<
+    SettingsFocusSection | undefined
+  >();
+  const toggleSettings = useCallback(() => {
+    if (settingsOpen) {
+      screenshot.closeUi();
+      setSettingsOpen(false);
+      return;
+    }
+    setSettingsFocus(
+      settingsFocusSection(toolMode, {
+        colorPicker: colorPicker.active,
+        screenshot: screenshot.active,
+        rulersVisible,
+      }),
+    );
+    screenshot.closeUi();
+    setSettingsOpen(true);
+  }, [
+    colorPicker.active,
+    rulersVisible,
+    screenshot.active,
+    screenshot.closeUi,
+    settingsOpen,
+    toolMode,
+  ]);
+  useResizeSync({
+    document: ownerDocument,
+    window: ownerWindow,
+    setMeasurements: setMeasurementsPersisted,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setHeldDistances: setHeldDistancesPersisted,
+    setSelectedMeasurement,
+    setGuides: setGuidesPersisted,
+    selectedElementRef,
+  });
+  useLiveElementTracking({
+    document: ownerDocument,
+    window: ownerWindow,
+    enabled,
+    selectionEnabled: toolMode === "select",
+    selectedElementRef,
+    hoverElementRef,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+    setHoverRect,
+    setMeasurements: setMeasurementsPersisted,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setHeldDistances: setHeldDistancesPersisted,
+  });
+  useXray(ownerDocument, xrayVisible);
+  useGuideWindowEvents({
+    ownerDocument,
+    ownerWindow,
+    enabled,
+    settingsOpen,
+    toolMode,
+    toolbarActive,
+    snapGuidesEnabled,
+    guides,
+    toolbarRef,
+    overlayRef,
+    createActionCommit,
+    setGuides: setGuidesPersisted,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setToolbarActive,
+  });
+  useSelectionAnimationCleanup({
+    ownerWindow,
+    selectionOriginRect,
+    selectedMeasurement,
+    selectedMeasurements,
+    setSelectionOriginRect,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+  });
+  const displayedMeasurements = holdEnabled
+    ? measurements
+    : multiMeasureEnabled && measurements.length > 0
+      ? measurements
+      : activeMeasurement
+        ? [activeMeasurement]
+        : [];
+  const {
+    activeRect,
+    activeWidth,
+    activeHeight,
+    displayedSelectedMeasurements,
+    hoverGuide,
+    optionPairOverlay,
+    optionContainerLines,
+    guideDistanceOverlay,
+    outlineColor,
+    fillColor,
+    guideColorActive,
+    guideColorHover,
+    guideColorDefault,
+    guideColorPreview,
+    guidePreviewEmphasized,
+    hoverRectToShow,
+    selectedEdgeVisibility,
+    hoverEdgeVisibility,
+    measurementEdgeVisibility,
+  } = useMesurerDerived({
+    document: ownerDocument,
+    window: ownerWindow,
+    start,
+    end,
+    selectedMeasurements,
+    selectedMeasurement,
+    selectionOriginRect,
+    guides,
+    selectedGuideIds,
+    hoverPointer,
+    hoverRect,
+    hoverElement,
+    selectedElement,
+    altPressed,
+    guidesEnabled,
+    guidePreview,
+    displayedMeasurements,
+    hoverHighlightEnabled: settingsHoverHighlight,
+    guideHighlightEnabled: settingsGuideHighlightEnabled,
+    highlightColor: settingsHighlightColor,
+    guideColor: settingsGuideColor,
+  });
+  const {
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerLeave,
+  } = useMesurerPointer({
+    document: ownerDocument,
+    window: ownerWindow,
+    toolbarRef,
+    overlayRef,
+    selectionRectRef,
+    createActionCommit,
+    clearGuideDragHold,
+    scheduleGuideDragHold,
+    enabled,
+    settingsOpen,
+    toolMode,
+    guidesEnabled,
+    snapEnabled,
+    snapGuidesEnabled,
+    selectNewGuideEnabled,
+    altPressed,
+    guideOrientation,
+    hoverHighlightEnabled,
+    start,
+    end,
+    isDragging,
+    selectedMeasurements,
+    selectedMeasurement,
+    selectedGuideIds,
+    guides,
+    draggingGuideId,
+    optionPairOverlay,
+    setAltPressed,
+    setGuidePreview,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setGuides: setGuidesPersisted,
+    setStart,
+    setEnd,
+    setIsDragging,
+    setHeldDistances: setHeldDistancesPersisted,
+    setDraggingGuideId,
+    setActiveMeasurement: setActiveMeasurementPersisted,
+    setMeasurements: setMeasurementsPersisted,
+    setSelectedMeasurements,
+    setSelectedMeasurement,
+    setSelectionOriginRect,
+    setSelectedElement,
+    setHoverRect,
+    setHoverElement,
+    setHoverPointer,
+    clearSelectionRect,
+    selectionMode: toolMode === "selection",
+    scrollOffset,
+    textAnnotations,
+    arrows,
+    penStrokes,
+    setSelectedTextIds,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setSelectedPenStrokeIds,
+  });
+  const arrowsPointer = useArrowsPointer({
+    enabled,
+    settingsOpen,
+    snapArrowsEnabled,
+    arrowClickToPlace,
+    color: settingsArrowColor,
+    width: Math.max(settingsGuideStyle.width, 1),
+    overlayRef,
+    ownerDocument,
+    guides,
+    createActionCommit,
+    setToolMode: setToolModeWithHistory,
+    setArrows: setArrowsPersisted,
+    onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    clearOtherSelections: () => {
+      setSelectedGuideIdsPersisted([]);
+      setSelectedTextIds([]);
+      setSelectedPenStrokeIds([]);
+      setSelectedMeasurements([]);
+      setSelectedMeasurement(null);
+      setSelectedElement(null);
+      clearSelectionRect();
+      ownerDocument.defaultView?.getSelection()?.removeAllRanges();
+    },
+    arrows,
+    selectedArrowIds,
+    arrowStart,
+    arrowMiddle,
+    arrowPreviewEnd,
+    setArrowStart,
+    setArrowMiddle,
+    setArrowPreviewEnd,
+    scrollOffset,
+  });
+  cancelArrowInteractionRef.current = arrowsPointer.cancelInteraction;
+  hasArrowInteractionRef.current = arrowsPointer.hasActiveInteraction;
+  const penPointer = usePenPointer({
+    enabled,
+    settingsOpen,
+    toolMode,
+    color: settingsArrowColor,
+    scrollOffset,
+    createActionCommit,
+    setPenStrokes: setPenStrokesPersisted,
+    setPenPreview,
+  });
+  cancelPenInteractionRef.current = penPointer.cancelInteraction;
+  hasPenInteractionRef.current = penPointer.hasActiveInteraction;
+  const annotationCallbacks = useAnnotationCallbacks({
+    textAnnotations,
+    selectedTextIds,
+    selectedPenStrokeIds,
+    scrollOffset,
+    textDraftRef,
+    textDraftInputRef,
+    committedTextEditorsRef,
+    suppressTextCreateRef,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setSelectedTextIds,
+    setSelectedPenStrokeIds,
+    setSelectedMeasurements,
+    setSelectedMeasurement,
+    setSelectedElement,
+    clearSelectionRect,
+    setTextDraft,
+    setPenStrokes: setPenStrokesPersisted,
+    setTextAnnotations: setTextAnnotationsPersisted,
+    moveSelectedAnnotations,
+    setToolMode: setToolModePersisted,
+    recordSnapshot,
+  });
+  const {
+    selectPenStroke,
+    changePenStroke,
+    finishTextDraft,
+    activateTextEditor,
+    selectTextAnnotation,
+    moveTextAnnotation,
+    transformTextAnnotation,
+    editTextAnnotation,
+    handleTextPointerDown,
+    handleTextKeyDown,
+  } = annotationCallbacks;
+  const { clearTransientState } = useInteractionLifecycle({
+    enabled,
+    toolMode,
+    xrayVisible,
+    rulersVisible,
+    toolbarActive,
+    settingsOpen,
+    ownerDocument,
+    ownerWindow,
+    toolbarRef,
+    overlayRef,
+    scrollOffset,
+    guides,
+    arrows,
+    penStrokes,
+    textAnnotations,
+    selectedGuideIds,
+    selectedArrowIds,
+    selectedPenStrokeIds,
+    selectedTextIds,
+    selectedMeasurements,
+    selectedMeasurement,
+    selectedElement,
+    start,
+    arrowStart,
+    draggingGuideId,
+    isDragging,
+    textDraft,
+    textDraftRef,
+    setTextDraft,
+    setStart,
+    setEnd,
+    setIsDragging,
+    setHoverRect,
+    setHoverPointer,
+    setHoverElement,
+    setSelectedElement,
+    setArrowStart,
+    setArrowMiddle,
+    setArrowPreviewEnd,
+    setXrayVisible,
+    setAltPressed,
+    setToolMode,
+    clearSelectionRect,
+    clearGuideDragHold,
+    cancelArrowInteraction: arrowsPointer.cancelInteraction,
+    cancelPenInteraction: penPointer.cancelInteraction,
+    hasArrowInteraction: arrowsPointer.hasActiveInteraction,
+    hasPenInteraction: penPointer.hasActiveInteraction,
+    clearSelection,
+    recordSnapshot,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setSelectedArrowIds: setSelectedArrowIdsPersisted,
+    setSelectedTextIds,
+    setSelectedPenStrokeIds,
+    setSelectedMeasurements,
+    setSelectedMeasurement,
+    screenshot,
+    colorPicker,
+    undo,
+    redo,
+    removeSelected,
+    selectAllAnnotations,
+    setEnabled: setEnabledPersisted,
+    setRulersVisible,
+    setGuideOrientation,
+    onInteract: () => setToolbarActive(true),
+    onToggleSettings: toggleSettings,
+  });
+  const removeHeldDistance = useCallback(
+    (id: string) => {
+      recordSnapshot();
+      setHeldDistancesPersisted((prev) =>
+        prev.filter((distance) => distance.id !== id),
+      );
+    },
+    [recordSnapshot, setHeldDistancesPersisted],
+  );
+  const {
+    startGuideFromRuler,
+    moveGuideFromRuler,
+    finishGuideFromRuler,
+    cancelGuideFromRuler,
+    handleGuidePointerDown,
+    handleGuidePointerUp,
+    overlayGuides,
+  } = useRulerGuides({
+    ownerDocument,
+    ownerWindow,
+    overlayRef,
+    enabled,
+    snapGuidesEnabled,
+    selectNewGuideEnabled,
+    settingsOpen,
+    guides,
+    createActionCommit,
+    setGuides: setGuidesPersisted,
+    setSelectedGuideIds: setSelectedGuideIdsPersisted,
+    setDraggingGuideId,
+    scheduleGuideDragHold,
+    clearGuideDragHold,
+  });
+  const overlayInteractive = enabled && !settingsOpen;
+  const pointerHandlers = useOverlayPointerHandlers({
+    toolMode,
+    arrows: arrowsPointer,
+    pen: penPointer,
+    text: { handlePointerDown: handleTextPointerDown },
+    measure: {
+      handlePointerDown,
+      handlePointerMove,
+      handlePointerUp,
+      handlePointerLeave,
+    },
+  });
+  return (
+    <MesurerPortal
+      portalTarget={portalTarget}
+      rootRef={overlayRef}
+      toolbarRef={toolbarRef}
+      screenshotOverlayRef={screenshot.overlayRef}
+      rulers={{
+        ownerWindow,
+        visible: enabled && rulersVisible,
+        settings: settingsRulerSettings,
+        interactive: !settingsOpen,
+        forceVisible: settingsOpen,
+        onStartGuide: startGuideFromRuler,
+        onMoveGuide: moveGuideFromRuler,
+        onFinishGuide: finishGuideFromRuler,
+        onCancelGuide: cancelGuideFromRuler,
+        guides,
+        selectedGuideIds,
+      }}
+      overlay={{
+        enabled,
+        interactive: overlayInteractive,
+        toolMode,
+        guidesEnabled,
+        altPressed,
+        isDragging,
+        marqueeRect:
+          isDragging && start && end ? getRectFromPoints(start, end) : null,
+        groupBounds:
+          selectedArrowIds.length +
+            selectedTextIds.length +
+            selectedPenStrokeIds.length >
+          1
+            ? (groupRotateFrame?.rect ?? groupBounds)
+            : null,
+        groupFrameRotation:
+          selectedArrowIds.length +
+            selectedTextIds.length +
+            selectedPenStrokeIds.length >
+          1
+            ? (groupRotateFrame?.rotation ?? 0)
+            : 0,
+        selectionCount:
+          selectedGuideIds.length +
+          selectedArrowIds.length +
+          selectedTextIds.length +
+          selectedPenStrokeIds.length,
+        onResizeSelection: resizeSelectedAnnotations,
+        onMoveSelection: moveSelectedAnnotations,
+        onMoveSelectionStart: recordSnapshot,
+        onStartGroupResize: startGroupResize,
+        onEndGroupResize: endGroupResize,
+        onStartGroupRotate: startGroupRotate,
+        onUpdateGroupRotate: updateGroupRotate,
+        onEndGroupRotate: endGroupRotate,
+        fillColor,
+        outlineColor,
+        layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+        pointers: {
+          ...pointerHandlers,
+        },
+        selection: {
+          measurements: displayedMeasurements,
+          measurementEdges: measurementEdgeVisibility,
+          activeRect,
+          activeWidth,
+          activeHeight,
+          hoverRect: hoverRectToShow,
+          hoverEdges: hoverEdgeVisibility,
+          selected: displayedSelectedMeasurements,
+          selectedEdges: selectedEdgeVisibility,
+        },
+        distances: {
+          held: heldDistances,
+          optionPair: optionPairOverlay,
+          guideDistance: guideDistanceOverlay,
+          containerLines: optionContainerLines,
+          onRemoveHeld: removeHeldDistance,
+        },
+        guides: {
+          items: overlayGuides,
+          selectedIds: selectedGuideIds,
+          hover: hoverGuide,
+          draggingId: draggingGuideId,
+          style: settingsGuideStyle,
+          pointerEvents:
+            overlayInteractive && (toolMode !== "none" || rulersVisible),
+          colors: {
+            active: guideColorActive,
+            hover: guideColorHover,
+            default: guideColorDefault,
+            preview: guideColorPreview,
+            previewEmphasized: guidePreviewEmphasized,
+          },
+          preview: guidePreview,
+          onPointerDown: handleGuidePointerDown,
+          onPointerUp: handleGuidePointerUp,
+          onPointerCancel: handleGuidePointerUp,
+        },
+        arrows: {
+          items: arrows,
+          selectedIds: selectedArrowIds,
+          preview: arrowsPointer.preview,
+          scrollOffset,
+          color: settingsArrowColor,
+          onSelect: (id) => setSelectedArrowIdsPersisted([id]),
+          onChange: (arrow) =>
+            setArrowsPersisted((previous) =>
+              previous.map((item) => (item.id === arrow.id ? arrow : item)),
+            ),
+          onChangeStart: recordSnapshot,
+          editingArrowId: arrowsPointer.editingArrowId,
+        },
+        pen: {
+          strokes: penStrokes,
+          preview: penPreview,
+          scrollOffset,
+          selectionMode: toolMode === "selection",
+          selectedIds: selectedPenStrokeIds,
+          onSelect: selectPenStroke,
+          onChange: changePenStroke,
+          onChangeStart: recordSnapshot,
+          onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
+        },
+        text: {
+          items: textAnnotations,
+          draft: textDraft,
+          draftInputRef: textDraftInputRef,
+          interactive: toolMode === "selection",
+          editable: toolMode === "text",
+          selectedIds: selectedTextIds,
+          onSelect: selectTextAnnotation,
+          onMoveStart: recordSnapshot,
+          onMove: moveTextAnnotation,
+          onTransform: transformTextAnnotation,
+          onEdit: editTextAnnotation,
+          scrollOffset,
+          onDraftKeyDown: handleTextKeyDown,
+          onDraftBlur: finishTextDraft,
+          onActivateEditor: activateTextEditor,
+          fontFamily: resolveTextFontFamily(settingsTextStyle),
+          color: settingsTextStyle.color,
+        },
+      }}
+      colorPicker={{
+        active: colorPicker.active,
+        sample: colorPicker.sample,
+        unsupported: colorPicker.unsupported,
+        ownerWindow,
+        formats: settingsColorFormats,
+        favoriteFormat: settingsColorClickFormat,
+        onClose: () => colorPicker.setActive(false),
+      }}
+      screenshot={{
+        active: screenshot.active,
+        rect: screenshot.rect,
+        onPointerDown: screenshot.handlePointerDown,
+        onPointerMove: screenshot.handlePointerMove,
+        onPointerUp: screenshot.handlePointerUp,
+        onPointerCancel: screenshot.handlePointerCancel,
+      }}
+      toolbar={{
+        eventTarget: ownerWindow,
+        onInteract: () => setToolbarActive(true),
+        onCancelTransient: clearTransientState,
+        tools: {
+          mode: toolMode,
+          setMode: setToolModeWithHistory,
+          setEnabled: setEnabledWithHistory,
+          xrayVisible,
+          setXrayVisible,
+          rulersVisible,
+          setRulersVisible: setRulersVisiblePersisted,
+          guideOrientation,
+          setGuideOrientation: setGuideOrientationWithHistory,
+        },
+        colorPicker: {
+          active: colorPicker.active,
+          setActive: colorPicker.setActive,
+          onClick: openColorPicker,
+        },
+        screenshot: {
+          active: screenshot.active,
+          error: screenshot.error,
+          previewUrl: screenshot.previewUrl,
+          copy: settingsScreenshot.copy,
+          download: settingsScreenshot.download,
+          onClick: screenshot.toggleSelection,
+          onCancel: screenshot.closeUi,
+          onPreviewExited: screenshot.dismissPreview,
+        },
+        settings: {
+          open: settingsOpen,
+          setOpen: setSettingsOpen,
+          onToggle: toggleSettings,
+          panel: (
+            <SettingsPanel
+              ownerWindow={ownerWindow}
+              focusSection={settingsFocus}
+              select={{
+                highlightColor: settingsHighlightColor,
+                setHighlightColor: setSettingsHighlightColor,
+                hoverHighlight: settingsHoverHighlight,
+                setHoverHighlight: setSettingsHoverHighlight,
+                layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+                setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
+                snapEnabled,
+                setSnapEnabled,
+                multiMeasureEnabled,
+                setMultiMeasureEnabled,
+              }}
+              guides={{
+                guideColor: settingsGuideColor,
+                setGuideColor: setSettingsGuideColor,
+                guideStyle: settingsGuideStyle,
+                setGuideStyle: setSettingsGuideStyle,
+                snapGuidesEnabled,
+                setSnapGuidesEnabled,
+                guideHighlightEnabled: settingsGuideHighlightEnabled,
+                setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
+                selectNewGuideEnabled,
+                setSelectNewGuideEnabled,
+              }}
+              color={{
+                colorFormats: settingsColorFormats,
+                setColorFormats: setSettingsColorFormats,
+                colorClickFormat: settingsColorClickFormat,
+                setColorClickFormat: setSettingsColorClickFormat,
+              }}
+              camera={{
+                settings: settingsScreenshot,
+                setSettings: setSettingsScreenshot,
+              }}
+              rulers={{
+                settings: settingsRulerSettings,
+                setSettings: setSettingsRulerSettings,
+              }}
+              text={{
+                settings: settingsTextStyle,
+                setSettings: setSettingsTextStyle,
+              }}
+              arrows={{
+                color: settingsArrowColor,
+                setColor: setSettingsArrowColor,
+                snapArrowsEnabled,
+                setSnapArrowsEnabled,
+                arrowClickToPlace,
+                setArrowClickToPlace,
+              }}
+              general={{
+                persistOnReload: settingsPersistOnReload,
+                setPersistOnReload: setSettingsPersistOnReload,
+                onResetSettings: resetSettings,
+                onClearWorkspace: clearWorkspace,
+              }}
+            />
+          ),
+        },
+      }}
+    />
+  );
+}
