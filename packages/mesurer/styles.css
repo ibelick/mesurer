@@ -68,29 +68,85 @@
   }
 }
 
-@keyframes mesurer-toolbar-switch {
-  from {
-    opacity: 0.8;
-    transform: scaleX(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: scaleX(1);
-  }
+.mesurer-toolbar-surface {
+  --msr-toolbar-motion: 200ms ease;
 }
 
-@keyframes mesurer-toolbar-tool-panel-enter {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.mesurer-toolbar-tool-stage {
+  flex: none;
+  min-width: 0;
+  width: var(--msr-inspect-w, auto);
+  overflow: hidden;
+}
+
+.mesurer-toolbar-tool-stage[data-group="annotate"] {
+  width: var(--msr-annotate-w, auto);
+}
+
+.mesurer-toolbar-tool-stage[data-group="annotate"] .mesurer-toolbar-tool-track {
+  transform: translateX(calc(-1 * var(--msr-inspect-w, 0px)));
+}
+
+.mesurer-toolbar-tool-stage[data-ready="true"] {
+  transition: width var(--msr-toolbar-motion);
+}
+
+.mesurer-toolbar-tool-stage[data-ready="true"] .mesurer-toolbar-tool-track {
+  transition: transform var(--msr-toolbar-motion);
+}
+
+.mesurer-toolbar-tool-stage:has([role="menu"]) {
+  overflow: visible;
+}
+
+.mesurer-toolbar-tool-track {
+  display: flex;
+  flex: none;
+  transform: translateX(0);
+}
+
+.mesurer-toolbar-tool-slot:not([data-open="true"]) {
+  pointer-events: none;
+}
+
+.mesurer-toolbar-tool-panel {
+  width: max-content;
+}
+
+.mesurer-toolbar-tool-switch {
+  position: relative;
+}
+
+.mesurer-toolbar-tool-switch-pill {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--color-ink-200);
+  transform: translateX(0);
+  transition: transform var(--msr-toolbar-motion);
+}
+
+.mesurer-toolbar-tool-switch[data-value="annotate"] .mesurer-toolbar-tool-switch-pill {
+  transform: translateX(30px);
+}
+
+.mesurer-toolbar-tool-switch > :not(.mesurer-toolbar-tool-switch-pill) {
+  position: relative;
+  z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mesurer-toolbar-tool-stage,
+  .mesurer-toolbar-tool-stage[data-ready="true"],
+  .mesurer-toolbar-tool-stage[data-ready="true"] .mesurer-toolbar-tool-track,
+  .mesurer-toolbar-tool-switch-pill {
+    transition: none;
+  }
+
   .mesurer-screenshot-preview {
     animation-name: mesurer-screenshot-preview-reduced;
     animation-duration: 5s;

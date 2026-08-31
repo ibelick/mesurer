@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, ReactNode, Ref, SetStateAction } from "react";
 import {
   forwardRef,
   memo,
@@ -156,14 +156,11 @@ function ToolbarGroup({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-function ToolbarDivider({ fullHeight = false }: { fullHeight?: boolean }) {
+function ToolbarDivider() {
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        "msr:mx-1 msr:w-px msr:bg-ink-200",
-        fullHeight ? "msr:-my-1 msr:h-10" : "msr:h-5",
-      )}
+      className="msr:mx-1 msr:-my-1 msr:w-px msr:self-stretch msr:bg-ink-200"
     />
   );
 }
@@ -178,7 +175,7 @@ function ToolbarComponent(
     screenshot,
     settings,
   }: ToolbarProps,
-  ref: React.Ref<HTMLDivElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   const {
     mode: toolMode,
@@ -227,10 +224,11 @@ function ToolbarComponent(
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>("inspect");
-  const [toolGroupSwitching, setToolGroupSwitching] = useState(false);
-  const toolGroupSwitchTimeout = useRef<number | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
+  const toolStageRef = useRef<HTMLDivElement | null>(null);
+  const inspectPanelRef = useRef<HTMLDivElement | null>(null);
+  const annotatePanelRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
@@ -238,19 +236,12 @@ function ToolbarComponent(
 
   const selectToolGroup = useCallback(
     (group: "inspect" | "annotate") => {
+      if (group === toolGroup) return;
       onInteract();
       setToolGroup(group);
       setGuideMenuOpen(false);
-      setToolGroupSwitching(true);
-      if (toolGroupSwitchTimeout.current !== null) {
-        eventTarget.clearTimeout(toolGroupSwitchTimeout.current);
-      }
-      toolGroupSwitchTimeout.current = eventTarget.setTimeout(() => {
-        setToolGroupSwitching(false);
-        toolGroupSwitchTimeout.current = null;
-      }, 180);
     },
-    [eventTarget, onInteract],
+    [onInteract, toolGroup],
   );
 
   const updateMenuAlign = useCallback(() => {
@@ -415,6 +406,38 @@ function ToolbarComponent(
   );
 
   useLayoutEffect(() => {
+    const stage = toolStageRef.current;
+    const inspectPanel = inspectPanelRef.current;
+    const annotatePanel = annotatePanelRef.current;
+    if (!stage || !inspectPanel || !annotatePanel) return;
+
+    const widthOf = (panel: HTMLElement) => panel.offsetWidth;
+
+    const syncToolWidths = () => {
+      const inspectWidth = widthOf(inspectPanel);
+      const annotateWidth = widthOf(annotatePanel);
+      if (inspectWidth > 0) {
+        stage.style.setProperty("--msr-inspect-w", `${inspectWidth}px`);
+      }
+      if (annotateWidth > 0) {
+        stage.style.setProperty("--msr-annotate-w", `${annotateWidth}px`);
+      }
+    };
+
+    syncToolWidths();
+    const frame = requestAnimationFrame(() => {
+      stage.dataset.ready = "true";
+    });
+    const observer = new ResizeObserver(syncToolWidths);
+    observer.observe(inspectPanel);
+    observer.observe(annotatePanel);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
     if (!guideMenuOpen && !settingsOpen) return;
 
     const frame = guideMenuOpen
@@ -469,11 +492,7 @@ function ToolbarComponent(
     <div className="msr:relative">
     <div
       ref={ref}
-      className={cn(
-        "mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:overflow-visible msr:rounded-[12px] msr:bg-white msr:p-1 msr:shadow-md msr:outline msr:outline-transparent",
-        toolGroupSwitching && "msr:motion-safe:animate-[mesurer-toolbar-switch_180ms_ease-out]",
-        "msr:motion-reduce:animate-none",
-      )}
+      className="mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-white msr:p-1 msr:shadow-md msr:outline msr:outline-transparent"
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         onInteract();
@@ -489,13 +508,22 @@ function ToolbarComponent(
          tooltipVisibleId={visibleTooltipId}
          tooltipsEnabled={tooltipsEnabled}
        />
-       <ToolbarDivider fullHeight />
-       <div className="mesurer-toolbar-tool-stage msr:grid msr:flex-none">
-       {toolGroup === "inspect" ? (
+       <div className="msr:flex msr:items-center msr:self-stretch">
+       <ToolbarDivider />
        <div
-         key="inspect"
-         className="mesurer-toolbar-tool-panel msr:motion-safe:animate-[mesurer-toolbar-tool-panel-enter_180ms_ease-out] msr:motion-reduce:animate-none"
+         ref={toolStageRef}
+         className="mesurer-toolbar-tool-stage"
+         data-group={toolGroup}
        >
+       <div className="mesurer-toolbar-tool-track">
+       <div
+         className="mesurer-toolbar-tool-slot"
+         data-group="inspect"
+         data-open={toolGroup === "inspect"}
+         aria-hidden={toolGroup !== "inspect"}
+         inert={toolGroup !== "inspect" ? true : undefined}
+       >
+       <div ref={inspectPanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
        <ToolbarGroup label="Select and inspect">
       <ToolbarButton
         id="select"
@@ -695,11 +723,15 @@ function ToolbarComponent(
       </ToolbarButton>
        </ToolbarGroup>
        </div>
-       ) : (
+       </div>
        <div
-         key="annotate"
-         className="mesurer-toolbar-tool-panel msr:motion-safe:animate-[mesurer-toolbar-tool-panel-enter_180ms_ease-out] msr:motion-reduce:animate-none"
+         className="mesurer-toolbar-tool-slot"
+         data-group="annotate"
+         data-open={toolGroup === "annotate"}
+         aria-hidden={toolGroup !== "annotate"}
+         inert={toolGroup !== "annotate" ? true : undefined}
        >
+       <div ref={annotatePanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
        <ToolbarGroup label="Annotate">
       <ToolbarButton
         id="selection"
@@ -747,9 +779,11 @@ function ToolbarComponent(
       </ToolbarButton>
        </ToolbarGroup>
        </div>
-       )}
        </div>
-       <ToolbarDivider fullHeight />
+       </div>
+       </div>
+       <ToolbarDivider />
+       </div>
        <ToolbarGroup label="Capture and settings">
       <div className="msr:relative">
       <ToolbarButton

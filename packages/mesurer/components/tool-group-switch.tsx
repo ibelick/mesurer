@@ -26,6 +26,7 @@ export function ToolGroupSwitch({
   return (
     <div
       className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:items-center msr:gap-[2px] msr:rounded-[8px] msr:bg-ink-50 msr:p-[2px]"
+      data-value={value}
       role="group"
       aria-label="Tool group"
       onKeyDown={(event) => {
@@ -38,6 +39,7 @@ export function ToolGroupSwitch({
         }
       }}
     >
+      <span className="mesurer-toolbar-tool-switch-pill" aria-hidden="true" />
       <div
         className="msr:relative"
         onMouseEnter={() => tooltip.onTooltipEnter("tool-group-inspect")}
@@ -51,7 +53,7 @@ export function ToolGroupSwitch({
           className={cn(
             "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "inspect"
-              ? "msr:bg-ink-200 msr:text-ink-900"
+              ? "msr:bg-transparent msr:text-ink-900"
               : "msr:text-ink-700 msr:hover:bg-ink-200",
           )}
           onClick={() => onChange("inspect")}
@@ -79,7 +81,7 @@ export function ToolGroupSwitch({
           className={cn(
             "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "annotate"
-              ? "msr:bg-ink-200 msr:text-ink-900"
+              ? "msr:bg-transparent msr:text-ink-900"
               : "msr:text-ink-700 msr:hover:bg-ink-200",
           )}
           onClick={() => onChange("annotate")}
