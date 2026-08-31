@@ -10,6 +10,8 @@ export { DropperIcon } from './dropper'
 export { PenIcon } from './pen'
 export { CameraIcon } from './camera'
 export { SettingsIcon } from './settings'
+export { SelectInspectIcon } from './select-inspect'
+export { AnnotateIcon } from './annotate'
 
 export { DropperIcon as ColorPickerIcon } from './dropper'
 export { MeasureBarIcon as RulerIcon } from './measure-bar'

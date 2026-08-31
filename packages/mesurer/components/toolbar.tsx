@@ -482,7 +482,13 @@ function ToolbarComponent(
       onClickCapture={onClickCapture}
       onMouseLeave={onToolbarLeave}
     >
-       <ToolGroupSwitch value={toolGroup} onChange={selectToolGroup} />
+       <ToolGroupSwitch
+         value={toolGroup}
+         onChange={selectToolGroup}
+         tooltip={toolbarTooltip}
+         tooltipVisibleId={visibleTooltipId}
+         tooltipsEnabled={tooltipsEnabled}
+       />
        <ToolbarDivider fullHeight />
        <div className="mesurer-toolbar-tool-stage msr:grid msr:flex-none">
        {toolGroup === "inspect" ? (
