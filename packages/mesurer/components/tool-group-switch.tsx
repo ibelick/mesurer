@@ -1,0 +1,61 @@
+import { cn } from "../core/utils";
+
+export type ToolGroup = "inspect" | "annotate";
+
+export function ToolGroupSwitch({
+  value,
+  onChange,
+}: {
+  value: ToolGroup;
+  onChange: (value: ToolGroup) => void;
+}) {
+  return (
+    <div
+      className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:items-center msr:gap-[2px] msr:rounded-[8px] msr:bg-ink-50 msr:p-[2px]"
+      role="group"
+      aria-label="Tool group"
+      onKeyDown={(event) => {
+        if (event.key === "1") {
+          event.preventDefault();
+          onChange("inspect");
+        } else if (event.key === "2") {
+          event.preventDefault();
+          onChange("annotate");
+        }
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Select and inspect tools (1)"
+        aria-keyshortcuts="1"
+        aria-pressed={value === "inspect"}
+        title="Select & Inspect (1)"
+        className={cn(
+          "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
+          value === "inspect"
+            ? "msr:bg-ink-200 msr:text-ink-900"
+            : "msr:text-ink-700 msr:hover:bg-ink-200",
+        )}
+        onClick={() => onChange("inspect")}
+      >
+        S
+      </button>
+      <button
+        type="button"
+        aria-label="Annotate tools (2)"
+        aria-keyshortcuts="2"
+        aria-pressed={value === "annotate"}
+        title="Annotate (2)"
+        className={cn(
+          "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
+          value === "annotate"
+            ? "msr:bg-ink-200 msr:text-ink-900"
+            : "msr:text-ink-700 msr:hover:bg-ink-200",
+        )}
+        onClick={() => onChange("annotate")}
+      >
+        A
+      </button>
+    </div>
+  );
+}

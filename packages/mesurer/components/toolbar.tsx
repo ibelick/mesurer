@@ -16,6 +16,7 @@ import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
 import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
 import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip } from "./tooltip";
+import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import {
   CaretDownIcon,
   ArrowIcon,
@@ -155,8 +156,16 @@ function ToolbarGroup({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-function ToolbarDivider() {
-  return <div aria-hidden="true" className="msr:mx-1 msr:h-5 msr:w-px msr:bg-black/12" />;
+function ToolbarDivider({ fullHeight = false }: { fullHeight?: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "msr:mx-1 msr:w-px msr:bg-ink-200",
+        fullHeight ? "msr:-my-1 msr:h-10" : "msr:h-5",
+      )}
+    />
+  );
 }
 
 function ToolbarComponent(
@@ -217,12 +226,32 @@ function ToolbarComponent(
   } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
+  const [toolGroup, setToolGroup] = useState<ToolGroup>("inspect");
+  const [toolGroupSwitching, setToolGroupSwitching] = useState(false);
+  const toolGroupSwitchTimeout = useRef<number | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
   const settingsShortcut = getSettingsShortcut(eventTarget);
+
+  const selectToolGroup = useCallback(
+    (group: "inspect" | "annotate") => {
+      onInteract();
+      setToolGroup(group);
+      setGuideMenuOpen(false);
+      setToolGroupSwitching(true);
+      if (toolGroupSwitchTimeout.current !== null) {
+        eventTarget.clearTimeout(toolGroupSwitchTimeout.current);
+      }
+      toolGroupSwitchTimeout.current = eventTarget.setTimeout(() => {
+        setToolGroupSwitching(false);
+        toolGroupSwitchTimeout.current = null;
+      }, 180);
+    },
+    [eventTarget, onInteract],
+  );
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();
@@ -440,7 +469,11 @@ function ToolbarComponent(
     <div className="msr:relative">
     <div
       ref={ref}
-      className="mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-[#fff] msr:p-1 msr:outline msr:outline-transparent"
+      className={cn(
+        "mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:overflow-visible msr:rounded-[12px] msr:bg-white msr:p-1 msr:shadow-md msr:outline msr:outline-transparent",
+        toolGroupSwitching && "msr:motion-safe:animate-[mesurer-toolbar-switch_180ms_ease-out]",
+        "msr:motion-reduce:animate-none",
+      )}
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         onInteract();
@@ -449,7 +482,15 @@ function ToolbarComponent(
       onClickCapture={onClickCapture}
       onMouseLeave={onToolbarLeave}
     >
-      <ToolbarGroup label="Select and inspect">
+       <ToolGroupSwitch value={toolGroup} onChange={selectToolGroup} />
+       <ToolbarDivider fullHeight />
+       <div className="mesurer-toolbar-tool-stage msr:grid msr:flex-none">
+       {toolGroup === "inspect" ? (
+       <div
+         key="inspect"
+         className="mesurer-toolbar-tool-panel msr:motion-safe:animate-[mesurer-toolbar-tool-panel-enter_180ms_ease-out] msr:motion-reduce:animate-none"
+       >
+       <ToolbarGroup label="Select and inspect">
       <ToolbarButton
         id="select"
         active={toolMode === "select"}
@@ -538,7 +579,7 @@ function ToolbarComponent(
         {guideMenuOpen ? (
           <div
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:outline-none msr:focus:outline-none",
+               "mesurer-menu-surface msr:absolute msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg msr:outline-none msr:focus:outline-none",
               "msr:flex msr:flex-col msr:gap-px",
               menuSide === "bottom"
                 ? "msr:top-full msr:mt-2"
@@ -646,9 +687,14 @@ function ToolbarComponent(
       >
         <ColorPickerIcon size={20} aria-hidden="true" />
       </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarDivider />
-      <ToolbarGroup label="Annotate">
+       </ToolbarGroup>
+       </div>
+       ) : (
+       <div
+         key="annotate"
+         className="mesurer-toolbar-tool-panel msr:motion-safe:animate-[mesurer-toolbar-tool-panel-enter_180ms_ease-out] msr:motion-reduce:animate-none"
+       >
+       <ToolbarGroup label="Annotate">
       <ToolbarButton
         id="selection"
         active={toolMode === "selection"}
@@ -693,9 +739,12 @@ function ToolbarComponent(
       >
         <TextIcon size={20} aria-hidden="true" />
       </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarDivider />
-      <ToolbarGroup label="Capture and settings">
+       </ToolbarGroup>
+       </div>
+       )}
+       </div>
+       <ToolbarDivider fullHeight />
+       <ToolbarGroup label="Capture and settings">
       <div className="msr:relative">
       <ToolbarButton
         id="screenshot"
@@ -747,7 +796,7 @@ function ToolbarComponent(
           <div
             ref={settingsMenuRef}
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:z-[70] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0",
+              "mesurer-menu-surface msr:absolute msr:z-[70] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg",
               settingsPlacement.side === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
@@ -775,7 +824,7 @@ function ToolbarComponent(
         <div
           role="status"
           aria-live="polite"
-          className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-black msr:whitespace-normal msr:text-pretty ${toastAlignment}`}
+           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-black msr:whitespace-normal msr:text-pretty msr:shadow-md msr:line-clamp-2 ${toastAlignment}`}
         >
           Screenshot failed.
           <br />

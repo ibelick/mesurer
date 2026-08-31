@@ -68,81 +68,34 @@
   }
 }
 
-.mesurer-toolbar-surface {
-  overflow: visible;
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
+@keyframes mesurer-toolbar-switch {
+  from {
+    opacity: 0.8;
+    transform: scaleX(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
 }
 
-.mesurer-menu-surface {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-}
-
-.mesurer-color-picker {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow:
-    0 10px 15px -3px rgb(0 0 0 / 0.1),
-    0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.mesurer-toast-surface {
-  width: max-content;
-  max-width: min(240px, calc(100vw - 16px));
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.mesurer-screenshot-preview {
-  pointer-events: none;
-  position: absolute;
-  left: 50%;
-  z-index: 100;
-  width: max-content;
-  max-width: min(200px, calc(100vw - 24px));
-  padding: 4px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: #000;
-  transform: translateX(-50%);
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
-  animation: mesurer-screenshot-preview 5.16s ease-out both;
-}
-
-.mesurer-screenshot-preview[data-side="bottom"] {
-  top: 100%;
-  margin-top: 8px;
-}
-
-.mesurer-screenshot-preview[data-side="top"] {
-  bottom: 100%;
-  margin-bottom: 8px;
-}
-
-.mesurer-screenshot-preview-image {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 180px;
-  max-height: 120px;
-  border-radius: 2px;
-  background: #fff;
-  object-fit: contain;
+@keyframes mesurer-toolbar-tool-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mesurer-screenshot-preview {
-    animation: mesurer-screenshot-preview-reduced 5s linear both;
+    animation-name: mesurer-screenshot-preview-reduced;
+    animation-duration: 5s;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
   }
 }
 
@@ -164,39 +117,8 @@
   }
 }
 
-.mesurer-settings-panel {
-  flex: 1 1 auto;
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior-x: none;
-  scrollbar-width: none;
-}
-
 .mesurer-settings-panel::-webkit-scrollbar {
   display: none;
-}
-
-.mesurer-switch-track {
-  box-sizing: border-box;
-  border: 1px solid #e2e8f0;
-}
-
-.mesurer-switch-track[data-checked="true"] {
-  border-color: #0d99ff;
-}
-
-.mesurer-control-shell {
-  border: 1px solid transparent;
-}
-
-.mesurer-control-shell:hover {
-  border-color: #e2e8f0;
-}
-
-.mesurer-control-focus:focus-within {
-  outline: 1px solid #0d99ff;
-  outline-offset: -1px;
 }
 
 .mesurer-root {
