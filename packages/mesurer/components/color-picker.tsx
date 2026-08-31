@@ -182,7 +182,7 @@ export function ColorPicker({
     >
       {unsupported ? (
         <div className="msr:flex msr:items-start msr:gap-2">
-          <span className="msr:text-black/60">Color picker is not supported in this browser.</span>
+          <span className="msr:text-black/60">Screen color picker unavailable.</span>
           <button
             type="button"
             className="msr:text-black/45 msr:hover:text-black"

@@ -106,7 +106,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 ## Requirements
 
 - React 18+
-- Chromium-based browser for the native color picker and screenshot capture
+- Chromium-based browser. The native screen color picker requires Chromium on Windows or macOS; Linux Chromium builds may not expose the EyeDropper API.
 
 Settings are stored separately from workspace state. The default adapter uses `localStorage`; integrations can provide a `persistence` adapter such as the browser extension's `chrome.storage.local` implementation.
 
