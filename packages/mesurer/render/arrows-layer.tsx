@@ -260,7 +260,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           start={{ x: transformedArrowPoints(arrow)[0]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[0]!.y - scrollOffset.y }}
           end={{ x: transformedArrowPoints(arrow)[2]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[2]!.y - scrollOffset.y }}
           control={{ x: transformedArrowPoints(arrow)[1]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[1]!.y - scrollOffset.y }}
-          color={color}
+          color={arrow.color}
           width={arrow.width}
            selected={selectedIds.includes(arrow.id)}
            showNodes={selectionCount === 1}

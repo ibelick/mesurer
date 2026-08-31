@@ -1,8 +1,11 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type SetStateAction,
 } from "react";
 import {
   SettingsPanel,
@@ -50,8 +53,6 @@ import {
   LEGACY_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
   sanitizeStoredSettings,
-  stripDistance,
-  stripMeasurement,
 } from "./core/workspace";
 export type MesurerProps = {
   highlightColor?: string;
@@ -170,7 +171,7 @@ export function MesurerClient({
     storedState?.settings ?? {},
   );
   const closeScreenshotRef = useRef<() => void>(() => {});
-  const closeColorPickerRef = useRef<() => void>(() => {});
+  const clearWorkspaceTransientRef = useRef<() => void>(() => {});
   const cancelArrowInteractionRef = useRef<() => void>(() => {});
   const hasArrowInteractionRef = useRef<() => boolean>(() => false);
   const cancelPenInteractionRef = useRef<() => void>(() => {});
@@ -396,6 +397,8 @@ export function MesurerClient({
     },
     workspace,
     closeScreenshotRef,
+    clearWorkspaceTransientRef,
+    setSelectedTextIds,
     applyingExternalPersistenceRef,
     workspacePersistTimeoutRef,
     storedState,
@@ -540,54 +543,6 @@ export function MesurerClient({
     if (toolMode === "text-inspector" && textInspector.redo()) return;
     redoHistory();
   }, [redoHistory, textInspector, toolMode]);
-  const clearAll = useCallback(() => {
-    if (toolMode === "text-inspector") {
-      textInspector.clear();
-    }
-    recordSnapshot();
-    clearGuideDragHold();
-    setStart(null);
-    setEnd(null);
-    setIsDragging(false);
-    setActiveMeasurementPersisted(null);
-    setMeasurementsPersisted([]);
-    setSelectedMeasurement(null);
-    setSelectedMeasurements([]);
-    clearSelectionRect();
-    setSelectedElement(null);
-    setHoverRect(null);
-    setHoverElement(null);
-    setGuidesPersisted([]);
-    setSelectedGuideIdsPersisted([]);
-    setHeldDistancesPersisted([]);
-    setArrowsPersisted([]);
-    setSelectedArrowIdsPersisted([]);
-    setTextAnnotationsPersisted([]);
-    setSelectedTextIds([]);
-  }, [
-    clearGuideDragHold,
-    clearSelectionRect,
-    recordSnapshot,
-    setActiveMeasurementPersisted,
-    setEnd,
-    setGuidesPersisted,
-    setHeldDistancesPersisted,
-    setHoverElement,
-    setHoverRect,
-    setIsDragging,
-    setMeasurementsPersisted,
-    setSelectedElement,
-    setSelectedGuideIdsPersisted,
-    setArrowsPersisted,
-    setSelectedArrowIdsPersisted,
-    setTextAnnotationsPersisted,
-    setSelectedMeasurement,
-    setSelectedMeasurements,
-    setSelectedTextIds,
-    setStart,
-    textInspector,
-    toolMode,
-  ]);
   const annotationSelection = useAnnotationSelection({
     enabled,
     toolMode,
@@ -654,7 +609,6 @@ export function MesurerClient({
     },
   });
   closeScreenshotRef.current = screenshot.closeUi;
-  closeColorPickerRef.current = () => colorPicker.setActive(false);
   const openColorPicker = useCallback(() => {
     screenshot.closeUi();
     void colorPicker.open();
@@ -685,6 +639,19 @@ export function MesurerClient({
     settingsOpen,
     toolMode,
   ]);
+
+  const setArrowColor = useCallback(
+    (value: SetStateAction<string>) => {
+      const color = typeof value === "function"
+        ? value(settingsArrowColor)
+        : value;
+      setSettingsArrowColor(color);
+      setArrowsPersisted((previous) =>
+        previous.map((arrow) => ({ ...arrow, color })),
+      );
+    },
+    [setArrowsPersisted, setSettingsArrowColor, settingsArrowColor],
+  );
   useResizeSync({
     document: ownerDocument,
     window: ownerWindow,
@@ -1000,6 +967,7 @@ export function MesurerClient({
     onInteract: () => setToolbarActive(true),
     onToggleSettings: toggleSettings,
   });
+  clearWorkspaceTransientRef.current = clearTransientState;
   const removeHeldDistance = useCallback(
     (id: string) => {
       recordSnapshot();
@@ -1289,7 +1257,7 @@ export function MesurerClient({
               }}
               arrows={{
                 color: settingsArrowColor,
-                setColor: setSettingsArrowColor,
+                setColor: setArrowColor,
                 snapArrowsEnabled,
                 setSnapArrowsEnabled,
                 arrowClickToPlace,

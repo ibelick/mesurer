@@ -7,6 +7,7 @@ import type {
 import { getInspectMeasurement } from "../core/dom"
 import { getRectFromPoints } from "../core/geometry"
 import { transformedPenBounds } from "../core/pen-transform"
+import { transformedArrowBounds } from "../core/arrow-transform"
 import {
   getCycledClickTarget,
   getElementsInRectCached,
@@ -112,29 +113,13 @@ export const useMesurerPointerSelection = ({
       )
     }).map((item) => item.id)
     const selectedArrows = arrows.filter((arrow) => {
-      const points = [
-        arrow.start,
-        arrow.end,
-        arrow.control ?? {
-          x: (arrow.start.x + arrow.end.x) / 2,
-          y: (arrow.start.y + arrow.end.y) / 2,
-        },
-      ]
-      const candidate = {
-        left: Math.min(...points.map((point) => point.x)) - scrollOffset.x,
-        top: Math.min(...points.map((point) => point.y)) - scrollOffset.y,
-        width: Math.max(
-          1,
-          Math.max(...points.map((point) => point.x)) -
-            Math.min(...points.map((point) => point.x))
-        ),
-        height: Math.max(
-          1,
-          Math.max(...points.map((point) => point.y)) -
-            Math.min(...points.map((point) => point.y))
-        ),
-      }
-      return overlaps(candidate)
+      const bounds = transformedArrowBounds(arrow)
+      return overlaps({
+        left: bounds.x - scrollOffset.x,
+        top: bounds.y - scrollOffset.y,
+        width: bounds.width,
+        height: bounds.height,
+      })
     }).map((arrow) => arrow.id)
     const selectedPen = penStrokes.filter((stroke) => {
       const bounds = transformedPenBounds(stroke)

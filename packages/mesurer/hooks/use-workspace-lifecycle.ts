@@ -27,6 +27,8 @@ type Options = {
   settings: SettingsState;
   workspace: MesurerWorkspaceState;
   closeScreenshotRef: MutableRefObject<() => void>;
+  clearWorkspaceTransientRef: MutableRefObject<() => void>;
+  setSelectedTextIds: Dispatch<SetStateAction<string[]>>;
   applyingExternalPersistenceRef: MutableRefObject<boolean>;
   workspacePersistTimeoutRef: MutableRefObject<number | null>;
   storedState: MesurerPersistenceSnapshot | null;
@@ -38,6 +40,8 @@ export const useWorkspaceLifecycle = ({
   settings,
   workspace,
   closeScreenshotRef,
+  clearWorkspaceTransientRef,
+  setSelectedTextIds,
   applyingExternalPersistenceRef,
   workspacePersistTimeoutRef,
   storedState,
@@ -138,6 +142,7 @@ export const useWorkspaceLifecycle = ({
   ]);
 
   const clearPersistedWorkspace = useCallback(() => {
+    clearWorkspaceTransientRef.current();
     toolModeRef.current = "none";
     rulersVisibleRef.current = false;
     xrayVisibleRef.current = false;
@@ -170,8 +175,10 @@ export const useWorkspaceLifecycle = ({
     setTextAnnotations([]);
     setPenStrokes([]);
     setSelectedPenStrokeIds([]);
+    setSelectedTextIds([]);
   }, [
     closeScreenshotRef,
+    clearWorkspaceTransientRef,
     setActiveMeasurement,
     setArrows,
     setEnabled,
@@ -183,6 +190,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedArrowIds,
     setSelectedGuideIds,
     setSelectedPenStrokeIds,
+    setSelectedTextIds,
     setTextAnnotations,
     setToolMode,
     setXrayVisible,
