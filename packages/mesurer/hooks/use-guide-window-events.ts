@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react"
+import { useLayoutEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react"
 import { GUIDE_HITBOX_SIZE } from "../core/constants"
 import { getSnapGuidePosition } from "../core/guides"
 import { isPointerDragActive } from "../core/pointer-drag"
@@ -95,7 +95,7 @@ export const useGuideWindowEvents = ({
     moveSelectedAnnotations,
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) {
       guideDragRef.current = null
       if (guideUserSelectRef.current !== null) {

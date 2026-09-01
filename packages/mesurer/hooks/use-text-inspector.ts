@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useLayoutEffect, useRef } from "react"
 import type { ToolMode } from "../core/types"
 import {
   createTextInspector,
@@ -17,7 +17,7 @@ export const useTextInspector = (
   const textInspector = textInspectorRef.current
   const modeRef = useRef<ToolMode | null>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = modeRef.current
     if (previous !== toolMode) {
       if (toolMode === "text-inspector") textInspector.enable()
@@ -27,7 +27,7 @@ export const useTextInspector = (
     textInspector.setPaused(settingsOpen)
   }, [settingsOpen, textInspector, toolMode])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => {
       textInspector.destroy()
     }

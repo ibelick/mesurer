@@ -12,6 +12,10 @@ let session: PointerDragSession | null = null
 
 export const isPointerDragActive = () => session !== null
 
+export const abortPointerDrag = () => {
+  session?.stop(false)
+}
+
 export const listenPointerDrag = (
   pointerId: number,
   view: Window,

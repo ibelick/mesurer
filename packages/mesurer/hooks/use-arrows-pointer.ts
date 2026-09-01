@@ -7,6 +7,7 @@ import {
   type SetStateAction,
 } from "react"
 import type { Arrow, Guide, Point, ToolMode } from "../core/types"
+import { abortPointerDrag } from "../core/pointer-drag"
 import { midpoint } from "../core/arrows"
 import { useArrowsDrawing } from "./use-arrows-drawing"
 import { useArrowsSelection } from "./use-arrows-selection"
@@ -68,6 +69,7 @@ export const useArrowsPointer = (options: UseArrowsPointerOptions) => {
   }, [drawing, pointerIdRef, selection.editRef])
 
   const cancelInteraction = useCallback(() => {
+    abortPointerDrag()
     const edit = selection.editRef.current
     if (edit?.changed) {
       options.setArrows((previous) => previous.map((arrow) => {

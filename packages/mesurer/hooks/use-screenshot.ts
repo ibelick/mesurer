@@ -1,6 +1,6 @@
 import {
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -93,7 +93,7 @@ export const useScreenshot = ({
     releaseScreenshotCapture(ownerWindow)
   }, [cancelSelection, dismissPreview, ownerWindow])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => {
       captureOperationRef.current += 1
       if (screenshotErrorTimeoutRef.current !== null) {

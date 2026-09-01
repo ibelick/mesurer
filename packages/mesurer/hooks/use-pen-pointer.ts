@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react"
+import { useCallback, useLayoutEffect, useRef, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react"
 import type { PenStroke, Point, ToolMode } from "../core/types"
 import { createId } from "../core/utils"
 
@@ -45,7 +45,7 @@ export const usePenPointer = ({
     setPenPreview([])
   }, [setPenPreview])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (toolMode !== "pen") clearDrawing()
   }, [clearDrawing, toolMode])
 

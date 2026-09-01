@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { useEffect, useRef } from "react"
+import { useLayoutEffect, useRef } from "react"
 import type { ToolMode } from "../core/types"
 
 const DOUBLE_ESCAPE_MS = 400
@@ -78,6 +78,13 @@ const isTypingInMesurer = (event: KeyboardEvent, eventTarget: Window) => {
   )
 }
 
+const isOverlayEscapeConsumed = (event: KeyboardEvent) =>
+  event.composedPath().some((node) => {
+    if (!(node instanceof Element)) return false
+    const role = node.getAttribute("role")
+    return role === "menu" || role === "listbox"
+  })
+
 const isTypingInPage = (eventTarget: Window) => {
   const active = getDeepActiveElement(eventTarget)
   return isEditableElement(active) && !isInsideMesurer(active)
@@ -88,7 +95,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
   optionsRef.current = options
   const lastEscapeAtRef = useRef(0)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const target = options.eventTarget
     const seen = new WeakSet<Event>()
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,6 +106,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
       if (event.key === "Escape") {
+        if (isOverlayEscapeConsumed(event)) return
         if (current.isSettingsOpen()) {
           current.onToggleSettings()
           return

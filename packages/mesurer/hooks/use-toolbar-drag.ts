@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useLayoutEffect, useRef, useState } from "react"
 
 type Point = {
   x: number
@@ -39,7 +39,7 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
     previousUserSelectRef.current = null
   }, [eventTarget])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => {
       detachListenersRef.current?.()
       const previous = previousUserSelectRef.current

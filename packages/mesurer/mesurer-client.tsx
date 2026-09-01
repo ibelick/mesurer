@@ -2,6 +2,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -323,6 +324,7 @@ export function MesurerClient({
     setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
     persistOnReload: settingsPersistOnReload,
     setPersistOnReload: setSettingsPersistOnReload,
+    lastToolMode: settingsLastToolMode,
     setLastToolMode: setSettingsLastToolMode,
     colorPickerFormats: settingsColorFormats,
     setColorPickerFormats: setSettingsColorFormats,
@@ -377,18 +379,6 @@ export function MesurerClient({
       setMultiMeasureEnabled,
     },
   });
-  useEffect(() => {
-    if (
-      toolMode === "select" ||
-      toolMode === "selection" ||
-      toolMode === "guides" ||
-      toolMode === "arrows" ||
-      toolMode === "pen" ||
-      toolMode === "text"
-    ) {
-      setSettingsLastToolMode(toolMode);
-    }
-  }, [setSettingsLastToolMode, toolMode]);
   const workspaceLifecycle = useWorkspaceLifecycle({
     ownerWindow,
     activePersistence,
@@ -448,7 +438,7 @@ export function MesurerClient({
     x: ownerWindow.scrollX,
     y: ownerWindow.scrollY,
   });
-  useEffect(() => {
+  useLayoutEffect(() => {
     const updateScrollOffset = () => {
       setScrollOffset({ x: ownerWindow.scrollX, y: ownerWindow.scrollY });
     };
@@ -460,7 +450,7 @@ export function MesurerClient({
       ownerWindow.removeEventListener("resize", updateScrollOffset);
     };
   }, [ownerWindow]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled || toolMode === "none") return;
     const root = overlayRef.current;
     if (!root) return;
@@ -600,6 +590,7 @@ export function MesurerClient({
     beginMoveSession,
     moveFromSession,
     endMoveSession,
+    cancelMoveSession,
     startGroupRotate,
     updateGroupRotate,
     endGroupRotate,
@@ -972,6 +963,7 @@ export function MesurerClient({
     clearGuideDragHold,
     cancelArrowInteraction: arrowsPointer.cancelInteraction,
     cancelPenInteraction: penPointer.cancelInteraction,
+    cancelMoveSession,
     hasArrowInteraction: arrowsPointer.hasActiveInteraction,
     hasPenInteraction: penPointer.hasActiveInteraction,
     clearSelection,
@@ -1067,6 +1059,17 @@ export function MesurerClient({
       handlePointerLeave,
     },
   });
+  if (
+    (toolMode === "select" ||
+      toolMode === "selection" ||
+      toolMode === "guides" ||
+      toolMode === "arrows" ||
+      toolMode === "pen" ||
+      toolMode === "text") &&
+    settingsLastToolMode !== toolMode
+  ) {
+    setSettingsLastToolMode(toolMode);
+  }
   return (
     <MesurerPortal
       portalTarget={portalTarget}

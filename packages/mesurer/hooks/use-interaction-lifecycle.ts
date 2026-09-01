@@ -60,6 +60,7 @@ type Options = {
   clearGuideDragHold: () => void;
   cancelArrowInteraction: () => void;
   cancelPenInteraction: () => void;
+  cancelMoveSession: () => void;
   hasArrowInteraction: () => boolean;
   hasPenInteraction: () => boolean;
   clearSelection: () => void;
@@ -112,6 +113,7 @@ export const useInteractionLifecycle = (options: Options) => {
   const clearTransientState = useCallback(() => {
     options.cancelArrowInteraction();
     options.cancelPenInteraction();
+    options.cancelMoveSession();
     clearGuideDragHold();
     setStart(null);
     setEnd(null);

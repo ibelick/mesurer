@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, PointerEvent as ReactPointerEvent, RefObject, SetStateAction } from "react"
 import type { Arrow, Guide, InspectMeasurement, PenStroke, Point, Rect, TextAnnotation, ToolMode } from "../core/types"
 import { applyGroupResize, applyGroupRotation, type GroupResizeSnapshot, type GroupRotateSnapshot } from "../core/group-transform"
 import { textAnnotationBounds, type ResizeHandle } from "../core/text-transform"
 import { transformedArrowBounds } from "../core/arrow-transform"
 import { translateArrow } from "../core/arrows"
+import { abortPointerDrag } from "../core/pointer-drag"
 import { movePenStroke, transformedPenBounds } from "../core/pen-transform"
 
 type Setter<T> = Dispatch<SetStateAction<T>>
@@ -173,7 +174,7 @@ export const useAnnotationSelection = ({
     clearSelection,
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled || toolMode !== "selection") return
 
     const gesture: Gesture = {
@@ -437,6 +438,13 @@ export const useAnnotationSelection = ({
     setSelectionDragOffset({ x: 0, y: 0 })
   }, [applySessionDelta])
 
+  const cancelMoveSession = useCallback(() => {
+    abortPointerDrag()
+    moveSessionRef.current = null
+    selectionDragOffsetRef.current = { x: 0, y: 0 }
+    setSelectionDragOffset({ x: 0, y: 0 })
+  }, [])
+
   const selectAllAnnotations = useCallback(() => {
     const current = itemsRef.current
     const hasAnnotations =
@@ -525,7 +533,7 @@ export const useAnnotationSelection = ({
   const [groupRotateFrame, setGroupRotateFrame] = useState<GroupFrame | null>(null)
   groupRotateFrameRef.current = groupRotateFrame
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const key = getSelectionKey(selectedArrowIds, selectedPenStrokeIds, selectedTextIds)
     const selectionChanged =
       groupSelectionKeyRef.current && groupSelectionKeyRef.current !== key
@@ -705,6 +713,7 @@ export const useAnnotationSelection = ({
     beginMoveSession,
     moveFromSession,
     endMoveSession,
+    cancelMoveSession,
     selectionDragOffset,
     startGroupRotate,
     updateGroupRotate,

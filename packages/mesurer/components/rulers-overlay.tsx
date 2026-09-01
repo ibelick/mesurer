@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type PointerEvent } from "react";
+import { memo, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import type { Guide } from "../core/types";
 import type { RulerSettings } from "../core/persistence";
 
@@ -52,7 +52,7 @@ export const RulersOverlay = memo(function RulersOverlay({
     id: string;
   } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!settings.edgeReveal) return;
     const handlePointerMove = (event: Event) => {
       const pointer = event as globalThis.MouseEvent;

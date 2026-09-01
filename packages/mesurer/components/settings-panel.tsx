@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import { useId, useLayoutEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
@@ -482,7 +482,7 @@ function FormatMultiSelect({
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const listboxId = `${useId()}-color-formats`
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const handlePointerDown = (event: Event) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
