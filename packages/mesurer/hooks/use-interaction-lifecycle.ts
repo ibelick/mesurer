@@ -205,6 +205,7 @@ export const useInteractionLifecycle = (options: Options) => {
     selectAllAnnotations: options.selectAllAnnotations,
     setEnabled: options.setEnabled,
     setToolMode: options.setToolMode as Dispatch<SetStateAction<ToolMode>>,
+    setXrayVisible: options.setXrayVisible,
     setRulersVisible: options.setRulersVisible,
     setAltPressed: options.setAltPressed,
     isOverlayActive: () =>

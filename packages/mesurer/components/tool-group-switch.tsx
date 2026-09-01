@@ -29,15 +29,6 @@ export function ToolGroupSwitch({
       data-value={value}
       role="group"
       aria-label="Tool group"
-      onKeyDown={(event) => {
-        if (event.key === "1") {
-          event.preventDefault();
-          onChange("inspect");
-        } else if (event.key === "2") {
-          event.preventDefault();
-          onChange("annotate");
-        }
-      }}
     >
       <span className="mesurer-toolbar-tool-switch-pill" aria-hidden="true" />
       <div
@@ -54,7 +45,7 @@ export function ToolGroupSwitch({
             "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "inspect"
               ? "msr:bg-transparent msr:text-ink-900"
-              : "msr:text-ink-700 msr:hover:bg-ink-200",
+              : "msr:text-ink-700 msr:hover:bg-ink-200/50",
           )}
           onClick={() => onChange("inspect")}
         >
@@ -82,7 +73,7 @@ export function ToolGroupSwitch({
             "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "annotate"
               ? "msr:bg-transparent msr:text-ink-900"
-              : "msr:text-ink-700 msr:hover:bg-ink-200",
+              : "msr:text-ink-700 msr:hover:bg-ink-200/50",
           )}
           onClick={() => onChange("annotate")}
         >

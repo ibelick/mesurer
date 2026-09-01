@@ -5,6 +5,7 @@ const textItems = (page: Page) =>
 
 test("writes text anywhere on the page", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.keyboard.press("2");
   await page.getByRole("button", { name: "Text (T)" }).click();
   await page.mouse.click(220, 180);
   const input = page.getByRole("textbox", { name: "Text annotation" });

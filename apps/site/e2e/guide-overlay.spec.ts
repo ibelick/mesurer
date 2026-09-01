@@ -13,6 +13,49 @@ test("starts with the Select tool active", async ({ page }) => {
   );
 });
 
+test("switches tool groups with global commands and defaults", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+
+  await page.keyboard.press("2");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.keyboard.press("1");
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("switching to annotation tools clears inspection overlays", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "X-ray (X)" }).click();
+
+  await page.keyboard.press("2");
+
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.keyboard.press("1");
+  await expect(page.getByRole("button", { name: "X-ray (X)" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
+
 test("remembers the last tool after reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const arrows = page.getByRole("button", { name: "Arrows (D)" });
@@ -856,7 +899,7 @@ test("ruler-created guides snap to regular guides", async ({ page }) => {
   expect(Math.abs(first!.x - second!.x)).toBeLessThanOrEqual(1);
 });
 
-test("shows layout gap and padding when layout details is enabled", async ({ page }) => {
+test("shows layout gap and padding when spacing is enabled", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
    await activateSelect(page);
 
@@ -873,10 +916,10 @@ test("shows layout gap and padding when layout details is enabled", async ({ pag
   await expect(details).toContainText("16px");
 });
 
-test("hides layout details when the setting is disabled", async ({ page }) => {
+test("hides layout details when spacing is disabled", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("switch", { name: "Layout details" }).click();
+  await page.getByRole("switch", { name: "Spacing" }).click();
   await page.keyboard.press("Escape");
    await activateSelect(page);
 

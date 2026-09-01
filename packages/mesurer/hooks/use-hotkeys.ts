@@ -19,6 +19,7 @@ type HotkeyOptions = {
   selectAllAnnotations: () => boolean
   setEnabled: Dispatch<SetStateAction<boolean>>
   setToolMode: Dispatch<SetStateAction<ToolMode>>
+  setXrayVisible: Dispatch<SetStateAction<boolean>>
   setRulersVisible: Dispatch<SetStateAction<boolean>>
   setAltPressed: Dispatch<SetStateAction<boolean>>
   isOverlayActive: () => boolean
@@ -148,6 +149,16 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (key === "x") {
         current.onCloseScreenshot()
         current.onToggleXray()
+        current.onInteract()
+        return
+      }
+
+      if (key === "1" || key === "2") {
+        current.clearTransientState()
+        current.onCloseScreenshot()
+        current.setXrayVisible(false)
+        current.setRulersVisible(false)
+        current.setToolMode(key === "1" ? "select" : "selection")
         current.onInteract()
         return
       }

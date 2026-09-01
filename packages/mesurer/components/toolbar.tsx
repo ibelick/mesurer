@@ -268,7 +268,9 @@ function ToolbarComponent(
   } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
-  const [toolGroup, setToolGroup] = useState<ToolGroup>("inspect");
+  const [toolGroup, setToolGroup] = useState<ToolGroup>(
+    () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
+  );
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const toolStageRef = useRef<HTMLDivElement | null>(null);
@@ -293,6 +295,8 @@ function ToolbarComponent(
       onInteract();
       setColorPickerActive(false);
       onCancelScreenshot();
+      setXrayVisible(false);
+      setRulersVisible(false);
       setToolMode(group === "inspect" ? "select" : "selection");
       setToolGroup(group);
       setGuideMenuOpen(false);
@@ -303,7 +307,9 @@ function ToolbarComponent(
       onInteract,
       setColorPickerActive,
       setEnabled,
+      setRulersVisible,
       setToolMode,
+      setXrayVisible,
       toolGroup,
     ],
   );
@@ -321,7 +327,13 @@ function ToolbarComponent(
     rulersWereVisibleRef.current = rulersVisible;
   }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
 
+  const skipNextToolGroupMotionRef = useRef(true);
+
   useLayoutEffect(() => {
+    if (skipNextToolGroupMotionRef.current) {
+      skipNextToolGroupMotionRef.current = false;
+      return;
+    }
     const stage = toolStageRef.current;
     if (!stage || stage.dataset.ready !== "true") return;
     if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {

@@ -1,10 +1,22 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 
 const activateArrows = async (page: Page) => {
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
   const button = page.getByRole("button", { name: "Arrows (D)" });
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 const activateSelection = async (page: Page) => {
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
   const button = page.getByRole("button", { name: "Select (S)" });
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
@@ -522,22 +534,22 @@ test("escape cancels the current interaction without clearing arrows", async ({ 
   );
 });
 
-test("escape exits the active tool and double escape exits completely", async ({ page }) => {
+test("escape exits the active tool without switching groups", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateArrows(page);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
   await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
 
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Arrows (D)" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );

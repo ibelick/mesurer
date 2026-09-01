@@ -140,6 +140,9 @@
   border-radius: 6px;
   background: var(--color-ink-200);
   transform: translateX(0);
+}
+
+.mesurer-toolbar-surface:has(.mesurer-toolbar-tool-stage[data-ready="true"]) .mesurer-toolbar-tool-switch-pill {
   transition: transform var(--msr-toolbar-motion);
 }
 

@@ -3,10 +3,22 @@ import { expect, test, type Page } from "@playwright/test";
 const strokes = (page: Page) => page.locator('[data-mesurer-pen="true"]');
 
 const activatePen = async (page: Page) => {
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
   await page.getByRole("button", { name: "Pen (N)" }).click();
 };
 
 const activateSelection = async (page: Page) => {
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+    "data-value",
+    "annotate",
+  );
   await page.getByRole("button", { name: "Select (S)" }).click();
 };
 
