@@ -178,7 +178,7 @@ export const useInteractionLifecycle = (options: Options) => {
     clearTransientState();
     options.clearSelection();
     options.setXrayVisible(false);
-    options.setToolMode("selection");
+    options.setToolMode("none");
   }, [clearTransientState, options]);
   const exitMesurerCompletely = useCallback(() => {
     clearTransientState();

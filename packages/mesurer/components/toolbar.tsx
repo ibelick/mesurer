@@ -634,7 +634,7 @@ function ToolbarComponent(
     <div className="msr:relative">
     <div
       ref={ref}
-      className="mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-white msr:p-1 msr:shadow-md msr:outline msr:outline-transparent"
+      className="mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-white msr:p-1 msr:outline msr:outline-transparent"
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         onInteract();
