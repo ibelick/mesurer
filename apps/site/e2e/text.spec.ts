@@ -3,10 +3,25 @@ import { expect, test, type Page } from "@playwright/test";
 const textItems = (page: Page) =>
   page.locator('[data-mesurer-text="true"]');
 
+const activateText = async (page: Page) => {
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  const button = page.getByRole("button", { name: "Text (T)" });
+  if (!(await button.isVisible())) {
+    const inspect = page.getByRole("button", { name: "Inspect (I)" });
+    if (await inspect.isVisible()) await expect(inspect).toBeVisible();
+    await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+    await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
+      "data-value",
+      "annotate",
+    );
+  }
+  await button.click();
+};
+
 test("writes text anywhere on the page", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.keyboard.press("2");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   const input = page.getByRole("textbox", { name: "Text annotation" });
   await input.pressSequentially("Review this D G X P S");
@@ -23,7 +38,7 @@ test("writes text anywhere on the page", async ({ page }) => {
 
 test("activates text with T and Escape cancels the draft", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.getByRole("button", { name: "Select (S)" }).click();
   await page.keyboard.press("t");
   await expect(page.getByRole("button", { name: "Text (T)" })).toHaveAttribute("aria-pressed", "true");
@@ -40,7 +55,7 @@ test("activates text with T and Escape cancels the draft", async ({ page }) => {
 
 test("undoes and redoes text annotations", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Undo me");
   await page.keyboard.press("Control+Enter");
@@ -53,7 +68,7 @@ test("undoes and redoes text annotations", async ({ page }) => {
 
 test("persists text annotations after reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html?persist");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Keep me");
   await page.keyboard.press("Control+Enter");
@@ -64,7 +79,7 @@ test("persists text annotations after reload", async ({ page }) => {
 
 test("moves a selected text annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Move me");
   await page.keyboard.press("Escape");
@@ -87,7 +102,7 @@ test("moves a selected text annotation", async ({ page }) => {
 
 test("shows a selection box when clicking text in Selection mode", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Select me");
   await page.keyboard.press("Control+Enter");
@@ -100,7 +115,7 @@ test("shows a selection box when clicking text in Selection mode", async ({ page
 
 test("double-clicks a text annotation to edit it in place", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Escape");
@@ -117,12 +132,12 @@ test("double-clicks a text annotation to edit it in place", async ({ page }) => 
 
 test("clicks a text annotation to edit it in Text mode", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Edit me");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   const text = textItems(page);
   const box = await text.boundingBox();
   if (!box) throw new Error("Text annotation is not visible");
@@ -132,12 +147,12 @@ test("clicks a text annotation to edit it in Text mode", async ({ page }) => {
 
 test("appends text when editing an existing annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   const text = textItems(page);
   const box = await text.boundingBox();
   if (!box) throw new Error("Text annotation is not visible");
@@ -152,12 +167,12 @@ test("appends text when editing an existing annotation", async ({ page }) => {
 
 test("inserts text where an existing annotation is clicked", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   const text = textItems(page);
   const box = await text.boundingBox();
   if (!box) throw new Error("Text annotation is not visible");
@@ -170,7 +185,7 @@ test("inserts text where an existing annotation is clicked", async ({ page }) =>
 
 test("keeps a long line horizontal until Enter adds a line", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   const input = page.getByRole("textbox", { name: "Text annotation" });
   await input.pressSequentially("A".repeat(80));
@@ -185,7 +200,7 @@ test("keeps a long line horizontal until Enter adds a line", async ({ page }) =>
 
 test("rewrites existing text with a new line", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Control+Enter");
@@ -203,7 +218,7 @@ test("rewrites existing text with a new line", async ({ page }) => {
 
 test("rewrites existing text with multiple new lines", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Control+Enter");
@@ -222,7 +237,7 @@ test("rewrites existing text with multiple new lines", async ({ page }) => {
 
 test("replaces all existing text and starts again", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Original");
   await page.keyboard.press("Control+Enter");
@@ -240,7 +255,7 @@ test("replaces all existing text and starts again", async ({ page }) => {
 
 test("keeps text when clicking elsewhere", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Keep me");
 
@@ -251,7 +266,7 @@ test("keeps text when clicking elsewhere", async ({ page }) => {
 
 test("needs a second click to start a new note after writing", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("First");
 
@@ -269,12 +284,12 @@ test("needs a second click to start a new note after writing", async ({ page }) 
 
 test("does not duplicate text when clicking an existing annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Once");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await textItems(page).click();
   await page.keyboard.press("Escape");
 
@@ -284,7 +299,7 @@ test("does not duplicate text when clicking an existing annotation", async ({ pa
 
 test("does not duplicate text when clicking it after a new draft starts", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Once");
   await page.mouse.click(420, 280);
@@ -297,7 +312,7 @@ test("does not duplicate text when clicking it after a new draft starts", async 
 
 test("does not duplicate text when reclicking the active editor", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   const input = page.getByRole("textbox", { name: "Text annotation" });
   await input.fill("Once");
@@ -310,7 +325,7 @@ test("does not duplicate text when reclicking the active editor", async ({ page 
 
 test("resizes a selected text annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Resize me");
   await page.keyboard.press("Escape");
@@ -334,7 +349,7 @@ test("resizes a selected text annotation", async ({ page }) => {
 
 test("widens a text box from the side without scaling type", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Side resize wraps this line");
   await page.keyboard.press("Escape");
@@ -357,7 +372,7 @@ test("widens a text box from the side without scaling type", async ({ page }) =>
 
 test("wraps text when the side handles shrink the box", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Wrap this long annotation line");
   await page.keyboard.press("Escape");
@@ -381,7 +396,7 @@ test("wraps text when the side handles shrink the box", async ({ page }) => {
 
 test("deletes a selected text annotation with Backspace", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Remove me");
   await page.keyboard.press("Escape");
@@ -395,7 +410,7 @@ test("deletes a selected text annotation with Backspace", async ({ page }) => {
 
 test("rotates a selected text annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Rotate me");
   await page.keyboard.press("Escape");
@@ -418,7 +433,7 @@ test("applies the text font from settings", async ({ page }) => {
   await dialog.getByLabel("Font").selectOption("code");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Code face");
   await page.keyboard.press("Escape");
@@ -428,7 +443,7 @@ test("applies the text font from settings", async ({ page }) => {
 
 test("updates existing text when the text color changes", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.mouse.click(220, 180);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Color me");
   await page.keyboard.press("Escape");
@@ -443,7 +458,7 @@ test("updates existing text when the text color changes", async ({ page }) => {
 
 test("opens settings on the text section from the Text tool", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Text (T)" }).click();
+  await activateText(page);
   await page.getByRole("button", { name: "Settings" }).click();
 
   const panel = page.locator(".mesurer-settings-panel");

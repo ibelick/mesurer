@@ -4,7 +4,7 @@ const strokes = (page: Page) => page.locator('[data-mesurer-pen="true"]');
 
 const activatePen = async (page: Page) => {
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
-  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
     "data-value",
     "annotate",
@@ -14,7 +14,7 @@ const activatePen = async (page: Page) => {
 
 const activateSelection = async (page: Page) => {
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
-  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
     "data-value",
     "annotate",

@@ -56,8 +56,27 @@ test("switching to annotation tools clears inspection overlays", async ({ page }
   );
 });
 
+test("Escape closes the guide orientation menu without exiting the active tool", async ({
+  page,
+}) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await menu.press("Escape");
+
+  await expect(menu).toBeHidden();
+  await expect(page.getByRole("button", { name: "Guides (G)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
 test("remembers the last tool after reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   const arrows = page.getByRole("button", { name: "Arrows (D)" });
   await arrows.click();
   await expect(arrows).toHaveAttribute("aria-pressed", "true");
@@ -144,7 +163,7 @@ test("placed guides remain visible while host-app clicks pass through", async ({
 
 test("Selection mode draws a selection rectangle while dragging", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Select (S)" }).click();
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
 
   await page.mouse.move(180, 180);
   await page.mouse.down();
@@ -522,6 +541,7 @@ test("opening settings with a tool active pins that tool section", async ({ page
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const settings = page.getByRole("button", { name: "Settings" });
 
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await page.getByRole("button", { name: "Arrows (D)" }).click();
   await settings.click();
   await expectSettingsSectionPinned(page, "arrows");
@@ -537,6 +557,7 @@ test("opening settings with a tool active pins that tool section", async ({ page
   await expectSettingsSectionPinned(page, "selection");
   await page.keyboard.press("Escape");
 
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
   await page.getByRole("button", { name: "Sample color (P)" }).click();
   await settings.click();
   await expectSettingsSectionPinned(page, "color");

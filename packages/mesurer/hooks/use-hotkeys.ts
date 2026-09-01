@@ -155,6 +155,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       if (key === "1" || key === "2") {
         current.clearTransientState()
+        current.setEnabled(true)
+        current.onCloseColorPicker()
         current.onCloseScreenshot()
         current.setXrayVisible(false)
         current.setRulersVisible(false)

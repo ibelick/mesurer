@@ -2,7 +2,7 @@ import { devices, expect, test, type Page } from "@playwright/test";
 
 const activateArrows = async (page: Page) => {
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
-  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
     "data-value",
     "annotate",
@@ -12,7 +12,7 @@ const activateArrows = async (page: Page) => {
 };
 const activateSelection = async (page: Page) => {
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
-  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute(
     "data-value",
     "annotate",

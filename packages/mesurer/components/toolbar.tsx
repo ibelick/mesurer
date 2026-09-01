@@ -784,7 +784,7 @@ function ToolbarComponent(
               }
               if (event.key === "ArrowUp") {
                 event.preventDefault();
-                setActiveMenuIndex((prev) => (prev + 1) % 2);
+                setActiveMenuIndex((prev) => (prev - 1 + 2) % 2);
               }
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -802,6 +802,7 @@ function ToolbarComponent(
               }
               if (event.key === "Escape") {
                 event.preventDefault();
+                event.stopPropagation();
                 setGuideMenuOpen(false);
               }
             }}
