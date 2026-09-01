@@ -262,9 +262,13 @@ test("keeps text when clicking elsewhere", async ({ page }) => {
   await page.mouse.click(420, 280);
   await expect(textItems(page)).toHaveText("Keep me");
   await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
-test("needs a second click to start a new note after writing", async ({ page }) => {
+test("clicking away commits text and switches to Select", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateText(page);
   await page.mouse.click(220, 180);
@@ -272,7 +276,12 @@ test("needs a second click to start a new note after writing", async ({ page }) 
 
   await page.mouse.click(420, 280);
   await expect(page.getByRole("textbox", { name: "Text annotation" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
+  await activateText(page);
   await page.mouse.click(420, 280);
   await page.getByRole("textbox", { name: "Text annotation" }).fill("Second");
   await page.keyboard.press("Escape");

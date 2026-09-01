@@ -1221,7 +1221,7 @@ export function MesurerClient({
           onEdit: editTextAnnotation,
           scrollOffset,
           onDraftKeyDown: handleTextKeyDown,
-          onDraftBlur: finishTextDraft,
+          onDraftBlur: () => finishTextDraft(false, true),
           onActivateEditor: activateTextEditor,
           fontFamily: resolveTextFontFamily(settingsTextStyle),
           color: settingsTextStyle.color,

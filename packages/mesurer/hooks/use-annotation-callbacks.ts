@@ -137,7 +137,7 @@ export const useAnnotationCallbacks = ({
     )
   }, [setPenStrokes])
 
-  const finishTextDraft = useCallback((selectAfterCommit = false) => {
+  const finishTextDraft = useCallback((selectAfterCommit = false, switchToSelect = false) => {
     const draft = textDraftRef.current
     if (!draft) return
 
@@ -168,12 +168,14 @@ export const useAnnotationCallbacks = ({
       }
       setSelectedTextIds(selectAfterCommit ? [id] : [])
     }
+    if (switchToSelect) setToolMode("selection")
   }, [
     committedTextEditorsRef,
     recordSnapshot,
     setSelectedTextIds,
     setTextAnnotations,
     setTextDraft,
+    setToolMode,
     textDraftInputRef,
     textDraftRef,
     suppressTextCreateRef,
@@ -255,7 +257,7 @@ export const useAnnotationCallbacks = ({
     const suppressCreate = suppressTextCreateRef.current
     suppressTextCreateRef.current = false
     if (textDraftRef.current) {
-      finishTextDraft()
+      finishTextDraft(false, true)
       return
     }
     if (suppressCreate) return
