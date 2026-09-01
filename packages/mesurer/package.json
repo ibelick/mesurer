@@ -1,6 +1,6 @@
 {
   "name": "mesurer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Inspect, annotate, and give feedback on any live interface",
   "license": "MIT",
   "author": "Julien Thibeaut",

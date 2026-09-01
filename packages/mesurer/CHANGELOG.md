@@ -1,5 +1,13 @@
 # mesurer
 
+## 0.1.1
+
+- add grouped Select & Inspect and Annotate toolbars
+- add arrows, freehand pen strokes, and text annotations
+- add annotation selection, transforms, persistence, and undo/redo
+- add arrow and text configuration props
+- improve keyboard shortcuts and Escape behavior
+
 ## 0.1.0
 
 - add screenshot region selection with clipboard copy and local download support
