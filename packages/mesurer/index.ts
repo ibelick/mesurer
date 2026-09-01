@@ -1,6 +1,6 @@
 export { default as Mesurer } from "./mesurer";
 export type { MesurerProps } from "./mesurer";
-export type { Arrow, PenStroke, Point } from "./core/types";
+export type { Arrow, PenStroke, Point, TextAnnotation } from "./core/types";
 export {
   createTextInspector,
   TextInspector,

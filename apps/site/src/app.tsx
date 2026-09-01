@@ -1,5 +1,6 @@
 import { Mesurer } from "mesurer";
 import {
+  ArrowUpRightIcon,
   ArrowsCounterClockwiseIcon,
   CalculatorIcon,
   CameraIcon,
@@ -8,8 +9,11 @@ import {
   GearIcon,
   EyedropperIcon,
   LockKeyIcon,
+  PencilSimpleIcon,
   RulerIcon,
+  SelectionAllIcon,
   TextAaIcon,
+  TextTIcon,
   ToggleLeftIcon,
 } from "@phosphor-icons/react";
 import InstallCommand from "./components/install-command";
@@ -93,7 +97,7 @@ function Header({
         <p className="max-w-xl leading-relaxed text-muted">
           Visual precision for building with coding agents.
           <br />
-          Measure, inspect, and capture exactly what you see in the browser.
+          Measure, inspect, annotate, and capture exactly what you see in the browser.
         </p>
       )}
     </div>
@@ -113,6 +117,26 @@ function HomeContent() {
       description: "Click elements to measure their bounds",
     },
     {
+      icon: <ArrowUpRightIcon size={16} weight="light" />,
+      title: "Arrows",
+      description: "Draw, move, resize, rotate, and snap arrows",
+    },
+    {
+      icon: <PencilSimpleIcon size={16} weight="light" />,
+      title: "Pen",
+      description: "Draw freehand annotations and transform them",
+    },
+    {
+      icon: <TextTIcon size={16} weight="light" />,
+      title: "Text annotations",
+      description: "Add, edit, resize, rotate, and style notes",
+    },
+    {
+      icon: <SelectionAllIcon size={16} weight="light" />,
+      title: "Annotation selection",
+      description: "Multi-select and manipulate annotations together",
+    },
+    {
       icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
       title: "Guides mode",
       description: "Add vertical or horizontal guides",
@@ -130,12 +154,12 @@ function HomeContent() {
     {
       icon: <ArrowsCounterClockwiseIcon size={16} weight="light" />,
       title: "Undo/redo",
-      description: "Command history for guide and measurement changes",
+      description: "Command history for guides, measurements, and annotations",
     },
     {
       icon: <LockKeyIcon size={16} weight="light" />,
       title: "Persist state",
-      description: "Keep guides and measurements on reload",
+      description: "Keep guides, measurements, and annotations on reload",
     },
     {
       icon: <EyedropperIcon size={16} weight="light" />,
@@ -160,7 +184,7 @@ function HomeContent() {
     {
       icon: <GearIcon size={16} weight="light" />,
       title: "Settings",
-      description: "Configure guides, selection, rulers, and persistence",
+      description: "Configure selection, guides, arrows, text, colors, and persistence",
     },
   ];
 
@@ -283,6 +307,14 @@ export default function RootLayout({ children }) {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">arrowColor</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Base color for arrows</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">guideHighlightEnabled</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Highlights guides when hovered or selected</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">hoverHighlightEnabled</code>
             </div>
@@ -291,12 +323,36 @@ export default function RootLayout({ children }) {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">layoutDetailsEnabled</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Shows gap and padding details under selected dimensions</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">persistOnReload</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
               Persists workspace state across reloads
             </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">persistKey</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Optional key for isolating persisted workspaces</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">portalTarget</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Element or shadow root where the overlay is mounted</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">persistence</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Custom storage adapter for settings and workspace state</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">onPersistenceError</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Called when persistence is unavailable or a write fails</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">captureVisibleTab</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Provides a visible-tab PNG for Screenshot capture</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -313,6 +369,14 @@ export default function RootLayout({ children }) {
             <div className="max-w-[60%] text-right text-balance text-muted">
               Snap guides to other guides
             </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">snapArrowsEnabled</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Snap arrow endpoints to nearby elements</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">arrowClickToPlace</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Place arrows with clicks instead of dragging</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -346,6 +410,10 @@ export default function RootLayout({ children }) {
               Ruler opacity and edge reveal
             </div>
           </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">textStyle</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Default text annotation font and color</div>
+          </div>
         </div>
       </div>
 
@@ -362,15 +430,27 @@ export default function RootLayout({ children }) {
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
-              <code className="code">S</code>
+              <code className="code">I</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
               Toggle Inspect mode
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">S</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Select mode for annotations</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">A</code></div>
             <div className="max-w-[60%] text-right text-balance text-muted">Toggle Typography mode</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">1 / 2</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Switch between Select &amp; Inspect and Annotate tools</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">D / N / T</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Arrows, Pen, or Text mode</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">P</code></div>
@@ -434,7 +514,7 @@ export default function RootLayout({ children }) {
               <code className="code">Delete</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
-              Remove selected guides, arrows, or text
+              Remove selected guides, arrows, pen strokes, or text
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
@@ -451,6 +531,14 @@ export default function RootLayout({ children }) {
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
               Redo
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
+              <code className="code">Cmd/Ctrl + A</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Select all annotations
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
