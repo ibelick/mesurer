@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, PointerEvent as ReactPointerEvent, RefObject, SetStateAction } from "react"
-import type { Arrow, Guide, InspectMeasurement, PenStroke, Point, Rect, TextAnnotation } from "../core/types"
+import type { Arrow, Guide, InspectMeasurement, PenStroke, Point, Rect, TextAnnotation, ToolMode } from "../core/types"
 import { applyGroupResize, applyGroupRotation, type GroupResizeSnapshot, type GroupRotateSnapshot } from "../core/group-transform"
 import { textAnnotationBounds, type ResizeHandle } from "../core/text-transform"
 import { transformedArrowBounds } from "../core/arrow-transform"
-import { transformedPenBounds } from "../core/pen-transform"
+import { translateArrow } from "../core/arrows"
+import { movePenStroke, transformedPenBounds } from "../core/pen-transform"
 
 type Setter<T> = Dispatch<SetStateAction<T>>
 
@@ -13,11 +14,28 @@ type GroupFrame = {
   rotation: number
 }
 
+type MoveSnapshot = {
+  guides: Guide[]
+  arrows: Arrow[]
+  penStrokes: PenStroke[]
+  texts: TextAnnotation[]
+  frame: GroupFrame | null
+}
+
+type ExtraMoveId = {
+  arrowId?: string
+  penId?: string
+  textId?: string
+  guideId?: string
+}
+
 type Gesture = {
   pointerId: number
   x: number
   y: number
   moved: boolean
+  shift: boolean
+  onTarget: boolean
 }
 
 type AnnotationBounds = {
@@ -58,13 +76,16 @@ type UseAnnotationSelectionOptions = {
   setPenStrokes: Setter<PenStroke[]>
   setTextAnnotations: Setter<TextAnnotation[]>
   recordSnapshot: () => void
+  setToolMode: Dispatch<SetStateAction<ToolMode>>
 }
 
-const isPointInsideRect = (x: number, y: number, rect: Rect) =>
-  x >= rect.left &&
-  x <= rect.left + rect.width &&
-  y >= rect.top &&
-  y <= rect.top + rect.height
+const ANNOTATION_HIT_SLOP = 12
+
+const isPointInsideRect = (x: number, y: number, rect: Rect, slop = 0) =>
+  x >= rect.left - slop &&
+  x <= rect.left + rect.width + slop &&
+  y >= rect.top - slop &&
+  y <= rect.top + rect.height + slop
 
 const getTranslatedBounds = (bounds: AnnotationBounds, scrollOffset: Point): Rect => ({
   left: bounds.x - scrollOffset.x,
@@ -107,6 +128,7 @@ export const useAnnotationSelection = ({
   setPenStrokes,
   setTextAnnotations,
   recordSnapshot,
+  setToolMode,
 }: UseAnnotationSelectionOptions) => {
   const clearSelection = useCallback(() => {
     setSelectedGuideIds([])
@@ -138,6 +160,7 @@ export const useAnnotationSelection = ({
     arrows,
     penStrokes,
     textAnnotations,
+    guides,
     scrollOffset,
     clearSelection,
   })
@@ -145,6 +168,7 @@ export const useAnnotationSelection = ({
     arrows,
     penStrokes,
     textAnnotations,
+    guides,
     scrollOffset,
     clearSelection,
   }
@@ -157,6 +181,8 @@ export const useAnnotationSelection = ({
       x: 0,
       y: 0,
       moved: false,
+      shift: false,
+      onTarget: false,
     }
 
     const isAnnotationAt = (x: number, y: number) => {
@@ -165,7 +191,11 @@ export const useAnnotationSelection = ({
         const node = overlayRef.current?.querySelector(
           `[data-mesurer-text-id="${item.id}"]`,
         )
-        return node instanceof HTMLElement && isPointInsideRect(x, y, node.getBoundingClientRect())
+        const rect =
+          node instanceof HTMLElement
+            ? node.getBoundingClientRect()
+            : getTranslatedBounds(textAnnotationBounds(item), current.scrollOffset)
+        return isPointInsideRect(x, y, rect, ANNOTATION_HIT_SLOP)
       })
       if (textIsAtPoint) return true
 
@@ -175,25 +205,53 @@ export const useAnnotationSelection = ({
           x,
           y,
           getTranslatedBounds(bounds, current.scrollOffset),
+          ANNOTATION_HIT_SLOP,
         )
       })
       if (penIsAtPoint) return true
 
-      return current.arrows.some((arrow) => {
+      const arrowIsAtPoint = current.arrows.some((arrow) => {
         const bounds = transformedArrowBounds(arrow)
         return isPointInsideRect(
           x,
           y,
           getTranslatedBounds(bounds, current.scrollOffset),
+          ANNOTATION_HIT_SLOP,
         )
       })
+      if (arrowIsAtPoint) return true
+
+      return current.guides.some((guide) =>
+        guide.orientation === "vertical"
+          ? Math.abs(x - guide.position) <= ANNOTATION_HIT_SLOP
+          : Math.abs(y - guide.position) <= ANNOTATION_HIT_SLOP,
+      )
     }
+
+    const isMesurerChrome = (event: PointerEvent) =>
+      event.composedPath().some((node) => {
+        if (!(node instanceof Element)) return false
+        if (toolbarRef.current?.contains(node)) return true
+        return (
+          node.hasAttribute("data-mesurer-group-frame") ||
+          node.hasAttribute("data-mesurer-group-controls") ||
+          node.hasAttribute("data-mesurer-guide") ||
+          node.hasAttribute("data-mesurer-arrow-id") ||
+          node.hasAttribute("data-mesurer-arrow-frame") ||
+          node.hasAttribute("data-mesurer-pen-id") ||
+          node.hasAttribute("data-mesurer-pen-frame") ||
+          node.hasAttribute("data-mesurer-text-id") ||
+          node.hasAttribute("data-mesurer-text-frame")
+        )
+      })
 
     const onPointerDown = (event: PointerEvent) => {
       gesture.pointerId = event.pointerId
       gesture.x = event.clientX
       gesture.y = event.clientY
       gesture.moved = false
+      gesture.shift = event.shiftKey
+      gesture.onTarget = isMesurerChrome(event) || isAnnotationAt(event.clientX, event.clientY)
     }
 
     const onPointerMove = (event: PointerEvent) => {
@@ -203,8 +261,8 @@ export const useAnnotationSelection = ({
 
     const onPointerUp = (event: PointerEvent) => {
       if (event.pointerId !== gesture.pointerId || gesture.moved) return
-      const target = event.target
-      if (target instanceof Node && toolbarRef.current?.contains(target)) return
+      if (event.shiftKey || gesture.shift || gesture.onTarget) return
+      if (isMesurerChrome(event)) return
       if (!isAnnotationAt(event.clientX, event.clientY)) {
         outsideStateRef.current.clearSelection()
       }
@@ -262,25 +320,144 @@ export const useAnnotationSelection = ({
     setTextAnnotations,
   ])
 
+  const itemsRef = useRef({
+    arrows,
+    guides,
+    penStrokes,
+    textAnnotations,
+  })
+  itemsRef.current = { arrows, guides, penStrokes, textAnnotations }
+  const selectedIdsRef = useRef({
+    selectedGuideIds,
+    selectedArrowIds,
+    selectedPenStrokeIds,
+    selectedTextIds,
+  })
+  selectedIdsRef.current = {
+    selectedGuideIds,
+    selectedArrowIds,
+    selectedPenStrokeIds,
+    selectedTextIds,
+  }
+  const groupRotateFrameRef = useRef<GroupFrame | null>(null)
+  const moveSessionRef = useRef<MoveSnapshot | null>(null)
+  const [selectionDragOffset, setSelectionDragOffset] = useState({ x: 0, y: 0 })
+  const selectionDragOffsetRef = useRef(selectionDragOffset)
+  selectionDragOffsetRef.current = selectionDragOffset
+
+  const applySessionDelta = useCallback((dx: number, dy: number) => {
+    const snap = moveSessionRef.current
+    if (!snap || (dx === 0 && dy === 0)) return
+    if (snap.frame) {
+      setGroupRotateFrame({
+        ...snap.frame,
+        rect: {
+          ...snap.frame.rect,
+          left: snap.frame.rect.left + dx,
+          top: snap.frame.rect.top + dy,
+        },
+      })
+    }
+    if (snap.guides.length > 0) {
+      const byId = new Map(snap.guides.map((guide) => [guide.id, guide]))
+      setGuides((previous) =>
+        previous.map((guide) => {
+          const origin = byId.get(guide.id)
+          if (!origin) return guide
+          return {
+            ...origin,
+            position:
+              origin.position + (origin.orientation === "vertical" ? dx : dy),
+          }
+        }),
+      )
+    }
+    if (snap.arrows.length > 0) {
+      const byId = new Map(snap.arrows.map((arrow) => [arrow.id, arrow]))
+      setArrows((previous) =>
+        previous.map((arrow) => {
+          const origin = byId.get(arrow.id)
+          return origin ? translateArrow(origin, dx, dy) : arrow
+        }),
+      )
+    }
+    if (snap.texts.length > 0) {
+      const byId = new Map(snap.texts.map((item) => [item.id, item]))
+      setTextAnnotations((previous) =>
+        previous.map((item) => {
+          const origin = byId.get(item.id)
+          return origin ? { ...origin, x: origin.x + dx, y: origin.y + dy } : item
+        }),
+      )
+    }
+    if (snap.penStrokes.length > 0) {
+      const byId = new Map(snap.penStrokes.map((stroke) => [stroke.id, stroke]))
+      setPenStrokes((previous) =>
+        previous.map((stroke) => {
+          const origin = byId.get(stroke.id)
+          return origin ? movePenStroke(origin, dx, dy) : stroke
+        }),
+      )
+    }
+  }, [setArrows, setGuides, setPenStrokes, setTextAnnotations])
+
+  const beginMoveSession = useCallback((extra?: ExtraMoveId) => {
+    const items = itemsRef.current
+    const selected = selectedIdsRef.current
+    const guideIds = new Set(selected.selectedGuideIds)
+    const arrowIds = new Set(selected.selectedArrowIds)
+    const penIds = new Set(selected.selectedPenStrokeIds)
+    const textIds = new Set(selected.selectedTextIds)
+    if (extra?.guideId) guideIds.add(extra.guideId)
+    if (extra?.arrowId) arrowIds.add(extra.arrowId)
+    if (extra?.penId) penIds.add(extra.penId)
+    if (extra?.textId) textIds.add(extra.textId)
+    selectionDragOffsetRef.current = { x: 0, y: 0 }
+    setSelectionDragOffset({ x: 0, y: 0 })
+    moveSessionRef.current = {
+      guides: items.guides.filter((guide) => guideIds.has(guide.id)),
+      arrows: items.arrows.filter((arrow) => arrowIds.has(arrow.id)),
+      penStrokes: items.penStrokes.filter((stroke) => penIds.has(stroke.id)),
+      texts: items.textAnnotations.filter((item) => textIds.has(item.id)),
+      frame: groupRotateFrameRef.current,
+    }
+  }, [])
+
+  const moveFromSession = useCallback((dx: number, dy: number) => {
+    if (!moveSessionRef.current) return
+    selectionDragOffsetRef.current = { x: dx, y: dy }
+    setSelectionDragOffset({ x: dx, y: dy })
+  }, [])
+
+  const endMoveSession = useCallback(() => {
+    const delta = selectionDragOffsetRef.current
+    applySessionDelta(delta.x, delta.y)
+    moveSessionRef.current = null
+    selectionDragOffsetRef.current = { x: 0, y: 0 }
+    setSelectionDragOffset({ x: 0, y: 0 })
+  }, [applySessionDelta])
+
   const selectAllAnnotations = useCallback(() => {
-    if (toolMode !== "selection") return false
-    recordSnapshot()
-    setSelectedGuideIds(guides.map((guide) => guide.id))
-    setSelectedArrowIds(arrows.map((arrow) => arrow.id))
-    setSelectedTextIds(textAnnotations.map((item) => item.id))
-    setSelectedPenStrokeIds(penStrokes.map((stroke) => stroke.id))
+    const current = itemsRef.current
+    const hasAnnotations =
+      current.guides.length > 0 ||
+      current.arrows.length > 0 ||
+      current.penStrokes.length > 0 ||
+      current.textAnnotations.length > 0
+    if (!hasAnnotations) return false
+    setSelectedGuideIds(current.guides.map((guide) => guide.id))
+    setSelectedArrowIds(current.arrows.map((arrow) => arrow.id))
+    setSelectedTextIds(current.textAnnotations.map((item) => item.id))
+    setSelectedPenStrokeIds(current.penStrokes.map((stroke) => stroke.id))
     setSelectedMeasurements([])
     setSelectedMeasurement(null)
     setSelectedElement(null)
     clearSelectionRect()
-    ownerDocument.defaultView?.getSelection()?.removeAllRanges()
+    if (toolMode !== "selection") setToolMode("selection")
+    else recordSnapshot()
     return true
   }, [
-    arrows,
     clearSelectionRect,
-    guides,
-    ownerDocument,
-    penStrokes,
     recordSnapshot,
     setSelectedArrowIds,
     setSelectedElement,
@@ -289,7 +466,7 @@ export const useAnnotationSelection = ({
     setSelectedMeasurements,
     setSelectedPenStrokeIds,
     setSelectedTextIds,
-    textAnnotations,
+    setToolMode,
     toolMode,
   ])
 
@@ -297,6 +474,7 @@ export const useAnnotationSelection = ({
     if (toolMode !== "selection") return null
 
     const renderedTextBounds = (id: string): AnnotationBounds | null => {
+      if (moveSessionRef.current) return null
       const node = overlayRef.current?.querySelector(`[data-mesurer-text-id="${id}"]`)
       if (!(node instanceof HTMLElement)) return null
       const rect = node.getBoundingClientRect()
@@ -319,7 +497,8 @@ export const useAnnotationSelection = ({
         .filter((item) => selectedTextIds.includes(item.id))
         .map((item) => renderedTextBounds(item.id) ?? textAnnotationBounds(item)),
     ]
-    if (rects.length < 2) return null
+    if (rects.length === 0) return null
+    if (rects.length < 2 && selectedGuideIds.length === 0) return null
 
     const left = Math.min(...rects.map((rect) => rect.x))
     const top = Math.min(...rects.map((rect) => rect.y))
@@ -333,6 +512,7 @@ export const useAnnotationSelection = ({
     scrollOffset.x,
     scrollOffset.y,
     selectedArrowIds,
+    selectedGuideIds.length,
     selectedPenStrokeIds,
     selectedTextIds,
     textAnnotations,
@@ -343,6 +523,7 @@ export const useAnnotationSelection = ({
   const groupResizeSnapshotRef = useRef<GroupResizeSnapshot | null>(null)
   const groupSelectionKeyRef = useRef("")
   const [groupRotateFrame, setGroupRotateFrame] = useState<GroupFrame | null>(null)
+  groupRotateFrameRef.current = groupRotateFrame
 
   useEffect(() => {
     const key = getSelectionKey(selectedArrowIds, selectedPenStrokeIds, selectedTextIds)
@@ -521,6 +702,10 @@ export const useAnnotationSelection = ({
     groupBounds,
     groupRotateFrame,
     moveSelectedAnnotations,
+    beginMoveSession,
+    moveFromSession,
+    endMoveSession,
+    selectionDragOffset,
     startGroupRotate,
     updateGroupRotate,
     endGroupRotate,

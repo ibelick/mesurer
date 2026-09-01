@@ -14,6 +14,7 @@ type GuideColors = {
 type GuidesLayerProps = {
   guides: Guide[]
   selectedIds: string[]
+  moveOffset?: { x: number; y: number }
   hoverId: string | null
   draggingId: string | null
   style: GuideStyle
@@ -28,6 +29,7 @@ type GuidesLayerProps = {
 export function GuidesLayer({
   guides,
   selectedIds,
+  moveOffset = { x: 0, y: 0 },
   hoverId,
   draggingId,
   style,
@@ -52,7 +54,16 @@ export function GuidesLayer({
       {guides.map((guide) => (
         <GuideLine
           key={guide.id}
-          guide={guide}
+          guide={
+            selectedIds.includes(guide.id) && (moveOffset.x || moveOffset.y)
+              ? {
+                  ...guide,
+                  position:
+                    guide.position +
+                    (guide.orientation === "vertical" ? moveOffset.x : moveOffset.y),
+                }
+              : guide
+          }
           selected={selectedIds.includes(guide.id)}
           hovered={hoverId === guide.id || draggingId === guide.id}
           style={style}

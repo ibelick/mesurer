@@ -36,6 +36,9 @@ type UseArrowsPointerOptions = {
   setArrowPreviewEnd: Dispatch<SetStateAction<Point | null>>
   scrollOffset: Point
   onMove?: (id: string, dx: number, dy: number) => void
+  onBeginMove?: (id: string) => void
+  onDragMove?: (dx: number, dy: number) => void
+  onMoveEnd?: () => void
 }
 
 export const useArrowsPointer = (options: UseArrowsPointerOptions) => {

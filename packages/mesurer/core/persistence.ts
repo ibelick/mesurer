@@ -86,6 +86,8 @@ export type MesurerStoredWorkspace = {
   selectedGuideIds: string[]
   arrows: Arrow[]
   selectedArrowIds: string[]
+  selectedPenStrokeIds?: string[]
+  selectedTextIds?: string[]
   penStrokes: PenStroke[]
   textAnnotations: TextAnnotation[]
   measurements: Measurement[]
@@ -131,6 +133,8 @@ type StoredRecord = {
   selectedGuideIds?: string[]
   arrows?: Arrow[]
   selectedArrowIds?: string[]
+  selectedPenStrokeIds?: string[]
+  selectedTextIds?: string[]
   penStrokes?: PenStroke[]
   textAnnotations?: TextAnnotation[]
   measurements?: Measurement[]
@@ -346,6 +350,12 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     selectedArrowIds: Array.isArray(input.selectedArrowIds)
       ? input.selectedArrowIds.filter((id): id is string => typeof id === "string")
       : [],
+    selectedPenStrokeIds: Array.isArray(input.selectedPenStrokeIds)
+      ? input.selectedPenStrokeIds.filter((id): id is string => typeof id === "string")
+      : [],
+    selectedTextIds: Array.isArray(input.selectedTextIds)
+      ? input.selectedTextIds.filter((id): id is string => typeof id === "string")
+      : [],
     penStrokes: Array.isArray(input.penStrokes) ? input.penStrokes.filter(isPenStroke) : [],
     textAnnotations: Array.isArray(input.textAnnotations)
       ? input.textAnnotations.filter(isTextAnnotation)
@@ -396,6 +406,8 @@ const migrate = (record: StoredRecord): MesurerPersistenceSnapshot | null => {
             selectedGuideIds: record.selectedGuideIds,
             arrows: [],
              selectedArrowIds: [],
+             selectedPenStrokeIds: [],
+             selectedTextIds: [],
              penStrokes: [],
              textAnnotations: [],
             measurements: record.measurements,

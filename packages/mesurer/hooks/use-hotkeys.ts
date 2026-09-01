@@ -6,6 +6,8 @@ const DOUBLE_ESCAPE_MS = 400
 
 type HotkeyOptions = {
   eventTarget: Window
+  overlayRef: { current: HTMLElement | null }
+  enabled: boolean
   clearTransientState: () => void
   hasTransientInteraction: () => boolean
   isActiveToolMode: () => boolean
@@ -36,6 +38,50 @@ type HotkeyOptions = {
   isColorPickerActive: () => boolean
 }
 
+const isEditableElement = (node: EventTarget | null) => {
+  if (!(node instanceof Element)) return false
+  const element = node as HTMLElement
+  const tag = element.tagName
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
+  if (element.isContentEditable) return true
+  const editable = element.getAttribute("contenteditable")
+  return editable !== null && editable !== "false"
+}
+
+const getDeepActiveElement = (eventTarget: Window) => {
+  let active: Element | null = eventTarget.document.activeElement
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement
+  }
+  return active
+}
+
+const isInsideMesurer = (node: EventTarget | null) => {
+  if (!(node instanceof Node)) return false
+  let current: Node | null = node
+  while (current) {
+    if (current instanceof Element && current.classList.contains("mesurer-root")) {
+      return true
+    }
+    const parent: Node | null = current.parentNode
+    current = parent instanceof ShadowRoot ? parent.host : parent
+  }
+  return false
+}
+
+const isTypingInMesurer = (event: KeyboardEvent, eventTarget: Window) => {
+  const active = getDeepActiveElement(eventTarget)
+  if (isEditableElement(active) && isInsideMesurer(active)) return true
+  return event.composedPath().some(
+    (node) => isEditableElement(node) && isInsideMesurer(node),
+  )
+}
+
+const isTypingInPage = (eventTarget: Window) => {
+  const active = getDeepActiveElement(eventTarget)
+  return isEditableElement(active) && !isInsideMesurer(active)
+}
+
 export const useHotkeys = (options: HotkeyOptions) => {
   const optionsRef = useRef(options)
   optionsRef.current = options
@@ -43,28 +89,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
   useEffect(() => {
     const target = options.eventTarget
+    const seen = new WeakSet<Event>()
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (seen.has(event)) return
+      seen.add(event)
       const current = optionsRef.current
-      const target = event.target as HTMLElement | null
-      const path = event.composedPath()
-      const isEditable = path.some((item) => {
-        const element = item as HTMLElement | null
-        return Boolean(
-          element &&
-          (element.isContentEditable ||
-            element.tagName === "INPUT" ||
-            element.tagName === "TEXTAREA" ||
-            element.tagName === "SELECT"),
-        )
-      })
-      if (
-        (target &&
-          (target.isContentEditable ||
-            target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.tagName === "SELECT")) ||
-        isEditable
-      ) {
+      if (isTypingInMesurer(event, target)) {
         return
       }
       if (event.key === "Escape") {
@@ -103,11 +133,29 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
-      if (event.metaKey || event.ctrlKey) {
-        if (event.key.toLowerCase() === "a") {
-          if (current.selectAllAnnotations()) event.preventDefault()
-          return
+      const hasPrimaryModifier =
+        event.metaKey ||
+        event.ctrlKey ||
+        event.getModifierState("Meta") ||
+        event.getModifierState("Control")
+      const isSelectAll =
+        hasPrimaryModifier &&
+        ((event.key && event.key.toLowerCase() === "a") || event.code === "KeyA")
+
+      if (isSelectAll) {
+        if (isTypingInPage(target) && !current.isOverlayActive()) return
+        const didSelect = current.selectAllAnnotations()
+        if (didSelect || current.isOverlayActive()) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          current.overlayRef.current?.focus({ preventScroll: true })
         }
+        return
+      }
+
+      if (isTypingInPage(target)) return
+
+      if (hasPrimaryModifier) {
         if (event.key === ",") {
           event.preventDefault()
           current.onCloseScreenshot()
@@ -131,6 +179,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       const key = event.key.toLowerCase()
+      if (event.altKey) return
+
       if (key === "p") {
         event.preventDefault()
         current.onCloseScreenshot()
@@ -166,13 +216,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (current.isOverlayActive()) {
-        if (key === "a") {
+        if (key === "a" && !hasPrimaryModifier) {
           current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) =>
             prev === "text-inspector" ? "none" : "text-inspector",
           )
           current.onInteract()
+          return
         }
 
         if (key === "i") {
@@ -250,11 +301,19 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
     }
 
-    target.addEventListener("keydown", handleKeyDown)
-    target.addEventListener("keyup", handleKeyUp)
-    return () => {
-      target.removeEventListener("keydown", handleKeyDown)
-      target.removeEventListener("keyup", handleKeyUp)
+    const roots: EventTarget[] = [target, target.document, target.document.documentElement]
+    const overlayRoot = options.overlayRef.current?.getRootNode()
+    if (overlayRoot && overlayRoot !== target.document) roots.push(overlayRoot)
+
+    for (const root of roots) {
+      root.addEventListener("keydown", handleKeyDown as EventListener, true)
+      root.addEventListener("keyup", handleKeyUp as EventListener, true)
     }
-  }, [options.eventTarget])
+    return () => {
+      for (const root of roots) {
+        root.removeEventListener("keydown", handleKeyDown as EventListener, true)
+        root.removeEventListener("keyup", handleKeyUp as EventListener, true)
+      }
+    }
+  }, [options.eventTarget, options.overlayRef, options.enabled])
 }

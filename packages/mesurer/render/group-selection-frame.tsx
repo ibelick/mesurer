@@ -1,5 +1,6 @@
-import { useRef, type PointerEvent } from "react"
+import { useRef, type PointerEvent as ReactPointerEvent } from "react"
 import type { Point, Rect } from "../core/types"
+import { eventView, listenPointerDrag } from "../core/pointer-drag"
 import { boxCenter, rotationFromPointer, type ResizeHandle } from "../core/text-transform"
 import { TextTransformFrame } from "./text-transform-frame"
 
@@ -12,6 +13,7 @@ export const GroupSelectionFrame = ({
    onResizeEnd,
    onMove,
    onMoveStart,
+   onMoveEnd,
   onRotateStart,
   onRotate,
   onRotateEnd,
@@ -20,61 +22,57 @@ export const GroupSelectionFrame = ({
   rotation: number
   scrollOffset: { x: number; y: number }
   onResizeStart: (handle: ResizeHandle, rect: Rect, rotation: number) => void
-  onResize: (handle: ResizeHandle, event: PointerEvent<HTMLElement>) => void
+  onResize: (handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => void
    onResizeEnd: () => void
    onMove: (dx: number, dy: number) => void
    onMoveStart: () => void
+   onMoveEnd?: () => void
   onRotateStart: (center: Point, startAngle: number, rect: Rect) => void
   onRotate: (pointerAngle: number) => void
   onRotateEnd: () => void
 }) => {
-  const frameRef = useRef<HTMLDivElement>(null)
   const transform = useRef<{ type: "resize" | "rotate" | "move"; handle?: ResizeHandle; last?: Point } | null>(null)
-
-  const captureFrame = (event: PointerEvent<HTMLElement>) => {
-    frameRef.current?.setPointerCapture(event.pointerId)
-  }
+  const scrollRef = useRef(scrollOffset)
+  scrollRef.current = scrollOffset
 
   const pointerPage = (event: { clientX: number; clientY: number }) => ({
-    x: event.clientX + scrollOffset.x,
-    y: event.clientY + scrollOffset.y,
+    x: event.clientX + scrollRef.current.x,
+    y: event.clientY + scrollRef.current.y,
   })
 
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const applyDrag = (dx: number, dy: number, event: PointerEvent) => {
     if (!transform.current) return
-    event.preventDefault()
-    event.stopPropagation()
-    if (transform.current?.type === "resize") {
-      onResize(transform.current.handle!, event)
+    if (transform.current.type === "resize") {
+      onResize(transform.current.handle!, event as unknown as ReactPointerEvent<HTMLElement>)
       return
     }
-    if (transform.current?.type === "rotate") {
+    if (transform.current.type === "rotate") {
       const center = boxCenter(rect.left, rect.top, rect.width, rect.height)
       onRotate(rotationFromPointer(center, pointerPage(event)))
       return
     }
-    if (transform.current?.type === "move" && transform.current.last) {
-      const point = pointerPage(event)
-      onMove(point.x - transform.current.last.x, point.y - transform.current.last.y)
-      transform.current.last = point
-    }
+    if (transform.current.type === "move") onMove(dx, dy)
   }
 
-  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
+  const endDrag = () => {
     const transformType = transform.current?.type
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
     transform.current = null
     if (transformType === "rotate") onRotateEnd()
     if (transformType === "resize") onResizeEnd()
+    if (transformType === "move") onMoveEnd?.()
+  }
+
+  const trackDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const view = eventView(event)
+    if (!view) return
+    listenPointerDrag(event.pointerId, view, { x: event.clientX, y: event.clientY }, {
+      onMove: applyDrag,
+      onEnd: endDrag,
+    })
   }
 
   return (
     <div
-      ref={frameRef}
        className="msr:pointer-events-auto msr:absolute msr:border msr:border-dashed msr:border-[#0d99ff]"
       style={{
         left: rect.left - scrollOffset.x,
@@ -84,9 +82,6 @@ export const GroupSelectionFrame = ({
         transform: rotation ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: "center center",
       }}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
       data-mesurer-group-frame="true"
       onPointerDown={(event) => {
         if (event.target !== event.currentTarget) return
@@ -95,7 +90,7 @@ export const GroupSelectionFrame = ({
         onMoveStart()
         const point = pointerPage(event)
         transform.current = { type: "move", last: point }
-        captureFrame(event)
+        trackDrag(event)
       }}
     >
       <TextTransformFrame
@@ -104,16 +99,20 @@ export const GroupSelectionFrame = ({
         showOutline={false}
         rotation={rotation}
         onResizeStart={(handle, event) => {
+          event.preventDefault()
+          event.stopPropagation()
           transform.current = { type: "resize", handle }
           onResizeStart(handle, rect, rotation)
-          captureFrame(event)
+          trackDrag(event)
         }}
         onRotateStart={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
           const center = boxCenter(rect.left, rect.top, rect.width, rect.height)
           const startAngle = rotationFromPointer(center, pointerPage(event))
           transform.current = { type: "rotate" }
           onRotateStart(center, startAngle, rect)
-          captureFrame(event)
+          trackDrag(event)
         }}
       />
     </div>

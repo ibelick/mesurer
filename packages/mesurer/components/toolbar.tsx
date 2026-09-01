@@ -327,23 +327,72 @@ function ToolbarComponent(
     rulersWereVisibleRef.current = rulersVisible;
   }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
 
-  const skipNextToolGroupMotionRef = useRef(true);
+  const toolGroupMotionEnabledRef = useRef(false);
 
   useLayoutEffect(() => {
-    if (skipNextToolGroupMotionRef.current) {
-      skipNextToolGroupMotionRef.current = false;
-      return;
-    }
+    if (!toolGroupMotionEnabledRef.current) return;
     const stage = toolStageRef.current;
-    if (!stage || stage.dataset.ready !== "true") return;
+    const track = stage?.querySelector(".mesurer-toolbar-tool-track");
+    if (!stage || !(track instanceof HTMLElement)) return;
     if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
+
+    const inspectWidth =
+      parseFloat(stage.style.getPropertyValue("--msr-inspect-w")) || 0;
+    const annotateWidth =
+      parseFloat(stage.style.getPropertyValue("--msr-annotate-w")) || 0;
+    const fromGroup = previousToolGroupRef.current;
+    if (fromGroup === toolGroup) return;
+
+    const fromWidth = fromGroup === "annotate" ? annotateWidth : inspectWidth;
+    const fromX = fromGroup === "annotate" ? -inspectWidth : 0;
+    const motion =
+      getComputedStyle(stage).getPropertyValue("--msr-toolbar-motion").trim() ||
+      "200ms ease";
+    const pill = stage
+      .closest(".mesurer-toolbar-surface")
+      ?.querySelector(".mesurer-toolbar-tool-switch-pill");
+    const fromPillX = fromGroup === "annotate" ? 30 : 0;
+
+    stage.style.transition = "none";
+    track.style.transition = "none";
+    if (fromWidth > 0) stage.style.width = `${fromWidth}px`;
+    track.style.transform = `translateX(${fromX}px)`;
+    if (pill instanceof HTMLElement) {
+      pill.style.transition = "none";
+      pill.style.transform = `translateX(${fromPillX}px)`;
+    }
+    void stage.offsetWidth;
+
     stage.dataset.resizing = "true";
+    stage.style.transition = `width ${motion}`;
+    track.style.transition = `transform ${motion}`;
+    stage.style.width = "";
+    track.style.transform = "";
+    if (pill instanceof HTMLElement) {
+      pill.style.transition = `transform ${motion}`;
+      pill.style.transform = "";
+    }
+
     const timeout = eventTarget.setTimeout(() => {
       delete stage.dataset.resizing;
+      stage.style.transition = "";
+      track.style.transition = "";
+      if (pill instanceof HTMLElement) pill.style.transition = "";
     }, 200);
-    return () => eventTarget.clearTimeout(timeout);
+    return () => {
+      eventTarget.clearTimeout(timeout);
+      delete stage.dataset.resizing;
+      stage.style.transition = "";
+      track.style.transition = "";
+      stage.style.width = "";
+      track.style.transform = "";
+      if (pill instanceof HTMLElement) {
+        pill.style.transition = "";
+        pill.style.transform = "";
+      }
+    };
   }, [eventTarget, toolGroup]);
 
   useLayoutEffect(() => {
@@ -581,6 +630,7 @@ function ToolbarComponent(
     syncToolWidths();
     const frame = requestAnimationFrame(() => {
       stage.dataset.ready = "true";
+      toolGroupMotionEnabledRef.current = true;
     });
     const observer = new ResizeObserver(syncToolWidths);
     observer.observe(inspectPanel);

@@ -9,6 +9,7 @@ import { TextTransformFrame } from "./text-transform-frame"
 type ArrowsLayerProps = {
   arrows: Arrow[]
   selectedIds: string[]
+  moveOffset?: { x: number; y: number }
   preview: { start: Point; end: Point; control?: Point } | null
   scrollOffset: Point
   color: string
@@ -193,6 +194,7 @@ const ArrowLine = ({
 export const ArrowsLayer = memo(function ArrowsLayer({
   arrows,
   selectedIds,
+  moveOffset = { x: 0, y: 0 },
   preview,
   scrollOffset,
   color,
@@ -255,8 +257,15 @@ export const ArrowsLayer = memo(function ArrowsLayer({
         className="msr:pointer-events-none msr:absolute msr:inset-0 msr:size-full"
       >
       {arrows.map((arrow) => (
-        <ArrowLine
+        <g
           key={arrow.id}
+          transform={
+            selectedIds.includes(arrow.id) && (moveOffset.x || moveOffset.y)
+              ? `translate(${moveOffset.x} ${moveOffset.y})`
+              : undefined
+          }
+        >
+        <ArrowLine
           start={{ x: transformedArrowPoints(arrow)[0]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[0]!.y - scrollOffset.y }}
           end={{ x: transformedArrowPoints(arrow)[2]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[2]!.y - scrollOffset.y }}
           control={{ x: transformedArrowPoints(arrow)[1]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[1]!.y - scrollOffset.y }}
@@ -266,6 +275,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
            showNodes={selectionCount === 1}
           id={arrow.id}
         />
+        </g>
       ))}
       {preview ? (
         <ArrowLine
@@ -280,8 +290,8 @@ export const ArrowsLayer = memo(function ArrowsLayer({
       </svg>
       {arrows.filter((arrow) => selectedIds.includes(arrow.id) && arrow.id !== editingArrowId).map((arrow) => {
         const bounds = arrowBounds(arrow)
-        const left = bounds.x - scrollOffset.x
-        const top = bounds.y - scrollOffset.y
+        const left = bounds.x - scrollOffset.x + moveOffset.x
+        const top = bounds.y - scrollOffset.y + moveOffset.y
         const width = bounds.width
         const height = bounds.height
         return (

@@ -23,6 +23,8 @@ type UseRulerGuidesOptions = {
   setGuides: Dispatch<SetStateAction<Guide[]>>
   setSelectedGuideIds: Dispatch<SetStateAction<string[]>>
   setDraggingGuideId: Dispatch<SetStateAction<string | null>>
+  selectedGuideIds: string[]
+  selectionCount: number
   scheduleGuideDragHold: (
     id: string,
     onHold: (guideId: string) => void,
@@ -43,6 +45,8 @@ export const useRulerGuides = ({
   setGuides,
   setSelectedGuideIds,
   setDraggingGuideId,
+  selectedGuideIds,
+  selectionCount,
   scheduleGuideDragHold,
   clearGuideDragHold,
 }: UseRulerGuidesOptions) => {
@@ -140,6 +144,8 @@ export const useRulerGuides = ({
         return
       }
 
+      if (selectedGuideIds.includes(guide.id) && selectionCount > 1) return
+
       commit()
       setSelectedGuideIds([guide.id])
       scheduleGuideDragHold(guide.id, setDraggingGuideId)
@@ -149,6 +155,8 @@ export const useRulerGuides = ({
       createActionCommit,
       enabled,
       scheduleGuideDragHold,
+      selectedGuideIds,
+      selectionCount,
       setDraggingGuideId,
       setSelectedGuideIds,
     ],

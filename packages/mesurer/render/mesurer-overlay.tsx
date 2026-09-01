@@ -58,6 +58,7 @@ type OverlayDistances = {
 type OverlayGuides = {
   items: Guide[]
   selectedIds: string[]
+  moveOffset?: { x: number; y: number }
   hover: Guide | null
   draggingId: string | null
   style: GuideStyle
@@ -89,6 +90,7 @@ type MesurerOverlayProps = {
    onResizeSelection: (handle: ResizeHandle, event: ReactPointerEvent<HTMLElement>) => void
    onMoveSelection: (dx: number, dy: number) => void
    onMoveSelectionStart: () => void
+   onMoveSelectionEnd: () => void
   onStartGroupResize: (handle: ResizeHandle, rect: Rect, rotation: number) => void
   onEndGroupResize: () => void
   onStartGroupRotate: (center: { x: number; y: number }, startAngle: number, rect: Rect) => void
@@ -104,6 +106,7 @@ type MesurerOverlayProps = {
   arrows: {
     items: Arrow[]
     selectedIds: string[]
+    moveOffset?: { x: number; y: number }
     preview: { start: { x: number; y: number }; end: { x: number; y: number }; control?: { x: number; y: number } } | null
     scrollOffset: { x: number; y: number }
     color: string
@@ -118,10 +121,13 @@ type MesurerOverlayProps = {
     scrollOffset: { x: number; y: number }
     selectionMode: boolean
     selectedIds: string[]
+    moveOffset?: { x: number; y: number }
     onSelect: (id: string, additive?: boolean) => void
     onChange: (stroke: import("../core/types").PenStroke) => void
     onChangeStart: () => void
     onMove: (id: string, dx: number, dy: number) => void
+    onMoveStart?: (id: string) => void
+    onMoveEnd?: () => void
   }
   text: {
     items: TextAnnotation[]
@@ -130,9 +136,12 @@ type MesurerOverlayProps = {
     interactive: boolean
     editable: boolean
     selectedIds: string[]
-    onSelect: (id: string) => void
-    onMoveStart: () => void
-    onMove: (id: string, x: number, y: number) => void
+    moveOffset?: { x: number; y: number }
+    onSelect: (id: string, additive?: boolean) => void
+    onMoveStart: (id: string) => void
+    onMove: (id: string, dx: number, dy: number) => void
+    onMoveEnd?: () => void
+    onChangeStart?: () => void
     onTransform: (
       id: string,
       next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
@@ -161,6 +170,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
    onResizeSelection,
    onMoveSelection,
    onMoveSelectionStart,
+   onMoveSelectionEnd,
   onStartGroupResize,
   onEndGroupResize,
   onStartGroupRotate,
@@ -190,7 +200,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
 
   return (
     <div
-      className={`msr:absolute msr:inset-0 msr:select-none ${
+      className={`msr:absolute msr:inset-0 msr:select-none msr:outline-none ${
         overlayVisible
           ? `msr:pointer-events-auto ${
               guidesEnabled
@@ -202,7 +212,11 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           : "msr:pointer-events-none msr:opacity-0"
       }`}
       style={{ pointerEvents: overlayInteractive ? "auto" : "none" }}
-      onPointerDown={pointers.onPointerDown}
+      tabIndex={overlayInteractive ? -1 : undefined}
+      onPointerDown={(event) => {
+        event.currentTarget.focus({ preventScroll: true })
+        pointers.onPointerDown(event)
+      }}
       onPointerMove={pointers.onPointerMove}
       onPointerUp={pointers.onPointerUp}
       onPointerCancel={pointers.onPointerCancel}
@@ -236,6 +250,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       <ArrowsLayer
         arrows={arrows.items}
         selectedIds={arrows.selectedIds}
+        moveOffset={arrows.moveOffset}
         preview={arrows.preview}
         scrollOffset={arrows.scrollOffset}
         color={arrows.color}
@@ -248,26 +263,11 @@ export const MesurerOverlay = memo(function MesurerOverlay({
 
       <TextLayer {...text} selectionCount={selectionCount} />
 
-      {toolMode === "selection" && groupBounds ? (
-        <GroupSelectionFrame
-          rect={groupBounds}
-          rotation={groupFrameRotation}
-          scrollOffset={arrows.scrollOffset}
-           onResize={onResizeSelection}
-           onMove={onMoveSelection}
-           onMoveStart={onMoveSelectionStart}
-          onResizeStart={onStartGroupResize}
-          onResizeEnd={onEndGroupResize}
-          onRotateStart={onStartGroupRotate}
-          onRotate={onUpdateGroupRotate}
-          onRotateEnd={onEndGroupRotate}
-        />
-      ) : null}
-
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer
           guides={guides.items}
           selectedIds={guides.selectedIds}
+          moveOffset={guides.moveOffset}
           hoverId={guides.hover?.id ?? null}
           draggingId={guides.draggingId}
           style={guides.style}
@@ -277,6 +277,23 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           onPointerDown={guides.onPointerDown}
           onPointerUp={guides.onPointerUp}
           onPointerCancel={guides.onPointerCancel}
+        />
+      ) : null}
+
+      {toolMode === "selection" && groupBounds ? (
+        <GroupSelectionFrame
+          rect={groupBounds}
+          rotation={groupFrameRotation}
+          scrollOffset={arrows.scrollOffset}
+           onResize={onResizeSelection}
+           onMove={onMoveSelection}
+           onMoveStart={onMoveSelectionStart}
+           onMoveEnd={onMoveSelectionEnd}
+          onResizeStart={onStartGroupResize}
+          onResizeEnd={onEndGroupResize}
+          onRotateStart={onStartGroupRotate}
+          onRotate={onUpdateGroupRotate}
+          onRotateEnd={onEndGroupRotate}
         />
       ) : null}
 

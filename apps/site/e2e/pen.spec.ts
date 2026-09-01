@@ -159,6 +159,34 @@ test("uses plain click for one item and Shift-click for multiple items", async (
   await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(0);
 });
 
+test("Shift+marquee adds to the current selection", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activatePen(page);
+  await drawStroke(page);
+  await page.mouse.move(420, 320);
+  await page.mouse.down();
+  await page.mouse.move(500, 340, { steps: 3 });
+  await page.mouse.up();
+  await page.mouse.move(600, 360);
+  await page.mouse.down();
+  await page.mouse.move(680, 380, { steps: 3 });
+  await page.mouse.up();
+
+  await activateSelection(page);
+  await page.mouse.click(180, 190);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(1);
+
+  await page.keyboard.down("Shift");
+  await page.mouse.move(400, 300);
+  await page.mouse.down();
+  await page.mouse.move(720, 400, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(3);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
+});
+
 test("rotates multiple annotations from the parent handle", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activatePen(page);

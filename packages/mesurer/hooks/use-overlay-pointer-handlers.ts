@@ -69,7 +69,9 @@ export const useOverlayPointerHandlers = (options: {
   }
 
   const guard = (event: ReactPointerEvent<HTMLDivElement>, action: () => void) => {
-    if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) return;
+    if (event.target instanceof Element && event.target.closest("[data-mesurer-group-frame]")) {
+      return;
+    }
     action();
   };
 

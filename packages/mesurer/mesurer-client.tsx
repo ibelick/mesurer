@@ -217,6 +217,7 @@ export function MesurerClient({
     penPreview,
     setPenPreview,
     textAnnotationsRef,
+    selectedTextIdsRef,
     overlayRef,
     selectedElementRef,
     hoverElementRef,
@@ -421,6 +422,8 @@ export function MesurerClient({
     setSelectedArrowIdsPersisted,
     setTextAnnotationsPersisted,
     setPenStrokesPersisted,
+    setSelectedPenStrokeIdsPersisted,
+    setSelectedTextIdsPersisted,
   } = workspaceLifecycle;
   usePersistenceLifecycle({
     ownerWindow,
@@ -456,6 +459,14 @@ export function MesurerClient({
       ownerWindow.removeEventListener("resize", updateScrollOffset);
     };
   }, [ownerWindow]);
+  useEffect(() => {
+    if (!enabled || toolMode === "none") return;
+    const root = overlayRef.current;
+    if (!root) return;
+    const active = ownerDocument.activeElement;
+    if (active instanceof HTMLIFrameElement) active.blur();
+    root.focus({ preventScroll: true });
+  }, [enabled, ownerDocument, overlayRef, toolMode]);
   enabledRef.current = enabled;
   xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
@@ -471,6 +482,7 @@ export function MesurerClient({
   penStrokesRef.current = penStrokes;
   selectedPenStrokeIdsRef.current = selectedPenStrokeIds;
   textAnnotationsRef.current = textAnnotations;
+  selectedTextIdsRef.current = selectedTextIds;
   const {
     recordSnapshot,
     createActionCommit,
@@ -564,8 +576,8 @@ export function MesurerClient({
     setIsDragging,
     setSelectedGuideIds: setSelectedGuideIdsPersisted,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
-    setSelectedTextIds,
-    setSelectedPenStrokeIds,
+    setSelectedTextIds: setSelectedTextIdsPersisted,
+    setSelectedPenStrokeIds: setSelectedPenStrokeIdsPersisted,
     setSelectedMeasurements,
     setSelectedMeasurement,
     setSelectedElement,
@@ -574,6 +586,7 @@ export function MesurerClient({
     setPenStrokes: setPenStrokesPersisted,
     setTextAnnotations: setTextAnnotationsPersisted,
     recordSnapshot,
+    setToolMode: setToolModeWithHistory,
   });
   const {
     clearSelection,
@@ -581,7 +594,11 @@ export function MesurerClient({
     selectAllAnnotations,
     groupBounds,
     groupRotateFrame,
+    selectionDragOffset,
     moveSelectedAnnotations,
+    beginMoveSession,
+    moveFromSession,
+    endMoveSession,
     startGroupRotate,
     updateGroupRotate,
     endGroupRotate,
@@ -692,6 +709,13 @@ export function MesurerClient({
     setGuides: setGuidesPersisted,
     setSelectedGuideIds: setSelectedGuideIdsPersisted,
     setToolbarActive,
+    selectedGuideIds,
+    selectionCount:
+      selectedGuideIds.length +
+      selectedArrowIds.length +
+      selectedTextIds.length +
+      selectedPenStrokeIds.length,
+    moveSelectedAnnotations,
   });
   useSelectionAnimationCleanup({
     ownerWindow,
@@ -809,9 +833,9 @@ export function MesurerClient({
     textAnnotations,
     arrows,
     penStrokes,
-    setSelectedTextIds,
+    setSelectedTextIds: setSelectedTextIdsPersisted,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
-    setSelectedPenStrokeIds,
+    setSelectedPenStrokeIds: setSelectedPenStrokeIdsPersisted,
   });
   const arrowsPointer = useArrowsPointer({
     enabled,
@@ -826,7 +850,9 @@ export function MesurerClient({
     createActionCommit,
     setToolMode: setToolModeWithHistory,
     setArrows: setArrowsPersisted,
-    onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
+    onBeginMove: (id: string) => beginMoveSession({ arrowId: id }),
+    onDragMove: moveFromSession,
+    onMoveEnd: endMoveSession,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
     clearOtherSelections: () => {
       setSelectedGuideIdsPersisted([]);
@@ -873,8 +899,8 @@ export function MesurerClient({
     suppressTextCreateRef,
     setSelectedGuideIds: setSelectedGuideIdsPersisted,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
-    setSelectedTextIds,
-    setSelectedPenStrokeIds,
+    setSelectedTextIds: setSelectedTextIdsPersisted,
+    setSelectedPenStrokeIds: setSelectedPenStrokeIdsPersisted,
     setSelectedMeasurements,
     setSelectedMeasurement,
     setSelectedElement,
@@ -951,8 +977,8 @@ export function MesurerClient({
     recordSnapshot,
     setSelectedGuideIds: setSelectedGuideIdsPersisted,
     setSelectedArrowIds: setSelectedArrowIdsPersisted,
-    setSelectedTextIds,
-    setSelectedPenStrokeIds,
+    setSelectedTextIds: setSelectedTextIdsPersisted,
+    setSelectedPenStrokeIds: setSelectedPenStrokeIdsPersisted,
     setSelectedMeasurements,
     setSelectedMeasurement,
     screenshot,
@@ -998,10 +1024,36 @@ export function MesurerClient({
     setGuides: setGuidesPersisted,
     setSelectedGuideIds: setSelectedGuideIdsPersisted,
     setDraggingGuideId,
+    selectedGuideIds,
+    selectionCount:
+      selectedGuideIds.length +
+      selectedArrowIds.length +
+      selectedTextIds.length +
+      selectedPenStrokeIds.length,
     scheduleGuideDragHold,
     clearGuideDragHold,
   });
-  const overlayInteractive = enabled && !settingsOpen;
+  const overlayInteractive = enabled && !settingsOpen
+  const movingGroupRect = (() => {
+    const showGroup =
+      selectedArrowIds.length +
+        selectedTextIds.length +
+        selectedPenStrokeIds.length >
+        1 ||
+      ((selectedArrowIds.length > 0 ||
+        selectedTextIds.length > 0 ||
+        selectedPenStrokeIds.length > 0) &&
+        selectedGuideIds.length > 0)
+    if (!showGroup) return null
+    const base = groupRotateFrame?.rect ?? groupBounds
+    if (!base) return null
+    if (selectionDragOffset.x === 0 && selectionDragOffset.y === 0) return base
+    return {
+      ...base,
+      left: base.left + selectionDragOffset.x,
+      top: base.top + selectionDragOffset.y,
+    }
+  })();
   const pointerHandlers = useOverlayPointerHandlers({
     toolMode,
     arrows: arrowsPointer,
@@ -1042,18 +1094,16 @@ export function MesurerClient({
         isDragging,
         marqueeRect:
           isDragging && start && end ? getRectFromPoints(start, end) : null,
-        groupBounds:
-          selectedArrowIds.length +
-            selectedTextIds.length +
-            selectedPenStrokeIds.length >
-          1
-            ? (groupRotateFrame?.rect ?? groupBounds)
-            : null,
+        groupBounds: movingGroupRect,
         groupFrameRotation:
           selectedArrowIds.length +
             selectedTextIds.length +
             selectedPenStrokeIds.length >
-          1
+            1 ||
+          ((selectedArrowIds.length > 0 ||
+            selectedTextIds.length > 0 ||
+            selectedPenStrokeIds.length > 0) &&
+            selectedGuideIds.length > 0)
             ? (groupRotateFrame?.rotation ?? 0)
             : 0,
         selectionCount:
@@ -1062,8 +1112,12 @@ export function MesurerClient({
           selectedTextIds.length +
           selectedPenStrokeIds.length,
         onResizeSelection: resizeSelectedAnnotations,
-        onMoveSelection: moveSelectedAnnotations,
-        onMoveSelectionStart: recordSnapshot,
+        onMoveSelection: moveFromSession,
+        onMoveSelectionStart: () => {
+          recordSnapshot()
+          beginMoveSession()
+        },
+        onMoveSelectionEnd: endMoveSession,
         onStartGroupResize: startGroupResize,
         onEndGroupResize: endGroupResize,
         onStartGroupRotate: startGroupRotate,
@@ -1096,6 +1150,7 @@ export function MesurerClient({
         guides: {
           items: overlayGuides,
           selectedIds: selectedGuideIds,
+          moveOffset: selectionDragOffset,
           hover: hoverGuide,
           draggingId: draggingGuideId,
           style: settingsGuideStyle,
@@ -1116,6 +1171,7 @@ export function MesurerClient({
         arrows: {
           items: arrows,
           selectedIds: selectedArrowIds,
+          moveOffset: selectionDragOffset,
           preview: arrowsPointer.preview,
           scrollOffset,
           color: settingsArrowColor,
@@ -1133,10 +1189,13 @@ export function MesurerClient({
           scrollOffset,
           selectionMode: toolMode === "selection",
           selectedIds: selectedPenStrokeIds,
+          moveOffset: selectionDragOffset,
           onSelect: selectPenStroke,
           onChange: changePenStroke,
           onChangeStart: recordSnapshot,
-          onMove: (id, dx, dy) => moveSelectedAnnotations(dx, dy),
+          onMoveStart: (id: string) => beginMoveSession({ penId: id }),
+          onMove: (_id, dx, dy) => moveFromSession(dx, dy),
+          onMoveEnd: endMoveSession,
         },
         text: {
           items: textAnnotations,
@@ -1145,9 +1204,15 @@ export function MesurerClient({
           interactive: toolMode === "selection",
           editable: toolMode === "text",
           selectedIds: selectedTextIds,
+          moveOffset: selectionDragOffset,
           onSelect: selectTextAnnotation,
-          onMoveStart: recordSnapshot,
-          onMove: moveTextAnnotation,
+          onMoveStart: (id: string) => {
+            recordSnapshot()
+            beginMoveSession({ textId: id })
+          },
+          onMove: (_id, dx, dy) => moveFromSession(dx, dy),
+          onMoveEnd: endMoveSession,
+          onChangeStart: recordSnapshot,
           onTransform: transformTextAnnotation,
           onEdit: editTextAnnotation,
           scrollOffset,

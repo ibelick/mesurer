@@ -9,6 +9,7 @@ import {
 } from "react"
 import { controlFromRelative, midpoint, relativeControl, translateArrow } from "../core/arrows"
 import { transformedArrowPoints } from "../core/arrow-transform"
+import { eventView, isPointerDragActive, listenPointerDrag } from "../core/pointer-drag"
 import type { Arrow, Point } from "../core/types"
 
 type EditState = {
@@ -29,7 +30,9 @@ type UseArrowsSelectionOptions = {
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
   clearOtherSelections?: () => void
-  onMove?: (id: string, dx: number, dy: number) => void
+  onBeginMove?: (id: string) => void
+  onDragMove?: (dx: number, dy: number) => void
+  onMoveEnd?: () => void
   pointerIdRef: MutableRefObject<number | null>
 }
 
@@ -42,7 +45,9 @@ export const useArrowsSelection = ({
   setArrows,
   setSelectedArrowIds,
   clearOtherSelections,
-  onMove,
+  onBeginMove,
+  onDragMove,
+  onMoveEnd,
   pointerIdRef,
 }: UseArrowsSelectionOptions) => {
   const [editingArrowId, setEditingArrowId] = useState<string | null>(null)
@@ -51,29 +56,29 @@ export const useArrowsSelection = ({
     if (!enabled || settingsOpen || event.button !== 0 || !(event.target instanceof Element)) {
       return false
     }
-    const arrowId = event.target.getAttribute("data-mesurer-arrow-id")
+    const arrowNode = event.target.closest("[data-mesurer-arrow-id]")
+    const arrowId = arrowNode instanceof Element ? arrowNode.getAttribute("data-mesurer-arrow-id") : null
     const arrow = arrowId ? arrows.find((item) => item.id === arrowId) : undefined
-    if (!arrow) return false
-    const selectedArrowId = arrowId!
-    const handle = event.target.getAttribute("data-mesurer-arrow-handle")
+    if (!arrow || !arrowId) return false
+    const handle = arrowNode instanceof Element ? arrowNode.getAttribute("data-mesurer-arrow-handle") : null
     event.preventDefault()
     event.stopPropagation()
 
-    const alreadySelected = selectedArrowIds.includes(selectedArrowId)
+    const alreadySelected = selectedArrowIds.includes(arrowId)
     if (event.shiftKey) {
       setSelectedArrowIds((previous) => {
         if (alreadySelected) {
-          return previous.filter((id) => id !== selectedArrowId)
+          return previous.filter((id) => id !== arrowId)
         }
 
-        return [...previous, selectedArrowId]
+        return [...previous, arrowId]
       })
       return true
     }
 
     if (!alreadySelected) {
       clearOtherSelections?.()
-      setSelectedArrowIds([selectedArrowId])
+      setSelectedArrowIds([arrowId])
     }
 
     pointerIdRef.current = event.pointerId
@@ -95,7 +100,7 @@ export const useArrowsSelection = ({
     }
 
     editRef.current = {
-      arrowId: selectedArrowId,
+      arrowId,
       action: isHandle ? handle : "move",
       origin: { x: event.clientX, y: event.clientY },
       arrow: snapshot,
@@ -104,64 +109,88 @@ export const useArrowsSelection = ({
       last: { x: event.clientX, y: event.clientY },
     }
     if (isHandle) {
-      setEditingArrowId(selectedArrowId)
+      setEditingArrowId(arrowId)
+    } else {
+      onBeginMove?.(arrowId)
     }
 
-    event.currentTarget.setPointerCapture(event.pointerId)
+    const view = eventView(event)
+    if (view) {
+      listenPointerDrag(event.pointerId, view, { x: event.clientX, y: event.clientY }, {
+        onMove: (dx, dy) => {
+          const edit = editRef.current
+          if (!edit) return
+          if (!edit.changed && (dx !== 0 || dy !== 0)) {
+            createActionCommit()()
+            edit.changed = true
+          }
+          if (!edit.changed) return
+          if (edit.action === "move") {
+            if (onDragMove) {
+              onDragMove(dx, dy)
+              return
+            }
+            setArrows((previous) => previous.map((item) => (
+              item.id === edit.arrowId ? translateArrow(edit.arrow, dx, dy) : item
+            )))
+            return
+          }
+
+          let anchor: Point
+          if (edit.action === "start") {
+            anchor = edit.arrow.start
+          } else if (edit.action === "control") {
+            anchor = edit.arrow.control ?? midpoint(edit.arrow.start, edit.arrow.end)
+          } else {
+            anchor = edit.arrow.end
+          }
+          const localPointer = { x: anchor.x + dx, y: anchor.y + dy }
+          setArrows((previous) => previous.map((item) => {
+            if (item.id !== edit.arrowId) return item
+            if (edit.action === "control") {
+              return { ...item, control: localPointer }
+            }
+            const start = edit.action === "start" ? localPointer : edit.arrow.start
+            const end = edit.action === "end" ? localPointer : edit.arrow.end
+            return {
+              ...item,
+              start,
+              end,
+              control: edit.basis ? controlFromRelative(start, end, edit.basis) : edit.arrow.control,
+            }
+          }))
+        },
+        onEnd: () => {
+          editRef.current = null
+          pointerIdRef.current = null
+          setEditingArrowId(null)
+          onMoveEnd?.()
+        },
+      })
+    }
     return true
-  }, [arrows, clearOtherSelections, enabled, pointerIdRef, selectedArrowIds, setArrows, setSelectedArrowIds, settingsOpen])
+  }, [
+    arrows,
+    clearOtherSelections,
+    createActionCommit,
+    enabled,
+    onBeginMove,
+    onDragMove,
+    onMoveEnd,
+    pointerIdRef,
+    selectedArrowIds,
+    setArrows,
+    setSelectedArrowIds,
+    settingsOpen,
+  ])
   const handleSelectionPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (isPointerDragActive()) return true
     const edit = editRef.current
     if (!edit || event.pointerId !== pointerIdRef.current) {
       return false
     }
-    const dx = event.clientX - edit.origin.x
-    const dy = event.clientY - edit.origin.y
-    if (!edit.changed && (dx !== 0 || dy !== 0)) {
-      createActionCommit()()
-      edit.changed = true
-    }
-
-    if (!edit.changed) return true
-
-    if (edit.action === "move" && onMove) {
-      onMove(edit.arrowId, event.clientX - edit.last.x, event.clientY - edit.last.y)
-      edit.last = { x: event.clientX, y: event.clientY }
-      return true
-    }
-
-    let anchor: Point
-    if (edit.action === "start") {
-      anchor = edit.arrow.start
-    } else if (edit.action === "control") {
-      anchor = edit.arrow.control ?? midpoint(edit.arrow.start, edit.arrow.end)
-    } else {
-      anchor = edit.arrow.end
-    }
-
-    const localPointer = { x: anchor.x + dx, y: anchor.y + dy }
-    setArrows((previous) => previous.map((arrow) => {
-      if (arrow.id !== edit.arrowId) {
-        return arrow
-      }
-      if (edit.action === "move") {
-        return translateArrow(edit.arrow, dx, dy)
-      }
-      if (edit.action === "control") {
-        return { ...arrow, control: localPointer }
-      }
-
-      const start = edit.action === "start" ? localPointer : edit.arrow.start
-      const end = edit.action === "end" ? localPointer : edit.arrow.end
-      return {
-        ...arrow,
-        start,
-        end,
-        control: edit.basis ? controlFromRelative(start, end, edit.basis) : edit.arrow.control,
-      }
-    }))
     return true
-  }, [createActionCommit, onMove, pointerIdRef, setArrows])
+  }, [pointerIdRef])
   const handleSelectionPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!editRef.current || event.pointerId !== pointerIdRef.current) {
       return false

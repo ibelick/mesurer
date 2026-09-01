@@ -5,9 +5,10 @@ import type {
   SetStateAction,
 } from "react"
 import { getInspectMeasurement } from "../core/dom"
-import { getRectFromPoints } from "../core/geometry"
+import { getRectFromPoints, rectsOverlap } from "../core/geometry"
 import { transformedPenBounds } from "../core/pen-transform"
 import { transformedArrowBounds } from "../core/arrow-transform"
+import { textAnnotationBounds } from "../core/text-transform"
 import {
   getCycledClickTarget,
   getElementsInRectCached,
@@ -18,11 +19,35 @@ import {
 import { getSelectedMeasurementHit } from "../core/selection-helpers"
 import type {
   Arrow,
+  Guide,
   InspectMeasurement,
   Point,
   Rect,
   TextAnnotation,
 } from "../core/types"
+
+const MARQUEE_HIT_SLOP = 10
+
+const expandRect = (rect: Rect, padding: number): Rect => ({
+  left: rect.left - padding,
+  top: rect.top - padding,
+  width: rect.width + padding * 2,
+  height: rect.height + padding * 2,
+})
+
+const mergeIds = (previous: string[], next: string[]) => {
+  if (next.length === 0) return previous
+  const seen = new Set(previous)
+  let changed = false
+  const merged = [...previous]
+  for (const id of next) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    merged.push(id)
+    changed = true
+  }
+  return changed ? merged : previous
+}
 
 type SelectionCache = {
   key: string
@@ -45,9 +70,11 @@ type UseMesurerPointerSelectionArgs = {
   textAnnotations: TextAnnotation[]
   arrows: Arrow[]
   penStrokes: import("../core/types").PenStroke[]
+  guides: Guide[]
   setSelectedTextIds: (value: SetStateAction<string[]>) => void
   setSelectedArrowIds: (value: SetStateAction<string[]>) => void
   setSelectedPenStrokeIds: (value: SetStateAction<string[]>) => void
+  setSelectedGuideIds: (value: SetStateAction<string[]>) => void
   setSelectedElement: (value: Element | null) => void
   setSelectedMeasurements: (value: SetStateAction<InspectMeasurement[]>) => void
   setSelectedMeasurement: (
@@ -73,9 +100,11 @@ export const useMesurerPointerSelection = ({
   textAnnotations,
   arrows,
   penStrokes,
+  guides,
   setSelectedTextIds,
   setSelectedArrowIds,
   setSelectedPenStrokeIds,
+  setSelectedGuideIds,
   setSelectedElement,
   setSelectedMeasurements,
   setSelectedMeasurement,
@@ -98,51 +127,73 @@ export const useMesurerPointerSelection = ({
     document.defaultView?.getSelection()?.removeAllRanges()
   }, [document])
 
-  const selectOverlayAnnotations = useCallback((rect: Rect) => {
-    const overlaps = (candidate: Rect) =>
-      candidate.left < rect.left + rect.width &&
-      candidate.left + candidate.width > rect.left &&
-      candidate.top < rect.top + rect.height &&
-      candidate.top + candidate.height > rect.top
-    const selectedText = textAnnotations.filter((item) => {
-      const node = overlayRef.current?.querySelector(
-        `[data-mesurer-text-id="${item.id}"]`
-      )
-      return (
-        node instanceof HTMLElement && overlaps(node.getBoundingClientRect())
-      )
-    }).map((item) => item.id)
-    const selectedArrows = arrows.filter((arrow) => {
-      const bounds = transformedArrowBounds(arrow)
-      return overlaps({
-        left: bounds.x - scrollOffset.x,
-        top: bounds.y - scrollOffset.y,
-        width: bounds.width,
-        height: bounds.height,
-      })
-    }).map((arrow) => arrow.id)
-    const selectedPen = penStrokes.filter((stroke) => {
-      const bounds = transformedPenBounds(stroke)
-      return overlaps({
-        left: bounds.x - scrollOffset.x,
-        top: bounds.y - scrollOffset.y,
-        width: bounds.width,
-        height: bounds.height,
-      })
-    }).map((stroke) => stroke.id)
-    setSelectedTextIds(selectedText)
-    setSelectedArrowIds(selectedArrows)
-    setSelectedPenStrokeIds(selectedPen)
-  }, [
+  const itemsRef = useRef({
+    textAnnotations,
     arrows,
-    overlayRef,
     penStrokes,
-    scrollOffset.x,
-    scrollOffset.y,
+    guides,
+    scrollOffset,
+  })
+  itemsRef.current = {
+    textAnnotations,
+    arrows,
+    penStrokes,
+    guides,
+    scrollOffset,
+  }
+
+  const selectOverlayAnnotations = useCallback((rect: Rect, additive = false) => {
+    const current = itemsRef.current
+    const hitRect = expandRect(rect, rect.width < 2 && rect.height < 2 ? MARQUEE_HIT_SLOP : 2)
+    const toClient = (bounds: { x: number; y: number; width: number; height: number }): Rect => ({
+      left: bounds.x - current.scrollOffset.x,
+      top: bounds.y - current.scrollOffset.y,
+      width: bounds.width,
+      height: bounds.height,
+    })
+    const selectedText = current.textAnnotations.filter((item) => {
+      const node = overlayRef.current?.querySelector(
+        `[data-mesurer-text-id="${item.id}"]`,
+      )
+      const clientRect =
+        node instanceof HTMLElement
+          ? node.getBoundingClientRect()
+          : toClient(textAnnotationBounds(item))
+      return rectsOverlap(hitRect, {
+        left: clientRect.left,
+        top: clientRect.top,
+        width: clientRect.width,
+        height: clientRect.height,
+      })
+    }).map((item) => item.id)
+    const selectedArrows = current.arrows.filter((arrow) =>
+      rectsOverlap(hitRect, expandRect(toClient(transformedArrowBounds(arrow)), MARQUEE_HIT_SLOP)),
+    ).map((arrow) => arrow.id)
+    const selectedPen = current.penStrokes.filter((stroke) =>
+      rectsOverlap(hitRect, expandRect(toClient(transformedPenBounds(stroke)), MARQUEE_HIT_SLOP)),
+    ).map((stroke) => stroke.id)
+    const selectedGuides = current.guides.filter((guide) => {
+      const position = guide.position
+      if (guide.orientation === "vertical") {
+        return position >= hitRect.left && position <= hitRect.left + hitRect.width
+      }
+      return position >= hitRect.top && position <= hitRect.top + hitRect.height
+    }).map((guide) => guide.id)
+
+    const apply = (setter: (value: SetStateAction<string[]>) => void, next: string[]) => {
+      if (additive) setter((previous) => mergeIds(previous, next))
+      else setter(next)
+    }
+    apply(setSelectedTextIds, selectedText)
+    apply(setSelectedArrowIds, selectedArrows)
+    apply(setSelectedPenStrokeIds, selectedPen)
+    apply(setSelectedGuideIds, selectedGuides)
+  }, [
+    overlayRef,
     setSelectedArrowIds,
+    setSelectedGuideIds,
     setSelectedPenStrokeIds,
     setSelectedTextIds,
-    textAnnotations,
   ])
 
   const preparePointerDown = useCallback((point: Point, shiftKey: boolean) => {
@@ -171,18 +222,16 @@ export const useMesurerPointerSelection = ({
     commit: () => void,
     resetDragState: () => void,
   ) => {
-    const dragDx = Math.abs(point.x - start.x)
-    const dragDy = Math.abs(point.y - start.y)
-    const isShiftClick = event.shiftKey && dragDx <= 12 && dragDy <= 12
+    const additive = event.shiftKey || shiftDragRef.current
 
-    if (isDragging && !isShiftClick) {
+    if (isDragging) {
       clickCycleRef.current = null
       const selectionRect = getRectFromPoints(start, point)
       selectionRectRef.current = selectionRect
       setSelectionOriginRect(selectionRect)
       if (selectionMode) {
         commit()
-        selectOverlayAnnotations(selectionRect)
+        selectOverlayAnnotations(selectionRect, additive)
         clearDomSelection()
         setSelectedElement(null)
         setSelectedMeasurement(null)
@@ -259,13 +308,13 @@ export const useMesurerPointerSelection = ({
       setSelectedElement(nextPrimary?.elementRef ?? null)
       setSelectedMeasurement(nextPrimary)
     }
-    if (event.shiftKey && selectedHit) {
+    if (additive && selectedHit) {
       removeSelected(selectedHit)
       clearTransientMeasurements()
       resetDragState()
       return
     }
-    if (!hoverHighlightEnabled && !event.shiftKey && selectedHit) {
+    if (!hoverHighlightEnabled && !additive && selectedHit) {
       removeSelected(selectedHit)
       clearTransientMeasurements()
       resetDragState()
@@ -273,7 +322,7 @@ export const useMesurerPointerSelection = ({
     }
 
     let target: Element | null = null
-    if (event.shiftKey) {
+    if (additive) {
       target =
         getTargetElement(point, overlayRef.current, document) ??
         getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
@@ -292,7 +341,7 @@ export const useMesurerPointerSelection = ({
     if (target) {
       const inspectMeasurement = getInspectMeasurement(target, window)
       clearTransientMeasurements()
-      if (event.shiftKey) {
+      if (additive) {
         const alreadySelected = selectedMeasurements.some(
           (measurement) => measurement.elementRef === target
         )
@@ -315,7 +364,7 @@ export const useMesurerPointerSelection = ({
       setSelectedMeasurement(inspectMeasurement)
       clearSelectionRect()
     } else {
-      if (event.shiftKey) {
+      if (additive) {
         clearTransientMeasurements()
         resetDragState()
         return

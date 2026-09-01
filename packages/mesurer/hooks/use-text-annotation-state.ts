@@ -1,9 +1,10 @@
 import { useRef, useState } from "react"
 import type { TextAnnotation } from "../core/types"
 
-export const useTextAnnotationState = (initial: TextAnnotation[] = []) => {
+export const useTextAnnotationState = (initial: TextAnnotation[] = [], initialSelectedIds: string[] = []) => {
   const [textAnnotations, setTextAnnotations] = useState(initial)
   const textAnnotationsRef = useRef(initial)
+  const selectedTextIdsRef = useRef(initialSelectedIds)
   const [textDraft, setTextDraft] = useState<{
     id?: string
     key?: string
@@ -12,7 +13,7 @@ export const useTextAnnotationState = (initial: TextAnnotation[] = []) => {
     caretX?: number
     caretY?: number
   } | null>(null)
-  const [selectedTextIds, setSelectedTextIds] = useState<string[]>([])
+  const [selectedTextIds, setSelectedTextIds] = useState<string[]>(initialSelectedIds)
 
   return {
     textAnnotations,
@@ -22,5 +23,6 @@ export const useTextAnnotationState = (initial: TextAnnotation[] = []) => {
     setTextDraft,
     selectedTextIds,
     setSelectedTextIds,
+    selectedTextIdsRef,
   }
 }

@@ -192,6 +192,8 @@ export const useInteractionLifecycle = (options: Options) => {
 
   useHotkeys({
     eventTarget: options.ownerWindow,
+    overlayRef: options.overlayRef,
+    enabled: options.enabled,
     clearTransientState,
     hasTransientInteraction,
     isActiveToolMode,

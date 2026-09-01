@@ -59,7 +59,7 @@ export const useMesurerWorkspaceState = ({
   const arrowsRef = useRef(persistedState?.arrows ?? []);
   const selectedArrowIdsRef = useRef(persistedState?.selectedArrowIds ?? []);
   const penStrokesRef = useRef(persistedState?.penStrokes ?? []);
-  const selectedPenStrokeIdsRef = useRef<string[]>([]);
+  const selectedPenStrokeIdsRef = useRef<string[]>(persistedState?.selectedPenStrokeIds ?? []);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const localState = useMesurerLocalState({
@@ -94,8 +94,11 @@ export const useMesurerWorkspaceState = ({
     initialArrows: persistedState?.arrows,
     initialSelectedArrowIds: persistedState?.selectedArrowIds,
   });
-  const pen = usePenState(persistedState?.penStrokes);
-  const text = useTextAnnotationState(initialTextAnnotations);
+  const pen = usePenState(persistedState?.penStrokes, persistedState?.selectedPenStrokeIds);
+  const text = useTextAnnotationState(
+    initialTextAnnotations,
+    persistedState?.selectedTextIds,
+  );
   const [toolbarActive, setToolbarActive] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);

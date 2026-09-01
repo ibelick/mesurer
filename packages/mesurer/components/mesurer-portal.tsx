@@ -47,7 +47,8 @@ export function MesurerPortal({
   return createPortal(
     <div
       ref={rootRef}
-      className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50"
+      className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50 msr:outline-none"
+      tabIndex={-1}
     >
       {rulers.visible ? (
         <RulersOverlay

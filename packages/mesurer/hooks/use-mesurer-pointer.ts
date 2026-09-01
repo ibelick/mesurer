@@ -161,9 +161,11 @@ export const useMesurerPointer = ({
     textAnnotations,
     arrows,
     penStrokes,
+    guides,
     setSelectedTextIds,
     setSelectedArrowIds,
     setSelectedPenStrokeIds,
+    setSelectedGuideIds,
     setSelectedElement,
     setSelectedMeasurements,
     setSelectedMeasurement,
@@ -221,11 +223,6 @@ export const useMesurerPointer = ({
         scheduleGuideDragHold(id, setDraggingGuideId)
         event.currentTarget.setPointerCapture(event.pointerId)
         return
-      }
-
-      if (selectedGuideIds.length > 0) {
-        commit()
-        setSelectedGuideIds([])
       }
 
       setStart(point)
@@ -355,7 +352,7 @@ export const useMesurerPointer = ({
       if (!isDragging) {
         const dx = Math.abs(point.x - start.x)
         const dy = Math.abs(point.y - start.y)
-        const threshold = selection.shiftDragRef.current ? 12 : 4
+        const threshold = 4
         if (dx > threshold || dy > threshold) {
           setIsDragging(true)
         }
@@ -381,6 +378,8 @@ export const useMesurerPointer = ({
       setHoverRect,
       setIsDragging,
       snapGuidesEnabled,
+      selectedGuideIds.length,
+      setSelectedGuideIds,
       start,
       toolMode,
       toolbarRef,

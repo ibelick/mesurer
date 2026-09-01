@@ -30,9 +30,12 @@ type TextLayerProps = {
   interactive: boolean
   editable: boolean
   selectedIds: string[]
+  moveOffset?: { x: number; y: number }
   onSelect: (id: string, additive?: boolean) => void
-  onMoveStart: () => void
-  onMove: (id: string, x: number, y: number) => void
+  onMoveStart: (id: string) => void
+  onMove: (id: string, dx: number, dy: number) => void
+  onMoveEnd?: () => void
+  onChangeStart?: () => void
   onTransform: (
     id: string,
     next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
@@ -145,9 +148,12 @@ export const TextLayer = memo(function TextLayer({
   interactive,
   editable,
   selectedIds,
+  moveOffset = { x: 0, y: 0 },
   onSelect,
   onMoveStart,
   onMove,
+  onMoveEnd,
+  onChangeStart,
   onTransform,
   onEdit,
   fontFamily,
@@ -208,6 +214,9 @@ export const TextLayer = memo(function TextLayer({
             onSelect={onSelect}
             onMoveStart={onMoveStart}
             onMove={onMove}
+            onMoveEnd={onMoveEnd}
+            onChangeStart={onChangeStart}
+            moveOffset={selectedIds.includes(item.id) ? moveOffset : { x: 0, y: 0 }}
             onTransform={onTransform}
             onEdit={onEdit}
             onKeyDown={onDraftKeyDown}
@@ -258,6 +267,9 @@ function TextItem({
   onSelect,
   onMoveStart,
   onMove,
+  onMoveEnd,
+  moveOffset,
+  onChangeStart,
   onTransform,
   onEdit,
   onKeyDown,
@@ -279,8 +291,11 @@ function TextItem({
   selectionCount: number
   dragRef: MutableRefObject<TextDrag | null>
   onSelect: (id: string, additive?: boolean) => void
-  onMoveStart: () => void
-  onMove: (id: string, x: number, y: number) => void
+  onMoveStart: (id: string) => void
+  onMove: (id: string, dx: number, dy: number) => void
+  onMoveEnd?: () => void
+  onChangeStart?: () => void
+  moveOffset: { x: number; y: number }
   onTransform: (
     id: string,
     next: { x: number; y: number; scale?: number; rotation?: number; boxWidth?: number },
@@ -326,6 +341,7 @@ function TextItem({
   const startMove = (event: PointerEvent<HTMLElement>) => {
     onSelect(item.id, event.shiftKey)
     if (event.shiftKey) return
+    onMoveStart(item.id)
     dragRef.current = {
       type: "move",
       id: item.id,
@@ -342,8 +358,8 @@ function TextItem({
     <div
       ref={boxRef}
       style={{
-        left: item.x - scrollOffset.x,
-        top: item.y - scrollOffset.y,
+        left: item.x - scrollOffset.x + moveOffset.x,
+        top: item.y - scrollOffset.y + moveOffset.y,
         transform: rotation ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: "center center",
         fontFamily,
@@ -372,10 +388,9 @@ function TextItem({
           const dy = event.clientY - drag.startY
           if (!drag.moved && Math.hypot(dx, dy) < 4) return
           if (!drag.moved) {
-            onMoveStart()
             dragRef.current = { ...drag, moved: true }
           }
-          onMove(drag.id, drag.itemX + dx, drag.itemY + dy)
+          onMove(drag.id, dx, dy)
           return
         }
         const pointer = pointerPage(event)
@@ -399,7 +414,9 @@ function TextItem({
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId)
         }
+        const wasMove = dragRef.current.type === "move"
         dragRef.current = null
+        if (wasMove) onMoveEnd?.()
       }}
       className={`msr:absolute msr:h-max ${boxWidth ? "msr:w-auto" : "msr:w-max"} ${
         interactive || editable ? "msr:pointer-events-auto" : "msr:pointer-events-none"
@@ -452,7 +469,7 @@ function TextItem({
           onResizeStart={(handle, event) => {
             const size = measureBox()
             onSelect(item.id)
-            onMoveStart()
+            onChangeStart?.()
             dragRef.current = {
               type: "resize",
               id: item.id,
@@ -471,7 +488,7 @@ function TextItem({
             const center = boxCenter(item.x, item.y, size.width, size.height)
             const pointer = pointerPage(event)
             onSelect(item.id)
-            onMoveStart()
+            onChangeStart?.()
             dragRef.current = {
               type: "rotate",
               id: item.id,
