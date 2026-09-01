@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { cn } from "../core/utils";
 import { AnnotateIcon, SelectInspectIcon } from "./icons";
 import { Tooltip } from "./tooltip";
@@ -23,6 +24,8 @@ export function ToolGroupSwitch({
   tooltipVisibleId: string | null;
   tooltipsEnabled: boolean;
 }) {
+  const inspectRef = useRef<HTMLDivElement | null>(null);
+  const annotateRef = useRef<HTMLDivElement | null>(null);
   return (
     <div
       className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:items-center msr:gap-[2px] msr:rounded-[8px] msr:bg-ink-50 msr:p-[2px]"
@@ -32,6 +35,7 @@ export function ToolGroupSwitch({
     >
       <span className="mesurer-toolbar-tool-switch-pill" aria-hidden="true" />
       <div
+        ref={inspectRef}
         className="msr:relative"
         onMouseEnter={() => tooltip.onTooltipEnter("tool-group-inspect")}
         onMouseLeave={() => tooltip.onTooltipLeave("tool-group-inspect")}
@@ -57,9 +61,11 @@ export function ToolGroupSwitch({
           visible={tooltipsEnabled && tooltipVisibleId === "tool-group-inspect"}
           instant={tooltip.tooltipInstant}
           side={tooltip.tooltipSide}
+          anchorRef={inspectRef}
         />
       </div>
       <div
+        ref={annotateRef}
         className="msr:relative"
         onMouseEnter={() => tooltip.onTooltipEnter("tool-group-annotate")}
         onMouseLeave={() => tooltip.onTooltipLeave("tool-group-annotate")}
@@ -85,6 +91,7 @@ export function ToolGroupSwitch({
           visible={tooltipsEnabled && tooltipVisibleId === "tool-group-annotate"}
           instant={tooltip.tooltipInstant}
           side={tooltip.tooltipSide}
+          anchorRef={annotateRef}
         />
       </div>
     </div>

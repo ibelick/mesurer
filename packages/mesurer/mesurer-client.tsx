@@ -12,6 +12,7 @@ import {
   settingsFocusSection,
   type SettingsFocusSection,
 } from "./components/settings-panel";
+import { ColorPicker } from "./components/color-picker";
 import { MesurerPortal } from "./components/mesurer-portal";
 import { useColorPicker } from "./hooks/use-color-picker";
 import { useGuideDragHold } from "./hooks/use-guide-drag-hold";
@@ -1223,15 +1224,6 @@ export function MesurerClient({
           color: settingsTextStyle.color,
         },
       }}
-      colorPicker={{
-        active: colorPicker.active,
-        sample: colorPicker.sample,
-        unsupported: colorPicker.unsupported,
-        ownerWindow,
-        formats: settingsColorFormats,
-        favoriteFormat: settingsColorClickFormat,
-        onClose: () => colorPicker.setActive(false),
-      }}
       screenshot={{
         active: screenshot.active,
         rect: screenshot.rect,
@@ -1259,6 +1251,17 @@ export function MesurerClient({
           active: colorPicker.active,
           setActive: colorPicker.setActive,
           onClick: openColorPicker,
+          panel: (
+            <ColorPicker
+              active={colorPicker.active}
+              sample={colorPicker.sample}
+              unsupported={colorPicker.unsupported}
+              ownerWindow={ownerWindow}
+              formats={settingsColorFormats}
+              favoriteFormat={settingsColorClickFormat}
+              onClose={() => colorPicker.setActive(false)}
+            />
+          ),
         },
         screenshot: {
           active: screenshot.active,

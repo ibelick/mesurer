@@ -15,7 +15,7 @@ import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
 import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
 import { ScreenshotPreview } from "./screenshot-preview";
-import { Tooltip } from "./tooltip";
+import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import {
   CaretDownIcon,
@@ -51,6 +51,7 @@ type ToolbarColorPicker = {
   active: boolean;
   setActive: Dispatch<SetStateAction<boolean>>;
   onClick: () => void;
+  panel: ReactNode;
 };
 
 type ToolbarScreenshot = {
@@ -84,6 +85,14 @@ const GUIDE_MENU_WIDTH = 176;
 const VIEWPORT_PADDING = 8;
 const TOOLBAR_HEIGHT = 40;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
+const TOOLBAR_MOTION_FALLBACK_MS = 200;
+
+const toolbarMotionMs = (motion: string) => {
+  const value = Number.parseFloat(motion);
+  if (!Number.isFinite(value)) return TOOLBAR_MOTION_FALLBACK_MS;
+  const unit = motion.trim().match(/[\d.]+(m?s)/i)?.[1];
+  return unit?.toLowerCase() === "s" ? value * 1000 : value;
+};
 const getSettingsShortcut = (eventTarget: Window) =>
   /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform)
     ? "⌘ ,"
@@ -113,6 +122,9 @@ const toolGroupForMode = (
   }
   return null;
 };
+
+const isAnnotateToolMode = (mode: ToolMode) =>
+  mode === "selection" || mode === "arrows" || mode === "pen" || mode === "text";
 
 const exclusiveToolId = (
   mode: ToolMode,
@@ -161,8 +173,10 @@ function ToolbarButton({
   tooltip,
   children,
 }: ToolbarButtonProps) {
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   return (
     <div
+      ref={anchorRef}
       className="msr:relative"
       data-tool-id={id}
       onMouseEnter={() => tooltip.onTooltipEnter(id)}
@@ -188,14 +202,27 @@ function ToolbarButton({
         visible={tooltipVisible}
         instant={tooltip.tooltipInstant}
         side={tooltip.tooltipSide}
+        anchorRef={anchorRef}
       />
     </div>
   );
 }
 
-function ToolbarGroup({ label, children }: { label: string; children: ReactNode }) {
+function ToolbarGroup({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div role="group" aria-label={label} className="msr:flex msr:items-center msr:gap-1">
+    <div
+      role="group"
+      aria-label={label}
+      className={cn("msr:flex msr:items-center msr:gap-1", className)}
+    >
       {children}
     </div>
   );
@@ -205,7 +232,7 @@ function ToolbarDivider() {
   return (
     <div
       aria-hidden="true"
-      className="msr:mx-1 msr:-my-1 msr:w-px msr:self-stretch msr:bg-ink-200"
+      className="msr:-my-1 msr:w-px msr:self-stretch msr:bg-ink-200"
     />
   );
 }
@@ -276,6 +303,11 @@ function ToolbarComponent(
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
+  const motionRef = useRef<HTMLDivElement | null>(null);
+  const trailingRef = useRef<HTMLDivElement | null>(null);
+  const barWidthRef = useRef(0);
+  const motionReadyRef = useRef(false);
+  const motionGroupRef = useRef(toolGroup);
   const previousToolGroupRef = useRef(toolGroup);
   const previousExclusiveToolIdRef = useRef<string | null>(
     exclusiveToolId(toolMode, colorPickerActive),
@@ -284,6 +316,7 @@ function ToolbarComponent(
   const rulersWereVisibleRef = useRef(rulersVisible);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
+  const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
   const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
   const settingsShortcut = getSettingsShortcut(eventTarget);
 
@@ -315,83 +348,121 @@ function ToolbarComponent(
   );
 
   useLayoutEffect(() => {
+    const turnedXrayOn = xrayVisible && !xrayWasVisibleRef.current;
+    const turnedRulersOn = rulersVisible && !rulersWereVisibleRef.current;
+    xrayWasVisibleRef.current = xrayVisible;
+    rulersWereVisibleRef.current = rulersVisible;
+    if (turnedXrayOn || turnedRulersOn) {
+      setToolGroup("inspect");
+      return;
+    }
     const fromMode = toolGroupForMode(toolMode, colorPickerActive);
     if (fromMode) {
       setToolGroup(fromMode);
-    } else if (xrayVisible && !xrayWasVisibleRef.current) {
-      setToolGroup("inspect");
-    } else if (rulersVisible && !rulersWereVisibleRef.current) {
-      setToolGroup("inspect");
     }
-    xrayWasVisibleRef.current = xrayVisible;
-    rulersWereVisibleRef.current = rulersVisible;
   }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
 
-  const toolGroupMotionEnabledRef = useRef(false);
-
   useLayoutEffect(() => {
-    if (!toolGroupMotionEnabledRef.current) return;
+    const motion = motionRef.current;
+    const chrome = motion?.querySelector(".mesurer-toolbar-chrome");
+    const surface = motion?.querySelector(".mesurer-toolbar-surface");
     const stage = toolStageRef.current;
     const track = stage?.querySelector(".mesurer-toolbar-tool-track");
-    if (!stage || !(track instanceof HTMLElement)) return;
+    const trailing = trailingRef.current;
+    if (
+      !motion ||
+      !(chrome instanceof HTMLElement) ||
+      !(surface instanceof HTMLElement) ||
+      !stage ||
+      !(track instanceof HTMLElement) ||
+      !trailing
+    ) {
+      return;
+    }
+
+    const toWidth = motion.offsetWidth;
+    const fromWidth = barWidthRef.current;
+    const fromGroup = motionGroupRef.current;
+
+    if (!motionReadyRef.current || fromGroup === toolGroup) {
+      barWidthRef.current = toWidth;
+      motionGroupRef.current = toolGroup;
+      return;
+    }
     if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      barWidthRef.current = toWidth;
+      motionGroupRef.current = toolGroup;
+      return;
+    }
+    if (fromWidth < 1 || toWidth < 1) {
+      barWidthRef.current = toWidth;
+      motionGroupRef.current = toolGroup;
       return;
     }
 
     const inspectWidth =
       parseFloat(stage.style.getPropertyValue("--msr-inspect-w")) || 0;
-    const annotateWidth =
-      parseFloat(stage.style.getPropertyValue("--msr-annotate-w")) || 0;
-    const fromGroup = previousToolGroupRef.current;
-    if (fromGroup === toolGroup) return;
-
-    const fromWidth = fromGroup === "annotate" ? annotateWidth : inspectWidth;
     const fromX = fromGroup === "annotate" ? -inspectWidth : 0;
-    const motion =
-      getComputedStyle(stage).getPropertyValue("--msr-toolbar-motion").trim() ||
-      "200ms ease";
-    const pill = stage
-      .closest(".mesurer-toolbar-surface")
-      ?.querySelector(".mesurer-toolbar-tool-switch-pill");
-    const fromPillX = fromGroup === "annotate" ? 30 : 0;
+    const toX = toolGroup === "annotate" ? -inspectWidth : 0;
+    const scale = fromWidth / toWidth;
+    const trailX = fromWidth - toWidth;
+    const growBy = Math.max(0, toWidth - fromWidth);
+    const motionTiming =
+      getComputedStyle(motion).getPropertyValue("--msr-toolbar-motion").trim() ||
+      `${TOOLBAR_MOTION_FALLBACK_MS}ms ease`;
+    const transformMotion = `transform ${motionTiming}`;
+    const widthChanged = Math.abs(fromWidth - toWidth) > 0.5;
+    const clipFrom = `inset(0 ${growBy}px 0 0)`;
+    const clipTo = "inset(0)";
 
-    stage.style.transition = "none";
-    track.style.transition = "none";
-    if (fromWidth > 0) stage.style.width = `${fromWidth}px`;
+    const nodes = [chrome, track, trailing];
+    for (const node of nodes) {
+      node.style.transition = "none";
+    }
+    surface.style.transition = "none";
+    if (widthChanged) {
+      motion.dataset.resizing = "true";
+      chrome.style.transform = `scaleX(${scale})`;
+      trailing.style.transform = `translateX(${trailX}px)`;
+      if (growBy > 0) {
+        surface.style.clipPath = clipFrom;
+      }
+    }
     track.style.transform = `translateX(${fromX}px)`;
-    if (pill instanceof HTMLElement) {
-      pill.style.transition = "none";
-      pill.style.transform = `translateX(${fromPillX}px)`;
-    }
-    void stage.offsetWidth;
+    void motion.offsetWidth;
 
-    stage.dataset.resizing = "true";
-    stage.style.transition = `width ${motion}`;
-    track.style.transition = `transform ${motion}`;
-    stage.style.width = "";
-    track.style.transform = "";
-    if (pill instanceof HTMLElement) {
-      pill.style.transition = `transform ${motion}`;
-      pill.style.transform = "";
+    for (const node of nodes) {
+      node.style.transition = transformMotion;
+    }
+    chrome.style.transform = "scaleX(1)";
+    trailing.style.transform = "translateX(0)";
+    track.style.transform = `translateX(${toX}px)`;
+    if (growBy > 0) {
+      surface.style.transition = `clip-path ${motionTiming}`;
+      surface.style.clipPath = clipTo;
     }
 
-    const timeout = eventTarget.setTimeout(() => {
-      delete stage.dataset.resizing;
-      stage.style.transition = "";
-      track.style.transition = "";
-      if (pill instanceof HTMLElement) pill.style.transition = "";
-    }, 200);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      barWidthRef.current = toWidth;
+      motionGroupRef.current = toolGroup;
+      delete motion.dataset.resizing;
+      for (const node of nodes) {
+        node.style.transition = "";
+        node.style.transform = "";
+      }
+      surface.style.transition = "";
+      surface.style.clipPath = "";
+    };
+    const timeout = eventTarget.setTimeout(
+      finish,
+      toolbarMotionMs(motionTiming) + 32,
+    );
     return () => {
       eventTarget.clearTimeout(timeout);
-      delete stage.dataset.resizing;
-      stage.style.transition = "";
-      track.style.transition = "";
-      stage.style.width = "";
-      track.style.transform = "";
-      if (pill instanceof HTMLElement) {
-        pill.style.transition = "";
-        pill.style.transform = "";
-      }
+      if (!motion.isConnected) finish();
     };
   }, [eventTarget, toolGroup]);
 
@@ -438,7 +509,7 @@ function ToolbarComponent(
       button.style.transition = "";
       button.style.backgroundColor = "";
       button.style.color = "";
-    }, 200);
+    }, toolbarMotionMs(motion));
     return () => {
       eventTarget.clearTimeout(timeout);
       button.style.transition = "";
@@ -560,9 +631,24 @@ function ToolbarComponent(
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
-    setXrayVisible((prev) => !prev);
+    setXrayVisible((prev) => {
+      const next = !prev;
+      if (next && isAnnotateToolMode(toolMode)) {
+        setToolMode("select");
+      }
+      return next;
+    });
     onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setXrayVisible]);
+  }, [
+    onCancelScreenshot,
+    onCancelTransient,
+    onInteract,
+    setColorPickerActive,
+    setEnabled,
+    setToolMode,
+    setXrayVisible,
+    toolMode,
+  ]);
 
   const colorPickerMode = useCallback(() => {
     onCancelTransient();
@@ -591,9 +677,24 @@ function ToolbarComponent(
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
-    setRulersVisible((prev) => !prev);
+    setRulersVisible((prev) => {
+      const next = !prev;
+      if (next && isAnnotateToolMode(toolMode)) {
+        setToolMode("select");
+      }
+      return next;
+    });
     onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setRulersVisible]);
+  }, [
+    onCancelScreenshot,
+    onCancelTransient,
+    onInteract,
+    setColorPickerActive,
+    setEnabled,
+    setRulersVisible,
+    setToolMode,
+    toolMode,
+  ]);
 
   const selectGuideOrientation = useCallback(
     (orientation: "vertical" | "horizontal") => {
@@ -630,7 +731,12 @@ function ToolbarComponent(
     syncToolWidths();
     const frame = requestAnimationFrame(() => {
       stage.dataset.ready = "true";
-      toolGroupMotionEnabledRef.current = true;
+      motionReadyRef.current = true;
+      const motion = motionRef.current;
+      if (motion) {
+        motion.dataset.ready = "true";
+        barWidthRef.current = motion.offsetWidth;
+      }
     });
     const observer = new ResizeObserver(syncToolWidths);
     observer.observe(inspectPanel);
@@ -694,9 +800,17 @@ function ToolbarComponent(
       }}
     >
     <div className="msr:relative">
+    <TooltipLayerContext.Provider value={tooltipLayer}>
     <div
-      ref={ref}
-      className="mesurer-toolbar-surface msr:pointer-events-auto msr:flex msr:items-center msr:gap-1 msr:rounded-[12px] msr:bg-white msr:p-1 msr:outline msr:outline-transparent"
+      ref={(node) => {
+        motionRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      }}
+      className="mesurer-toolbar-motion msr:pointer-events-auto"
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         onInteract();
@@ -705,6 +819,8 @@ function ToolbarComponent(
       onClickCapture={onClickCapture}
       onMouseLeave={onToolbarLeave}
     >
+    <div className="mesurer-toolbar-chrome" aria-hidden="true" />
+    <div className="mesurer-toolbar-surface msr:flex msr:items-center msr:gap-1">
        <ToolGroupSwitch
          value={toolGroup}
          onChange={selectToolGroup}
@@ -801,19 +917,13 @@ function ToolbarComponent(
         >
           <CaretDownIcon size={8} />
         </button>
-        <span
-          className={cn(
-            "msr:pointer-events-none msr:absolute msr:left-1/2 msr:-translate-x-1/2 msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
-            tooltipSide === "top"
-              ? "msr:bottom-full msr:mb-2"
-              : "msr:top-full msr:mt-2",
-            visibleTooltipId === "guide-menu" && tooltipsEnabled
-              ? "msr:opacity-100"
-              : "msr:opacity-0",
-          )}
-        >
-          Orientation Guide
-        </span>
+        <Tooltip
+          label="Orientation Guide"
+          visible={tooltipsEnabled && visibleTooltipId === "guide-menu"}
+          instant={tooltipInstant}
+          side={tooltipSide}
+          anchorRef={guideMenuRef}
+        />
         {guideMenuOpen ? (
           <div
             className={cn(
@@ -987,9 +1097,9 @@ function ToolbarComponent(
        </div>
        </div>
        </div>
+       <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-center">
        <ToolbarDivider />
-       </div>
-       <ToolbarGroup label="Capture and settings">
+       <ToolbarGroup label="Capture and settings" className="msr:px-1">
       <div className="msr:relative">
       <ToolbarButton
         id="screenshot"
@@ -1064,12 +1174,22 @@ function ToolbarComponent(
         ) : null}
       </div>
       </ToolbarGroup>
+       </div>
     </div>
+    </div>
+    </div>
+    <div
+      ref={setTooltipLayer}
+      className="mesurer-toolbar-tooltips"
+      style={{ visibility: screenshotActive ? "hidden" : undefined }}
+    />
+    </TooltipLayerContext.Provider>
+      {colorPicker.panel}
       {screenshotError ? (
         <div
           role="status"
           aria-live="polite"
-           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-black msr:whitespace-normal msr:text-pretty msr:shadow-md msr:line-clamp-2 ${toastAlignment}`}
+           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-black msr:whitespace-normal msr:text-pretty msr:line-clamp-2 ${toastAlignment}`}
         >
           Screenshot failed.
           <br />

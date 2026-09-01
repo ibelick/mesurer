@@ -222,7 +222,42 @@ export const useInteractionLifecycle = (options: Options) => {
     onCloseScreenshot: options.screenshot.closeUi,
     isScreenshotActive: () =>
       options.screenshot.active || Boolean(options.screenshot.previewUrl),
-    onToggleXray: () => options.setXrayVisible((previous) => !previous),
+    onToggleXray: () => {
+      options.setEnabled(true);
+      options.colorPicker.setActive(false);
+      options.screenshot.closeUi();
+      options.setXrayVisible((previous) => {
+        const next = !previous;
+        if (
+          next &&
+          (options.toolMode === "selection" ||
+            options.toolMode === "arrows" ||
+            options.toolMode === "pen" ||
+            options.toolMode === "text")
+        ) {
+          options.setToolMode("select");
+        }
+        return next;
+      });
+    },
+    onToggleRulers: () => {
+      options.setEnabled(true);
+      options.colorPicker.setActive(false);
+      options.screenshot.closeUi();
+      options.setRulersVisible((previous) => {
+        const next = !previous;
+        if (
+          next &&
+          (options.toolMode === "selection" ||
+            options.toolMode === "arrows" ||
+            options.toolMode === "pen" ||
+            options.toolMode === "text")
+        ) {
+          options.setToolMode("select");
+        }
+        return next;
+      });
+    },
     onToggleSettings: options.onToggleSettings,
     isSettingsOpen: () => options.settingsOpen,
     onCloseColorPicker: () => options.colorPicker.setActive(false),

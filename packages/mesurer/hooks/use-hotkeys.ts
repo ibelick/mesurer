@@ -32,6 +32,7 @@ type HotkeyOptions = {
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
   onToggleXray: () => void
+  onToggleRulers: () => void
   onToggleSettings: () => void
   isSettingsOpen: () => boolean
   onCloseColorPicker: () => void
@@ -196,9 +197,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
-      if (key === "x") {
+      if (key === "x" || key === "r") {
+        event.preventDefault()
+        current.setEnabled(true)
+        current.clearTransientState()
+        current.onCloseColorPicker()
         current.onCloseScreenshot()
-        current.onToggleXray()
+        if (key === "x") current.onToggleXray()
+        else current.onToggleRulers()
         current.onInteract()
         return
       }
@@ -265,13 +271,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.clearTransientState()
           current.onCloseScreenshot()
           current.setToolMode((prev) => (prev === "text" ? "none" : "text"))
-          current.onInteract()
-        }
-
-        if (key === "r") {
-          current.clearTransientState()
-          current.onCloseScreenshot()
-          current.setRulersVisible((prev) => !prev)
           current.onInteract()
         }
 

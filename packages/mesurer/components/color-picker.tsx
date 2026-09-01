@@ -1,9 +1,9 @@
 "use client"
 
-import type { MutableRefObject } from "react"
 import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
+import { cn } from "../core/utils"
 import { Tooltip, useTooltip } from "./tooltip"
 
 type ColorPickerProps = {
@@ -13,7 +13,6 @@ type ColorPickerProps = {
   formats: ColorPickerFormat[]
   favoriteFormat: ColorPickerFormat
   ownerWindow: Window
-  toolbarRef: MutableRefObject<HTMLDivElement | null>
   onClose: () => void
 }
 
@@ -74,12 +73,12 @@ export function ColorPicker({
   formats,
   favoriteFormat,
   ownerWindow,
-  toolbarRef,
   onClose,
 }: ColorPickerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const copyTimeoutRef = useRef<number | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [side, setSide] = useState<"top" | "bottom">("bottom")
   const tooltip = useTooltip()
 
   const copyValue = useCallback(
@@ -116,26 +115,29 @@ export function ColorPicker({
   useLayoutEffect(() => {
     if (!active) return
     const panel = panelRef.current
-    const toolbar = toolbarRef.current
-    if (!panel || !toolbar) return
+    const origin = panel?.offsetParent
+    if (!panel || !(origin instanceof HTMLElement)) return
 
     let frame = 0
     let scheduled = false
     const updatePosition = () => {
       scheduled = false
-      const toolbarRect = toolbar.getBoundingClientRect()
-      const panelRect = panel.getBoundingClientRect()
-      const left = Math.min(
-        Math.max(8, toolbarRect.left),
-        ownerWindow.innerWidth - panelRect.width - 8,
-      )
-      const belowTop = toolbarRect.bottom + 8
-      const aboveTop = toolbarRect.top - panelRect.height - 8
-      const top = belowTop + panelRect.height <= ownerWindow.innerHeight
-        ? belowTop
-        : Math.max(8, aboveTop)
+      const panel = panelRef.current
+      const origin = panel?.offsetParent
+      if (!panel || !(origin instanceof HTMLElement)) return
+      const originRect = origin.getBoundingClientRect()
+      const button = origin.querySelector("[data-tool-id='color-picker']")
+      const buttonRect = button?.getBoundingClientRect() ?? originRect
+      const panelWidth = panel.offsetWidth
+      const panelHeight = panel.offsetHeight
+      const minLeft = 8 - originRect.left
+      const maxLeft = ownerWindow.innerWidth - 8 - panelWidth - originRect.left
+      let left = buttonRect.left - originRect.left
+      left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft))
       panel.style.left = `${left}px`
-      panel.style.top = `${top}px`
+      const belowFits =
+        originRect.bottom + 8 + panelHeight <= ownerWindow.innerHeight - 8
+      setSide(belowFits ? "bottom" : "top")
     }
     const schedulePosition = () => {
       if (scheduled) return
@@ -146,9 +148,8 @@ export function ColorPicker({
     schedulePosition()
     ownerWindow.addEventListener("resize", schedulePosition)
     ownerWindow.addEventListener("scroll", schedulePosition, true)
-    ownerWindow.addEventListener("pointermove", schedulePosition, true)
     const resizeObserver = new ResizeObserver(schedulePosition)
-    resizeObserver.observe(toolbar)
+    resizeObserver.observe(origin)
     resizeObserver.observe(panel)
     return () => {
       if (scheduled) ownerWindow.cancelAnimationFrame(frame)
@@ -159,9 +160,8 @@ export function ColorPicker({
       resizeObserver.disconnect()
       ownerWindow.removeEventListener("resize", schedulePosition)
       ownerWindow.removeEventListener("scroll", schedulePosition, true)
-      ownerWindow.removeEventListener("pointermove", schedulePosition, true)
     }
-  }, [active, ownerWindow, sample, toolbarRef, unsupported])
+  }, [active, ownerWindow, sample, unsupported])
 
   if (!active || (!sample && !unsupported)) return null
 
@@ -175,7 +175,10 @@ export function ColorPicker({
   return (
     <div
       ref={panelRef}
-      className="mesurer-color-picker msr:pointer-events-auto msr:fixed msr:z-[80] msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg"
+      className={cn(
+        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
+        side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+      )}
       role="dialog"
       aria-label="Selected color values"
       onMouseLeave={tooltip.onTooltipContainerLeave}

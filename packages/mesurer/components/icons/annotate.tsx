@@ -10,7 +10,7 @@ export function AnnotateIcon({
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" fill="none" aria-hidden="true">
       <path
-        d="M29.9 109.4C44.7 103.4 94.5 199.8 109.3 193.8C124.1 187.8 92.9 83.9 107.8 77.9C122.6 71.9 172.3 168.3 187.2 162.3C202 156.3 170.8 52.5 185.7 46.5"
+        d="M40 184C52.1 154.8 69.8 65 86 60C102.3 55 104.3 155 118 160C131.8 165 139.1 83.2 152 84C164.9 84.8 168.3 159 180 164C191.7 169 197.2 111.3 208 108C218.8 104.7 224.5 136.3 232 148"
         fill="none"
         stroke="currentColor"
         strokeWidth={(strokePx * 256) / size / fill}
