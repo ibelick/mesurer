@@ -15,6 +15,7 @@ import {
   TextAaIcon,
   TextTIcon,
   ToggleLeftIcon,
+  XLogoIcon,
 } from "@phosphor-icons/react";
 import InstallCommand from "./components/install-command";
 import CodeBlock from "./components/code-block";
@@ -79,7 +80,7 @@ function Header({
           href="https://github.com/ibelick/mesurer"
           target="_blank"
           rel="noreferrer"
-          aria-label="NPM package"
+           aria-label="Mesurer on GitHub"
           className="mb-0.5 inline-flex h-4 w-4 items-center justify-center text-muted transition-colors hover:text-strong"
         >
           <svg
@@ -253,28 +254,22 @@ function HomeContent() {
       <div id="installation" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Installation</p>
         <InstallCommand>npm install mesurer</InstallCommand>
-        <p>
-          Then add the component preference at the root of your application:
-        </p>
-        <CodeBlock as="pre">{`import { Mesurer } from "mesurer";
+         <p>Then render the component alongside your application:</p>
+         <CodeBlock as="pre">{`import { Mesurer } from "mesurer";
 
-export default function RootLayout({ children }) {
+function App() {
   return (
-    <html>
-      <head>
-        {process.env.NODE_ENV === "development" && (
-          <Mesurer />
-        )}
-      </head>
-      <body>{children}</body>
-    </html>
+    <>
+      <YourApp />
+      <Mesurer />
+    </>
   );
 }`}</CodeBlock>
       </div>
 
       <div className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Props</p>
-        <div className="flex flex-col border-t border-border -mx-2">
+        <div className="site-props flex flex-col border-t border-border -mx-2 [&>div]:flex-col [&>div]:gap-2 [&>div>div:first-child]:break-words sm:[&>div]:flex-row sm:[&>div]:items-start sm:[&>div]:justify-between sm:[&>div]:gap-8 [&>div>div:last-child]:max-w-none [&>div>div:last-child]:text-left sm:[&>div>div:last-child]:max-w-[60%] sm:[&>div>div:last-child]:text-right">
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">highlightColor</code>
@@ -606,6 +601,16 @@ export function App() {
               className="transition-colors hover:text-strong"
             >
               Feedback
+            </a>
+            <a
+              href="https://x.com/mesurerdev"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Follow Mesurer on X"
+              className="inline-flex items-center gap-1 transition-colors hover:text-strong"
+            >
+              <XLogoIcon size={14} weight="regular" aria-hidden="true" />
+              <span>Follow</span>
             </a>
             <a href="/privacy" className="transition-colors hover:text-strong">
               Privacy
