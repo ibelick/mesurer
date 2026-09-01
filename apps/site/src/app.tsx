@@ -94,11 +94,14 @@ function Header({
         </a>
       </div>
       {showDescription && (
-        <p className="max-w-xl leading-relaxed text-muted">
-          Visual precision for building with coding agents.
-          <br />
-          Measure, inspect, annotate, and capture exactly what you see in the browser.
-        </p>
+        <div className="flex max-w-2xl flex-col gap-2">
+          <h2 className="leading-tight text-strong">
+            Inspect, annotate, and give feedback on any live interface
+          </h2>
+          <p className="leading-relaxed text-muted">
+            Mesurer runs directly where you build. Share feedback with your agents and your team.
+          </p>
+        </div>
       )}
     </div>
   );

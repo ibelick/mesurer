@@ -1,10 +1,8 @@
 # Mesurer Chrome Extension
 
-UI Inspector & Visual Feedback
+Inspect, annotate, and give feedback on any live interface
 
-Visual precision for building with coding agents.
-
-Measure, inspect, and capture exactly what you see in the browser.
+Mesurer runs directly where you build. Share feedback with your agents and your team.
 
 Click the extension icon to toggle the Mesurer toolbar on the current page.
 

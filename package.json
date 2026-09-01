@@ -1,6 +1,6 @@
 {
   "name": "mesurer",
-  "description": "UI inspector and visual feedback tools for building with coding agents.",
+  "description": "Inspect, annotate, and give feedback on any live interface",
   "license": "MIT",
   "private": true,
   "workspaces": [

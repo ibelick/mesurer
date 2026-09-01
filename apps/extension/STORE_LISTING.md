@@ -2,19 +2,19 @@
 
 ## Name
 
-Mesurer - UI Inspector & Visual Feedback
+Mesurer - Inspect, annotate, and give feedback on any live interface
 
 ## Short Description
 
-Measure, inspect, and capture UI in the browser. Share precise visual feedback with your coding agent.
+Mesurer runs directly where you build. Share feedback with your agents and your team.
 
 ## Full Description
 
-Mesurer is a visual precision tool for building with coding agents.
+Inspect, annotate, and give feedback on any live interface.
 
-Measure, inspect, and capture exactly what you see directly in your browser.
+Mesurer runs directly where you build. Share feedback with your agents and your team.
 
-Use Mesurer to inspect UI, understand layout and typography, communicate visual changes, and capture precise context for your coding agent.
+Use Mesurer to inspect UI, understand layout and typography, annotate live interfaces, communicate visual changes, and capture precise context for your agents and team.
 
 ### Measure
 
@@ -30,6 +30,12 @@ Use Mesurer to inspect UI, understand layout and typography, communicate visual 
 - Inspect typography
 - Reveal interface structure with X-ray mode
 - Understand layout and visual relationships
+
+### Annotate
+
+- Draw arrows and freehand pen strokes
+- Add, edit, resize, and rotate text annotations
+- Select and transform multiple annotations together
 
 ### Capture
 

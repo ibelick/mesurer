@@ -10,9 +10,9 @@
 [![npm version](https://img.shields.io/npm/v/mesurer)](https://www.npmjs.com/package/mesurer)
 [![downloads](https://img.shields.io/npm/dm/mesurer)](https://www.npmjs.com/package/mesurer)
 
-**Visual precision for building with coding agents.**
+**Inspect, annotate, and give feedback on any live interface.**
 
-Measure, inspect, annotate, and capture exactly what you see in the browser.
+Mesurer runs directly where you build. Share feedback with your agents and your team.
 
 Mesurer is an open-source UI inspector and visual feedback tool for the browser.
 Use guides, rulers, measurements, arrows, freehand pen strokes, text annotations,
