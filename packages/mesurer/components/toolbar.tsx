@@ -114,6 +114,25 @@ const toolGroupForMode = (
   return null;
 };
 
+const exclusiveToolId = (
+  mode: ToolMode,
+  colorPickerActive: boolean,
+): string | null => {
+  if (colorPickerActive) return "color-picker";
+  switch (mode) {
+    case "select":
+    case "text-inspector":
+    case "guides":
+    case "selection":
+    case "arrows":
+    case "pen":
+    case "text":
+      return mode;
+    default:
+      return null;
+  }
+};
+
 type ToolbarTooltipProps = {
   tooltipInstant: boolean;
   tooltipSide: "top" | "bottom";
@@ -145,6 +164,7 @@ function ToolbarButton({
   return (
     <div
       className="msr:relative"
+      data-tool-id={id}
       onMouseEnter={() => tooltip.onTooltipEnter(id)}
       onMouseLeave={() => tooltip.onTooltipLeave(id)}
     >
@@ -254,6 +274,10 @@ function ToolbarComponent(
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
+  const previousToolGroupRef = useRef(toolGroup);
+  const previousExclusiveToolIdRef = useRef<string | null>(
+    exclusiveToolId(toolMode, colorPickerActive),
+  );
   const xrayWasVisibleRef = useRef(xrayVisible);
   const rulersWereVisibleRef = useRef(rulersVisible);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
@@ -264,11 +288,24 @@ function ToolbarComponent(
   const selectToolGroup = useCallback(
     (group: "inspect" | "annotate") => {
       if (group === toolGroup) return;
+      onCancelTransient();
+      setEnabled(true);
       onInteract();
+      setColorPickerActive(false);
+      onCancelScreenshot();
+      setToolMode(group === "inspect" ? "select" : "selection");
       setToolGroup(group);
       setGuideMenuOpen(false);
     },
-    [onInteract, toolGroup],
+    [
+      onCancelScreenshot,
+      onCancelTransient,
+      onInteract,
+      setColorPickerActive,
+      setEnabled,
+      setToolMode,
+      toolGroup,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -296,6 +333,58 @@ function ToolbarComponent(
     }, 200);
     return () => eventTarget.clearTimeout(timeout);
   }, [eventTarget, toolGroup]);
+
+  useLayoutEffect(() => {
+    const exclusiveId = exclusiveToolId(toolMode, colorPickerActive);
+    const expectedGroup = toolGroupForMode(toolMode, colorPickerActive);
+    if (expectedGroup && expectedGroup !== toolGroup) return;
+
+    const groupChanged = previousToolGroupRef.current !== toolGroup;
+    const previousExclusiveId = previousExclusiveToolIdRef.current;
+    previousToolGroupRef.current = toolGroup;
+    previousExclusiveToolIdRef.current = exclusiveId;
+
+    if (
+      !groupChanged ||
+      !previousExclusiveId ||
+      previousExclusiveId === exclusiveId
+    ) {
+      return;
+    }
+    const stage = toolStageRef.current;
+    if (!stage || stage.dataset.ready !== "true") return;
+    if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const button = stage.querySelector(
+      `[data-tool-id="${previousExclusiveId}"] button`,
+    );
+    if (!(button instanceof HTMLElement)) return;
+
+    const motion =
+      getComputedStyle(stage).getPropertyValue("--msr-toolbar-motion").trim() ||
+      "200ms ease";
+    button.style.transition = "none";
+    button.style.backgroundColor = "#0d99ff";
+    button.style.color = "#fff";
+    void button.offsetWidth;
+    button.style.transition = `background-color ${motion}, color ${motion}`;
+    button.style.backgroundColor = "transparent";
+    button.style.color = "#000";
+
+    const timeout = eventTarget.setTimeout(() => {
+      button.style.transition = "";
+      button.style.backgroundColor = "";
+      button.style.color = "";
+    }, 200);
+    return () => {
+      eventTarget.clearTimeout(timeout);
+      button.style.transition = "";
+      button.style.backgroundColor = "";
+      button.style.color = "";
+    };
+  }, [colorPickerActive, eventTarget, toolGroup, toolMode]);
 
   const updateMenuAlign = useCallback(() => {
     const anchorRect = guideMenuRef.current?.getBoundingClientRect();
