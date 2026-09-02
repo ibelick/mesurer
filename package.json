@@ -8,8 +8,12 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "husky",
     "build": "pnpm --filter mesurer build && pnpm --filter mesurer-site build",
     "build:extension": "pnpm --filter mesurer-extension build",
+    "check:types": "pnpm --filter mesurer typecheck && pnpm --filter mesurer-site exec tsc --noEmit && pnpm --filter mesurer-extension exec tsc --noEmit",
+    "check:push": "pnpm check:types && pnpm build:site && pnpm build:extension",
+    "check:release": "pnpm check:push && pnpm test",
     "deploy:site": "pnpm --filter mesurer-site deploy:pages",
     "build:site": "pnpm --filter mesurer-site build",
     "build:pkg": "pnpm --filter mesurer build",
@@ -18,5 +22,8 @@
     "dev:pkg": "pnpm --filter mesurer dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
