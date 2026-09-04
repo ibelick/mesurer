@@ -64,6 +64,8 @@ type HotkeyOptions = {
   clearSelection: () => void
   exitActiveTool: () => void
   dismissInspectorPins: () => boolean
+  hasOpenComment: () => boolean
+  closeComment: () => void
   minimizeMesurer: () => void
   shortcutsEnabled: boolean
   minimized: boolean
@@ -163,6 +165,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
         if (current.isColorPickerActive()) {
           lastEscapeAtRef.current = now
           current.onCloseColorPicker()
+          return
+        }
+        if (current.hasOpenComment()) {
+          lastEscapeAtRef.current = now
+          current.closeComment()
           return
         }
         if (!current.isToolbarIdle()) {

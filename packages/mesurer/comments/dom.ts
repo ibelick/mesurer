@@ -1,0 +1,107 @@
+import { getRectFromDom } from "../core/dom"
+import { getTargetElement } from "../core/selection"
+import { createId } from "../core/utils"
+import type { CommentTarget, Point, Rect } from "../core/types"
+
+const MAX_HTML_LENGTH = 4000
+const MAX_TEXT_LENGTH = 240
+
+const getElementName = (element: Element) => element.tagName.toLowerCase()
+
+const getElementAttributes = (element: Element) => {
+  const attributes: Record<string, string> = {}
+  for (const attribute of Array.from(element.attributes)) {
+    if (attribute.name.startsWith("on") || attribute.name === "style") continue
+    attributes[attribute.name] = attribute.value.slice(0, MAX_TEXT_LENGTH)
+  }
+  return attributes
+}
+
+const getElementSelector = (element: Element) => {
+  const parts: string[] = []
+  let current: Element | null = element
+  while (current && current !== current.ownerDocument.documentElement) {
+    const tag = getElementName(current)
+    if (current.id) {
+      parts.unshift(`${tag}#${CSS.escape(current.id)}`)
+      break
+    }
+    const parent: Element | null = current.parentElement
+    if (!parent) {
+      parts.unshift(tag)
+      break
+    }
+    const siblings = Array.from(parent.children).filter(
+      (sibling: Element) => sibling.tagName === current?.tagName,
+    )
+    const index = siblings.indexOf(current)
+    parts.unshift(siblings.length > 1 ? `${tag}:nth-of-type(${index + 1})` : tag)
+    current = parent
+  }
+  return parts.join(" > ") || getElementName(element)
+}
+
+const getStyles = (element: Element, ownerWindow: Window) => {
+  const style = ownerWindow.getComputedStyle(element)
+  return [
+    `display: ${style.display}`,
+    `position: ${style.position}`,
+    `width: ${style.width}`,
+    `height: ${style.height}`,
+    `padding: ${style.padding}`,
+    `margin: ${style.margin}`,
+    `font: ${style.font}`,
+    `color: ${style.color}`,
+    `background: ${style.backgroundColor}`,
+  ].join("\n")
+}
+
+export const captureCommentTarget = (
+  element: Element,
+  point: Point,
+  ownerWindow: Window = window,
+): CommentTarget => {
+  const html = element.outerHTML.replace(/\s+/g, " ").trim()
+  const rect = getRectFromDom(element)
+  return {
+    selector: getElementSelector(element),
+    tagName: getElementName(element),
+    textSnippet: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH),
+    htmlPreview: html.slice(0, MAX_HTML_LENGTH),
+    attributes: getElementAttributes(element),
+    styles: getStyles(element, ownerWindow),
+    rect,
+    anchor: {
+      x: rect.width > 0 ? Math.max(0, Math.min(1, (point.x - rect.left) / rect.width)) : 0.5,
+      y: rect.height > 0 ? Math.max(0, Math.min(1, (point.y - rect.top) / rect.height)) : 0.5,
+    },
+    documentPoint: {
+      x: point.x + ownerWindow.scrollX,
+      y: point.y + ownerWindow.scrollY,
+    },
+  }
+}
+
+export const getCommentTargetAtPoint = (
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document = document,
+) => getTargetElement(point, overlayNode, ownerDocument)
+
+export const createCommentId = () => `comment-${createId()}`
+
+export const resolveCommentTarget = (
+  target: CommentTarget,
+  ownerDocument: Document = document,
+) => {
+  try {
+    const element = ownerDocument.querySelector(target.selector)
+    if (!element || getElementName(element) !== target.tagName) return null
+    return element
+  } catch {
+    return null
+  }
+}
+
+export const isRectEqual = (a: Rect, b: Rect) =>
+  a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height

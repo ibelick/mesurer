@@ -1,0 +1,8 @@
+export { CommentsLayer } from "./comments-layer"
+export { captureCommentTarget, getCommentTargetAtPoint } from "./dom"
+export { formatCommentsForAgent, copyCommentsForAgent } from "./export"
+export { CommentRuntimeStore } from "./runtime-store"
+export { useCommentState } from "./state"
+export { useCommentPointer } from "./pointer"
+export type { CommentDraft } from "./state"
+export type { CommentMessage, CommentTarget, CommentThread } from "./types"

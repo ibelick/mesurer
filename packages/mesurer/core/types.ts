@@ -31,6 +31,34 @@ export type TextAnnotation = {
   boxWidth?: number
 }
 
+export type CommentMessage = {
+  id: string
+  role: "user"
+  text: string
+  createdAt: number
+}
+
+export type CommentTarget = {
+  selector: string
+  tagName: string
+  textSnippet: string
+  htmlPreview: string
+  attributes: Record<string, string>
+  styles: string
+  rect: Rect
+  documentPoint: Point
+  anchor?: Point
+}
+
+export type CommentThread = {
+  id: string
+  target: CommentTarget
+  messages: CommentMessage[]
+  status: "open" | "resolved"
+  createdAt: number
+  updatedAt: number
+}
+
 export type Rect = {
   left: number
   top: number
@@ -136,5 +164,6 @@ export type ToolMode =
   | "arrows"
   | "pen"
   | "text"
+  | "comments"
 
 export type PersistentToolMode = Exclude<ToolMode, "none" | "text-inspector" | "xray" | "rulers">

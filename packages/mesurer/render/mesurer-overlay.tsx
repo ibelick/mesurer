@@ -2,6 +2,7 @@ import type {
   MutableRefObject,
   PointerEventHandler,
   PointerEvent as ReactPointerEvent,
+  ComponentPropsWithoutRef,
 } from "react"
 import { memo } from "react"
 import type { EdgeVisibility } from "../core/edge-visibility"
@@ -26,6 +27,7 @@ import { TextLayer } from "./text-layer"
 import { PenLayer } from "./pen-layer"
 import { MarqueeRect } from "./marquee-rect"
 import { GroupSelectionFrame } from "./group-selection-frame"
+import { CommentsLayer } from "../comments/comments-layer"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -154,6 +156,7 @@ type MesurerOverlayProps = {
     fontFamily: string
     color: string
   }
+  comments?: ComponentPropsWithoutRef<typeof CommentsLayer>
 }
 
 export const MesurerOverlay = memo(function MesurerOverlay({
@@ -186,6 +189,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   arrows,
   text,
   pen,
+  comments,
 }: MesurerOverlayProps) {
   const overlayVisible = enabled
   const overlayInteractive =
@@ -203,7 +207,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       className={`msr:absolute msr:inset-0 msr:select-none msr:outline-none ${
         overlayVisible
           ? `msr:pointer-events-auto ${
-              guidesEnabled
+               toolMode === "comments"
+                 ? "msr:cursor-crosshair"
+                 : guidesEnabled
                 ? guides.hover || guides.draggingId
                   ? "msr:cursor-default"
                   : "msr:cursor-crosshair"
@@ -221,6 +227,12 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       onPointerUp={pointers.onPointerUp}
       onPointerCancel={pointers.onPointerCancel}
       onPointerLeave={pointers.onPointerLeave}
+      onKeyDown={(event) => {
+        if (toolMode !== "comments" || event.key !== "Escape" || !comments?.selectedId) return
+        event.preventDefault()
+        event.stopPropagation()
+        comments.onClose?.()
+      }}
     >
       <SelectionLayer
         visible={selectionVisible}
@@ -262,6 +274,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       />
 
       <TextLayer {...text} selectionCount={selectionCount} />
+
+      {comments ? <CommentsLayer {...comments} /> : null}
 
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer

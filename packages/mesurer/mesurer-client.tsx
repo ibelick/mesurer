@@ -36,11 +36,13 @@ import { useTextInspector } from "./hooks/use-text-inspector";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
+import { CommentRuntimeStore, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
+import type { CommentThread } from "./core/types";
 import {
   createLocalStoragePersistence,
   type MesurerPersistence,
@@ -183,6 +185,7 @@ export function MesurerClient({
   const hasPenInteractionRef = useRef<() => boolean>(() => false);
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
+  const persistCommentsRef = useRef<(comments: CommentThread[]) => void>(() => {});
   const workspace = useMesurerWorkspaceState({
     persistedState,
     initialToolMode: persistedSettings.lastToolMode ?? "select",
@@ -198,6 +201,8 @@ export function MesurerClient({
     multiMeasureEnabledDefault:
       persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
     initialTextAnnotations: persistedState?.textAnnotations,
+    initialComments: persistedState?.comments,
+    onCommentsChange: (value) => persistCommentsRef.current(value),
   });
   const {
     selectionRectRef,
@@ -307,7 +312,41 @@ export function MesurerClient({
     setXrayVisible,
     guideOrientation,
     setGuideOrientation,
+    comments,
+    selectedId: selectedCommentId,
+    setSelectedId: setSelectedCommentId,
+    draft: commentDraft,
+    createDraft: createCommentDraft,
+    cancelDraft: cancelCommentDraft,
+    commitDraft: commitCommentDraft,
+    addMessage: addCommentMessage,
+    deleteComment,
+    updateTarget: updateCommentTarget,
   } = workspace;
+  const commentRuntimeRef = useRef<CommentRuntimeStore | null>(null);
+  if (commentRuntimeRef.current === null) {
+    commentRuntimeRef.current = new CommentRuntimeStore(ownerDocument, ownerWindow);
+  }
+  const commentRuntime = commentRuntimeRef.current;
+  const commentRuntimeSnapshot = commentRuntime.useSnapshot();
+  for (const comment of comments) {
+    if (!commentRuntime.getElement(comment.id)) {
+      commentRuntime.resolve(comment.id, comment.target);
+    }
+  }
+  const commentPointer = useCommentPointer({
+    overlayRef,
+    ownerDocument,
+    ownerWindow,
+    runtime: commentRuntime,
+    state: {
+      draft: commentDraft,
+      createDraft: createCommentDraft,
+      cancelDraft: cancelCommentDraft,
+      commitDraft: commitCommentDraft,
+      updateTarget: updateCommentTarget,
+    },
+  });
   const textInspector = useTextInspector(
     portalTarget,
     toolMode,
@@ -428,7 +467,9 @@ export function MesurerClient({
     setPenStrokesPersisted,
     setSelectedPenStrokeIdsPersisted,
     setSelectedTextIdsPersisted,
+    setCommentsPersisted,
   } = workspaceLifecycle;
+  persistCommentsRef.current = setCommentsPersisted;
   usePersistenceLifecycle({
     ownerWindow,
     activePersistence,
@@ -531,6 +572,10 @@ export function MesurerClient({
       setPenStrokes: setPenStrokesPersisted,
       selectedPenStrokeIds,
       setSelectedPenStrokeIds,
+    },
+    comments: {
+      comments,
+      setComments: setCommentsPersisted,
     },
     transient: {
       setStart,
@@ -1035,8 +1080,15 @@ export function MesurerClient({
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
     dismissInspectorPins: () => textInspector.clear(),
+    selectedCommentId,
+    closeComment: () => setSelectedCommentId(null),
   });
-  clearWorkspaceTransientRef.current = clearTransientState;
+  const clearAllTransientState = useCallback(() => {
+    clearTransientState();
+    cancelCommentDraft();
+    commentRuntime.setHoverElement(null);
+  }, [cancelCommentDraft, clearTransientState, commentRuntime]);
+  clearWorkspaceTransientRef.current = clearAllTransientState;
   const removeHeldDistance = useCallback(
     (id: string) => {
       recordSnapshot();
@@ -1102,6 +1154,13 @@ export function MesurerClient({
     arrows: arrowsPointer,
     pen: penPointer,
     text: { handlePointerDown: handleTextPointerDown },
+    comments: {
+      handlePointerDown: commentPointer.onPointerDown,
+      handlePointerMove: commentPointer.onPointerMove,
+      handlePointerUp: commentPointer.onPointerUp,
+      handlePointerLeave: commentPointer.onPointerLeave,
+      handlePointerCancel: commentPointer.onPointerCancel,
+    },
     measure: {
       handlePointerDown,
       handlePointerMove,
@@ -1115,7 +1174,8 @@ export function MesurerClient({
       toolMode === "guides" ||
       toolMode === "arrows" ||
       toolMode === "pen" ||
-      toolMode === "text") &&
+      toolMode === "text" ||
+      toolMode === "comments") &&
     settingsLastToolMode !== toolMode
   ) {
     setSettingsLastToolMode(toolMode);
@@ -1276,6 +1336,27 @@ export function MesurerClient({
           fontFamily: resolveTextFontFamily(settingsTextStyle),
           color: settingsTextStyle.color,
         },
+        comments: comments.length > 0 || toolMode === "comments" ? {
+          comments,
+          rects: commentRuntimeSnapshot.rects,
+          unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
+          hoverRect: commentRuntimeSnapshot.hoverRect,
+          hoverPoint: commentRuntimeSnapshot.hoverPoint,
+          draft: commentDraft,
+          selectedId: selectedCommentId,
+          draftText: commentPointer.draftText,
+          onDraftTextChange: commentPointer.onDraftTextChange,
+          onDraftKeyDown: commentPointer.onDraftKeyDown,
+          onSelect: setSelectedCommentId,
+          onClose: () => setSelectedCommentId(null),
+          movingId: commentPointer.movingId,
+          onStartMove: commentPointer.onStartMove,
+          onMoveComment: commentPointer.onMoveComment,
+          onEndMove: commentPointer.onEndMove,
+          onAddMessage: addCommentMessage,
+          onDelete: deleteComment,
+          onDraftPointerDown: commentPointer.onDraftPointerDown,
+        } : undefined,
       }}
       screenshot={{
         active: screenshot.active,
@@ -1290,7 +1371,7 @@ export function MesurerClient({
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
-        onCancelTransient: clearTransientState,
+        onCancelTransient: clearAllTransientState,
         tools: {
           mode: toolMode,
           setMode: setToolModeWithHistory,
@@ -1327,6 +1408,12 @@ export function MesurerClient({
           onClick: screenshot.toggleSelection,
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
+        },
+        comments: {
+          count: comments.length,
+          onCopy: async () => {
+            await copyCommentsForAgent(comments, ownerWindow)
+          },
         },
         settings: {
           open: settingsOpen,

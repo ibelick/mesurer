@@ -1,4 +1,5 @@
 import type {
+  CommentThread,
   DistanceOverlay,
   Guide,
   Arrow,
@@ -94,6 +95,7 @@ export type MesurerStoredWorkspace = {
   measurements: Measurement[]
   activeMeasurement: Measurement | null
   heldDistances: DistanceOverlay[]
+  comments?: CommentThread[]
 }
 
 export type MesurerPersistenceSnapshot = {
@@ -141,6 +143,7 @@ type StoredRecord = {
   measurements?: Measurement[]
   activeMeasurement?: Measurement | null
   heldDistances?: DistanceOverlay[]
+  comments?: CommentThread[]
 }
 
 const isFormat = (value: unknown): value is ColorPickerFormat =>
@@ -259,6 +262,52 @@ const isTextAnnotation = (value: unknown): value is TextAnnotation => {
   )
 }
 
+const isCommentThread = (value: unknown): value is CommentThread => {
+  if (!value || typeof value !== "object") return false
+  const comment = value as Record<string, unknown>
+  const target = comment.target as Record<string, unknown> | undefined
+  const anchor = target?.anchor as Record<string, unknown> | undefined
+  const messages = comment.messages
+  return (
+    typeof comment.id === "string" &&
+    (comment.status === "open" || comment.status === "resolved") &&
+    typeof comment.createdAt === "number" &&
+    typeof comment.updatedAt === "number" &&
+    !!target &&
+    typeof target.selector === "string" &&
+    typeof target.tagName === "string" &&
+    typeof target.textSnippet === "string" &&
+    typeof target.htmlPreview === "string" &&
+    typeof target.styles === "string" &&
+    isRect(target.rect) &&
+    (anchor === undefined || (
+      isFiniteNumber(anchor.x) &&
+      isFiniteNumber(anchor.y) &&
+      anchor.x >= 0 &&
+      anchor.x <= 1 &&
+      anchor.y >= 0 &&
+      anchor.y <= 1
+    )) &&
+    !!target.documentPoint &&
+    isFiniteNumber((target.documentPoint as Record<string, unknown>).x) &&
+    isFiniteNumber((target.documentPoint as Record<string, unknown>).y) &&
+    !!target.attributes &&
+    typeof target.attributes === "object" &&
+    Array.isArray(messages) &&
+    messages.every((message) => {
+      if (!message || typeof message !== "object") return false
+      const item = message as Record<string, unknown>
+      return (
+        typeof item.id === "string" &&
+        item.role === "user" &&
+        typeof item.text === "string" &&
+        item.text.length > 0 &&
+        typeof item.createdAt === "number"
+      )
+    })
+  )
+}
+
 const isDistanceOverlay = (value: unknown): value is DistanceOverlay => {
   if (!value || typeof value !== "object") return false
   const distance = value as Record<string, unknown>
@@ -332,7 +381,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
   const input = value as Record<string, unknown>
   if (
     typeof input.enabled !== "boolean" ||
-    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows" && input.toolMode !== "pen" && input.toolMode !== "text") ||
+    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows" && input.toolMode !== "pen" && input.toolMode !== "text" && input.toolMode !== "comments") ||
     typeof input.rulersVisible !== "boolean" ||
     (input.guideOrientation !== "vertical" && input.guideOrientation !== "horizontal") ||
     !Array.isArray(input.guides) ||
@@ -365,6 +414,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     measurements: input.measurements.filter(isMeasurement),
     activeMeasurement: isMeasurement(input.activeMeasurement) ? input.activeMeasurement : null,
     heldDistances: input.heldDistances.filter(isDistanceOverlay),
+    comments: Array.isArray(input.comments) ? input.comments.filter(isCommentThread) : [],
   }
 }
 

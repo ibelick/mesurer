@@ -36,6 +36,7 @@ import {
   TextInspectorIcon,
   TextIcon,
   XrayIcon,
+  CommentIcon,
 } from "./icons";
 
 type ToolbarTools = {
@@ -75,6 +76,11 @@ type ToolbarSettings = {
   panel: ReactNode;
 };
 
+type ToolbarComments = {
+  count: number;
+  onCopy: () => void | Promise<void>;
+};
+
 type ToolbarProps = {
   eventTarget: Window;
   minimized: boolean;
@@ -84,6 +90,7 @@ type ToolbarProps = {
   tools: ToolbarTools;
   colorPicker: ToolbarColorPicker;
   screenshot: ToolbarScreenshot;
+  comments: ToolbarComments;
   settings: ToolbarSettings;
 };
 const GUIDE_MENU_WIDTH = 176;
@@ -114,7 +121,8 @@ const toolGroupForMode = (
     mode === "selection" ||
     mode === "arrows" ||
     mode === "pen" ||
-    mode === "text"
+    mode === "text" ||
+    mode === "comments"
   ) {
     return "annotate";
   }
@@ -122,7 +130,7 @@ const toolGroupForMode = (
 };
 
 const isAnnotateToolMode = (mode: ToolMode) =>
-  mode === "selection" || mode === "arrows" || mode === "pen" || mode === "text";
+  mode === "selection" || mode === "arrows" || mode === "pen" || mode === "text" || mode === "comments";
 
 const exclusiveToolId = (
   mode: ToolMode,
@@ -137,6 +145,7 @@ const exclusiveToolId = (
     case "arrows":
     case "pen":
     case "text":
+    case "comments":
       return mode;
     default:
       return null;
@@ -245,6 +254,7 @@ function ToolbarComponent(
     tools,
     colorPicker,
     screenshot,
+    comments,
     settings,
   }: ToolbarProps,
   ref: Ref<HTMLDivElement>,
@@ -275,6 +285,7 @@ function ToolbarComponent(
     onCancel: onCancelScreenshot,
     onPreviewExited: onScreenshotPreviewExited,
   } = screenshot;
+  const { count: commentCount, onCopy: onCopyComments } = comments;
   const {
     open: settingsOpen,
     setOpen: setSettingsOpen,
@@ -295,11 +306,13 @@ function ToolbarComponent(
   } =
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
+  const [commentMenuOpen, setCommentMenuOpen] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
   );
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
+  const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
@@ -330,7 +343,7 @@ function ToolbarComponent(
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
-  const tooltipsEnabled = !guideMenuOpen && !settingsOpen;
+  const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !settingsOpen;
   const settingsShortcut = getSettingsShortcut(eventTarget);
 
   const selectToolGroup = useCallback(
@@ -535,6 +548,16 @@ function ToolbarComponent(
     onInteract();
   }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
+  const commentsMode = useCallback(() => {
+    onCancelTransient()
+    setEnabled(true)
+    setColorPickerActive(false)
+    onCancelScreenshot()
+    setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
+    setCommentMenuOpen(false)
+    onInteract()
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
+
   const xrayMode = useCallback(() => {
     onCancelTransient();
     setEnabled(true);
@@ -619,7 +642,10 @@ function ToolbarComponent(
   );
 
   useLayoutEffect(() => {
-    if (minimized) setGuideMenuOpen(false);
+    if (minimized) {
+      setGuideMenuOpen(false);
+      setCommentMenuOpen(false);
+    }
   }, [minimized]);
 
   useLayoutEffect(() => {
@@ -667,7 +693,7 @@ function ToolbarComponent(
   }, [markToolbarMotionReady]);
 
   useLayoutEffect(() => {
-    if (!guideMenuOpen && !settingsOpen) return;
+    if (!guideMenuOpen && !commentMenuOpen && !settingsOpen) return;
 
     const frame = guideMenuOpen
       ? eventTarget.requestAnimationFrame(() => {
@@ -687,6 +713,10 @@ function ToolbarComponent(
         const settings = settingsRef.current;
         if (settings && !path.includes(settings)) setSettingsOpen(false);
       }
+      if (commentMenuOpen) {
+        const menu = commentMenuRef.current;
+        if (menu && !path.includes(menu)) setCommentMenuOpen(false);
+      }
     };
 
     const handleResize = () => {
@@ -700,7 +730,7 @@ function ToolbarComponent(
       eventTarget.removeEventListener("pointerdown", handlePointerDown);
       eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
+  }, [commentMenuOpen, eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
   const toastAlignment =
@@ -1040,7 +1070,10 @@ function ToolbarComponent(
         active={screenshotActive}
         label="Screenshot"
         shortcut="C"
-        onClick={screenshotMode}
+         onClick={() => {
+           setCommentMenuOpen(false)
+           screenshotMode()
+         }}
         tooltip={toolbarTooltip}
         tooltipVisible={
           tooltipsEnabled &&
@@ -1064,8 +1097,61 @@ function ToolbarComponent(
           onExited={onScreenshotPreviewExited}
         />
       ) : null}
-      </div>
-      <div ref={settingsRef} className="msr:relative msr:flex">
+       </div>
+       <div ref={commentMenuRef} className="msr:relative msr:flex" data-mesurer-comment-ui>
+       <ToolbarButton
+         id="comments"
+         active={toolMode === "comments"}
+         label="Comments"
+         shortcut="M"
+         onClick={commentsMode}
+         tooltip={toolbarTooltip}
+         tooltipVisible={tooltipsEnabled && visibleTooltipId === "comments"}
+       >
+         <CommentIcon size={20} />
+       </ToolbarButton>
+       <button
+         type="button"
+         aria-label="Comment menu"
+         aria-haspopup="menu"
+         aria-expanded={commentMenuOpen}
+         className={cn(
+           "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
+           commentMenuOpen ? "msr:bg-black/10 msr:text-black" : "msr:text-black",
+         )}
+         onClick={() => {
+           onInteract()
+           setCommentMenuOpen((value) => !value)
+         }}
+       >
+         <CaretDownIcon size={8} />
+       </button>
+       {commentMenuOpen ? (
+         <div
+           className={cn(
+             "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
+             tooltipSide === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+           )}
+           role="menu"
+           data-mesurer-comment-ui
+         >
+           <button
+             type="button"
+             role="menuitem"
+             disabled={commentCount === 0}
+             className="msr:flex msr:w-full msr:items-center msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+             onClick={() => {
+               void onCopyComments()
+               setCommentMenuOpen(false)
+             }}
+           >
+             <span className="msr:flex-1">Copy to agent</span>
+             <span>{commentCount}</span>
+           </button>
+         </div>
+       ) : null}
+       </div>
+       <div ref={settingsRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="settings"
           active={settingsOpen}
@@ -1073,6 +1159,7 @@ function ToolbarComponent(
           shortcut={settingsShortcut}
           onClick={() => {
             onCancelScreenshot();
+            setCommentMenuOpen(false);
             onInteract();
             onToggleSettings();
           }}

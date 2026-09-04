@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DistanceOverlay, Guide, Measurement, Rect, TextAnnotation, ToolMode } from "../core/types";
+import type { CommentThread, DistanceOverlay, Guide, Measurement, Rect, TextAnnotation, ToolMode } from "../core/types";
 import type { MesurerStoredWorkspace } from "../core/persistence";
 import { useDragState } from "./use-drag-state";
 import { useGuideState } from "./use-guide-state";
@@ -11,6 +11,7 @@ import { useArrowState } from "./use-arrow-state";
 import { usePenState } from "./use-pen-state";
 import { useTextAnnotationState } from "./use-text-annotation-state";
 import { useOverlayRefs } from "./use-overlay-refs";
+import { useCommentState } from "../comments/state";
 
 type UseMesurerWorkspaceStateOptions = {
   persistedState: MesurerStoredWorkspace | null;
@@ -22,6 +23,8 @@ type UseMesurerWorkspaceStateOptions = {
   selectNewGuideEnabledDefault: boolean;
   multiMeasureEnabledDefault: boolean;
   initialTextAnnotations?: TextAnnotation[];
+  initialComments?: CommentThread[];
+  onCommentsChange?: (comments: CommentThread[]) => void;
 };
 
 export const useMesurerWorkspaceState = ({
@@ -34,6 +37,8 @@ export const useMesurerWorkspaceState = ({
   selectNewGuideEnabledDefault,
   multiMeasureEnabledDefault,
   initialTextAnnotations,
+  initialComments,
+  onCommentsChange,
 }: UseMesurerWorkspaceStateOptions) => {
   const selectionRectRef = useRef<Rect | null>(null);
   const enabledRef = useRef(false);
@@ -99,6 +104,7 @@ export const useMesurerWorkspaceState = ({
     initialTextAnnotations,
     persistedState?.selectedTextIds,
   );
+  const comments = useCommentState(initialComments ?? persistedState?.comments ?? [], onCommentsChange);
   const [toolbarActive, setToolbarActive] = useState(true);
   const [minimized, setMinimized] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -134,6 +140,7 @@ export const useMesurerWorkspaceState = ({
     ...arrows,
     ...pen,
     ...text,
+    ...comments,
     toolbarActive,
     setToolbarActive,
     minimized,

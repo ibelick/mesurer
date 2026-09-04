@@ -97,6 +97,8 @@ type Options = {
   onMinimize: () => void;
   onToggleSettings: () => void;
   dismissInspectorPins: () => boolean;
+  selectedCommentId: string | null;
+  closeComment: () => void;
 };
 
 export const useInteractionLifecycle = (options: Options) => {
@@ -227,6 +229,8 @@ export const useInteractionLifecycle = (options: Options) => {
     clearSelection: options.clearSelection,
     exitActiveTool,
     dismissInspectorPins: options.dismissInspectorPins,
+    hasOpenComment: () => options.selectedCommentId !== null,
+    closeComment: options.closeComment,
     minimizeMesurer: options.onMinimize,
     shortcutsEnabled: options.shortcutsEnabled,
     minimized: options.minimized,

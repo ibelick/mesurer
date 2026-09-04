@@ -23,6 +23,13 @@ export const useOverlayPointerHandlers = (options: {
     handlePointerCancel: Handler;
   };
   text: { handlePointerDown: Handler };
+  comments: {
+    handlePointerDown: Handler;
+    handlePointerMove: Handler;
+    handlePointerUp: Handler;
+    handlePointerLeave: Handler;
+    handlePointerCancel: Handler;
+  };
   measure: {
     handlePointerDown: Handler;
     handlePointerMove: Handler;
@@ -30,7 +37,7 @@ export const useOverlayPointerHandlers = (options: {
     handlePointerLeave: Handler;
   };
 }) => {
-  const { toolMode, arrows, pen, text, measure } = options;
+  const { toolMode, arrows, pen, text, comments, measure } = options;
   if (toolMode === "arrows") {
     return {
       onPointerDown: arrows.handlePointerDown,
@@ -56,6 +63,15 @@ export const useOverlayPointerHandlers = (options: {
       onPointerUp: measure.handlePointerUp,
       onPointerLeave: measure.handlePointerLeave,
       onPointerCancel: measure.handlePointerUp,
+    };
+  }
+  if (toolMode === "comments") {
+    return {
+      onPointerDown: comments.handlePointerDown,
+      onPointerMove: comments.handlePointerMove,
+      onPointerUp: comments.handlePointerUp,
+      onPointerLeave: comments.handlePointerLeave,
+      onPointerCancel: comments.handlePointerCancel,
     };
   }
   if (toolMode !== "selection") {
