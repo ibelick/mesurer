@@ -168,7 +168,7 @@ export const isOverlayEscapeConsumed = (event: KeyboardEvent) =>
   event.composedPath().some((node) => {
     if (!(node instanceof Element)) return false
     const role = node.getAttribute("role")
-    return role === "menu" || role === "listbox"
+    return role === "menu" || role === "listbox" || node.hasAttribute("data-mesurer-comment-delete-confirmation")
   })
 
 export const isTypingInPage = (eventTarget: Window) => {

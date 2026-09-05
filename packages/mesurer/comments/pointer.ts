@@ -27,6 +27,8 @@ export const useCommentPointer = ({
   const draftTextRef = useRef("")
   const [draftText, setDraftText] = useState("")
   const [movingId, setMovingId] = useState<string | null>(null)
+  const pendingMoveRef = useRef<{ id: string; pointerId: number; x: number; y: number } | null>(null)
+  const suppressClickRef = useRef(false)
 
   const targetAtEvent = (event: { clientX: number; clientY: number }) =>
     getCommentTargetAtPoint(
@@ -59,20 +61,37 @@ export const useCommentPointer = ({
   }
 
   const onStartMove = (id: string, event: PointerEvent<HTMLElement>) => {
-    event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    setMovingId(id)
-    runtime.setHoverElement(null)
+    pendingMoveRef.current = { id, pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+    suppressClickRef.current = false
   }
 
   const onMoveComment = (event: PointerEvent<HTMLElement>) => {
-    if (!movingId) return
+    if (!movingId) {
+      const pending = pendingMoveRef.current
+      if (!pending) return
+      const distance = Math.hypot(event.clientX - pending.x, event.clientY - pending.y)
+      if (distance < 4) return
+      event.preventDefault()
+      pendingMoveRef.current = null
+      suppressClickRef.current = true
+      setMovingId(pending.id)
+      runtime.setHoverElement(null)
+      return
+    }
+    event.preventDefault()
     runtime.setHoverElement(targetAtEvent(event), { x: event.clientX, y: event.clientY })
   }
 
   const onEndMove = (event: PointerEvent<HTMLElement>) => {
-    if (!movingId) return
+    if (!movingId) {
+      pendingMoveRef.current = null
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
     event.preventDefault()
     event.stopPropagation()
     const element = targetAtEvent(event)
@@ -86,6 +105,14 @@ export const useCommentPointer = ({
     }
     runtime.setHoverElement(null)
     setMovingId(null)
+  }
+
+  const onClickComment = (id: string) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    return id
   }
 
   const onDraftTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -123,5 +150,6 @@ export const useCommentPointer = ({
     onStartMove,
     onMoveComment,
     onEndMove,
+    onClickComment,
   }
 }

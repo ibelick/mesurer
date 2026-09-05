@@ -13,6 +13,8 @@ export { SettingsIcon } from './settings'
 export { SelectInspectIcon } from './select-inspect'
 export { AnnotateIcon } from './annotate'
 export { CommentIcon } from './comment'
+export { TrashIcon } from './trash'
+export { CloseIcon } from './close'
 export { MesurerMarkIcon } from './mesurer-mark'
 
 export { DropperIcon as ColorPickerIcon } from './dropper'

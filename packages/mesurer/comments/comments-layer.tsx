@@ -1,6 +1,8 @@
-import { useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
+import { useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
 import type { CommentDraft } from "./state"
 import type { CommentThread, Rect } from "./types"
+import { CommentHoverCard } from "./comment-hover-card"
+import { CommentThreadCard } from "./comment-thread-card"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -14,8 +16,10 @@ type CommentsLayerProps = {
   onDraftTextChange: (event: ChangeEvent<HTMLTextAreaElement>) => void
   onDraftKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   onSelect: (id: string) => void
+  onClickComment: (id: string) => string | undefined
   onAddMessage: (id: string, text: string) => void
   onDelete: (id: string) => void
+  onEditMessage: (commentId: string, messageId: string, text: string) => void
   onClose?: () => void
   movingId: string | null
   onStartMove: (id: string, event: PointerEvent<HTMLElement>) => void
@@ -38,6 +42,18 @@ const markerStyle = (point: { x: number; y: number }) => ({
   top: Math.max(4, point.y - 12),
 })
 
+const formatRelativeTime = (timestamp: number, now = Date.now()) => {
+  const minutes = Math.max(0, Math.floor((now - timestamp) / 60000))
+  if (minutes < 1) return "just now"
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} ${days === 1 ? "day" : "days"} ago`
+}
+
+const targetKey = (comment: CommentThread) => comment.target.selector
+
 export function CommentsLayer({
   comments,
   rects,
@@ -50,8 +66,10 @@ export function CommentsLayer({
   onDraftTextChange,
   onDraftKeyDown,
   onSelect,
+  onClickComment,
   onAddMessage,
   onDelete,
+  onEditMessage,
   onClose,
   movingId,
   onStartMove,
@@ -60,141 +78,104 @@ export function CommentsLayer({
   onDraftPointerDown,
 }: CommentsLayerProps) {
   const [replyText, setReplyText] = useState("")
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null)
+  const hoverTimeoutRef = useRef<number | null>(null)
   const selected = comments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null
   const selectedPoint = selected && selectedRect
-    ? markerPoint(
-        selectedRect,
-        selected.target.anchor,
-        movingId === selected.id ? hoverPoint : null,
-      )
+    ? markerPoint(selectedRect, selected.target.anchor, movingId === selected.id ? hoverPoint : null)
     : null
-  const draftRect = draft?.target.rect ?? null
+  const hovered = comments.find((comment) => comment.id === hoveredId) ?? null
+  const hoveredRect = hovered ? rects.get(hovered.id) ?? hovered.target.rect : null
+  const hoveredPoint = hovered && hoveredRect ? markerPoint(hoveredRect, hovered.target.anchor) : null
+  const hoveredGroup = hovered
+    ? comments.filter((comment) => targetKey(comment) === targetKey(hovered))
+    : []
+  const showHover = () => {
+    if (hoverTimeoutRef.current !== null) window.clearTimeout(hoverTimeoutRef.current)
+  }
+  const hideHover = () => {
+    hoverTimeoutRef.current = window.setTimeout(() => setHoveredId(null), 120)
+  }
 
   return (
-    <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[60]" data-mesurer-comment-ui aria-hidden={false}>
+    <div
+      className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[60]"
+      data-mesurer-comment-ui
+      aria-hidden={false}
+      onKeyDownCapture={(event) => {
+        if (event.key === "Escape" && deleteConfirmationId) {
+          event.preventDefault()
+          event.stopPropagation()
+          setDeleteConfirmationId(null)
+        }
+      }}
+    >
       {hoverRect ? (
-        <div
-          data-mesurer-comment-highlight
-          data-mesurer-comment-ui
-          className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8"
-          style={hoverRect}
-        />
+        <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
       ) : null}
 
       {comments.map((comment, index) => {
         const rect = rects.get(comment.id) ?? comment.target.rect
-        const unresolved = unresolvedIds.has(comment.id)
+        const point = markerPoint(rect, comment.target.anchor, movingId === comment.id ? hoverPoint : null)
         const active = selectedId === comment.id
-        const point = markerPoint(
-          rect,
-          comment.target.anchor,
-          movingId === comment.id ? hoverPoint : null,
-        )
+        const unresolved = unresolvedIds.has(comment.id)
         return (
           <button
             key={comment.id}
             type="button"
             data-mesurer-comment-pin
             aria-label={`Comment ${index + 1}`}
-            className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:shadow-md msr:outline-none ${
-              unresolved
-                ? "msr:bg-ink-400 msr:text-white"
-                : active
-                  ? "msr:bg-[#0d99ff] msr:text-white"
-                  : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"
-            }`}
+            className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:shadow-md msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
             style={markerStyle(point)}
             onPointerDown={(event) => onStartMove(comment.id, event)}
             onPointerMove={onMoveComment}
             onPointerUp={onEndMove}
             onPointerCancel={onEndMove}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault()
-                onClose?.()
-              }
+            onKeyDown={(event) => event.key === "Escape" && onClose?.()}
+            onMouseEnter={() => { showHover(); setHoveredId(comment.id) }}
+            onMouseLeave={hideHover}
+            onClick={() => {
+              const clickedId = onClickComment(comment.id)
+              if (clickedId) onSelect(clickedId)
             }}
-            onClick={() => onSelect(comment.id)}
           >
             {index + 1}
           </button>
         )
       })}
 
-      {selected && selectedPoint ? (
-        <div
-          data-mesurer-comment-popover
-          data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
-          style={{ left: selectedPoint.x + 16, top: selectedPoint.y - 12 }}
-          onPointerDown={(event) => event.stopPropagation()}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault()
-              onClose?.()
-            }
-          }}
-        >
-          {selected.messages.map((message) => (
-            <p key={message.id} className="msr:whitespace-pre-wrap">{message.text}</p>
-          ))}
-          <textarea
-            value={replyText}
-            rows={2}
-            placeholder="Reply"
-            aria-label="Reply to comment"
-            className="msr:mt-2 msr:block msr:w-full msr:resize-none msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:outline-none msr:focus:border-[#0d99ff]"
-            onChange={(event) => setReplyText(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault()
-                onClose?.()
-                return
-              }
-              if (event.key !== "Enter" || event.shiftKey) return
-              event.preventDefault()
-              if (!replyText.trim()) return
-              onAddMessage(selected.id, replyText)
-              setReplyText("")
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-          />
-          <button
-            type="button"
-            className="msr:mt-2 msr:text-[11px] msr:text-red-600 msr:hover:text-red-700"
-            onClick={() => onDelete(selected.id)}
-          >
-            Delete comment
-          </button>
-        </div>
+      {hovered && hoveredPoint && hovered.id !== selectedId ? (
+        <CommentHoverCard
+          comments={hoveredGroup}
+          point={hoveredPoint}
+          formatTime={formatRelativeTime}
+          onEnter={() => { showHover(); setHoveredId(hovered.id) }}
+          onLeave={hideHover}
+        />
       ) : null}
 
-      {draft && draftRect ? (
-        <div
-          data-mesurer-comment-popover
-          data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg"
-          style={{ left: draftRect.left + draftRect.width + 16, top: draftRect.top }}
-          onPointerDown={(event) => event.stopPropagation()}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault()
-              onClose?.()
-            }
-          }}
-        >
-          <textarea
-            value={draftText}
-            autoFocus
-            rows={3}
-            placeholder="Leave a comment"
-            aria-label="Comment"
-            className="msr:block msr:w-full msr:resize-none msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]"
-            onChange={onDraftTextChange}
-            onKeyDown={onDraftKeyDown}
-            onPointerDown={onDraftPointerDown}
-          />
+      {selected && selectedPoint ? (
+        <CommentThreadCard
+          comment={selected}
+          point={selectedPoint}
+          deleteConfirmationOpen={deleteConfirmationId === selected.id}
+          onRequestDelete={() => setDeleteConfirmationId(selected.id)}
+          onConfirmDelete={() => { onDelete(selected.id); setDeleteConfirmationId(null) }}
+          onCancelDelete={() => setDeleteConfirmationId(null)}
+          onSaveEdit={(messageId, text) => onEditMessage(selected.id, messageId, text)}
+          replyText={replyText}
+          onReplyTextChange={setReplyText}
+          onAddMessage={(text) => { onAddMessage(selected.id, text); setReplyText("") }}
+          onClose={onClose}
+          formatTime={formatRelativeTime}
+        />
+      ) : null}
+
+      {draft && draft.target.rect ? (
+        <div data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" style={{ left: draft.target.rect.left + draft.target.rect.width + 16, top: draft.target.rect.top }} onPointerDown={(event) => event.stopPropagation()}>
+          <textarea value={draftText} autoFocus rows={1} placeholder="Leave a comment" aria-label="Comment" className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:overflow-y-auto msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]" style={{ fieldSizing: "content" }} onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onPointerDown={onDraftPointerDown} />
           <div className="msr:mt-2 msr:text-[11px] msr:text-ink-500">Enter to save · Esc to cancel</div>
         </div>
       ) : null}

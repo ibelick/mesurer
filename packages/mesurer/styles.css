@@ -3,6 +3,7 @@
 
 @theme {
   --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
@@ -12,6 +13,7 @@
 :root,
 :host {
   --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;

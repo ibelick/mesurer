@@ -100,6 +100,25 @@ export const useCommentState = (
     )
   }
 
+  const updateMessage = (commentId: string, messageId: string, text: string) => {
+    const value = text.trim()
+    if (!value) return false
+    updateComments((previous) =>
+      previous.map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              messages: comment.messages.map((message) =>
+                message.id === messageId ? { ...message, text: value } : message,
+              ),
+              updatedAt: Date.now(),
+            }
+          : comment,
+      ),
+    )
+    return true
+  }
+
   return {
     comments,
     commentsRef,
@@ -114,5 +133,6 @@ export const useCommentState = (
     deleteComment,
     toggleResolved,
     updateTarget,
+    updateMessage,
   }
 }

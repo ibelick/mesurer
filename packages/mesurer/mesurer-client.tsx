@@ -322,6 +322,7 @@ export function MesurerClient({
     addMessage: addCommentMessage,
     deleteComment,
     updateTarget: updateCommentTarget,
+    updateMessage: updateCommentMessage,
   } = workspace;
   const commentRuntimeRef = useRef<CommentRuntimeStore | null>(null);
   if (commentRuntimeRef.current === null) {
@@ -1347,14 +1348,16 @@ export function MesurerClient({
           draftText: commentPointer.draftText,
           onDraftTextChange: commentPointer.onDraftTextChange,
           onDraftKeyDown: commentPointer.onDraftKeyDown,
-          onSelect: setSelectedCommentId,
+           onSelect: setSelectedCommentId,
+           onClickComment: commentPointer.onClickComment,
           onClose: () => setSelectedCommentId(null),
           movingId: commentPointer.movingId,
           onStartMove: commentPointer.onStartMove,
           onMoveComment: commentPointer.onMoveComment,
           onEndMove: commentPointer.onEndMove,
           onAddMessage: addCommentMessage,
-          onDelete: deleteComment,
+           onDelete: deleteComment,
+           onEditMessage: updateCommentMessage,
           onDraftPointerDown: commentPointer.onDraftPointerDown,
         } : undefined,
       }}
