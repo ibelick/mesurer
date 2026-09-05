@@ -8,8 +8,13 @@ type CommentThreadCardProps = {
   comment: CommentThread
   point: { x: number; y: number }
   deleteConfirmationOpen: boolean
-  onRequestDelete: () => void
-  onConfirmDelete: () => void
+  onRequestDelete: (commentId: string) => void
+  onDeleteMessage: (messageId: string) => void
+  messageDeleteConfirmationId: string | null
+  onRequestDeleteMessage: (messageId: string) => void
+  onConfirmDeleteMessage: (messageId: string) => void
+  onCancelDeleteMessage: () => void
+  onConfirmDelete: (commentId: string) => void
   onCancelDelete: () => void
   onSaveEdit: (messageId: string, text: string) => void
   replyText: string
@@ -24,6 +29,11 @@ export function CommentThreadCard({
   point,
   deleteConfirmationOpen,
   onRequestDelete,
+  onDeleteMessage,
+  messageDeleteConfirmationId,
+  onRequestDeleteMessage,
+  onConfirmDeleteMessage,
+  onCancelDeleteMessage,
   onConfirmDelete,
   onCancelDelete,
   onSaveEdit,
@@ -51,7 +61,7 @@ export function CommentThreadCard({
     <div
       data-mesurer-comment-popover
       data-mesurer-comment-ui
-      className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
+      className="msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
       style={{ left: point.x + 16, top: point.y - 40, paddingTop: 40 }}
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
@@ -66,7 +76,7 @@ export function CommentThreadCard({
           type="button"
           aria-label="Delete comment"
           className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-500 msr:hover:bg-red-50 msr:hover:text-red-600"
-          onClick={onRequestDelete}
+          onClick={() => onRequestDelete(comment.id)}
         >
           <TrashIcon />
         </button>
@@ -125,7 +135,14 @@ export function CommentThreadCard({
                   <CommentOverflowMenu
                     commentId={comment.id}
                     onEdit={() => { setOverflowOpenId(null); setEditText(item.text); setEditingMessageId(item.id) }}
-                    onDelete={() => { setOverflowOpenId(null); onRequestDelete() }}
+                    onDelete={() => { setOverflowOpenId(null); onRequestDeleteMessage(item.id) }}
+                  />
+                ) : null}
+                {messageDeleteConfirmationId === item.id ? (
+                  <CommentDeleteConfirmation
+                    commentId={item.id}
+                    onConfirm={onConfirmDeleteMessage}
+                    onCancel={onCancelDeleteMessage}
                   />
                 ) : null}
               </div>
@@ -155,7 +172,7 @@ export function CommentThreadCard({
       />
 
       {deleteConfirmationOpen ? (
-        <CommentDeleteConfirmation onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+        <CommentDeleteConfirmation commentId={comment.id} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
       ) : null}
     </div>
   )

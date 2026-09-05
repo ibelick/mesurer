@@ -321,6 +321,7 @@ export function MesurerClient({
     commitDraft: commitCommentDraft,
     addMessage: addCommentMessage,
     deleteComment,
+    deleteMessage: deleteCommentMessage,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
@@ -1357,6 +1358,7 @@ export function MesurerClient({
           onEndMove: commentPointer.onEndMove,
           onAddMessage: addCommentMessage,
            onDelete: deleteComment,
+           onDeleteMessage: deleteCommentMessage,
            onEditMessage: updateCommentMessage,
           onDraftPointerDown: commentPointer.onDraftPointerDown,
         } : undefined,

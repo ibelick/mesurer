@@ -44,6 +44,11 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   expect(openBox.width).toBeCloseTo(hoverBox.width, 0);
   expect(openCommentBox.x).toBeCloseTo(hoverCommentBox.x, 0);
   expect(openCommentBox.y).toBeCloseTo(hoverCommentBox.y, 0);
+  await openCard.getByRole("button", { name: "Comment actions" }).nth(1).click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(openCard).toContainText("The nested button needs more contrast.");
+  await expect(openCard).not.toContainText("I will revisit the color token.");
   await page.getByRole("button", { name: "Close comment" }).click();
   await expect(openCard).toHaveCount(0);
 });
@@ -141,6 +146,9 @@ test("shows overflow actions for more than two comments on one element", async (
   await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
+  await page.getByRole("button", { name: "Delete comment" }).click();
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(2);
 });
 
 test("closes an open thread with Escape and keeps comment pins clickable when minimized", async ({ page }) => {

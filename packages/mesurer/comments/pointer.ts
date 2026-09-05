@@ -77,7 +77,7 @@ export const useCommentPointer = ({
       pendingMoveRef.current = null
       suppressClickRef.current = true
       setMovingId(pending.id)
-      runtime.setHoverElement(null)
+      runtime.setHoverElement(targetAtEvent(event), { x: event.clientX, y: event.clientY })
       return
     }
     event.preventDefault()

@@ -78,6 +78,17 @@ export const useCommentState = (
     setSelectedId((previous) => (previous === id ? null : previous))
   }
 
+  const deleteMessage = (commentId: string, messageId: string) => {
+    updateComments((previous) =>
+      previous.flatMap((comment) => {
+        if (comment.id !== commentId) return [comment]
+        const messages = comment.messages.filter((message) => message.id !== messageId)
+        return messages.length > 0 ? [{ ...comment, messages, updatedAt: Date.now() }] : []
+      }),
+    )
+    setSelectedId((previous) => (commentsRef.current.some((comment) => comment.id === previous) ? previous : null))
+  }
+
   const toggleResolved = (id: string) => {
     updateComments((previous) =>
       previous.map((comment) =>
@@ -131,6 +142,7 @@ export const useCommentState = (
     commitDraft,
     addMessage,
     deleteComment,
+    deleteMessage,
     toggleResolved,
     updateTarget,
     updateMessage,

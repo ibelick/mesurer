@@ -1,9 +1,13 @@
+import { useRef } from "react"
+
 type CommentDeleteConfirmationProps = {
-  onConfirm: () => void
+  commentId: string
+  onConfirm: (commentId: string) => void
   onCancel: () => void
 }
 
 export function CommentDeleteConfirmation({
+  commentId,
   onConfirm,
   onCancel,
 }: CommentDeleteConfirmationProps) {
@@ -41,7 +45,7 @@ export function CommentDeleteConfirmation({
         <button
           type="button"
           className="msr:rounded-md msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
-          onClick={onConfirm}
+          onClick={() => onConfirm(commentId)}
         >
           Yes
         </button>
@@ -49,4 +53,3 @@ export function CommentDeleteConfirmation({
     </div>
   )
 }
-import { useRef } from "react"
