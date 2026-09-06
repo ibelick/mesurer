@@ -3,6 +3,7 @@ import type { CommentDraft } from "./state"
 import type { CommentThread, Rect } from "./types"
 import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
+import { CommentComposer } from "./comment-composer"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -15,6 +16,7 @@ type CommentsLayerProps = {
   draftText: string
   onDraftTextChange: (event: ChangeEvent<HTMLTextAreaElement>) => void
   onDraftKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  onDraftSubmit: () => void
   onSelect: (id: string) => void
   onClickComment: (id: string) => string | undefined
   onAddMessage: (id: string, text: string) => void
@@ -26,7 +28,6 @@ type CommentsLayerProps = {
   onStartMove: (id: string, event: PointerEvent<HTMLElement>) => void
   onMoveComment: (event: PointerEvent<HTMLElement>) => void
   onEndMove: (event: PointerEvent<HTMLElement>) => void
-  onDraftPointerDown: (event: PointerEvent<HTMLTextAreaElement>) => void
 }
 
 const markerPoint = (
@@ -66,6 +67,7 @@ export function CommentsLayer({
   draftText,
   onDraftTextChange,
   onDraftKeyDown,
+  onDraftSubmit,
   onSelect,
   onClickComment,
   onAddMessage,
@@ -77,7 +79,6 @@ export function CommentsLayer({
   onStartMove,
   onMoveComment,
   onEndMove,
-  onDraftPointerDown,
 }: CommentsLayerProps) {
   const [replyText, setReplyText] = useState("")
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -177,7 +178,6 @@ export function CommentsLayer({
           onRequestDelete={(commentId) => setDeleteConfirmationId(commentId)}
           onConfirmDelete={(commentId) => { onDelete(commentId); setDeleteConfirmationId(null) }}
           onCancelDelete={() => setDeleteConfirmationId(null)}
-          onDeleteMessage={(messageId) => onDeleteMessage(selected.id, messageId)}
           messageDeleteConfirmationId={messageDeleteConfirmationId}
           onRequestDeleteMessage={setMessageDeleteConfirmationId}
           onConfirmDeleteMessage={(messageId) => { onDeleteMessage(selected.id, messageId); setMessageDeleteConfirmationId(null) }}
@@ -193,8 +193,7 @@ export function CommentsLayer({
 
       {draft ? (
         <div data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" style={{ left: draft.point.x + 16, top: draft.point.y - 12 }} onPointerDown={(event) => event.stopPropagation()}>
-          <textarea value={draftText} autoFocus rows={1} placeholder="Leave a comment" aria-label="Comment" className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:overflow-y-auto msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]" style={{ fieldSizing: "content" }} onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onPointerDown={onDraftPointerDown} />
-          <div className="msr:mt-2 msr:text-[11px] msr:text-ink-500">Enter to save · Esc to cancel</div>
+          <CommentComposer value={draftText} placeholder="Leave a comment" ariaLabel="Comment" onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onSubmit={onDraftSubmit} />
         </div>
       ) : null}
     </div>

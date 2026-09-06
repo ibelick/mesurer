@@ -1,15 +1,15 @@
-import { useState, type KeyboardEvent } from "react"
+import { useState } from "react"
 import type { CommentThread } from "./types"
-import { CloseIcon, TrashIcon } from "../components/icons"
+import { CloseIcon, SendIcon, TrashIcon } from "../components/icons"
 import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
+import { CommentComposer } from "./comment-composer"
 
 type CommentThreadCardProps = {
   comment: CommentThread
   point: { x: number; y: number }
   deleteConfirmationOpen: boolean
   onRequestDelete: (commentId: string) => void
-  onDeleteMessage: (messageId: string) => void
   messageDeleteConfirmationId: string | null
   onRequestDeleteMessage: (messageId: string) => void
   onConfirmDeleteMessage: (messageId: string) => void
@@ -29,7 +29,6 @@ export function CommentThreadCard({
   point,
   deleteConfirmationOpen,
   onRequestDelete,
-  onDeleteMessage,
   messageDeleteConfirmationId,
   onRequestDeleteMessage,
   onConfirmDeleteMessage,
@@ -71,7 +70,7 @@ export function CommentThreadCard({
         }
       }}
     >
-      <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:px-2 msr:py-1">
+      <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:px-3 msr:py-1">
         <button
           type="button"
           aria-label="Delete comment"
@@ -100,42 +99,49 @@ export function CommentThreadCard({
               </div>
               <div className="msr:relative">
                 {editingMessageId === item.id ? (
-                  <textarea
-                    autoFocus
+                  <CommentComposer
                     value={editText}
-                    rows={1}
-                    aria-label="Edit comment"
-                    className="msr:mt-1 msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:overflow-y-auto msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:outline-none msr:focus:border-[#0d99ff]"
-                    style={{ fieldSizing: "content" }}
+                    placeholder="Edit comment"
+                    ariaLabel="Edit comment"
+                    actionLabel="Save edit"
                     onChange={(event) => setEditText(event.currentTarget.value)}
-                    onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                    onKeyDown={(event) => {
                       if (event.key === "Escape") {
                         event.preventDefault()
-                      setEditingMessageId(null)
+                        setEditingMessageId(null)
                       } else if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault()
-                      saveEdit(item.id)
+                        saveEdit(item.id)
                       }
                     }}
-                    onPointerDown={(event) => event.stopPropagation()}
+                    onSubmit={() => saveEdit(item.id)}
                   />
                 ) : (
                   <p className="msr:mt-1 msr:whitespace-pre-wrap">{item.text}</p>
                 )}
-                <button
+                {editingMessageId !== item.id ? <button
                   type="button"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
                   className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-600 msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
-                  onClick={() => setOverflowOpenId((value) => value === item.id ? null : item.id)}
+                  onClick={() =>
+                    setOverflowOpenId((value) => (value === item.id ? null : item.id))
+                  }
                 >
                   ...
-                </button>
+                </button> : null}
                 {overflowOpenId === item.id ? (
                   <CommentOverflowMenu
                     commentId={comment.id}
-                    onEdit={() => { setOverflowOpenId(null); setEditText(item.text); setEditingMessageId(item.id) }}
-                    onDelete={() => { setOverflowOpenId(null); onRequestDeleteMessage(item.id) }}
+                    onEdit={() => {
+                      setOverflowOpenId(null)
+                      setEditText(item.text)
+                      setEditingMessageId(item.id)
+                    }}
+                    onDelete={() => {
+                      setOverflowOpenId(null)
+                      onRequestDeleteMessage(item.id)
+                    }}
                   />
                 ) : null}
                 {messageDeleteConfirmationId === item.id ? (
@@ -151,25 +157,24 @@ export function CommentThreadCard({
         </div>
       </div>
 
-      <textarea
-        value={replyText}
-        rows={1}
-        placeholder="Reply..."
-        aria-label="Reply to comment"
-        className="msr:mt-3 msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:overflow-y-auto msr:rounded-md msr:border msr:border-ink-200 msr:p-2 msr:text-[12px] msr:outline-none msr:focus:border-[#0d99ff]"
-        style={{ fieldSizing: "content" }}
-        onChange={(event) => onReplyTextChange(event.currentTarget.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault()
-            onClose?.()
-          } else if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault()
-            submitReply()
-          }
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-      />
+      <div className="msr:mt-3">
+        <CommentComposer
+          value={replyText}
+          placeholder="Reply..."
+          ariaLabel="Reply to comment"
+          onChange={(event) => onReplyTextChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault()
+              onClose?.()
+            } else if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault()
+              submitReply()
+            }
+          }}
+          onSubmit={submitReply}
+        />
+      </div>
 
       {deleteConfirmationOpen ? (
         <CommentDeleteConfirmation commentId={comment.id} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />

@@ -15,6 +15,7 @@ export { AnnotateIcon } from './annotate'
 export { CommentIcon } from './comment'
 export { TrashIcon } from './trash'
 export { CloseIcon } from './close'
+export { SendIcon } from './send'
 export { MesurerMarkIcon } from './mesurer-mark'
 
 export { DropperIcon as ColorPickerIcon } from './dropper'

@@ -136,6 +136,12 @@ export const useCommentPointer = ({
     }
   }
 
+  const onDraftSubmit = () => {
+    state.commitDraft(draftTextRef.current)
+    draftTextRef.current = ""
+    setDraftText("")
+  }
+
   return {
     onPointerDown,
     onPointerMove,
@@ -145,7 +151,7 @@ export const useCommentPointer = ({
     draftText,
     onDraftTextChange,
     onDraftKeyDown,
-    onDraftPointerDown: (event: PointerEvent<HTMLTextAreaElement>) => event.stopPropagation(),
+    onDraftSubmit,
     movingId,
     onStartMove,
     onMoveComment,

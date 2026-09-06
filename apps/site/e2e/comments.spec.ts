@@ -14,7 +14,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   const input = page.getByRole("textbox", { name: "Comment" });
   await expect(input).toBeVisible();
   await input.fill("The nested button needs more contrast.");
-  await input.press("Enter");
+  await page.getByRole("button", { name: "Send comment" }).click();
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText(
@@ -22,7 +22,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   );
 
   await page.getByRole("textbox", { name: "Reply to comment" }).fill("I will revisit the color token.");
-  await page.getByRole("textbox", { name: "Reply to comment" }).press("Enter");
+  await page.getByRole("button", { name: "Send reply" }).click();
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText(
     "I will revisit the color token.",
   );
