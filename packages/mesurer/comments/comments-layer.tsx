@@ -124,7 +124,7 @@ export function CommentsLayer({
         }
       }}
     >
-      {hoverRect && !hoveredId && !selectedId && !movingId && !draft ? (
+      {hoverRect && !draft && (movingId || (!hoveredId && !selectedId)) ? (
         <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
       ) : null}
 

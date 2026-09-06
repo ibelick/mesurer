@@ -66,6 +66,8 @@ type HotkeyOptions = {
   dismissInspectorPins: () => boolean
   hasOpenComment: () => boolean
   closeComment: () => void
+  commentDraftActive: boolean
+  cancelCommentDraft: () => void
   minimizeMesurer: () => void
   shortcutsEnabled: boolean
   minimized: boolean
@@ -133,6 +135,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (isEscapeKey(event)) {
         if (event.repeat) return
         if (current.minimized) return
+        if (current.commentDraftActive) {
+          event.preventDefault()
+          current.cancelCommentDraft()
+          lastEscapeAtRef.current = null
+          return
+        }
         const pageOwnsKeyboard =
           isTypingInPage(target) && !isMesurerKeyboardOwned(target)
         if (pageOwnsKeyboard) {
@@ -192,6 +200,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.minimizeMesurer()
         return
       }
+      if (current.commentDraftActive) return
       if (isTypingInMesurer(event, target)) {
         return
       }

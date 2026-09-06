@@ -15,6 +15,11 @@ export function CommentHoverCard({
   onEnter,
   onLeave,
 }: CommentHoverCardProps) {
+  const replyCount = comments.reduce(
+    (count, comment) => count + Math.max(0, comment.messages.length - 1),
+    0,
+  )
+
   return (
     <div
       data-mesurer-comment-hover-card
@@ -35,10 +40,20 @@ export function CommentHoverCard({
                 <span className="msr:font-medium msr:text-ink-700">You</span>
                 <time dateTime={new Date(message.createdAt).toISOString()}>{formatTime(message.createdAt)}</time>
               </div>
-              <div className="msr:mt-1 msr:whitespace-pre-wrap">{message.text}</div>
+              <div
+                className="msr:mt-1 msr:whitespace-pre-wrap"
+                style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+              >
+                {message.text}
+              </div>
             </div>
           )
         })}
+        {replyCount > 0 ? (
+          <div className="msr:mt-1 msr:text-[11px] msr:text-ink-500">
+            {replyCount} {replyCount === 1 ? "reply" : "replies"}
+          </div>
+        ) : null}
       </div>
     </div>
   )

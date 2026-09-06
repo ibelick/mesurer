@@ -1033,6 +1033,8 @@ export function MesurerClient({
     selectedMeasurements,
     selectedMeasurement,
     selectedElement,
+    commentDraftActive: commentDraft !== null,
+    cancelCommentDraft,
     start,
     arrowStart,
     draggingGuideId,

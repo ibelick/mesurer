@@ -50,31 +50,37 @@ export function CommentComposer({
       <textarea
         value={value}
         ref={textareaRef}
-        autoFocus
-        rows={1}
+         autoFocus
+         wrap="soft"
+         rows={1}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:overflow-y-auto msr:rounded-md msr:border msr:border-ink-200 msr:caret-[#0d99ff] msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]"
+        className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:rounded-md msr:border msr:border-ink-200 msr:caret-[#0d99ff] msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]"
         style={{
           paddingRight: expanded ? COMPOSER_EXPANDED_RIGHT_PADDING : COMPOSER_COMPACT_RIGHT_PADDING,
           paddingBottom: expanded ? COMPOSER_EXPANDED_BOTTOM_PADDING : COMPOSER_COMPACT_BOTTOM_PADDING,
-          height,
+           height,
+           overflowY: height >= COMPOSER_MAX_HEIGHT ? "auto" : "hidden",
+           overflowWrap: "anywhere",
+           wordBreak: "break-word",
         }}
         onChange={(event) => {
           onChange(event)
           const textarea = event.currentTarget
-          textarea.style.height = "auto"
-          textarea.style.paddingRight = `${COMPOSER_COMPACT_RIGHT_PADDING}px`
-          textarea.style.paddingBottom = `${COMPOSER_COMPACT_BOTTOM_PADDING}px`
-          const singleRowHeight = textarea.scrollHeight
-          const nextExpanded = singleRowHeight > COMPOSER_SINGLE_ROW_HEIGHT
-          setExpanded(nextExpanded)
-          if (nextExpanded) {
-            textarea.style.paddingRight = `${COMPOSER_EXPANDED_RIGHT_PADDING}px`
-            textarea.style.paddingBottom = `${COMPOSER_EXPANDED_BOTTOM_PADDING}px`
-          }
-          const nextHeight = nextExpanded
-            ? `${Math.min(COMPOSER_MAX_HEIGHT, textarea.scrollHeight)}px`
+           textarea.style.height = "auto"
+           textarea.style.overflowY = "hidden"
+           textarea.style.paddingRight = `${COMPOSER_COMPACT_RIGHT_PADDING}px`
+           textarea.style.paddingBottom = `${COMPOSER_COMPACT_BOTTOM_PADDING}px`
+           const singleRowHeight = textarea.scrollHeight
+           const nextExpanded = singleRowHeight > COMPOSER_SINGLE_ROW_HEIGHT
+           setExpanded(nextExpanded)
+           if (nextExpanded) {
+             textarea.style.paddingRight = `${COMPOSER_EXPANDED_RIGHT_PADDING}px`
+             textarea.style.paddingBottom = `${COMPOSER_EXPANDED_BOTTOM_PADDING}px`
+           }
+           const contentHeight = nextExpanded ? textarea.scrollHeight : COMPOSER_SINGLE_ROW_HEIGHT
+           const nextHeight = nextExpanded
+             ? `${Math.min(COMPOSER_MAX_HEIGHT, contentHeight)}px`
             : `${COMPOSER_SINGLE_ROW_HEIGHT}px`
           textarea.style.height = nextHeight
           setHeight(Number.parseInt(nextHeight, 10))

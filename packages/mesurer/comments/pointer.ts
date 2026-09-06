@@ -44,6 +44,7 @@ export const useCommentPointer = ({
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.target instanceof Element && event.target.closest("[data-mesurer-comment-ui]")) return
+    if (state.draft) return
     const point = { x: event.clientX, y: event.clientY }
     const element = getCommentTargetAtPoint(point, overlayRef.current, ownerDocument)
     if (!element) return

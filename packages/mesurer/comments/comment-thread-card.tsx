@@ -117,7 +117,12 @@ export function CommentThreadCard({
                     onSubmit={() => saveEdit(item.id)}
                   />
                 ) : (
-                  <p className="msr:mt-1 msr:whitespace-pre-wrap">{item.text}</p>
+                  <p
+                    className="msr:mt-1 msr:whitespace-pre-wrap"
+                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                  >
+                    {item.text}
+                  </p>
                 )}
                 {editingMessageId !== item.id ? <button
                   type="button"

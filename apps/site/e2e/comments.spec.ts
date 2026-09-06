@@ -13,6 +13,9 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await page.mouse.click(620, 480);
   const input = page.getByRole("textbox", { name: "Comment" });
   await expect(input).toBeVisible();
+  await expect(input).toBeFocused();
+  await page.keyboard.press("m");
+  await expect(input).toBeVisible();
   await input.fill("The nested button needs more contrast.");
   await page.getByRole("button", { name: "Send comment" }).click();
 
@@ -31,6 +34,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await page.locator("[data-mesurer-comment-pin]").hover();
   const hoverCard = page.locator("[data-mesurer-comment-hover-card]");
   await expect(hoverCard).toContainText("just now");
+  await expect(hoverCard).toContainText("1 reply");
   const hoverBox = await hoverCard.boundingBox();
   if (!hoverBox) throw new Error("Comment hover card is not visible");
   const hoverCommentBox = await hoverCard.getByText("The nested button needs more contrast.").boundingBox();
@@ -185,6 +189,7 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await page.mouse.move(pinBox.x + pinBox.width / 2, pinBox.y + pinBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(300, 560, { steps: 5 });
+  await expect(page.locator("[data-mesurer-comment-highlight]")).toBeVisible();
   await page.mouse.up();
   const movedPin = await pin.boundingBox();
   expect(movedPin).not.toBeNull();

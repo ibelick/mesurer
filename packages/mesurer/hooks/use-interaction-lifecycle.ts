@@ -39,6 +39,8 @@ type Options = {
   selectedMeasurements: InspectMeasurement[];
   selectedMeasurement: InspectMeasurement | null;
   selectedElement: Element | null;
+  commentDraftActive: boolean;
+  cancelCommentDraft: () => void;
   start: Point | null;
   arrowStart: Point | null;
   draggingGuideId: string | null;
@@ -231,6 +233,8 @@ export const useInteractionLifecycle = (options: Options) => {
     dismissInspectorPins: options.dismissInspectorPins,
     hasOpenComment: () => options.selectedCommentId !== null,
     closeComment: options.closeComment,
+    commentDraftActive: options.commentDraftActive,
+    cancelCommentDraft: options.cancelCommentDraft,
     minimizeMesurer: options.onMinimize,
     shortcutsEnabled: options.shortcutsEnabled,
     minimized: options.minimized,
