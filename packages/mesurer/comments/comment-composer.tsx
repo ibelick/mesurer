@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { SendIcon } from "../components/icons"
 import { Tooltip, useTooltip } from "../components/tooltip"
 
@@ -44,6 +44,26 @@ export function CommentComposer({
     onSubmit()
     resetHeight()
   }
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea || !value) return
+
+    textarea.style.height = "auto"
+    textarea.style.overflowY = "hidden"
+    textarea.style.paddingRight = `${COMPOSER_COMPACT_RIGHT_PADDING}px`
+    textarea.style.paddingBottom = `${COMPOSER_COMPACT_BOTTOM_PADDING}px`
+    const nextExpanded = textarea.scrollHeight > COMPOSER_SINGLE_ROW_HEIGHT
+    if (nextExpanded) {
+      textarea.style.paddingRight = `${COMPOSER_EXPANDED_RIGHT_PADDING}px`
+      textarea.style.paddingBottom = `${COMPOSER_EXPANDED_BOTTOM_PADDING}px`
+    }
+    const contentHeight = nextExpanded ? textarea.scrollHeight : COMPOSER_SINGLE_ROW_HEIGHT
+    const nextHeight = Math.min(COMPOSER_MAX_HEIGHT, contentHeight)
+    textarea.style.height = `${nextHeight}px`
+    setExpanded(nextExpanded)
+    setHeight(nextHeight)
+  }, [value])
 
   return (
     <div className="msr:relative">

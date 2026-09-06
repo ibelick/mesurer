@@ -172,6 +172,8 @@ test("closes an open thread with Escape and keeps comment pins clickable when mi
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText(
     "Keep this pin available.",
   );
+  await page.mouse.click(300, 560);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
 });
 
 test("moves a comment to a different DOM element", async ({ page, context }) => {

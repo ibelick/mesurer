@@ -221,6 +221,12 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       tabIndex={overlayInteractive ? -1 : undefined}
       onPointerDown={(event) => {
         event.currentTarget.focus({ preventScroll: true })
+        const clickedCommentUi =
+          event.target instanceof Element && event.target.closest("[data-mesurer-comment-ui]")
+        if (toolMode === "comments" && comments?.selectedId && !clickedCommentUi) {
+          comments.onClose?.()
+          return
+        }
         pointers.onPointerDown(event)
       }}
       onPointerMove={pointers.onPointerMove}

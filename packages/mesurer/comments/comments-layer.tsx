@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
 import type { CommentDraft } from "./state"
 import type { CommentThread, Rect } from "./types"
 import { CommentHoverCard } from "./comment-hover-card"
@@ -28,6 +28,7 @@ type CommentsLayerProps = {
   onStartMove: (id: string, event: PointerEvent<HTMLElement>) => void
   onMoveComment: (event: PointerEvent<HTMLElement>) => void
   onEndMove: (event: PointerEvent<HTMLElement>) => void
+  ownerDocument: Document
 }
 
 const markerPoint = (
@@ -79,6 +80,7 @@ export function CommentsLayer({
   onStartMove,
   onMoveComment,
   onEndMove,
+  ownerDocument,
 }: CommentsLayerProps) {
   const [replyText, setReplyText] = useState("")
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -109,6 +111,20 @@ export function CommentsLayer({
   const hideHover = () => {
     hoverTimeoutRef.current = window.setTimeout(() => setHoveredId(null), 120)
   }
+
+  useEffect(() => {
+    if (!selectedId || !onClose) return
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
+      const clickedCommentUi = event.composedPath().some((target) => {
+        if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
+        return (target as Element).getAttribute("data-mesurer-comment-ui") !== null
+      })
+      if (clickedCommentUi) return
+      onClose()
+    }
+    ownerDocument.addEventListener("pointerdown", handlePointerDown, true)
+    return () => ownerDocument.removeEventListener("pointerdown", handlePointerDown, true)
+  }, [onClose, ownerDocument, selectedId])
 
   return (
     <div

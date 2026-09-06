@@ -1,6 +1,6 @@
 import { useState } from "react"
 import type { CommentThread } from "./types"
-import { CloseIcon, SendIcon, TrashIcon } from "../components/icons"
+import { CloseIcon, MoreIcon, SendIcon, TrashIcon } from "../components/icons"
 import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
@@ -128,12 +128,12 @@ export function CommentThreadCard({
                   type="button"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
-                  className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-600 msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
+                   className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-600 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
                   onClick={() =>
                     setOverflowOpenId((value) => (value === item.id ? null : item.id))
                   }
                 >
-                  ...
+                   <MoreIcon />
                 </button> : null}
                 {overflowOpenId === item.id ? (
                   <CommentOverflowMenu

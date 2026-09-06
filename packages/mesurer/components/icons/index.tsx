@@ -27,4 +27,4 @@ export { TextInspectIcon as TextInspectorIcon } from './text-inspect'
 export { TypeIcon as TextIcon } from './type'
 export { XRayIcon as XrayIcon } from './x-ray'
 
-export { CaretDownIcon, CheckIcon, MinusIcon } from './menu-icons'
+export { CaretDownIcon, CheckIcon, MinusIcon, MoreIcon } from './menu-icons'
