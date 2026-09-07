@@ -64,6 +64,20 @@ export function Tooltip({
     }
   }, [anchorRef, label, layer, pinned, side])
 
+  useLayoutEffect(() => {
+    if (!pinned || !coords) return
+    const node = nodeRef.current
+    const owner = layer?.ownerDocument.defaultView
+    if (!node || !owner) return
+
+    const rect = node.getBoundingClientRect()
+    const edgePadding = 8
+    const shift = Math.max(edgePadding - rect.left, Math.min(0, owner.innerWidth - edgePadding - rect.right))
+    if (Math.abs(shift) < 0.5) return
+
+    setCoords((current) => (current ? { ...current, left: current.left + shift } : current))
+  }, [coords, layer, pinned])
+
   const node = (
     <span
       ref={nodeRef}
