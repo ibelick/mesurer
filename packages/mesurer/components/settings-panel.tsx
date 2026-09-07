@@ -118,7 +118,7 @@ const roundToTwo = (value: number) => Number(value.toFixed(2))
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <div
-      className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
+      className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
     >
       <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
       <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
@@ -247,7 +247,7 @@ function SliderControl({
             aria-hidden="true"
           />
           <div
-            className="msr:absolute msr:rounded-[5px] msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+            className="msr:absolute msr:rounded-control msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -550,7 +550,7 @@ function FormatMultiSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls={listboxId}
-        className="msr:relative msr:h-6 msr:w-full msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+        className="msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
@@ -576,7 +576,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-          className="msr:absolute msr:left-0 msr:right-0 msr:top-full msr:z-10 msr:mt-1 msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md"
+          className="msr:absolute msr:left-0 msr:right-0 msr:top-full msr:z-10 msr:mt-1 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md"
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)
@@ -760,7 +760,7 @@ export function SettingsPanel({
                   aria-label={`${label} guide pattern`}
                   aria-checked={selected}
                   className={cn(
-                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-[5px] msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-control msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
                     selected ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
                   )}
                   onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
@@ -802,7 +802,7 @@ export function SettingsPanel({
             <select
               aria-label="Font"
               value={textSettings.font}
-              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
               onChange={(event) =>
                 setTextSettings((style) => ({ ...style, font: event.target.value as TextFont }))
               }
@@ -834,7 +834,7 @@ export function SettingsPanel({
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Copy</span>
           <span className="msr:relative msr:block msr:w-full">
-            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
+            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
               {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
             </select>
             <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
@@ -885,7 +885,7 @@ export function SettingsPanel({
           <button
             type="button"
             aria-label="Minimize toolbar"
-            className="msr:h-6 msr:justify-self-end msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+            className="msr:h-6 msr:justify-self-end msr:rounded-control msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onMinimize}
           >
             Minimize
@@ -901,7 +901,7 @@ export function SettingsPanel({
           <button
             type="button"
             aria-label="Reset settings to defaults"
-            className="msr:h-6 msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+            className="msr:h-6 msr:rounded-control msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onResetSettings}
           >
             Use defaults
@@ -909,7 +909,7 @@ export function SettingsPanel({
           <button
             type="button"
             aria-label="Clear workspace"
-            className="msr:h-6 msr:rounded-[5px] msr:border msr:border-red-200 msr:px-2 msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#ef4444]"
+            className="msr:h-6 msr:rounded-control msr:border msr:border-red-200 msr:px-2 msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#ef4444]"
             onClick={onClearWorkspace}
           >
             Clear workspace

@@ -12,10 +12,10 @@ export function CommentOverflowMenu({ commentId, onEdit, onDelete }: CommentOver
       role="menu"
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <button type="button" role="menuitem" className="msr:block msr:w-full msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50" onClick={() => onEdit(commentId)}>
+      <button type="button" role="menuitem" className="msr:block msr:w-full msr:rounded-control msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50" onClick={() => onEdit(commentId)}>
         Edit
       </button>
-      <button type="button" role="menuitem" className="msr:block msr:w-full msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={() => onDelete(commentId)}>
+      <button type="button" role="menuitem" className="msr:block msr:w-full msr:rounded-control msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={() => onDelete(commentId)}>
         Delete
       </button>
     </div>

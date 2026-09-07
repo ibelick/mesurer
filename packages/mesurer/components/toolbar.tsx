@@ -194,7 +194,7 @@ function ToolbarButton({
         aria-pressed={active}
         aria-label={`${label} (${shortcut})`}
         className={cn(
-          "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:outline-none",
+          "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:outline-none",
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
             : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
@@ -863,9 +863,9 @@ function ToolbarComponent(
           type="button"
           aria-label="Guide orientation menu"
           className={cn(
-            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
+            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             guideMenuOpen
-              ? "msr:bg-black/10 msr:text-black"
+              ? "msr:bg-black/4 msr:text-black"
               : "msr:text-black",
           )}
           onClick={() => {
@@ -934,7 +934,7 @@ function ToolbarComponent(
             <button
               type="button"
               className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
                 activeMenuIndex === 0 || guideOrientation === "horizontal"
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
@@ -956,7 +956,7 @@ function ToolbarComponent(
             <button
               type="button"
               className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
                 activeMenuIndex === 1 || guideOrientation === "vertical"
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
@@ -1116,8 +1116,8 @@ function ToolbarComponent(
          aria-haspopup="menu"
          aria-expanded={commentMenuOpen}
          className={cn(
-           "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-[6px] msr:outline-none msr:hover:bg-black/10",
-           commentMenuOpen ? "msr:bg-black/10 msr:text-black" : "msr:text-black",
+            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+            commentMenuOpen ? "msr:bg-black/4 msr:text-black" : "msr:text-black",
          )}
          onClick={() => {
            onInteract()
@@ -1139,7 +1139,7 @@ function ToolbarComponent(
              type="button"
              role="menuitem"
              disabled={commentCount === 0}
-             className="msr:flex msr:w-full msr:items-center msr:rounded-md msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+            className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
              onClick={() => {
                void onCopyComments()
                setCommentMenuOpen(false)
@@ -1210,7 +1210,7 @@ function ToolbarComponent(
       <button
         type="button"
         aria-label="Show Mesurer toolbar"
-        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-[8px] msr:text-black msr:outline-none msr:hover:bg-black/4"
+        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:text-black msr:outline-none msr:hover:bg-black/4"
         onClick={(event) => {
           if (event.defaultPrevented || consumeDragClick()) return;
           onRestore();

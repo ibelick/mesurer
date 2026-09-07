@@ -37,14 +37,14 @@ export function CommentDeleteConfirmation({
       <div className="msr:mt-3 msr:flex msr:justify-end msr:gap-2">
         <button
           type="button"
-          className="msr:rounded-md msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-100"
+          className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-100"
           onClick={onCancel}
         >
           No
         </button>
         <button
           type="button"
-          className="msr:rounded-md msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
+          className="msr:rounded-control msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
           onClick={() => onConfirm(commentId)}
         >
           Yes

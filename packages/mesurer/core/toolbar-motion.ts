@@ -34,7 +34,7 @@ export const transformTranslateX = (value: string) => {
 export const nearlyEqual = (a: number, b: number, epsilon = 0.5) =>
   Math.abs(a - b) < epsilon
 
-export const TOOLBAR_RADIUS = 12
+export const TOOLBAR_RADIUS = 9
 
 export const lerp = (from: number, to: number, t: number) => from + (to - from) * t
 

@@ -28,7 +28,7 @@ export function ToolGroupSwitch({
   const annotateRef = useRef<HTMLDivElement | null>(null);
   return (
     <div
-      className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:self-center msr:items-center msr:gap-[2px] msr:rounded-[8px] msr:bg-ink-50 msr:p-[2px]"
+      className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:self-center msr:items-center msr:gap-[2px] msr:rounded-control msr:bg-ink-50 msr:p-[2px]"
       data-value={value}
       role="group"
       aria-label="Tool group"
@@ -46,7 +46,7 @@ export function ToolGroupSwitch({
           aria-keyshortcuts="1"
           aria-pressed={value === "inspect"}
           className={cn(
-            "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
+            "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[3px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "inspect"
               ? "msr:bg-transparent msr:text-ink-900"
               : "msr:text-ink-700 msr:hover:bg-ink-200/50",
@@ -76,7 +76,7 @@ export function ToolGroupSwitch({
           aria-keyshortcuts="2"
           aria-pressed={value === "annotate"}
           className={cn(
-            "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[6px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
+            "msr:flex msr:size-7 msr:items-center msr:justify-center msr:rounded-[3px] msr:text-[11px] msr:font-medium msr:outline-none msr:focus-visible:outline msr:focus-visible:outline-1 msr:focus-visible:outline-ink-500 msr:focus-visible:outline-offset-1",
             value === "annotate"
               ? "msr:bg-transparent msr:text-ink-900"
               : "msr:text-ink-700 msr:hover:bg-ink-200/50",

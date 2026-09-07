@@ -2,12 +2,19 @@
 @import "tailwindcss" prefix(msr);
 
 @theme {
+  --radius-control: 5px;
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
   --color-ink-900: #0f172a;
+}
+
+@layer utilities {
+  .msr\:rounded-control {
+    border-radius: var(--msr-radius-control);
+  }
 }
 
 :root,
@@ -87,7 +94,7 @@
   inset: 0;
   z-index: 0;
   overflow: visible;
-  border-radius: 12px;
+  border-radius: 9px;
   background: #fff;
   outline: 1px solid transparent;
   transform-origin: 0 50%;
@@ -252,7 +259,7 @@
   z-index: 1;
   flex: none;
   isolation: isolate;
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 9px 9px 0;
   background: #fff;
 }
 
@@ -270,7 +277,7 @@
   z-index: 0;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 3px;
   background: var(--color-ink-200);
   transform: translateX(0);
 }

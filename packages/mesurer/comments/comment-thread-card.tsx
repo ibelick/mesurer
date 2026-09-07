@@ -74,7 +74,7 @@ export function CommentThreadCard({
         <button
           type="button"
           aria-label="Delete comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-500 msr:hover:bg-red-50 msr:hover:text-red-600"
+          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-red-50 msr:hover:text-red-600"
           onClick={() => onRequestDelete(comment.id)}
         >
           <TrashIcon />
@@ -82,7 +82,7 @@ export function CommentThreadCard({
         <button
           type="button"
           aria-label="Close comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
+          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
           onClick={onClose}
         >
           <CloseIcon />
@@ -128,7 +128,7 @@ export function CommentThreadCard({
                   type="button"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
-                   className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded msr:bg-white msr:text-ink-600 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
+                  className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-600 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
                   onClick={() =>
                     setOverflowOpenId((value) => (value === item.id ? null : item.id))
                   }
