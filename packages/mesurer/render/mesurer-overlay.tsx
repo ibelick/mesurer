@@ -195,7 +195,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   const overlayInteractive =
     interactive &&
     overlayVisible &&
-    toolMode !== "none" &&
+    (toolMode !== "none" || Boolean(comments?.selectedId)) &&
     toolMode !== "text-inspector" &&
     toolMode !== "xray" &&
     toolMode !== "rulers"

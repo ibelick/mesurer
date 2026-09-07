@@ -84,6 +84,55 @@ test("closes an open comment card and reopens it from the pin", async ({ page })
   await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
 });
 
+test("shows every comment and opens a thread from the list", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("First feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.keyboard.press("Escape");
+
+  await page.mouse.click(300, 560);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Second feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "All comments" });
+  await expect(panel).toContainText("First feedback.");
+  await expect(panel).toContainText("Second feedback.");
+  await panel.getByRole("button", { name: /You .*First feedback/ }).click();
+  await expect(panel).toBeVisible();
+  await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Annotate tools (2)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("First feedback.");
+  await panel.getByRole("button", { name: "Close all comments" }).click();
+  await expect(panel).toHaveCount(0);
+});
+
+test("deletes a comment from the all comments menu", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Delete from the list.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+
+  const panel = page.getByRole("dialog", { name: "All comments" });
+  await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
+  await expect(panel.getByRole("menu", { name: "Comment actions" })).toBeVisible();
+  await page.mouse.click(100, 300);
+  await expect(panel.getByRole("menu", { name: "Comment actions" })).toHaveCount(0);
+  await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
+  await panel.getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("dialog", { name: "Delete comment" }).getByRole("button", { name: "Yes" }).click();
+  await expect(panel).not.toContainText("Delete from the list.");
+});
+
 test("copies all comments with DOM context to the agent clipboard", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/e2e/fixtures/guide-overlay.html");

@@ -1420,6 +1420,16 @@ export function MesurerClient({
         },
         comments: {
           count: comments.length,
+          comments,
+          unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
+          selectedId: selectedCommentId,
+          onSelect: (id) => {
+            setEnabled(true)
+            setToolMode("comments")
+            setSelectedCommentId(id)
+            commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
+          },
+          onDelete: deleteComment,
           onCopy: async () => {
             await copyCommentsForAgent(comments, ownerWindow)
           },

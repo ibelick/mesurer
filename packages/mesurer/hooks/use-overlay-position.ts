@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react"
 import {
   placeOverlayPosition,
+  type OverlayAvoidAxis,
   type OverlayAvoidRect,
   type OverlayPosition,
 } from "../core/overlay-position"
@@ -9,12 +10,14 @@ export const useOverlayPosition = ({
   ownerWindow,
   position,
   avoidRect,
+  avoidAxis,
   gap = 16,
   enabled = true,
 }: {
   ownerWindow: Window | null
   position: OverlayPosition
   avoidRect?: OverlayAvoidRect
+  avoidAxis?: OverlayAvoidAxis
   gap?: number
   enabled?: boolean
 }) => {
@@ -42,6 +45,7 @@ export const useOverlayPosition = ({
         viewportWidth: ownerWindow.innerWidth,
         viewportHeight: ownerWindow.innerHeight,
         avoidRect: avoidRectRef.current,
+        avoidAxis,
         gap,
       })
       overlay.style.left = `${next.left}px`
@@ -77,7 +81,7 @@ export const useOverlayPosition = ({
       ownerWindow.removeEventListener("scroll", schedule, true)
       resizeObserver.disconnect()
     }
-  }, [enabled, gap, ownerWindow])
+  }, [avoidAxis, enabled, gap, ownerWindow])
 
   useLayoutEffect(() => {
     if (enabled) scheduleRef.current()

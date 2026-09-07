@@ -10,6 +10,8 @@ export type OverlayAvoidRect = {
   height: number
 }
 
+export type OverlayAvoidAxis = "horizontal" | "vertical"
+
 export const clampOverlayPosition = ({
   left,
   top,
@@ -55,6 +57,7 @@ export const placeOverlayPosition = ({
   viewportWidth,
   viewportHeight,
   avoidRect,
+  avoidAxis,
   gap = 16,
   padding = 8,
 }: {
@@ -64,6 +67,7 @@ export const placeOverlayPosition = ({
   viewportWidth: number
   viewportHeight: number
   avoidRect?: OverlayAvoidRect
+  avoidAxis?: OverlayAvoidAxis
   gap?: number
   padding?: number
 }): OverlayPosition => {
@@ -78,13 +82,25 @@ export const placeOverlayPosition = ({
     })
   }
 
-  const candidates = [
-    { left: avoidRect.left + avoidRect.width + gap, top: position.top },
-    { left: avoidRect.left - width - gap, top: position.top },
-    { left: position.left, top: avoidRect.top + avoidRect.height + gap },
-    { left: position.left, top: avoidRect.top - height - gap },
-    position,
-  ]
+  const candidates = avoidAxis === "vertical"
+    ? [
+        { left: position.left, top: avoidRect.top + avoidRect.height + gap },
+        { left: position.left, top: avoidRect.top - height - gap },
+        position,
+      ]
+    : avoidAxis === "horizontal"
+      ? [
+          { left: avoidRect.left + avoidRect.width + gap, top: position.top },
+          { left: avoidRect.left - width - gap, top: position.top },
+          position,
+        ]
+      : [
+          { left: avoidRect.left + avoidRect.width + gap, top: position.top },
+          { left: avoidRect.left - width - gap, top: position.top },
+          { left: position.left, top: avoidRect.top + avoidRect.height + gap },
+          { left: position.left, top: avoidRect.top - height - gap },
+          position,
+        ]
   const valid = candidates.find(
     (candidate) =>
       fitsViewport(candidate, width, height, viewportWidth, viewportHeight, padding) &&

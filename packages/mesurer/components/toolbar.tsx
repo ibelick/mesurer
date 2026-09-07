@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { ToolMode } from "../core/types";
+import type { CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
@@ -19,6 +20,7 @@ import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
 import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
+import { CommentsPanel } from "./comments-panel";
 import {
   CaretDownIcon,
   ArrowIcon,
@@ -79,6 +81,11 @@ type ToolbarSettings = {
 type ToolbarComments = {
   count: number;
   onCopy: () => void | Promise<void>;
+  comments: CommentThread[];
+  unresolvedIds: ReadonlySet<string>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
 };
 
 type ToolbarProps = {
@@ -285,7 +292,15 @@ function ToolbarComponent(
     onCancel: onCancelScreenshot,
     onPreviewExited: onScreenshotPreviewExited,
   } = screenshot;
-  const { count: commentCount, onCopy: onCopyComments } = comments;
+  const {
+    count: commentCount,
+    onCopy: onCopyComments,
+    comments: commentThreads,
+    unresolvedIds,
+    selectedId,
+    onSelect: onSelectComment,
+    onDelete: onDeleteComment,
+  } = comments;
   const {
     open: settingsOpen,
     setOpen: setSettingsOpen,
@@ -307,12 +322,14 @@ function ToolbarComponent(
     useToolbarTooltip();
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const [commentMenuOpen, setCommentMenuOpen] = useState(false);
+  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
   );
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
+  const commentButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
@@ -335,6 +352,7 @@ function ToolbarComponent(
     iconSlotRef,
   });
   const previousToolGroupRef = useRef(toolGroup);
+  const preserveToolGroupRef = useRef(false);
   const previousExclusiveToolIdRef = useRef<string | null>(
     exclusiveToolId(toolMode, colorPickerActive),
   );
@@ -384,6 +402,10 @@ function ToolbarComponent(
     }
     const fromMode = toolGroupForMode(toolMode, colorPickerActive);
     if (fromMode) {
+      if (preserveToolGroupRef.current) {
+        preserveToolGroupRef.current = false;
+        return;
+      }
       setToolGroup(fromMode);
     }
   }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
@@ -482,6 +504,13 @@ function ToolbarComponent(
       open: settingsOpen,
       refreshKey: `${position.x}:${position.y}`,
     });
+  const { menuRef: commentsPanelRef, placement: commentsPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: commentButtonRef,
+      eventTarget,
+      open: commentsPanelOpen,
+      refreshKey: `${position.x}:${position.y}`,
+    });
 
   const selectMode = useCallback(() => {
     onCancelTransient();
@@ -555,8 +584,22 @@ function ToolbarComponent(
     onCancelScreenshot()
     setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
     setCommentMenuOpen(false)
+    setCommentsPanelOpen(false)
     onInteract()
   }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
+
+  const openCommentsPanel = useCallback(() => {
+    onCancelTransient()
+    setEnabled(true)
+    setColorPickerActive(false)
+    onCancelScreenshot()
+    if (toolMode !== "comments") {
+      preserveToolGroupRef.current = true
+      setToolMode("comments")
+    }
+    setCommentsPanelOpen(true)
+    onInteract()
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode, toolMode])
 
   const xrayMode = useCallback(() => {
     onCancelTransient();
@@ -715,7 +758,7 @@ function ToolbarComponent(
       }
       if (commentMenuOpen) {
         const menu = commentMenuRef.current;
-        if (menu && !path.includes(menu)) setCommentMenuOpen(false);
+        if (menu && !path.includes(menu) && !commentsPanelOpen) setCommentMenuOpen(false);
       }
     };
 
@@ -730,7 +773,7 @@ function ToolbarComponent(
       eventTarget.removeEventListener("pointerdown", handlePointerDown);
       eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [commentMenuOpen, eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
+  }, [commentMenuOpen, commentsPanelOpen, eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
   const toastAlignment =
@@ -762,6 +805,7 @@ function ToolbarComponent(
       className="mesurer-toolbar-motion msr:pointer-events-auto"
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
+        if (commentsPanelOpen) setCommentsPanelOpen(false);
         onInteract();
         onPointerDown(event);
       }}
@@ -1110,9 +1154,10 @@ function ToolbarComponent(
        >
          <CommentIcon size={20} />
        </ToolbarButton>
-       <button
-         type="button"
-         aria-label="Comment menu"
+        <button
+          type="button"
+          ref={commentButtonRef}
+          aria-label="Comment menu"
          aria-haspopup="menu"
          aria-expanded={commentMenuOpen}
          className={cn(
@@ -1128,26 +1173,56 @@ function ToolbarComponent(
        </button>
        {commentMenuOpen ? (
          <div
-           className={cn(
-             "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
-             tooltipSide === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+            className={cn(
+                commentsPanelOpen
+                ? "msr:static msr:w-0"
+                : "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
+              !commentsPanelOpen && (tooltipSide === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
            )}
-           role="menu"
-           data-mesurer-comment-ui
-         >
-           <button
-             type="button"
-             role="menuitem"
-             disabled={commentCount === 0}
-            className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
-             onClick={() => {
-               void onCopyComments()
-               setCommentMenuOpen(false)
-             }}
-           >
-             <span className="msr:flex-1">Copy to agent</span>
-             <span>{commentCount}</span>
-           </button>
+            role="menu"
+            data-mesurer-comment-ui
+          >
+            {commentsPanelOpen ? (
+              <CommentsPanel
+                comments={commentThreads}
+                unresolvedIds={unresolvedIds}
+                selectedId={selectedId}
+                panelRef={commentsPanelRef}
+                placement={commentsPlacement}
+                onDelete={onDeleteComment}
+                onSelect={(id) => {
+                  if (toolMode !== "comments") preserveToolGroupRef.current = true;
+                  onSelectComment(id)
+                }}
+                onClose={() => setCommentsPanelOpen(false)}
+              />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={commentCount === 0}
+                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+                  onClick={openCommentsPanel}
+                >
+                  <span className="msr:flex-1">Show all comments</span>
+                  <span>{commentCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={commentCount === 0}
+                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+                  onClick={() => {
+                    void onCopyComments()
+                    setCommentMenuOpen(false)
+                  }}
+                >
+                  <span className="msr:flex-1">Copy to agent</span>
+                  <span>{commentCount}</span>
+                </button>
+              </>
+            )}
          </div>
        ) : null}
        </div>
