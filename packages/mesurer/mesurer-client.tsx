@@ -1364,6 +1364,7 @@ export function MesurerClient({
            onDeleteMessage: deleteCommentMessage,
            onEditMessage: updateCommentMessage,
            onDraftSubmit: commentPointer.onDraftSubmit,
+           onDraftCancel: commentPointer.onDraftCancel,
         } : undefined,
       }}
       screenshot={{

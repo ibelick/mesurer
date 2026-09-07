@@ -57,6 +57,33 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await expect(openCard).toHaveCount(0);
 });
 
+test("closes the input when clicking elsewhere instead of moving it", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await expect(page.getByRole("textbox", { name: "Comment" })).toBeFocused();
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+});
+
+test("closes an open comment card and reopens it from the pin", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Review this element.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  const pin = page.locator("[data-mesurer-comment-pin]");
+  await pin.click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+  await pin.click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+});
+
 test("copies all comments with DOM context to the agent clipboard", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/e2e/fixtures/guide-overlay.html");

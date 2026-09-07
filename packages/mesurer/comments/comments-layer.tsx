@@ -18,6 +18,7 @@ type CommentsLayerProps = {
   onDraftTextChange: (event: ChangeEvent<HTMLTextAreaElement>) => void
   onDraftKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   onDraftSubmit: () => void
+  onDraftCancel: () => void
   onSelect: (id: string) => void
   onClickComment: (id: string) => string | undefined
   onAddMessage: (id: string, text: string) => void
@@ -70,6 +71,7 @@ export function CommentsLayer({
   onDraftTextChange,
   onDraftKeyDown,
   onDraftSubmit,
+  onDraftCancel,
   onSelect,
   onClickComment,
   onAddMessage,
@@ -125,23 +127,49 @@ export function CommentsLayer({
   })
 
   useEffect(() => {
-    if (!selectedId || !onClose) return
-    const handlePointerDown = (event: globalThis.PointerEvent) => {
+    if ((!selectedId && !draft) || (!onClose && !onDraftCancel)) return
+    const handlePointerDown = (event: Event) => {
+      const pointerEvent = event as globalThis.PointerEvent
+      const draftRect = draftOverlay.overlayRef.current?.getBoundingClientRect()
+      const clickedDraft = draftRect
+        ? pointerEvent.clientX >= draftRect.left &&
+          pointerEvent.clientX <= draftRect.right &&
+          pointerEvent.clientY >= draftRect.top &&
+          pointerEvent.clientY <= draftRect.bottom
+        : false
+      if (draft && !clickedDraft) {
+        event.preventDefault()
+        event.stopPropagation()
+        onDraftCancel()
+        if (selectedId) onClose?.()
+        return
+      }
       const clickedCommentUi = event.composedPath().some((target) => {
         if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
-        return (target as Element).getAttribute("data-mesurer-comment-ui") !== null
+        const element = target as Element
+        return (
+          element.getAttribute("data-mesurer-comment-ui") !== null &&
+          element.getAttribute("data-mesurer-comments-layer") === null
+        )
       })
       if (clickedCommentUi) return
-      onClose()
+      if (draft || selectedId) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+      if (draft) onDraftCancel()
+      if (selectedId) onClose?.()
     }
-    ownerDocument.addEventListener("pointerdown", handlePointerDown, true)
-    return () => ownerDocument.removeEventListener("pointerdown", handlePointerDown, true)
-  }, [onClose, ownerDocument, selectedId])
+    const eventTarget = ownerDocument.defaultView ?? ownerDocument
+    eventTarget.addEventListener("pointerdown", handlePointerDown, true)
+    return () => eventTarget.removeEventListener("pointerdown", handlePointerDown, true)
+  }, [draft, onClose, onDraftCancel, ownerDocument, selectedId])
 
   return (
     <div
       className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[60]"
       data-mesurer-comment-ui
+      data-mesurer-comments-layer
       aria-hidden={false}
       onKeyDownCapture={(event) => {
         if (event.key === "Escape" && (deleteConfirmationId || messageDeleteConfirmationId)) {
@@ -166,6 +194,7 @@ export function CommentsLayer({
             key={comment.id}
             type="button"
             data-mesurer-comment-pin
+            data-mesurer-comment-ui
             aria-label={`Comment ${index + 1}`}
             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:shadow-md msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
             style={markerStyle(point)}
@@ -222,9 +251,18 @@ export function CommentsLayer({
       ) : null}
 
       {draft ? (
-        <div ref={draftOverlay.overlayRef} data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" onPointerDown={(event) => event.stopPropagation()}>
-          <CommentComposer value={draftText} placeholder="Leave a comment" ariaLabel="Comment" onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onSubmit={onDraftSubmit} />
-        </div>
+        <>
+          <div
+            className="msr:pointer-events-auto msr:absolute msr:inset-0"
+            onPointerDown={(event) => {
+              event.stopPropagation()
+              onDraftCancel()
+            }}
+          />
+          <div ref={draftOverlay.overlayRef} data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" onPointerDown={(event) => event.stopPropagation()}>
+            <CommentComposer value={draftText} placeholder="Leave a comment" ariaLabel="Comment" onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onSubmit={onDraftSubmit} />
+          </div>
+        </>
       ) : null}
     </div>
   )
