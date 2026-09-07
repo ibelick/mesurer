@@ -192,6 +192,15 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await page.mouse.down();
   await page.mouse.move(300, 560, { steps: 5 });
   await expect(page.locator("[data-mesurer-comment-highlight]")).toBeVisible();
+  const movingCard = page.locator("[data-mesurer-comment-popover]");
+  await expect(movingCard).toBeVisible();
+  const movingCardBox = await movingCard.boundingBox();
+  if (!movingCardBox) throw new Error("Moving comment card is not visible");
+  const movingPinBox = await pin.boundingBox();
+  if (!movingPinBox) throw new Error("Moving comment pin is not visible");
+  expect(movingCardBox.x).toBeGreaterThanOrEqual(8);
+  expect(movingCardBox.y).toBeGreaterThanOrEqual(8);
+  expect(movingCardBox.x - (movingPinBox.x + movingPinBox.width)).toBeCloseTo(4, 0);
   await page.mouse.up();
   const movedPin = await pin.boundingBox();
   expect(movedPin).not.toBeNull();

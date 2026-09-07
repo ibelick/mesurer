@@ -4,6 +4,7 @@ import type { CommentThread, Rect } from "./types"
 import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
+import { useOverlayPosition } from "../hooks/use-overlay-position"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -111,6 +112,17 @@ export function CommentsLayer({
   const hideHover = () => {
     hoverTimeoutRef.current = window.setTimeout(() => setHoveredId(null), 120)
   }
+  const draftOverlay = useOverlayPosition({
+    ownerWindow: ownerDocument.defaultView,
+    position: draft
+      ? { left: draft.point.x + 16, top: draft.point.y - 12 }
+      : { left: 0, top: 0 },
+    avoidRect: draft
+      ? { left: draft.point.x - 12, top: draft.point.y - 12, width: 24, height: 24 }
+      : undefined,
+    gap: 4,
+    enabled: draft !== null,
+  })
 
   useEffect(() => {
     if (!selectedId || !onClose) return
@@ -181,6 +193,7 @@ export function CommentsLayer({
           comments={previewGroup}
           point={previewPoint}
           formatTime={formatRelativeTime}
+          ownerWindow={ownerDocument.defaultView}
           onEnter={() => { if (!movingId && hovered) { showHover(); setHoveredId(hovered.id) } }}
           onLeave={hideHover}
         />
@@ -203,12 +216,13 @@ export function CommentsLayer({
           onReplyTextChange={setReplyText}
           onAddMessage={(text) => { onAddMessage(selected.id, text); setReplyText("") }}
           onClose={onClose}
+          ownerWindow={ownerDocument.defaultView}
           formatTime={formatRelativeTime}
         />
       ) : null}
 
       {draft ? (
-        <div data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" style={{ left: draft.point.x + 16, top: draft.point.y - 12 }} onPointerDown={(event) => event.stopPropagation()}>
+        <div ref={draftOverlay.overlayRef} data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" onPointerDown={(event) => event.stopPropagation()}>
           <CommentComposer value={draftText} placeholder="Leave a comment" ariaLabel="Comment" onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onSubmit={onDraftSubmit} />
         </div>
       ) : null}

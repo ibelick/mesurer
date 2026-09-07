@@ -509,9 +509,11 @@ function FormatMultiSelect({
   onChange: (formats: ColorPickerFormat[]) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [menuSide, setMenuSide] = useState<"top" | "bottom">("bottom")
   const [activeIndex, setActiveIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const listboxRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const listboxId = `${useId()}-color-formats`
 
@@ -522,6 +524,33 @@ function FormatMultiSelect({
     ownerWindow.document.addEventListener("pointerdown", handlePointerDown)
     return () => ownerWindow.document.removeEventListener("pointerdown", handlePointerDown)
   }, [ownerWindow])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const trigger = triggerRef.current
+    const listbox = listboxRef.current
+    if (!trigger || !listbox) return
+
+    const updatePlacement = () => {
+      const triggerRect = trigger.getBoundingClientRect()
+      const listboxHeight = listbox.getBoundingClientRect().height
+      const edgePadding = 8
+      const belowFits = triggerRect.bottom + 4 + listboxHeight <= ownerWindow.innerHeight - edgePadding
+      const aboveFits = triggerRect.top - 4 - listboxHeight >= edgePadding
+      setMenuSide(belowFits || !aboveFits ? "bottom" : "top")
+    }
+
+    updatePlacement()
+    ownerWindow.addEventListener("resize", updatePlacement)
+    ownerWindow.addEventListener("scroll", updatePlacement, true)
+    const resizeObserver = new ResizeObserver(updatePlacement)
+    resizeObserver.observe(listbox)
+    return () => {
+      ownerWindow.removeEventListener("resize", updatePlacement)
+      ownerWindow.removeEventListener("scroll", updatePlacement, true)
+      resizeObserver.disconnect()
+    }
+  }, [open, ownerWindow])
 
   const toggleFormat = (format: ColorPickerFormat) => {
     if (selectedFormats.includes(format)) {
@@ -572,11 +601,12 @@ function FormatMultiSelect({
       </button>
       {open ? (
         <div
+          ref={listboxRef}
           role="listbox"
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-          className="msr:absolute msr:left-0 msr:right-0 msr:top-full msr:z-10 msr:mt-1 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md"
+          className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)

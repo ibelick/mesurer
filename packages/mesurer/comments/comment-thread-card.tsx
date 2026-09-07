@@ -4,6 +4,7 @@ import { CloseIcon, MoreIcon, SendIcon, TrashIcon } from "../components/icons"
 import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
+import { useOverlayPosition } from "../hooks/use-overlay-position"
 
 type CommentThreadCardProps = {
   comment: CommentThread
@@ -21,6 +22,7 @@ type CommentThreadCardProps = {
   onReplyTextChange: (text: string) => void
   onAddMessage: (text: string) => void
   onClose?: () => void
+  ownerWindow: Window | null
   formatTime: (timestamp: number) => string
 }
 
@@ -40,6 +42,7 @@ export function CommentThreadCard({
   onReplyTextChange,
   onAddMessage,
   onClose,
+  ownerWindow,
   formatTime,
 }: CommentThreadCardProps) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
@@ -55,13 +58,20 @@ export function CommentThreadCard({
     if (!replyText.trim()) return
     onAddMessage(replyText)
   }
+  const overlay = useOverlayPosition({
+    ownerWindow,
+    position: { left: point.x + 16, top: point.y - 40 },
+    avoidRect: { left: point.x - 12, top: point.y - 12, width: 24, height: 24 },
+    gap: 4,
+  })
 
   return (
     <div
       data-mesurer-comment-popover
       data-mesurer-comment-ui
+      ref={overlay.overlayRef}
       className="msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
-      style={{ left: point.x + 16, top: point.y - 40, paddingTop: 40 }}
+      style={{ paddingTop: 40 }}
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         if (event.key === "Escape") {

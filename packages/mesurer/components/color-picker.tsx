@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { cn } from "../core/utils"
+import { clampOverlayPosition } from "../core/overlay-position"
 import { Tooltip, useTooltip } from "./tooltip"
 
 type ColorPickerProps = {
@@ -130,11 +131,15 @@ export function ColorPicker({
       const buttonRect = button?.getBoundingClientRect() ?? originRect
       const panelWidth = panel.offsetWidth
       const panelHeight = panel.offsetHeight
-      const minLeft = 8 - originRect.left
-      const maxLeft = ownerWindow.innerWidth - 8 - panelWidth - originRect.left
-      let left = buttonRect.left - originRect.left
-      left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft))
-      panel.style.left = `${left}px`
+       const position = clampOverlayPosition({
+         left: buttonRect.left,
+         top: originRect.bottom + 8,
+         width: panelWidth,
+         height: panelHeight,
+         viewportWidth: ownerWindow.innerWidth,
+         viewportHeight: ownerWindow.innerHeight,
+       })
+       panel.style.left = `${position.left - originRect.left}px`
       const belowFits =
         originRect.bottom + 8 + panelHeight <= ownerWindow.innerHeight - 8
       setSide(belowFits ? "bottom" : "top")

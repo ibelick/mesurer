@@ -9,6 +9,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "../core/utils"
+import { clampOverlayPosition } from "../core/overlay-position"
 
 const TOOLTIP_DELAY_MS = 800
 
@@ -71,11 +72,21 @@ export function Tooltip({
     if (!node || !owner) return
 
     const rect = node.getBoundingClientRect()
-    const edgePadding = 8
-    const shift = Math.max(edgePadding - rect.left, Math.min(0, owner.innerWidth - edgePadding - rect.right))
-    if (Math.abs(shift) < 0.5) return
+    const next = clampOverlayPosition({
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: owner.innerWidth,
+      viewportHeight: owner.innerHeight,
+    })
+    const shiftX = next.left - rect.left
+    const shiftY = next.top - rect.top
+    if (Math.abs(shiftX) < 0.5 && Math.abs(shiftY) < 0.5) return
 
-    setCoords((current) => (current ? { ...current, left: current.left + shift } : current))
+    setCoords((current) =>
+      current ? { left: current.left + shiftX, top: current.top + shiftY } : current,
+    )
   }, [coords, layer, pinned])
 
   const node = (
