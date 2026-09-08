@@ -27,6 +27,7 @@ button { cursor: pointer; }
 .bench-card { position: relative; margin-top: 20px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; background: #f8fafc; box-shadow: 0 2px 8px rgb(15 23 42 / 5%); }
 .bench-card-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .bench-card h2 { margin: 5px 0 0; color: #172033; font-size: 18px; letter-spacing: -.025em; }
+.bench-card-instruction { margin: -4px 0 15px; color: #64748b; font-size: 12px; line-height: 1.5; }
 .bench-coordinate { color: #94a3b8; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .bench-edge-stage { position: relative; min-height: 260px; border: 1px dashed #94a3b8; background: #fff; }
 .bench-edge { position: absolute; border: 1px solid #64748b; border-radius: 4px; padding: 8px 10px; color: #172033; background: #fff; font-size: 11px; }
@@ -52,12 +53,34 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-field input, .bench-field select { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; color: #172033; background: #fff; font: 12px ui-sans-serif, system-ui, sans-serif; text-transform: none; }
 .bench-shadow-host { min-height: 38px; display: flex; align-items: center; }
 .bench-iframe { width: 100%; min-height: 90px; border: 1px solid #cbd5e1; background: #fff; }
+.bench-complex-iframe { min-height: 680px; }
 .bench-native-elements { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 22px; padding-top: 16px; border-top: 1px solid #e2e8f0; color: #475569; font-size: 11px; }
 .bench-native-elements a { color: #2563eb; }
 .bench-native-elements label { display: inline-flex; align-items: center; gap: 6px; }
 .bench-native-elements button { border: 1px solid #94a3b8; border-radius: 4px; padding: 6px 9px; color: #172033; background: #fff; font-size: 11px; }
 .bench-native-elements table { border-collapse: collapse; font-size: 11px; }
 .bench-native-elements th, .bench-native-elements td { border: 1px solid #cbd5e1; padding: 6px 9px; text-align: left; }
+.bench-motion-stage { position: relative; min-height: 220px; overflow: hidden; border: 1px dashed #94a3b8; background: radial-gradient(circle at center, #fff 0 22%, #f1f5f9 23% 24%, #fff 25%); }
+.bench-motion-target { position: absolute; z-index: 1; border: 1px solid #172033; border-radius: 999px; padding: 9px 12px; color: #172033; background: #fef3c7; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 4px 12px rgb(15 23 42 / 12%); }
+.bench-motion-orbit { top: 50%; left: 50%; animation: bench-orbit 4s linear infinite; }
+.bench-motion-pulse { right: 14%; bottom: 20%; animation: bench-pulse 1.8s ease-in-out infinite; }
+.bench-motion-scan { position: absolute; inset: 0; color: #64748b; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-motion-scan::before { position: absolute; top: 0; bottom: 0; left: 12%; width: 1px; background: #f97316; box-shadow: 0 0 14px 2px rgb(249 115 22 / 35%); content: ""; animation: bench-scan 3.2s ease-in-out infinite alternate; }
+.bench-motion-scan span { position: absolute; right: 12px; top: 12px; }
+@keyframes bench-orbit { 0% { transform: translate(-50%, -50%) rotate(0deg) translateX(72px) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg) translateX(72px) rotate(-360deg); } }
+@keyframes bench-pulse { 0%, 100% { transform: scale(1); opacity: .72; } 50% { transform: scale(1.16); opacity: 1; } }
+@keyframes bench-scan { from { transform: translateX(0); } to { transform: translateX(calc(76vw - 70px)); } }
+.bench-layer-frame { height: 280px; overflow: auto; border: 1px solid #cbd5e1; background: #e2e8f0; }
+.bench-sticky-bar { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: #fff; background: #172033; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; }
+.bench-sticky-bar button { border: 1px solid #64748b; border-radius: 3px; padding: 4px 7px; color: #fff; background: transparent; font-size: 10px; }
+.bench-layer-content { position: relative; min-height: 540px; padding: 26px 20px; }
+.bench-layer-card { position: relative; width: min(260px, 72%); min-height: 76px; display: grid; place-items: center; border: 1px solid #172033; border-radius: 6px; color: #172033; background: #fff; font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 8px 16px rgb(15 23 42 / 12%); }
+.bench-layer-one { z-index: 1; margin-left: 4%; background: #bfdbfe; }
+.bench-layer-two { z-index: 2; margin: -22px 0 0 18%; background: #bbf7d0; }
+.bench-layer-three { z-index: 3; margin: -22px 0 36px 32%; background: #fde68a; }
+.bench-layer-content p { margin: 0 0 18px; color: #64748b; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-layer-filler { height: 180px; border: 1px dashed #94a3b8; background: repeating-linear-gradient(-45deg, transparent 0 8px, rgb(148 163 184 / 12%) 8px 9px); }
+@media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before { animation-play-state: paused; } }
 .bench-guide-line { position: fixed; z-index: 1; pointer-events: none; background: #f97316; }
 .bench-guide-horizontal { top: 50%; left: 0; width: 100%; height: 1px; }
 @media (max-width: 800px) { .bench-page { padding: 28px 14px 90px; } .bench-header { align-items: start; flex-direction: column; } .bench-how-to, .bench-split-grid, .bench-special-items { grid-template-columns: 1fr; } .bench-coordinate { display: none; } }

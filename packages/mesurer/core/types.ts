@@ -40,6 +40,7 @@ export type CommentMessage = {
 
 export type CommentTarget = {
   selector: string
+  framePath?: string[]
   tagName: string
   textSnippet: string
   htmlPreview: string

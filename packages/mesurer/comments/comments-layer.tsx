@@ -5,6 +5,7 @@ import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { getCommentTargetKey } from "./dom"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -57,7 +58,7 @@ const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
 
-const targetKey = (comment: CommentThread) => comment.target.selector
+const targetKey = (comment: CommentThread) => getCommentTargetKey(comment.target)
 
 export function CommentsLayer({
   comments,

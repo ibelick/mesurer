@@ -1,7 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
 import { applyPinCursor, getDistanceOverlay, withPin } from "../core/distances"
-import { getInspectMeasurement, getRectFromDom } from "../core/dom"
+import { getInspectMeasurement, getRectFromDom, isConnectedElement } from "../core/dom"
 import { normalizeRect, rectAlmostEqual } from "../core/geometry"
 import type {
   DistanceOverlay,
@@ -47,7 +47,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
         const next = prev.map((measurement) => {
           if (
             !measurement.elementRef ||
-            !current.document.contains(measurement.elementRef)
+            !isConnectedElement(measurement.elementRef)
           ) {
             return measurement
           }
@@ -67,7 +67,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       })
 
       current.setActiveMeasurement((prev) => {
-        if (!prev?.elementRef || !current.document.contains(prev.elementRef))
+        if (!prev?.elementRef || !isConnectedElement(prev.elementRef))
           return prev
         const rect = getRectFromDom(prev.elementRef)
         if (rectAlmostEqual(rect, prev.rect)) return prev
@@ -85,7 +85,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
           let nextDistance = distance
           if (
             distance.pinTargetRef &&
-            current.document.contains(distance.pinTargetRef)
+            isConnectedElement(distance.pinTargetRef)
           ) {
             const pinTargetRect = getRectFromDom(distance.pinTargetRef)
             if (
@@ -101,9 +101,9 @@ export const useLiveElementTracking = (params: LiveParams) => {
           }
 
           const canTrackA =
-            distance.elementRefA && current.document.contains(distance.elementRefA)
+            distance.elementRefA && isConnectedElement(distance.elementRefA)
           const canTrackB =
-            distance.elementRefB && current.document.contains(distance.elementRefB)
+            distance.elementRefB && isConnectedElement(distance.elementRefB)
           if (!canTrackA && !canTrackB) return nextDistance
 
           const rectA = canTrackA
@@ -134,7 +134,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       })
 
       const selected = current.selectedElementRef.current
-      if (current.selectionEnabled && selected && current.document.contains(selected)) {
+      if (current.selectionEnabled && isConnectedElement(selected)) {
         current.setSelectedMeasurement((prev) => {
           const next = getInspectMeasurement(selected, ownerWindow)
           if (prev && rectAlmostEqual(prev.rect, next.rect)) return prev
@@ -148,7 +148,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
           const next = prev.map((measurement) => {
             if (
               !measurement.elementRef ||
-              !current.document.contains(measurement.elementRef)
+              !isConnectedElement(measurement.elementRef)
             ) {
               return measurement
             }
@@ -165,7 +165,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       }
 
       const hover = current.hoverElementRef.current
-      if (current.selectionEnabled && hover && current.document.contains(hover)) {
+      if (current.selectionEnabled && isConnectedElement(hover)) {
         const rect = getRectFromDom(hover)
         current.setHoverRect((prev) =>
           prev && rectAlmostEqual(prev, rect) ? prev : rect

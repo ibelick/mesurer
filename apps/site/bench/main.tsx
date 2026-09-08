@@ -1,20 +1,64 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react"
+import { useEffect, useRef, type CSSProperties } from "react"
 import { Mesurer } from "mesurer"
 import "./styles.css"
 
-type Preset = "edges" | "dense" | "scroll" | "transforms" | "all"
-
-const PRESETS: Record<Preset, { label: string; count: number }> = {
-  edges: { label: "Edges", count: 24 },
-  dense: { label: "Dense layout", count: 120 },
-  scroll: { label: "Nested scroll", count: 72 },
-  transforms: { label: "Transforms", count: 48 },
-  all: { label: "All stress", count: 500 },
-}
-
 const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe", "#cffafe"]
 
-function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
+const iframeSrcDoc = `<!doctype html>
+<html>
+  <head>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 520px; color: #172033; background: #f8fafc; font: 12px system-ui, sans-serif; }
+      .frame { min-height: 620px; padding-bottom: 28px; }
+      .toolbar { position: sticky; top: 0; z-index: 4; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; color: white; background: #172033; font: 600 10px ui-monospace, monospace; text-transform: uppercase; }
+      .toolbar button, button { cursor: pointer; border: 1px solid #94a3b8; border-radius: 4px; padding: 7px 10px; color: #172033; background: white; font: inherit; }
+      .toolbar button { border-color: #64748b; color: white; background: transparent; }
+      .hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; margin: 16px; }
+      .panel { border: 1px solid #cbd5e1; border-radius: 7px; padding: 14px; background: white; box-shadow: 0 4px 14px #0f172a12; }
+      h1, h2, p { margin: 0; } h1 { font-size: 22px; letter-spacing: -.04em; } h2 { margin-bottom: 10px; font-size: 13px; }
+      .muted { margin-top: 7px; color: #64748b; line-height: 1.5; }
+      .orbit { position: relative; min-height: 126px; overflow: hidden; border: 1px dashed #94a3b8; background: radial-gradient(circle, #dbeafe 0 3px, transparent 4px); }
+      .target { position: absolute; top: 50%; left: 50%; border: 1px solid #172033; border-radius: 99px; padding: 8px; background: #fde68a; animation: orbit 3s linear infinite; }
+      @keyframes orbit { from { transform: translate(-50%, -50%) rotate(0) translateX(56px) rotate(0); } to { transform: translate(-50%, -50%) rotate(360deg) translateX(56px) rotate(-360deg); } }
+      .scroll { max-height: 190px; overflow: auto; border: 1px solid #cbd5e1; }
+      .row { display: flex; justify-content: space-between; min-width: 360px; padding: 10px; border-bottom: 1px solid #e2e8f0; }
+      .row:nth-child(even) { background: #f8fafc; }
+      form { display: grid; gap: 9px; } label { display: grid; gap: 4px; color: #64748b; font-size: 10px; text-transform: uppercase; } input, select { width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; color: #172033; background: white; font: 12px system-ui, sans-serif; }
+      table { width: 100%; border-collapse: collapse; margin-top: 14px; } th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; } th { background: #e2e8f0; }
+      .graphics { display: flex; align-items: center; gap: 14px; margin-top: 14px; } svg { width: 150px; height: 74px; border: 1px solid #cbd5e1; } canvas { width: 150px; height: 74px; border: 1px solid #cbd5e1; }
+      .footer { margin: 16px; padding: 16px; border: 1px dashed #94a3b8; color: #64748b; }
+      @media (prefers-reduced-motion: reduce) { .target { animation-play-state: paused; } }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="toolbar"><span>Embedded workspace</span><button type="button">toolbar action</button></div>
+      <section class="hero">
+        <div class="panel"><h1>Iframe application</h1><p class="muted">A complete document with its own layout, controls, graphics, and animated content.</p></div>
+        <div class="panel orbit"><button class="target" type="button">moving target</button></div>
+      </section>
+      <section class="panel" style="margin: 16px"><h2>Nested scrolling rows</h2><div class="scroll">${Array.from({ length: 12 }, (_, index) => `<div class="row"><span>iframe row ${String(index + 1).padStart(2, "0")}</span><button type="button">inspect</button></div>`).join("")}</div></section>
+      <section class="hero">
+        <div class="panel"><h2>Form inside iframe</h2><form><label>Display name<input placeholder="Type here" /></label><label>Mode<select><option>Default</option><option>Diagnostic</option></select></label><label><span><input type="checkbox" /> Enable alerts</span></label><button type="button">Submit locally</button></form></div>
+        <div class="panel"><h2>Shadow boundary</h2><div id="shadow-host"></div><p class="muted">The button below is rendered in a shadow root.</p></div>
+      </section>
+      <section class="panel" style="margin: 16px"><h2>Table and rendered graphics</h2><table><thead><tr><th>Signal</th><th>Status</th><th>Value</th></tr></thead><tbody><tr><td>Layout</td><td>Ready</td><td>98%</td></tr><tr><td>Motion</td><td>Active</td><td>60fps</td></tr><tr><td>Boundary</td><td>Nested</td><td>iframe</td></tr></tbody></table><div class="graphics"><svg viewBox="0 0 150 74" role="img" aria-label="Iframe SVG"><path d="M4 62 C28 8 53 70 76 30 S122 12 146 54" fill="none" stroke="#2563eb" stroke-width="3" /><circle cx="76" cy="30" r="7" fill="#f97316" /></svg><canvas id="frame-canvas" width="300" height="148" aria-label="Iframe canvas"></canvas></div></section>
+      <div class="footer">End of embedded document. Scroll the iframe itself to test the boundary.</div>
+      <section class="panel" style="margin: 16px"><h2>Nested iframe boundary</h2><iframe title="Nested child iframe" srcdoc="<button style='margin:18px;padding:12px'>nested iframe target</button>"></iframe></section>
+    </div>
+    <script>
+      const host = document.querySelector('#shadow-host');
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = '<button style="padding:10px;border:1px solid #64748b;border-radius:4px;background:#dbeafe">shadow button</button>';
+      const canvas = document.querySelector('#frame-canvas');
+      const context = canvas.getContext('2d');
+      context.scale(2, 2); context.fillStyle = '#dcfce7'; context.fillRect(0, 0, 150, 74); context.fillStyle = '#172033'; context.font = '12px monospace'; context.fillText('canvas pixels', 28, 40);
+    </script>
+  </body>
+</html>`
+
+function TestCanvas({ count }: { count: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const shadowRef = useRef<HTMLDivElement>(null)
 
@@ -41,7 +85,7 @@ function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
       context.strokeStyle = "#94a3b8"
       context.strokeRect(x + 0.5, y + 0.5, 91, 41)
     }
-  }, [count, preset])
+  }, [count])
 
   useEffect(() => {
     const host = shadowRef.current
@@ -60,10 +104,11 @@ function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
         <div className="bench-card-heading">
           <div>
             <span className="bench-kicker">01 / primitives</span>
-            <h2 id="edge-title">Edges &amp; targets</h2>
+            <h2 id="edge-title">Test the four viewport corners</h2>
           </div>
           <span className="bench-coordinate">0, 0 → 100vw, 100vh</span>
         </div>
+        <p className="bench-card-instruction">Use Inspect, Measure, or Comments on each button. Check that panels stay visible at every edge.</p>
         <div className="bench-edge-stage">
           <button className="bench-edge bench-edge-tl" type="button">top left</button>
           <button className="bench-edge bench-edge-tr" type="button">top right</button>
@@ -81,10 +126,11 @@ function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
           </div>
           <span className="bench-coordinate">nested / repeated / mixed</span>
         </div>
+        <p className="bench-card-instruction">Measure or comment on repeated elements, then increase the count to stress the page.</p>
         <div className="bench-generated-grid">
           {Array.from({ length: count }, (_, index) => (
             <article
-              className={`bench-generated-item ${preset === "transforms" || preset === "all" ? "bench-transformed" : ""}`}
+              className="bench-generated-item"
               key={index}
               style={{ "--bench-index": index } as CSSProperties}
             >
@@ -96,45 +142,88 @@ function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
         </div>
       </section>
 
-      <section className="bench-split-grid">
-        <article className="bench-card bench-scroll-card" aria-labelledby="scroll-title">
-          <div className="bench-card-heading">
-            <div><span className="bench-kicker">03 / overflow</span><h2 id="scroll-title">Nested scroll</h2></div>
-          </div>
-          <div className="bench-scroll-frame">
+      <section className="bench-card bench-scroll-card" aria-labelledby="scroll-title">
+           <div className="bench-card-heading">
+             <div><span className="bench-kicker">03 / overflow</span><h2 id="scroll-title">Nested scroll</h2></div>
+           </div>
+           <p className="bench-card-instruction">Inspect elements inside this scroll box and test overlays while it is moving.</p>
+           <div className="bench-scroll-frame">
             {Array.from({ length: 18 }, (_, index) => <div className="bench-scroll-row" key={index}><span>row {String(index + 1).padStart(2, "0")}</span><button type="button">Action</button></div>)}
           </div>
-        </article>
-        <article className="bench-card" aria-labelledby="media-title">
-          <div className="bench-card-heading">
-            <div><span className="bench-kicker">04 / rendered</span><h2 id="media-title">Canvas &amp; SVG</h2></div>
-          </div>
-          <canvas ref={canvasRef} aria-label="Generated canvas test surface" />
+      </section>
+      <section className="bench-card" aria-labelledby="media-title">
+           <div className="bench-card-heading">
+             <div><span className="bench-kicker">04 / rendered</span><h2 id="media-title">Canvas &amp; SVG</h2></div>
+           </div>
+           <p className="bench-card-instruction">Try inspecting rendered graphics that are not regular HTML elements.</p>
+           <canvas ref={canvasRef} aria-label="Generated canvas test surface" />
           <svg className="bench-svg" viewBox="0 0 320 120" role="img" aria-label="Generated SVG test surface">
             <path d="M8 98 C58 8 116 112 164 42 S260 20 312 82" fill="none" stroke="#0f172a" strokeWidth="2" />
             <circle cx="72" cy="57" r="18" fill="#f59e0b" /><rect x="190" y="28" width="74" height="52" fill="#86efac" transform="rotate(-8 227 54)" />
           </svg>
-        </article>
       </section>
 
-      <section className="bench-card bench-special-grid" aria-labelledby="special-title">
+      <section className="bench-card" aria-labelledby="transform-title">
         <div className="bench-card-heading">
-          <div><span className="bench-kicker">05 / boundaries</span><h2 id="special-title">Transforms, form controls &amp; boundaries</h2></div>
+          <div><span className="bench-kicker">05 / transform</span><h2 id="transform-title">Rotated target</h2></div>
         </div>
-        <p className="bench-section-note">Try every kind of target: normal HTML, form controls, transformed shapes, shadow DOM, and iframe content.</p>
-        <div className="bench-special-items">
-          <div className="bench-transform-box">rotated target</div>
-          <label className="bench-field">Text target<input aria-label="Bench text input" placeholder="Type into me" /></label>
-          <label className="bench-field">Select target<select aria-label="Bench select"><option>Option one</option><option>Option two</option></select></label>
-          <div ref={shadowRef} className="bench-shadow-host" aria-label="Shadow DOM target" />
-          <iframe title="Nested iframe target" className="bench-iframe" srcDoc="<button style='margin:16px;padding:10px'>Iframe target</button>" />
+        <p className="bench-card-instruction">Inspect this rotated element and check that its bounds follow its transform.</p>
+        <div className="bench-transform-box">rotated target</div>
+      </section>
+      <section className="bench-card" aria-labelledby="form-title">
+        <div className="bench-card-heading">
+          <div><span className="bench-kicker">06 / controls</span><h2 id="form-title">Form controls</h2></div>
         </div>
+        <p className="bench-card-instruction">Click and inspect each native control without losing focus or selection.</p>
         <div className="bench-native-elements">
           <a href="#native-elements">A real link target</a>
           <label><input type="checkbox" /> checkbox</label>
           <label><input type="radio" name="bench-radio" defaultChecked /> radio</label>
           <button type="button">native button</button>
-          <table><tbody><tr><th>Table</th><td>cell target</td></tr></tbody></table>
+          <label className="bench-field">Text target<input aria-label="Bench text input" placeholder="Type into me" /></label>
+          <label className="bench-field">Select target<select aria-label="Bench select"><option>Option one</option><option>Option two</option></select></label>
+        </div>
+      </section>
+      <section className="bench-card" aria-labelledby="shadow-title">
+        <div className="bench-card-heading">
+          <div><span className="bench-kicker">07 / boundary</span><h2 id="shadow-title">Shadow DOM target</h2></div>
+        </div>
+        <p className="bench-card-instruction">Inspect the button rendered inside a separate shadow root.</p>
+        <div ref={shadowRef} className="bench-shadow-host" aria-label="Shadow DOM target" />
+      </section>
+      <section className="bench-card" aria-labelledby="iframe-title">
+        <div className="bench-card-heading">
+          <div><span className="bench-kicker">08 / boundary</span><h2 id="iframe-title">Iframe target</h2></div>
+        </div>
+        <p className="bench-card-instruction">Use Inspect (I), not Select (S), to select elements inside this iframe. Try the sticky toolbar, animated target, form, shadow root, table, SVG, and canvas.</p>
+        <iframe title="Complex embedded application" className="bench-iframe bench-complex-iframe" srcDoc={iframeSrcDoc} />
+      </section>
+      <section className="bench-card" aria-labelledby="motion-title">
+        <div className="bench-card-heading">
+          <div><span className="bench-kicker">09 / motion</span><h2 id="motion-title">Animated targets</h2></div>
+          <span className="bench-coordinate">transform / opacity</span>
+        </div>
+        <p className="bench-card-instruction">Inspect these while they move. Check that measurements and comments stay anchored to the animated target.</p>
+        <div className="bench-motion-stage">
+          <button className="bench-motion-target bench-motion-orbit" type="button">orbiting target</button>
+          <button className="bench-motion-target bench-motion-pulse" type="button">pulsing target</button>
+          <div className="bench-motion-scan" aria-hidden="true"><span>moving scan line</span></div>
+        </div>
+      </section>
+      <section className="bench-card" aria-labelledby="layers-title">
+        <div className="bench-card-heading">
+          <div><span className="bench-kicker">10 / layers</span><h2 id="layers-title">Sticky header and overlapping cards</h2></div>
+        </div>
+        <p className="bench-card-instruction">Scroll inside this panel. Inspect the sticky bar and the cards that overlap it at different depths.</p>
+        <div className="bench-layer-frame">
+          <div className="bench-sticky-bar">sticky toolbar <button type="button">inspect</button></div>
+          <div className="bench-layer-content">
+            <div className="bench-layer-card bench-layer-one">layer one</div>
+            <div className="bench-layer-card bench-layer-two">layer two</div>
+            <div className="bench-layer-card bench-layer-three">layer three</div>
+            <p>Scroll farther to test the sticky boundary and stacking order.</p>
+            <div className="bench-layer-filler" />
+          </div>
         </div>
       </section>
     </>
@@ -142,15 +231,7 @@ function TestCanvas({ count, preset }: { count: number; preset: Preset }) {
 }
 
 export function Bench() {
-  const [preset, setPreset] = useState<Preset>("dense")
-  const [count, setCount] = useState(PRESETS.dense.count)
-  const [showGuides, setShowGuides] = useState(false)
-  const activePreset = PRESETS[preset]
-
-  const choosePreset = (next: Preset) => {
-    setPreset(next)
-    setCount(PRESETS[next].count)
-  }
+  const count = 120
 
   return (
     <>
@@ -158,32 +239,12 @@ export function Bench() {
       <main className="bench-page">
         <header className="bench-header">
           <div>
-            <p className="bench-eyebrow">MESURER / LOCAL PLAYGROUND</p>
-            <h1>Stress the interface.</h1>
-            <p className="bench-intro">Use the Mesurer toolbar above to inspect, measure, annotate, and comment on the awkward elements below.</p>
+            <p className="bench-eyebrow">MESURER / LOCAL TEST PAGE</p>
+            <h1>Test every edge case.</h1>
+            <p className="bench-intro">Use the Mesurer toolbar above, then follow each card from top to bottom.</p>
           </div>
-          <div className="bench-status"><span className="bench-status-dot" /> package source / live</div>
         </header>
-        <section className="bench-how-to" aria-label="How to use the bench">
-          <div className="bench-how-step"><span>01</span><strong>Pick a preset</strong><p>Change the shape and number of elements.</p></div>
-          <div className="bench-how-step"><span>02</span><strong>Choose a Mesurer tool</strong><p>Try Inspect, Comments, Guides, Arrows, Text, or Screenshot.</p></div>
-          <div className="bench-how-step"><span>03</span><strong>Try the awkward bits</strong><p>Test corners, scrolling, transforms, frames, and dense layouts.</p></div>
-        </section>
-        <section className="bench-controls" aria-label="Bench controls">
-          <div className="bench-control-group">
-            <span className="bench-control-label">Preset</span>
-            {(Object.keys(PRESETS) as Preset[]).map((key) => <button type="button" className={preset === key ? "bench-control active" : "bench-control"} key={key} onClick={() => choosePreset(key)}>{PRESETS[key].label}</button>)}
-          </div>
-          <div className="bench-control-group bench-count-control">
-            <label className="bench-control-label" htmlFor="bench-count">Nodes</label>
-            <input id="bench-count" type="range" min="12" max="1000" step="1" value={count} onChange={(event) => { setCount(Number(event.target.value)); setPreset("dense") }} />
-            <output>{count.toLocaleString()}</output>
-          </div>
-          <button type="button" className={showGuides ? "bench-control active" : "bench-control"} onClick={() => setShowGuides((value) => !value)}>{showGuides ? "Hide guides" : "Show guides"}</button>
-        </section>
-        {showGuides ? <div className="bench-guide-line bench-guide-horizontal" aria-hidden="true" /> : null}
-        <div className="bench-readout"><span>{activePreset.label}</span><span>{count.toLocaleString()} nodes</span><span>scroll: enabled</span><span>viewport: {window.innerWidth} × {window.innerHeight}</span></div>
-        <TestCanvas count={count} preset={preset} />
+        <TestCanvas count={count} />
       </main>
     </>
   )

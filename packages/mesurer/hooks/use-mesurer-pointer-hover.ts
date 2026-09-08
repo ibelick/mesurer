@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react"
 import type { MutableRefObject } from "react"
+import { getRectFromDom } from "../core/dom"
 import { getTargetElement } from "../core/selection"
 import type { Point, Rect } from "../core/types"
 
@@ -23,13 +24,7 @@ export const useMesurerPointerHover = ({
     (point: Point) => {
       const target = getTargetElement(point, overlayRef.current, document)
       if (target) {
-        const rect = target.getBoundingClientRect()
-        setHoverRect({
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-        })
+        setHoverRect(getRectFromDom(target))
         setHoverElement(target)
       } else {
         setHoverRect(null)

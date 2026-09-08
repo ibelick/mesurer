@@ -338,11 +338,16 @@ export function MesurerClient({
       if (!commentIds.has(id)) commentRuntime.detach(id);
     }
     for (const comment of comments) {
-      if (!commentRuntime.getElement(comment.id)) {
+      if (!commentRuntime.getElement(comment.id)?.isConnected) {
         commentRuntime.resolve(comment.id, comment.target);
       }
     }
-  }, [commentRuntime, comments]);
+    const resolveAfterFrameLoad = () => {
+      for (const comment of comments) commentRuntime.resolve(comment.id, comment.target);
+    };
+    ownerDocument.addEventListener("load", resolveAfterFrameLoad, true);
+    return () => ownerDocument.removeEventListener("load", resolveAfterFrameLoad, true);
+  }, [commentRuntime, comments, ownerDocument]);
   const commentPointer = useCommentPointer({
     overlayRef,
     ownerDocument,

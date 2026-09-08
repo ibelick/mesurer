@@ -1,4 +1,5 @@
 import { getRectFromDom } from "../core/dom"
+import { getAccessibleFrameDocument } from "../core/document-tree"
 import { getTargetElement } from "../core/selection"
 import { createId } from "../core/utils"
 import type { CommentTarget, Point, Rect } from "../core/types"
@@ -41,8 +42,18 @@ const getElementSelector = (element: Element) => {
   return parts.join(" > ") || getElementName(element)
 }
 
+const getFramePath = (element: Element) => {
+  const path: string[] = []
+  let frame = element.ownerDocument.defaultView?.frameElement
+  while (frame) {
+    path.unshift(getElementSelector(frame))
+    frame = frame.ownerDocument.defaultView?.frameElement
+  }
+  return path
+}
+
 const getStyles = (element: Element, ownerWindow: Window) => {
-  const style = ownerWindow.getComputedStyle(element)
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element) ?? ownerWindow.getComputedStyle(element)
   return [
     `display: ${style.display}`,
     `position: ${style.position}`,
@@ -65,6 +76,7 @@ export const captureCommentTarget = (
   const rect = getRectFromDom(element)
   return {
     selector: getElementSelector(element),
+    framePath: getFramePath(element),
     tagName: getElementName(element),
     textSnippet: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH),
     htmlPreview: html.slice(0, MAX_HTML_LENGTH),
@@ -90,12 +102,23 @@ export const getCommentTargetAtPoint = (
 
 export const createCommentId = () => `comment-${createId()}`
 
+export const getCommentTargetKey = (target: CommentTarget) =>
+  `${(target.framePath ?? []).join("/")}::${target.selector}`
+
 export const resolveCommentTarget = (
   target: CommentTarget,
   ownerDocument: Document = document,
 ) => {
   try {
-    const element = ownerDocument.querySelector(target.selector)
+    let targetDocument = ownerDocument
+    for (const frameSelector of target.framePath ?? []) {
+      const frame = targetDocument.querySelector(frameSelector)
+      if (!frame) return null
+      const childDocument = getAccessibleFrameDocument(frame)
+      if (!childDocument) return null
+      targetDocument = childDocument
+    }
+    const element = targetDocument.querySelector(target.selector)
     if (!element || getElementName(element) !== target.tagName) return null
     return element
   } catch {

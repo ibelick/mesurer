@@ -1,14 +1,14 @@
 import { useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import { createCommentId } from "./dom"
+import { createCommentId, getCommentTargetKey } from "./dom"
 import type { CommentMessage, CommentTarget, CommentThread } from "./types"
 
 const mergeCommentsByTarget = (comments: CommentThread[]) => {
   const merged = new Map<string, CommentThread>()
   for (const comment of comments) {
-    const existing = merged.get(comment.target.selector)
+    const existing = merged.get(getCommentTargetKey(comment.target))
     if (!existing) {
-      merged.set(comment.target.selector, { ...comment, messages: [...comment.messages] })
+      merged.set(getCommentTargetKey(comment.target), { ...comment, messages: [...comment.messages] })
       continue
     }
     existing.messages.push(...comment.messages)
@@ -76,7 +76,7 @@ export const useCommentState = (
     const value = text.trim()
     if (!value) return null
     const now = Date.now()
-    const matching = commentsRef.current.filter((comment) => comment.target.selector === draft.target.selector)
+    const matching = commentsRef.current.filter((comment) => getCommentTargetKey(comment.target) === getCommentTargetKey(draft.target))
     const existing = matching[0]
     if (existing) {
       const message: CommentMessage = {

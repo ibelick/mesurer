@@ -1,6 +1,7 @@
 import { CLICK_CYCLE_THRESHOLD, MIN_MULTI_TARGET_SIZE } from "./constants"
 import {
-  getBodyElementsCached,
+  getAccessibleDocumentElements,
+  getAccessibleFrameDocument,
   getFrameToken,
   getRectFromDomCached,
 } from "./dom"
@@ -34,6 +35,18 @@ const getDeepestElementAt = (
   element: Element,
   point: Point,
 ): Element => {
+  const childDocument = getAccessibleFrameDocument(element)
+  if (childDocument) {
+    const frameRect = element.getBoundingClientRect()
+    const childPoint = {
+      x: point.x - frameRect.left - element.clientLeft,
+      y: point.y - frameRect.top - element.clientTop,
+    }
+    const child = childDocument.elementFromPoint(childPoint.x, childPoint.y)
+    if (child && child !== childDocument.body && child !== childDocument.documentElement) {
+      return getDeepestElementAt(child, childPoint)
+    }
+  }
   let current = element
   const ElementConstructor = element.ownerDocument.defaultView?.Element ?? Element
   while (current instanceof ElementConstructor && current.shadowRoot) {
@@ -48,12 +61,12 @@ const isSelectableElement = (
   element: Element,
   overlayNode: HTMLDivElement | null,
   overlayHost: Element | null,
-  ownerDocument: Document,
 ): boolean => {
-  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
+  const elementDocument = element.ownerDocument
+  const ElementConstructor = elementDocument.defaultView?.Element ?? Element
   if (!(element instanceof ElementConstructor)) return false
   if (isOverlayElement(element, overlayNode, overlayHost)) return false
-  if (element === ownerDocument.body || element === ownerDocument.documentElement) {
+  if (element === elementDocument.body || element === elementDocument.documentElement) {
     return false
   }
   const rect = element.getBoundingClientRect()
@@ -87,7 +100,7 @@ export const getElementsAtPoint = (
 
   for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
     const element = getDeepestElementAt(rawElement, point)
-    if (!isSelectableElement(element, overlayNode, overlayHost, ownerDocument)) continue
+    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
     if (seen.has(element)) continue
     seen.add(element)
     elements.push(element)
@@ -113,12 +126,7 @@ export const getShiftClickTarget = (
   const elements = ownerDocument.elementsFromPoint(point.x, point.y)
   for (let i = elements.length - 1; i >= 0; i -= 1) {
     const element = getDeepestElementAt(elements[i], point)
-    if (!(element instanceof (ownerDocument.defaultView?.Element ?? Element))) continue
-    if (isOverlayElement(element, overlayNode, overlayHost)) continue
-    if (element === ownerDocument.body || element === ownerDocument.documentElement)
-      continue
-    const rect = element.getBoundingClientRect()
-    if (rect.width <= 2 || rect.height <= 2) continue
+    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
     return element
   }
   return null
@@ -131,6 +139,8 @@ export const getSnappedClickTarget = (
   ownerDocument: Document = document,
 ) => {
   if (!snapEnabled) return getTargetElement(point, overlayNode, ownerDocument)
+  const directTarget = getTargetElement(point, overlayNode, ownerDocument)
+  if (directTarget && directTarget.ownerDocument !== ownerDocument) return directTarget
   const probeRect: Rect = {
     left: point.x - 20,
     top: point.y - 20,
@@ -141,7 +151,7 @@ export const getSnappedClickTarget = (
   return (
     pickPointTarget(point, entries) ??
     pickSingleTarget(probeRect, point, entries) ??
-    getTargetElement(point, overlayNode, ownerDocument)
+     directTarget
   )
 }
 
@@ -241,12 +251,12 @@ export const getSelectionEntries = (
   const minTop = rect.top - 1
   const maxRight = rect.left + rect.width + 1
   const maxBottom = rect.top + rect.height + 1
-  const elements = getBodyElementsCached(ownerDocument)
+  const elements = getAccessibleDocumentElements(ownerDocument)
   const entries = elements
     .map((element) => ({ element, rect: getRectFromDomCached(element) }))
     .filter(({ element, rect: elementRect }) => {
       if (isOverlayElement(element, overlayNode, overlayHost)) return false
-      if (element === ownerDocument.body || element === ownerDocument.documentElement)
+      if (element === element.ownerDocument.body || element === element.ownerDocument.documentElement)
         return false
       if (
         elementRect.width < MIN_MULTI_TARGET_SIZE ||

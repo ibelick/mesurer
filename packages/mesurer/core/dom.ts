@@ -2,6 +2,17 @@ import { denormalizeRect, getViewportSize, normalizeRect } from "./geometry"
 import { isLayoutContainerDisplay } from "./layout-details"
 import type { InspectMeasurement, LayoutGap, Measurement, Rect } from "./types"
 import { createId } from "./utils"
+import { getFrameToken, getViewportRect, isConnectedElement } from "./document-tree"
+
+export {
+  getAccessibleDocumentElements,
+  getAccessibleFrameDocument,
+  getBodyElementsCached,
+  getFrameToken,
+  getViewportRect,
+  isConnectedElement,
+  isIframeElement,
+} from "./document-tree"
 
 const getElementLabel = (element: Element) => {
   const tag = element.tagName.toLowerCase()
@@ -22,15 +33,7 @@ const readLayoutGap = (style: CSSStyleDeclaration): LayoutGap | null => {
   return { row, column }
 }
 
-export const getRectFromDom = (element: Element): Rect => {
-  const rect = element.getBoundingClientRect()
-  return {
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-  }
-}
+export const getRectFromDom = getViewportRect
 
 let rectCacheFrame = -1
 const rectCache = new Map<Element, Rect>()
@@ -48,46 +51,13 @@ export const getRectFromDomCached = (element: Element) => {
   return rect
 }
 
-let cachedElements: Element[] = []
-let cachedFrame = -1
-let cachedDocument: Document | null = null
-
-export const getFrameToken = () => {
-  if (typeof performance === "undefined") return 0
-  return Math.floor(performance.now() / 16)
-}
-
-export const getBodyElementsCached = (ownerDocument: Document = document) => {
-  const frame = getFrameToken()
-  if (frame === cachedFrame && cachedDocument === ownerDocument && cachedElements.length > 0) {
-    return cachedElements
-  }
-  cachedFrame = frame
-  cachedDocument = ownerDocument
-  const elements: Element[] = []
-  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
-  const visit = (root: Document | ShadowRoot | Element) => {
-    const walker = ownerDocument.createTreeWalker(root, 1)
-    let node = walker.nextNode()
-    while (node) {
-      if (node instanceof ElementConstructor) {
-        elements.push(node)
-        if (node.shadowRoot) visit(node.shadowRoot)
-      }
-      node = walker.nextNode()
-    }
-  }
-  if (ownerDocument.body) visit(ownerDocument.body)
-  cachedElements = elements
-  return cachedElements
-}
-
 export const getInspectMeasurement = (
   element: Element,
   ownerWindow: Window = window,
 ): InspectMeasurement => {
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element) ?? ownerWindow.getComputedStyle(element)
   const rect = element.getBoundingClientRect()
-  const style = ownerWindow.getComputedStyle(element)
+  const translatedRect = getViewportRect(element)
   const padding = {
     top: parseEdge(style.paddingTop),
     right: parseEdge(style.paddingRight),
@@ -101,14 +71,14 @@ export const getInspectMeasurement = (
     left: parseEdge(style.marginLeft),
   }
   const paddingRect = {
-    left: rect.left + padding.left,
-    top: rect.top + padding.top,
+    left: translatedRect.left + padding.left,
+    top: translatedRect.top + padding.top,
     width: Math.max(0, rect.width - padding.left - padding.right),
     height: Math.max(0, rect.height - padding.top - padding.bottom),
   }
   const marginRect = {
-    left: rect.left - margin.left,
-    top: rect.top - margin.top,
+    left: translatedRect.left - margin.left,
+    top: translatedRect.top - margin.top,
     width: rect.width + margin.left + margin.right,
     height: rect.height + margin.top + margin.bottom,
   }
@@ -116,8 +86,8 @@ export const getInspectMeasurement = (
   return {
     id: createId(),
     rect: {
-      left: rect.left,
-      top: rect.top,
+      left: translatedRect.left,
+      top: translatedRect.top,
       width: rect.width,
       height: rect.height,
     },
@@ -137,7 +107,7 @@ export const updateMeasurementForResize = (
   ownerDocument: Document = document,
 ): Measurement => {
   let rect = measurement.rect
-  if (measurement.elementRef && ownerDocument.contains(measurement.elementRef)) {
+  if (measurement.elementRef && isConnectedElement(measurement.elementRef)) {
     rect = getRectFromDom(measurement.elementRef)
   } else if (measurement.normalizedRect) {
     rect = denormalizeRect(measurement.normalizedRect, viewport)
