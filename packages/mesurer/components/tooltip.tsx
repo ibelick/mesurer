@@ -119,7 +119,7 @@ export function Tooltip({
             : { top: "100%", marginTop: "0.5rem" }
       }
     >
-      {label}{shortcut ? <> <kbd className="msr:text-white/60">{shortcut}</kbd></> : null}
+      {label}{shortcut ? <> <span className="msr:font-normal msr:text-white/60">{shortcut}</span></> : null}
     </span>
   )
 

@@ -363,6 +363,7 @@ function ToolbarComponent(
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
   const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !settingsOpen;
   const settingsShortcut = getSettingsShortcut(eventTarget);
+  const copyCommentsShortcut = /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform) ? "⌘ K" : "Ctrl + K";
 
   const selectToolGroup = useCallback(
     (group: "inspect" | "annotate") => {
@@ -1190,11 +1191,13 @@ function ToolbarComponent(
                 panelRef={commentsPanelRef}
                 placement={commentsPlacement}
                 onDelete={onDeleteComment}
+                onCopy={onCopyComments}
+                ownerWindow={eventTarget}
+                copyShortcut={copyCommentsShortcut}
                 onSelect={(id) => {
                   if (toolMode !== "comments") preserveToolGroupRef.current = true;
                   onSelectComment(id)
                 }}
-                onClose={() => setCommentsPanelOpen(false)}
               />
             ) : (
               <>

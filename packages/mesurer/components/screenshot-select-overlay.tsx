@@ -84,7 +84,7 @@ export const ScreenshotSelectOverlay = forwardRef<
         <div className="msr:absolute msr:inset-0 msr:bg-black/40" />
       )}
       <div className="msr:pointer-events-none msr:absolute msr:bottom-4 msr:left-1/2 msr:-translate-x-1/2 msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white">
-        Drag to select <kbd className="msr:text-white/60">Esc</kbd> to cancel
+        Drag to select <span className="msr:font-normal msr:text-white/60">Esc</span> to cancel
       </div>
     </div>
   );

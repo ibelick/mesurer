@@ -6,6 +6,8 @@ import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { CheckIcon } from "./icons"
+import { TextInput } from "./text-input"
+import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
 import type { GuideStyle, RulerSettings, ScreenshotSettings } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
@@ -427,14 +429,15 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
           </>
         }
         right={
-          <input
+          <TextInput
             ref={alphaInputRef}
+            containerClassName="msr:h-full msr:w-full"
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"
             value={alphaFocused ? (alphaDraft ? `${alphaDraft}%` : "") : `${alphaValue}%`}
             maxLength={4}
-             className="msr:h-full msr:w-full msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+             className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
             onFocus={() => {
               setAlphaDraft(String(alphaValue))
               setAlphaFocused(true)
@@ -770,7 +773,7 @@ export function SettingsPanel({
   return (
     <div
       ref={panelRef}
-      className="mesurer-settings-panel msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
+      className="mesurer-settings-panel mesurer-thin-scrollbar msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
       onPointerDown={(event) => event.stopPropagation()}
     >
       <SettingsSection id="guides" title="Guides" ariaLabel="Guide settings" focused={focusSection === "guides"}>
@@ -912,14 +915,13 @@ export function SettingsPanel({
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
-          <button
-            type="button"
+          <SettingsButton
             aria-label="Minimize toolbar"
-            className="msr:h-6 msr:justify-self-end msr:rounded-control msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+            className="msr:justify-self-end"
             onClick={onMinimize}
           >
             Minimize
-          </button>
+          </SettingsButton>
         </div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Version</span>
@@ -928,22 +930,19 @@ export function SettingsPanel({
           </span>
         </div>
         <div className="msr:col-span-2 msr:flex msr:h-8 msr:w-full msr:justify-end msr:gap-1">
-          <button
-            type="button"
+          <SettingsButton
             aria-label="Reset settings to defaults"
-            className="msr:h-6 msr:rounded-control msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onResetSettings}
           >
             Use defaults
-          </button>
-          <button
-            type="button"
+          </SettingsButton>
+          <SettingsButton
             aria-label="Clear workspace"
-            className="msr:h-6 msr:rounded-control msr:border msr:border-red-200 msr:px-2 msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#ef4444]"
+            variant="danger"
             onClick={onClearWorkspace}
           >
             Clear workspace
-          </button>
+          </SettingsButton>
         </div>
       </SettingsSection>
     </div>

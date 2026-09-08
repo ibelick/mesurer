@@ -100,15 +100,20 @@ test("shows every comment and opens a thread from the list", async ({ page }) =>
 
   await page.getByRole("button", { name: "Comment menu" }).click();
   await page.getByRole("menuitem", { name: /Show all comments/ }).click();
-  const panel = page.getByRole("dialog", { name: "All comments" });
+  const panel = page.getByRole("dialog", { name: "Comments" });
   await expect(panel).toContainText("First feedback.");
   await expect(panel).toContainText("Second feedback.");
+  const search = panel.getByRole("searchbox", { name: "Search comments" });
+  await search.fill("Second");
+  await expect(panel).not.toContainText("First feedback.");
+  await expect(panel).toContainText("Second feedback.");
+  await search.fill("");
   await panel.getByRole("button", { name: /You .*First feedback/ }).click();
   await expect(panel).toBeVisible();
   await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Annotate tools (2)" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("First feedback.");
-  await panel.getByRole("button", { name: "Close all comments" }).click();
+  await page.getByRole("button", { name: "Comment menu" }).click();
   await expect(panel).toHaveCount(0);
 });
 
@@ -122,7 +127,7 @@ test("deletes a comment from the all comments menu", async ({ page }) => {
   await page.getByRole("button", { name: "Comment menu" }).click();
   await page.getByRole("menuitem", { name: /Show all comments/ }).click();
 
-  const panel = page.getByRole("dialog", { name: "All comments" });
+  const panel = page.getByRole("dialog", { name: "Comments" });
   await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
   await expect(panel.getByRole("menu", { name: "Comment actions" })).toBeVisible();
   await page.mouse.click(100, 300);

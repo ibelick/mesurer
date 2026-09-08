@@ -1083,6 +1083,11 @@ export function MesurerClient({
     onInteract: activateToolbar,
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
+    onCopyComments: () => {
+      void copyCommentsForAgent(comments, ownerWindow).then((copied) => {
+        if (copied) ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
+      })
+    },
     dismissInspectorPins: () => textInspector.clear(),
     selectedCommentId,
     closeComment: () => setSelectedCommentId(null),

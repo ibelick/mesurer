@@ -86,6 +86,7 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onScreenshot: () => void
+  onCopyComments: () => void | Promise<void>
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
   onToggleXray: () => void
@@ -229,6 +230,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (hasPrimaryModifier) {
+        if (event.key.toLowerCase() === "k") {
+          event.preventDefault()
+          current.onCopyComments()
+          return
+        }
         if (event.key === ",") {
           event.preventDefault()
           current.onInteract()

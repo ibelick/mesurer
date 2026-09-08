@@ -98,6 +98,7 @@ type Options = {
   onInteract: () => void;
   onMinimize: () => void;
   onToggleSettings: () => void;
+  onCopyComments: () => void | Promise<void>;
   dismissInspectorPins: () => boolean;
   selectedCommentId: string | null;
   closeComment: () => void;
@@ -256,6 +257,7 @@ export const useInteractionLifecycle = (options: Options) => {
       void options.colorPicker.open();
     },
     onScreenshot: options.screenshot.toggleSelection,
+    onCopyComments: options.onCopyComments,
     onCloseScreenshot: options.screenshot.closeUi,
     isScreenshotActive: () =>
       options.screenshot.active || Boolean(options.screenshot.previewUrl),

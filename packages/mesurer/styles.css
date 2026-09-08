@@ -327,8 +327,22 @@
   }
 }
 
-.mesurer-settings-panel::-webkit-scrollbar {
-  display: none;
+.mesurer-thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--msr-color-ink-200) transparent;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--msr-color-ink-200);
+  border-radius: 999px;
 }
 
 .mesurer-toast-surface {
