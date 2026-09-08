@@ -19,6 +19,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await page.mouse.click(620, 480);
   const input = page.getByRole("textbox", { name: "Comment" });
   await expect(input).toBeVisible();
+  await expect(page.locator("[data-mesurer-comment-draft-target]")).toBeVisible();
   await expect(input).toBeFocused();
   await page.keyboard.press("m");
   await expect(input).toBeVisible();

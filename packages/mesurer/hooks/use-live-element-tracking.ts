@@ -16,6 +16,7 @@ type LiveParams = {
   enabled: boolean
   active: boolean
   selectionEnabled: boolean
+  selectedMeasurements: InspectMeasurement[]
   selectedElementRef: RefObject<Element | null>
   hoverElementRef: RefObject<Element | null>
   setSelectedMeasurement: Dispatch<SetStateAction<InspectMeasurement | null>>
@@ -134,8 +135,8 @@ export const useLiveElementTracking = (params: LiveParams) => {
         return changed || prev.length === 0 ? next : prev
       })
 
-      const selected = current.selectedElementRef.current
-      if (current.selectionEnabled && isConnectedElement(selected)) {
+      const selected = current.selectedElementRef.current ?? current.selectedMeasurements[current.selectedMeasurements.length - 1]?.elementRef ?? null
+      if (isConnectedElement(selected)) {
         current.setSelectedMeasurement((prev) => {
           const next = getInspectMeasurement(selected, ownerWindow)
           if (prev && rectAlmostEqual(prev.rect, next.rect)) return prev
@@ -143,30 +144,20 @@ export const useLiveElementTracking = (params: LiveParams) => {
         })
       }
 
-      if (current.selectionEnabled) {
-        current.setSelectedMeasurements((prev) => {
-          let changed = false
-          const next = prev.map((measurement) => {
-            if (
-              !measurement.elementRef ||
-              !isConnectedElement(measurement.elementRef)
-            ) {
-              return measurement
-            }
-            const next = getInspectMeasurement(measurement.elementRef, ownerWindow)
-            if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
-            changed = true
-            return {
-              ...next,
-              id: measurement.id,
-            }
-          })
-          return changed || prev.length === 0 ? next : prev
+      current.setSelectedMeasurements((prev) => {
+        let changed = false
+        const next = prev.map((measurement) => {
+          if (!measurement.elementRef || !isConnectedElement(measurement.elementRef)) return measurement
+          const next = getInspectMeasurement(measurement.elementRef, ownerWindow)
+          if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
+          changed = true
+          return { ...next, id: measurement.id }
         })
-      }
+        return changed ? next : prev
+      })
 
       const hover = current.hoverElementRef.current
-      if (current.selectionEnabled && isConnectedElement(hover)) {
+      if (isConnectedElement(hover)) {
         const rect = getRectFromDom(hover)
         current.setHoverRect((prev) =>
           prev && rectAlmostEqual(prev, rect) ? prev : rect

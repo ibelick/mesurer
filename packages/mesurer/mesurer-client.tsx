@@ -748,6 +748,7 @@ export function MesurerClient({
       heldDistances.length > 0 ||
       hoverRect !== null,
     selectionEnabled: toolMode === "select",
+    selectedMeasurements,
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,

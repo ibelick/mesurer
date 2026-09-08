@@ -64,6 +64,74 @@ test("inspect tool can reach a nested iframe", async ({ page }) => {
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
 });
 
+test("inspect selection follows an animated target", async ({ page }) => {
+  await page.goto("/bench");
+  const target = page.getByRole("button", { name: "orbiting target" });
+  await expect(target).toBeVisible();
+  await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  if (!targetBox) return;
+  await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
+  const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+  await expect(selected).toBeVisible();
+  await page.waitForTimeout(1000);
+  const selectionBox = await selected.boundingBox();
+  const currentTargetBox = await target.boundingBox();
+  expect(selectionBox).not.toBeNull();
+  expect(currentTargetBox).not.toBeNull();
+  if (selectionBox && currentTargetBox) {
+    expect(Math.abs(selectionBox.x - currentTargetBox.x)).toBeLessThan(4);
+    expect(Math.abs(selectionBox.y - currentTargetBox.y)).toBeLessThan(4);
+  }
+});
+
+test("inspect selection remains after moving the pointer away", async ({ page }) => {
+  await page.goto("/bench");
+  const target = page.getByRole("button", { name: "orbiting target" });
+  await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+  await expect(selected).toBeVisible();
+  await page.mouse.move(700, 700);
+  await page.waitForTimeout(250);
+  await expect(selected).toBeVisible();
+});
+
+test("comment draft follows an animated target", async ({ page }) => {
+  await page.goto("/bench");
+  const target = page.getByRole("button", { name: "orbiting target" });
+  await expect(target).toBeVisible();
+  await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  if (!targetBox) return;
+  await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
+  const composer = page.getByRole("textbox", { name: "Comment" });
+  await expect(composer).toBeVisible();
+  const composerBox = await composer.boundingBox();
+  const draft = page.locator("[data-mesurer-comment-draft-target]");
+  await expect(draft).toBeVisible();
+  await page.waitForTimeout(700);
+  const draftBox = await draft.boundingBox();
+  const currentTargetBox = await target.boundingBox();
+  const currentComposerBox = await composer.boundingBox();
+  expect(draftBox).not.toBeNull();
+  expect(currentTargetBox).not.toBeNull();
+  expect(currentComposerBox).not.toBeNull();
+  if (draftBox && currentTargetBox && composerBox && currentComposerBox) {
+    expect(Math.abs(draftBox.x - currentTargetBox.x)).toBeLessThan(4);
+    expect(Math.abs(draftBox.y - currentTargetBox.y)).toBeLessThan(4);
+    expect(Math.abs(composerBox.x - currentComposerBox.x)).toBeLessThan(4);
+    expect(Math.abs(composerBox.y - currentComposerBox.y)).toBeLessThan(4);
+  }
+});
+
 test("comments in an iframe resolve after reload", async ({ page }) => {
   await page.goto("/bench");
   const frame = page.getByTitle("Complex embedded application");

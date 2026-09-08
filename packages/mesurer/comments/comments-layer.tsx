@@ -5,7 +5,8 @@ import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
-import { getCommentTargetKey } from "./dom"
+import { getRectFromDom } from "../core/dom"
+import { getCommentTargetKey, isRectEqual } from "./dom"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -90,6 +91,7 @@ export function CommentsLayer({
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null)
   const [messageDeleteConfirmationId, setMessageDeleteConfirmationId] = useState<string | null>(null)
+  const [draftRect, setDraftRect] = useState<Rect | null>(null)
   const hoverTimeoutRef = useRef<number | null>(null)
   const selected = comments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null
@@ -109,6 +111,25 @@ export function CommentsLayer({
   const previewGroup = previewComment
     ? comments.filter((comment) => targetKey(comment) === targetKey(previewComment))
     : []
+  useEffect(() => {
+    if (!draft) {
+      setDraftRect(null)
+      return
+    }
+    const ownerWindow = ownerDocument.defaultView
+    if (!ownerWindow) return
+    let frame: number | null = null
+    const update = () => {
+      const next = getRectFromDom(draft.element)
+      setDraftRect((previous) => previous && isRectEqual(previous, next) ? previous : next)
+      frame = ownerWindow.requestAnimationFrame(update)
+    }
+    update()
+    return () => {
+      if (frame !== null) ownerWindow.cancelAnimationFrame(frame)
+    }
+  }, [draft?.element, ownerDocument])
+
   const showHover = () => {
     if (hoverTimeoutRef.current !== null) window.clearTimeout(hoverTimeoutRef.current)
   }
@@ -181,6 +202,14 @@ export function CommentsLayer({
         }
       }}
     >
+      {draft ? (
+        <div
+          data-mesurer-comment-draft-target
+          data-mesurer-comment-ui
+          className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8"
+          style={draftRect ?? draft.target.rect}
+        />
+      ) : null}
       {hoverRect && !draft && (movingId || (!hoveredId && !selectedId)) ? (
         <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
       ) : null}

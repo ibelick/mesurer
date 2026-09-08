@@ -48,7 +48,9 @@ export const SelectedMeasurementBox = memo(function SelectedMeasurementBox({
           width: displayRect.width,
           height: displayRect.height,
           backgroundColor: fillColor,
-          transition: `left ${transitionMs}ms ease, top ${transitionMs}ms ease, width ${transitionMs}ms ease, height ${transitionMs}ms ease`,
+          transition: measurement.originRect
+            ? `left ${transitionMs}ms ease, top ${transitionMs}ms ease, width ${transitionMs}ms ease, height ${transitionMs}ms ease`
+            : "none",
         }}
       >
         {edges.top ? (
