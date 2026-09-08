@@ -981,7 +981,7 @@ function ToolbarComponent(
             <button
               type="button"
               className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
                 activeMenuIndex === 0 || guideOrientation === "horizontal"
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
@@ -1003,7 +1003,7 @@ function ToolbarComponent(
             <button
               type="button"
               className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px]",
+                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
                 activeMenuIndex === 1 || guideOrientation === "vertical"
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
@@ -1179,7 +1179,7 @@ function ToolbarComponent(
             className={cn(
                 commentsPanelOpen
                 ? "msr:static msr:w-0"
-                : "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
+                 : "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
               !commentsPanelOpen && (tooltipSide === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
            )}
             role="menu"
@@ -1208,7 +1208,7 @@ function ToolbarComponent(
                   type="button"
                   role="menuitem"
                   disabled={commentCount === 0}
-                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
                   onClick={openCommentsPanel}
                 >
                   <span className="msr:flex-1">Show all comments</span>
@@ -1218,7 +1218,7 @@ function ToolbarComponent(
                   type="button"
                   role="menuitem"
                   disabled={commentCount === 0}
-                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
+                   className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
                   onClick={() => {
                     void onCopyComments()
                     setCommentMenuOpen(false)

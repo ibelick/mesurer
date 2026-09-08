@@ -11,6 +11,23 @@
   --color-ink-900: #0f172a;
 }
 
+@layer base {
+  .mesurer-root {
+    font-family: var(--msr-font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .mesurer-root button,
+  .mesurer-root input,
+  .mesurer-root select,
+  .mesurer-root textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+}
+
 @layer utilities {
   .msr\:rounded-control {
     border-radius: var(--msr-radius-control);

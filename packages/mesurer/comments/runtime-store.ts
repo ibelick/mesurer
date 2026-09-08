@@ -94,6 +94,10 @@ export class CommentRuntimeStore {
     return this.elements.get(id) ?? null
   }
 
+  getIds() {
+    return this.elements.keys()
+  }
+
   private start() {
     if (this.frame !== null) return
     const tick = () => {

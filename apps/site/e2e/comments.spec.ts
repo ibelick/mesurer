@@ -59,6 +59,26 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await expect(openCard).toHaveCount(0);
 });
 
+test("adds a new comment on an existing node as a reply", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(580, 500);
+  await page.getByRole("textbox", { name: "Comment" }).fill("First note.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.keyboard.press("Escape");
+
+  await page.mouse.click(540, 440);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Follow-up note.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await expect(card).toContainText("First note.");
+  await expect(card).toContainText("Follow-up note.");
+  await expect(card.getByText("You")).toHaveCount(2);
+});
+
 test("closes the input when clicking elsewhere instead of moving it", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -202,7 +222,8 @@ test("deletes a comment thread", async ({ page }) => {
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("Remove this feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.getByRole("button", { name: "Delete comment" }).click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
   await page.getByRole("button", { name: "Yes" }).click();
 
@@ -232,7 +253,7 @@ test("can cancel comment deletion and edit the user message", async ({ page }) =
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Updated feedback.");
 });
 
-test("shows overflow actions for more than two comments on one element", async ({ page }) => {
+test("shows overflow actions for more than two replies on one element", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
 
@@ -245,17 +266,20 @@ test("shows overflow actions for more than two comments on one element", async (
     await page.keyboard.press("Escape");
   }
 
-  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(3);
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
   await page.locator("[data-mesurer-comment-pin]").first().hover();
   await expect(page.locator("[data-mesurer-comment-hover-card]").getByRole("button", { name: "Comment actions" })).toHaveCount(0);
   await page.locator("[data-mesurer-comment-pin]").first().click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 550-440.");
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 600-500.");
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 680-450.");
   await page.locator("[data-mesurer-comment-popover]").hover();
   await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
-  await page.getByRole("button", { name: "Delete comment" }).click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Yes" }).click();
-  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(2);
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
 });
 
 test("closes an open thread with Escape and keeps comment pins clickable when minimized", async ({ page }) => {

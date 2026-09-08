@@ -3,6 +3,23 @@ import type { Dispatch, SetStateAction } from "react"
 import { createCommentId } from "./dom"
 import type { CommentMessage, CommentTarget, CommentThread } from "./types"
 
+const mergeCommentsByTarget = (comments: CommentThread[]) => {
+  const merged = new Map<string, CommentThread>()
+  for (const comment of comments) {
+    const existing = merged.get(comment.target.selector)
+    if (!existing) {
+      merged.set(comment.target.selector, { ...comment, messages: [...comment.messages] })
+      continue
+    }
+    existing.messages.push(...comment.messages)
+    if (comment.updatedAt > existing.updatedAt) {
+      existing.updatedAt = comment.updatedAt
+      existing.status = comment.status
+    }
+  }
+  return [...merged.values()]
+}
+
 export type CommentDraft = {
   target: CommentTarget
   element: Element
@@ -13,7 +30,7 @@ export const useCommentState = (
   initialComments: CommentThread[] = [],
   onChange?: (comments: CommentThread[]) => void,
 ) => {
-  const [comments, setComments] = useState(initialComments)
+  const [comments, setComments] = useState(() => mergeCommentsByTarget(initialComments))
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<CommentDraft | null>(null)
   const commentsRef = useRef(comments)
@@ -59,6 +76,27 @@ export const useCommentState = (
     const value = text.trim()
     if (!value) return null
     const now = Date.now()
+    const matching = commentsRef.current.filter((comment) => comment.target.selector === draft.target.selector)
+    const existing = matching[0]
+    if (existing) {
+      const message: CommentMessage = {
+        id: createCommentId(),
+        role: "user",
+        text: value,
+        createdAt: now,
+      }
+      updateComments((previous) =>
+        previous.flatMap((comment) => {
+          if (comment.id === existing.id) {
+            return [{ ...comment, messages: [...comment.messages, message], updatedAt: now }]
+          }
+          return matching.some((match) => match.id === comment.id) ? [] : [comment]
+        }),
+      )
+      setDraft(null)
+      setSelectedId(existing.id)
+      return existing
+    }
     const comment: CommentThread = {
       id: createCommentId(),
       target: draft.target,

@@ -332,11 +332,17 @@ export function MesurerClient({
   }
   const commentRuntime = commentRuntimeRef.current;
   const commentRuntimeSnapshot = commentRuntime.useSnapshot();
-  for (const comment of comments) {
-    if (!commentRuntime.getElement(comment.id)) {
-      commentRuntime.resolve(comment.id, comment.target);
+  useEffect(() => {
+    const commentIds = new Set(comments.map((comment) => comment.id));
+    for (const id of commentRuntime.getIds()) {
+      if (!commentIds.has(id)) commentRuntime.detach(id);
     }
-  }
+    for (const comment of comments) {
+      if (!commentRuntime.getElement(comment.id)) {
+        commentRuntime.resolve(comment.id, comment.target);
+      }
+    }
+  }, [commentRuntime, comments]);
   const commentPointer = useCommentPointer({
     overlayRef,
     ownerDocument,
