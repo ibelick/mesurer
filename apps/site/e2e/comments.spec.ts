@@ -134,7 +134,7 @@ test("deletes a comment from the all comments menu", async ({ page }) => {
   await expect(panel).not.toContainText("Delete from the list.");
 });
 
-test("copies all comments with DOM context to the agent clipboard", async ({ page, context }) => {
+test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -149,8 +149,9 @@ test("copies all comments with DOM context to the agent clipboard", async ({ pag
 
   expect(copied).toContain("# Mesurer Comments");
   expect(copied).toContain("Inspect this element.");
-  expect(copied).toContain("Nested inner button");
-  expect(copied).toContain("<button");
+  expect(copied).toContain("[<button>Nested inner button</button> selector:");
+  expect(copied).not.toContain("### Computed Styles");
+  expect(copied).not.toContain("```html");
 });
 
 test("persists the comment thread after reload", async ({ page }) => {

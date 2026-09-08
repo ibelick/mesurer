@@ -1,40 +1,38 @@
 import type { CommentThread } from "../core/types"
 
-const formatAttributes = (attributes: Record<string, string>) =>
-  Object.entries(attributes)
-    .map(([name, value]) => `- ${name}: \`${value}\``)
-    .join("\n")
+const formatTarget = (comment: CommentThread) => {
+  const { target } = comment
+  const text = target.textSnippet ? `${target.textSnippet}` : ""
+  return `[<${target.tagName}>${text}</${target.tagName}> selector: \`${target.selector}\`]`
+}
 
-export const formatCommentsForAgent = (comments: CommentThread[], url = "") =>
-  [
+export const formatCommentsForAgent = (comments: CommentThread[], url = "") => {
+  const groups: Array<{ comment: CommentThread; messages: string[] }> = []
+  for (const comment of comments) {
+    const group = groups.find(
+      ({ comment: grouped }) => grouped.target.selector === comment.target.selector,
+    )
+    if (group) {
+      group.messages.push(...comment.messages.map((message) => message.text))
+    } else {
+      groups.push({
+        comment,
+        messages: comment.messages.map((message) => message.text),
+      })
+    }
+  }
+
+  return [
     "# Mesurer Comments",
-    url ? `\nURL: ${url}` : "",
-    ...comments.map((comment, index) => {
-      const { target } = comment
-      return [
-        `\n## Comment ${index + 1}`,
-        `Status: ${comment.status}`,
-        "\n### Feedback",
-        ...comment.messages.map((message) => `- User: ${message.text}`),
-        "\n### DOM Target",
-        `- Element: \`${target.tagName}\``,
-        `- Selector: \`${target.selector}\``,
-        `- Text: ${target.textSnippet || "(none)"}`,
-        `- Position: ${Math.round(target.rect.left)}px, ${Math.round(target.rect.top)}px`,
-        `- Size: ${Math.round(target.rect.width)}px x ${Math.round(target.rect.height)}px`,
-        "\n### Attributes",
-        formatAttributes(target.attributes) || "- None",
-        "\n### HTML",
-        "```html",
-        target.htmlPreview,
-        "```",
-        "\n### Computed Styles",
-        "```text",
-        target.styles,
-        "```",
-      ].join("\n")
+    url ? `URL: ${url}` : "",
+    ...groups.map(({ comment, messages }, index) => {
+      const feedback = messages.length === 1
+        ? messages[0]
+        : messages.map((message) => `- ${message}`).join("\n")
+      return `${index + 1}. ${feedback}\n${formatTarget(comment)}`
     }),
-  ].join("\n")
+  ].filter(Boolean).join("\n\n")
+}
 
 export const copyCommentsForAgent = async (
   comments: CommentThread[],
