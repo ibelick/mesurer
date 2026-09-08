@@ -526,6 +526,11 @@ export function MesurerClient({
   measurementsRef.current = measurements;
   activeMeasurementRef.current = activeMeasurement;
   heldDistancesRef.current = heldDistances;
+  useEffect(() => {
+    if ((toolMode === "none" || !enabled) && heldDistances.length > 0) {
+      setHeldDistancesPersisted([]);
+    }
+  }, [enabled, heldDistances.length, setHeldDistancesPersisted, toolMode]);
   guidesRef.current = guides;
   selectedGuideIdsRef.current = selectedGuideIds;
   arrowsRef.current = arrows;
@@ -1106,7 +1111,13 @@ export function MesurerClient({
         if (copied) ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
       })
     },
-    dismissInspectorPins: () => textInspector.clear(),
+    dismissInspectorPins: () => {
+      const clearedInspectorPins = textInspector.clear()
+      if (heldDistancesRef.current.length === 0) return clearedInspectorPins
+      recordSnapshot()
+      setHeldDistancesPersisted([])
+      return true
+    },
     selectedCommentId,
     closeComment: () => setSelectedCommentId(null),
   });

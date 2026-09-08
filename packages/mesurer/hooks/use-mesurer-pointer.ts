@@ -23,6 +23,25 @@ type GuidePreview = {
   position: number
 }
 
+const sameDistanceTarget = (left: DistanceOverlay, right: DistanceOverlay) => {
+  const sameValue = (a: number, b: number) => Math.abs(a - b) < 0.01
+  const sameRect = (a: typeof left.normalizedRectA, b: typeof right.normalizedRectA) =>
+    sameValue(a.left, b.left) &&
+    sameValue(a.top, b.top) &&
+    sameValue(a.width, b.width) &&
+    sameValue(a.height, b.height)
+  if (left.elementRefA && left.elementRefB && right.elementRefA && right.elementRefB) {
+    return (
+      (left.elementRefA === right.elementRefA && left.elementRefB === right.elementRefB) ||
+      (left.elementRefA === right.elementRefB && left.elementRefB === right.elementRefA)
+    )
+  }
+  return (
+    (sameRect(left.normalizedRectA, right.normalizedRectA) && sameRect(left.normalizedRectB, right.normalizedRectB)) ||
+    (sameRect(left.normalizedRectA, right.normalizedRectB) && sameRect(left.normalizedRectB, right.normalizedRectA))
+  )
+}
+
 type UseMesurerPointerArgs = {
   document: Document
   window: Window
@@ -187,15 +206,23 @@ export const useMesurerPointer = ({
       const point = { x: event.clientX, y: event.clientY }
       selection.preparePointerDown(point, event.shiftKey)
 
+      const heldDistanceId =
+        event.target instanceof Element
+          ? event.target.closest<HTMLElement>("[data-mesurer-held-distance]")?.dataset.mesurerHeldDistance
+          : undefined
+      if (!guidesEnabled && altPressed && heldDistanceId) {
+        commit()
+        setHeldDistances((prev) => prev.filter((distance) => distance.id !== heldDistanceId))
+        return
+      }
+
       if (!guidesEnabled && altPressed && optionPairOverlay) {
         commit()
-        setHeldDistances((prev) => [
-          ...prev,
-          {
-            ...optionPairOverlay,
-            id: createId(),
-          },
-        ])
+        setHeldDistances((prev) => {
+          const existing = prev.find((distance) => sameDistanceTarget(distance, optionPairOverlay))
+          if (existing) return prev.filter((distance) => distance.id !== existing.id)
+          return [...prev, { ...optionPairOverlay, id: createId() }]
+        })
         return
       }
 
