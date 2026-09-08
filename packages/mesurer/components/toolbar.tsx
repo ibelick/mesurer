@@ -86,6 +86,7 @@ type ToolbarComments = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDeleteAll: () => void;
 };
 
 type ToolbarProps = {
@@ -300,6 +301,7 @@ function ToolbarComponent(
     selectedId,
     onSelect: onSelectComment,
     onDelete: onDeleteComment,
+    onDeleteAll: onDeleteAllComments,
   } = comments;
   const {
     open: settingsOpen,
@@ -1191,6 +1193,7 @@ function ToolbarComponent(
                 panelRef={commentsPanelRef}
                 placement={commentsPlacement}
                 onDelete={onDeleteComment}
+                onDeleteAll={onDeleteAllComments}
                 onCopy={onCopyComments}
                 ownerWindow={eventTarget}
                 copyShortcut={copyCommentsShortcut}

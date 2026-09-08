@@ -6,6 +6,12 @@ const activateComments = async (page: Page) => {
   await page.getByRole("button", { name: "Comments (M)" }).click();
 }
 
+const clickCenter = async (page: Page, locator: ReturnType<Page["locator"]>) => {
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("Expected clickable element to be visible")
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+}
+
 test("creates a comment attached to the selected DOM element", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -125,13 +131,32 @@ test("deletes a comment from the all comments menu", async ({ page }) => {
 
   const panel = page.getByRole("dialog", { name: "Comments" });
   await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
-  await expect(panel.getByRole("menu", { name: "Comment actions" })).toBeVisible();
+  await expect(page.getByRole("menu", { name: "Comment actions" })).toBeVisible();
   await page.mouse.click(100, 300);
-  await expect(panel.getByRole("menu", { name: "Comment actions" })).toHaveCount(0);
+  await expect(page.getByRole("menu", { name: "Comment actions" })).toHaveCount(0);
   await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
-  await panel.getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("dialog", { name: "Delete comment" }).getByRole("button", { name: "Yes" }).click();
+  await clickCenter(page, page.getByRole("menuitem", { name: "Delete" }));
+  await clickCenter(page, page.getByRole("dialog", { name: "Delete comment" }).getByRole("button", { name: "Yes" }));
   await expect(panel).not.toContainText("Delete from the list.");
+});
+
+test("deletes all comments from the comments list menu", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Remove every comment.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await clickCenter(page, page.getByRole("menuitem", { name: "Delete all comments" }));
+  const confirmation = page.getByRole("dialog", { name: "Delete comment" });
+  await expect(confirmation).toContainText("delete all comments");
+  await clickCenter(page, confirmation.getByRole("button", { name: "Yes" }));
+  await expect(panel).toContainText("No comments yet.");
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {

@@ -1,10 +1,11 @@
 import type { CommentThread } from "../comments/types"
 import type { RefObject } from "react"
+import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
 import { CommentDeleteConfirmation } from "../comments/comment-delete-confirmation"
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
-import { CheckIcon } from "./icons"
+import { CheckIcon, MoreIcon } from "./icons"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -26,6 +27,7 @@ export function CommentsPanel({
   selectedId,
   onSelect,
   onCopy,
+  onDeleteAll,
   ownerWindow,
   copyShortcut,
   onDelete,
@@ -37,6 +39,7 @@ export function CommentsPanel({
   selectedId: string | null
   onSelect: (id: string) => void
   onCopy: () => void | Promise<void>
+  onDeleteAll: () => void
   ownerWindow: Window
   copyShortcut: string
   onDelete: (id: string) => void
@@ -45,7 +48,12 @@ export function CommentsPanel({
 }) {
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [commentMenuPosition, setCommentMenuPosition] = useState<{ top: number; right: number } | null>(null)
+  const [deletePosition, setDeletePosition] = useState<{ top: number; right: number } | null>(null)
+  const [deleteAllPosition, setDeleteAllPosition] = useState<{ top: number; right: number } | null>(null)
+  const [listMenuPosition, setListMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -54,6 +62,7 @@ export function CommentsPanel({
         comment.messages.some((message) => message.text.toLowerCase().includes(normalizedQuery)),
       )
     : orderedComments
+  const portalTarget = (panelRef.current?.closest(".mesurer-root") ?? panelRef.current?.getRootNode() ?? ownerWindow.document.body) as Element | DocumentFragment
 
   useEffect(() => {
     const handleCopied = () => {
@@ -100,14 +109,45 @@ export function CommentsPanel({
         </SettingsButton>
       </div>
       <div className="msr:px-3 msr:py-1">
-        <TextInput
-          type="search"
-          aria-label="Search comments"
-          placeholder="Search comments"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.currentTarget.value)}
-          leftIcon={<svg aria-hidden="true" viewBox="0 0 16 16" className="msr:size-3 msr:text-ink-500" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" strokeLinecap="round" /></svg>}
-        />
+        <div className="msr:relative msr:flex msr:items-center msr:gap-1.5">
+          <TextInput
+            type="search"
+            aria-label="Search comments"
+            placeholder="Search comments"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.currentTarget.value)}
+            containerClassName="msr:min-w-0 msr:flex-1"
+            leftIcon={<svg aria-hidden="true" viewBox="0 0 16 16" className="msr:size-3 msr:text-ink-500" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" strokeLinecap="round" /></svg>}
+          />
+          <button
+            type="button"
+            data-mesurer-comment-actions
+            aria-label="Comment list actions"
+            aria-expanded={openMenuId === "all"}
+            className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:leading-none msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400"
+            onClick={(event) => {
+              if (openMenuId === "all") {
+                setOpenMenuId(null)
+                return
+              }
+              const panel = panelRef.current
+              const buttonRect = event.currentTarget.getBoundingClientRect()
+              if (panel) {
+                setDeleteAllPosition({
+                  top: buttonRect.bottom + 4,
+                  right: ownerWindow.innerWidth - buttonRect.right,
+                })
+                setListMenuPosition({
+                  top: buttonRect.bottom + 4,
+                  right: ownerWindow.innerWidth - buttonRect.right,
+                })
+              }
+              setOpenMenuId("all")
+            }}
+          >
+            <MoreIcon size={12} />
+          </button>
+        </div>
       </div>
       {filteredComments.length > 0 ? (
         <ul className="mesurer-thin-scrollbar msr:m-0 msr:flex msr:flex-col msr:overflow-y-auto msr:p-0" aria-label="Comment threads">
@@ -126,22 +166,85 @@ export function CommentsPanel({
                       <span className="msr:line-clamp-2 msr:w-full msr:text-[11px] msr:leading-4 msr:text-ink-700">{message?.text ?? "Empty comment"}</span>
                       <span className="msr:text-[10px] msr:text-ink-500">{replyCount} {replyCount === 1 ? "reply" : "replies"}{unresolved ? " · target not found" : ""}</span>
                     </button>
-                    <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={() => setOpenMenuId((value) => value === comment.id ? null : comment.id)}>
-                      <span aria-hidden="true">...</span>
+                    <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
+                      if (openMenuId === comment.id) {
+                        setOpenMenuId(null)
+                        return
+                      }
+                      const panel = panelRef.current
+                      if (panel) {
+                        const buttonRect = event.currentTarget.getBoundingClientRect()
+                        setCommentMenuPosition({
+                          top: buttonRect.top - 4,
+                          right: ownerWindow.innerWidth - buttonRect.right,
+                        })
+                      }
+                      setOpenMenuId(comment.id)
+                    }}>
+                      <MoreIcon size={12} />
                     </button>
                   </div>
-                  {openMenuId === comment.id ? (
-                    <div role="menu" aria-label="Comment actions" data-mesurer-comment-actions className="msr:absolute msr:right-2 msr:top-9 msr:z-[1] msr:w-32 msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg" onPointerDown={(event) => event.stopPropagation()}>
-                      <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={() => { setOpenMenuId(null); setDeleteId(comment.id) }}>Delete</button>
-                    </div>
-                  ) : null}
-                  {deleteId === comment.id ? <CommentDeleteConfirmation commentId={comment.id} onConfirm={(id) => { onDelete(id); setDeleteId(null) }} onCancel={() => setDeleteId(null)} /> : null}
                 </div>
               </li>
             )
           })}
         </ul>
       ) : <p className="msr:px-3 msr:py-6 msr:text-center msr:text-[12px] msr:text-ink-500">{normalizedQuery ? "No matching comments." : "No comments yet."}</p>}
+      {openMenuId && openMenuId !== "all" && commentMenuPosition ? (
+        createPortal(<div
+          role="menu"
+          aria-label="Comment actions"
+          data-mesurer-comment-actions
+          data-mesurer-comment-ui
+          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
+          style={{ top: commentMenuPosition.top, right: commentMenuPosition.right }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onPointerDown={(event) => { event.stopPropagation(); setDeletePosition(commentMenuPosition); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
+        </div>, portalTarget)
+      ) : null}
+      {openMenuId === "all" && listMenuPosition ? (
+        createPortal(<div
+          role="menu"
+          aria-label="Comment list actions"
+          data-mesurer-comment-actions
+          data-mesurer-comment-ui
+          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
+          style={{ top: listMenuPosition.top, right: listMenuPosition.right }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onPointerDown={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+        </div>, portalTarget)
+      ) : null}
+      {deleteId && deletePosition ? (
+        createPortal(<div
+          data-mesurer-comment-ui
+          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:-translate-y-full"
+          style={{ top: deletePosition.top, right: deletePosition.right }}
+        >
+          <CommentDeleteConfirmation
+            commentId={deleteId}
+            floating
+            onConfirm={(id) => { onDelete(id); setDeleteId(null); setDeletePosition(null) }}
+            onCancel={() => { setDeleteId(null); setDeletePosition(null) }}
+          />
+        </div>, portalTarget)
+      ) : null}
+      {deleteAllOpen && deleteAllPosition ? (
+        createPortal(<div
+          data-mesurer-comment-ui
+          className="msr:pointer-events-auto msr:fixed msr:z-[100]"
+          style={{ top: deleteAllPosition.top, right: deleteAllPosition.right }}
+        >
+          <CommentDeleteConfirmation
+            commentId="all"
+            message="Do you want to delete all comments?"
+            floating
+            onConfirm={() => { onDeleteAll(); setDeleteAllOpen(false); setDeleteAllPosition(null) }}
+            onCancel={() => { setDeleteAllOpen(false); setDeleteAllPosition(null) }}
+          />
+        </div>, portalTarget)
+      ) : null}
     </div>
   )
 }

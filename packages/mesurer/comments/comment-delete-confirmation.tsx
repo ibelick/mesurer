@@ -4,18 +4,23 @@ type CommentDeleteConfirmationProps = {
   commentId: string
   onConfirm: (commentId: string) => void
   onCancel: () => void
+  message?: string
+  floating?: boolean
 }
 
 export function CommentDeleteConfirmation({
   commentId,
   onConfirm,
   onCancel,
+  message = "Do you want to delete this comment?",
+  floating = false,
 }: CommentDeleteConfirmationProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null)
   return (
     <div
       data-mesurer-comment-delete-confirmation
-      className="msr:absolute msr:right-2 msr:top-9 msr:z-10 msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-lg"
+      data-mesurer-comment-ui
+      className={`${floating ? "msr:relative" : "msr:absolute msr:right-2 msr:top-9"} msr:z-10 msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-lg`}
       role="dialog"
       aria-label="Delete comment"
       tabIndex={-1}
@@ -33,19 +38,19 @@ export function CommentDeleteConfirmation({
         }
       }}
     >
-      <p className="msr:text-[12px] msr:text-ink-900">Do you want to delete this comment?</p>
+      <p className="msr:text-[12px] msr:text-ink-900">{message}</p>
       <div className="msr:mt-3 msr:flex msr:justify-end msr:gap-2">
         <button
           type="button"
           className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-100"
-          onClick={onCancel}
+          onPointerDown={onCancel}
         >
           No
         </button>
         <button
           type="button"
           className="msr:rounded-control msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
-          onClick={() => onConfirm(commentId)}
+          onPointerDown={() => onConfirm(commentId)}
         >
           Yes
         </button>

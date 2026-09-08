@@ -321,6 +321,7 @@ export function MesurerClient({
     commitDraft: commitCommentDraft,
     addMessage: addCommentMessage,
     deleteComment,
+    deleteAllComments,
     deleteMessage: deleteCommentMessage,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
@@ -1365,7 +1366,7 @@ export function MesurerClient({
            onEndMove: commentPointer.onEndMove,
            ownerDocument,
            onAddMessage: addCommentMessage,
-           onDelete: deleteComment,
+            onDelete: deleteComment,
            onDeleteMessage: deleteCommentMessage,
            onEditMessage: updateCommentMessage,
            onDraftSubmit: commentPointer.onDraftSubmit,
@@ -1435,6 +1436,7 @@ export function MesurerClient({
             commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
           },
           onDelete: deleteComment,
+          onDeleteAll: deleteAllComments,
           onCopy: async () => {
             await copyCommentsForAgent(comments, ownerWindow)
           },

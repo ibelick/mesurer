@@ -78,6 +78,11 @@ export const useCommentState = (
     setSelectedId((previous) => (previous === id ? null : previous))
   }
 
+  const deleteAllComments = () => {
+    updateComments(() => [])
+    setSelectedId(null)
+  }
+
   const deleteMessage = (commentId: string, messageId: string) => {
     updateComments((previous) =>
       previous.flatMap((comment) => {
@@ -142,6 +147,7 @@ export const useCommentState = (
     commitDraft,
     addMessage,
     deleteComment,
+    deleteAllComments,
     deleteMessage,
     toggleResolved,
     updateTarget,
