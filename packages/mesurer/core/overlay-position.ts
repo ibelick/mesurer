@@ -99,8 +99,25 @@ export const placeOverlayPosition = ({
           { left: avoidRect.left - width - gap, top: position.top },
           { left: position.left, top: avoidRect.top + avoidRect.height + gap },
           { left: position.left, top: avoidRect.top - height - gap },
-          position,
-        ]
+        position,
+      ]
+  const horizontalSide = avoidAxis === "horizontal"
+    ? candidates.slice(0, 2).find(
+        (candidate) =>
+          candidate.left >= padding &&
+          candidate.left + width <= viewportWidth - padding,
+      )
+    : undefined
+  if (horizontalSide) {
+    return clampOverlayPosition({
+      ...horizontalSide,
+      width,
+      height,
+      viewportWidth,
+      viewportHeight,
+      padding,
+    })
+  }
   const valid = candidates.find(
     (candidate) =>
       fitsViewport(candidate, width, height, viewportWidth, viewportHeight, padding) &&

@@ -60,8 +60,9 @@ export function CommentThreadCard({
   }
   const overlay = useOverlayPosition({
     ownerWindow,
-    position: { left: point.x + 16, top: point.y - 40 },
+    position: { left: point.x + 16, top: point.y - 12 },
     avoidRect: { left: point.x - 12, top: point.y - 12, width: 24, height: 24 },
+    avoidAxis: "horizontal",
     gap: 4,
   })
 
