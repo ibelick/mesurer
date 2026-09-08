@@ -36,12 +36,31 @@ export const getViewportRect = (element: Element): Rect => {
   return { left, top, width: rect.width, height: rect.height }
 }
 
-const elementCache = new WeakMap<Document, { frame: number; elements: Element[] }>()
+const elementCache = new WeakMap<Document, { version: number; elements: Element[] }>()
+const accessibleElementCache = new WeakMap<Document, { version: number; elements: Element[] }>()
+const observedDocuments = new WeakSet<Document>()
+let documentTreeVersion = 0
+
+export const getDocumentTreeVersion = () => documentTreeVersion
+
+const observeDocument = (ownerDocument: Document) => {
+  if (observedDocuments.has(ownerDocument)) return
+  observedDocuments.add(ownerDocument)
+  ownerDocument.addEventListener("load", () => {
+    documentTreeVersion += 1
+  }, true)
+  if (typeof MutationObserver === "undefined" || !ownerDocument.body) return
+  const observer = new MutationObserver(() => {
+    documentTreeVersion += 1
+  })
+  observer.observe(ownerDocument.body, { childList: true, subtree: true })
+}
 
 export const getBodyElementsCached = (ownerDocument: Document = document) => {
-  const frame = getFrameToken()
+  observeDocument(ownerDocument)
+  const version = documentTreeVersion
   const cached = elementCache.get(ownerDocument)
-  if (cached?.frame === frame) return cached.elements
+  if (cached?.version === version) return cached.elements
 
   const elements: Element[] = []
   const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
@@ -58,15 +77,21 @@ export const getBodyElementsCached = (ownerDocument: Document = document) => {
   }
 
   if (ownerDocument.body) visit(ownerDocument.body)
-  elementCache.set(ownerDocument, { frame, elements })
+  elementCache.set(ownerDocument, { version, elements })
   return elements
 }
 
 export const getAccessibleDocumentElements = (ownerDocument: Document = document): Element[] => {
+  observeDocument(ownerDocument)
+  const version = documentTreeVersion
+  const cached = accessibleElementCache.get(ownerDocument)
+  if (cached?.version === version) return cached.elements
+
   const elements = [...getBodyElementsCached(ownerDocument)]
   for (const element of elements) {
     const childDocument = getAccessibleFrameDocument(element)
     if (childDocument) elements.push(...getAccessibleDocumentElements(childDocument))
   }
+  accessibleElementCache.set(ownerDocument, { version, elements })
   return elements
 }

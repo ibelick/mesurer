@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react"
-import { getRectFromDom } from "../core/dom"
+import { getRectFromDom, isConnectedElement } from "../core/dom"
 import { isRectEqual, resolveCommentTarget } from "./dom"
 import type { CommentTarget, Rect } from "./types"
 
@@ -34,7 +34,9 @@ export class CommentRuntimeStore {
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
-    if (this.listeners.size === 1) this.start()
+    if (this.listeners.size === 1 && (this.elements.size > 0 || this.snapshot.hoverElement)) {
+      this.start()
+    }
     return () => {
       this.listeners.delete(listener)
       if (this.listeners.size === 0) this.stop()
@@ -58,6 +60,8 @@ export class CommentRuntimeStore {
       return
     }
     this.snapshot = { ...this.snapshot, hoverElement: element, hoverRect: rect, hoverPoint: point }
+    if (element) this.start()
+    else if (this.elements.size === 0) this.stop()
     this.emit()
   }
 
@@ -72,6 +76,8 @@ export class CommentRuntimeStore {
       unresolvedIds.add(id)
     }
     this.snapshot = { ...this.snapshot, unresolvedIds }
+    if (element) this.start()
+    else if (this.elements.size === 0 && !this.snapshot.hoverElement) this.stop()
     this.refresh()
   }
 
@@ -99,7 +105,7 @@ export class CommentRuntimeStore {
   }
 
   private start() {
-    if (this.frame !== null) return
+    if (this.frame !== null || this.listeners.size === 0) return
     const tick = () => {
       this.refresh()
       this.frame = this.ownerWindow.requestAnimationFrame(tick)
@@ -116,7 +122,7 @@ export class CommentRuntimeStore {
     let changed = false
     const unresolvedIds = new Set(this.snapshot.unresolvedIds)
     for (const [id, element] of this.elements) {
-      if (!this.ownerDocument.contains(element)) {
+      if (!isConnectedElement(element)) {
         this.elements.delete(id)
         unresolvedIds.add(id)
         if (this.rects.delete(id)) changed = true
@@ -130,7 +136,7 @@ export class CommentRuntimeStore {
       }
       unresolvedIds.delete(id)
     }
-    if (this.snapshot.hoverElement && this.ownerDocument.contains(this.snapshot.hoverElement)) {
+    if (isConnectedElement(this.snapshot.hoverElement)) {
       const hoverRect = getRectFromDom(this.snapshot.hoverElement)
       if (!this.snapshot.hoverRect || !isRectEqual(hoverRect, this.snapshot.hoverRect)) {
         this.snapshot = { ...this.snapshot, hoverRect }

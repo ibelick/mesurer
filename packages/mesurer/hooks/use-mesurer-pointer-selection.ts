@@ -13,7 +13,6 @@ import {
   getCycledClickTarget,
   getElementsInRectCached,
   getSnappedClickTarget,
-  getTargetElement,
   type ClickCycleState,
 } from "../core/selection"
 import { getSelectedMeasurementHit } from "../core/selection-helpers"
@@ -323,9 +322,7 @@ export const useMesurerPointerSelection = ({
 
     let target: Element | null = null
     if (additive) {
-      target =
-        getTargetElement(point, overlayRef.current, document) ??
-        getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
+      target = getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
       clickCycleRef.current = null
     } else {
       const cycled = getCycledClickTarget(

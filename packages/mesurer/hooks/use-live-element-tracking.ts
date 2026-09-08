@@ -14,6 +14,7 @@ type LiveParams = {
   document: Document
   window: Window
   enabled: boolean
+  active: boolean
   selectionEnabled: boolean
   selectedElementRef: RefObject<Element | null>
   hoverElementRef: RefObject<Element | null>
@@ -32,7 +33,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
 
   useLayoutEffect(() => {
     const ownerWindow = params.window
-    if (!params.enabled) {
+    if (!params.enabled || !params.active) {
       if (frameRef.current) {
         ownerWindow.cancelAnimationFrame(frameRef.current)
       }
@@ -181,5 +182,5 @@ export const useLiveElementTracking = (params: LiveParams) => {
       }
       frameRef.current = null
     }
-  }, [params.enabled, params.window])
+  }, [params.active, params.enabled, params.window])
 }

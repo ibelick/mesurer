@@ -8,6 +8,7 @@ export {
   getAccessibleDocumentElements,
   getAccessibleFrameDocument,
   getBodyElementsCached,
+  getDocumentTreeVersion,
   getFrameToken,
   getViewportRect,
   isConnectedElement,

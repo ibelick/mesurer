@@ -742,6 +742,11 @@ export function MesurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
+    active:
+      measurements.length > 0 ||
+      selectedMeasurements.length > 0 ||
+      heldDistances.length > 0 ||
+      hoverRect !== null,
     selectionEnabled: toolMode === "select",
     selectedElementRef,
     hoverElementRef,
