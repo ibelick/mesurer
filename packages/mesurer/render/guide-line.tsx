@@ -7,6 +7,9 @@ type GuideLineProps = {
   guide: Guide
   selected: boolean
   hovered: boolean
+  dragging: boolean
+  highlightEnabled: boolean
+  selectEnabled: boolean
   style: GuideStyle
   pointerEvents: boolean
   colorActive: string
@@ -21,6 +24,9 @@ export function GuideLine({
   guide,
   selected,
   hovered,
+  dragging,
+  highlightEnabled,
+  selectEnabled,
   style,
   pointerEvents,
   colorActive,
@@ -30,12 +36,15 @@ export function GuideLine({
   onPointerUp,
   onPointerCancel,
 }: GuideLineProps) {
-  const strokeColor = selected
+  const active = selectEnabled && selected && !dragging
+  const highlighted = highlightEnabled && (hovered || dragging)
+  const strokeColor = active
     ? colorActive
-    : hovered
+    : highlighted
       ? colorHover
       : colorDefault
-  const strokeWidth = selected || hovered ? Math.max(style.width, 1) : style.width
+  const strokeWidth = active || highlighted ? Math.max(style.width, 1) : style.width
+  const opacity = !highlightEnabled || active || highlighted ? 1 : Math.min(style.opacity, 0.55)
   const isSolid = style.pattern === "solid"
   const backgroundImage = style.pattern === "solid"
     ? undefined
@@ -87,7 +96,7 @@ export function GuideLine({
                 backgroundColor: isSolid ? strokeColor : "transparent",
                 backgroundImage,
                 backgroundSize,
-                opacity: style.opacity,
+                 opacity,
               }
             : {
                 top: strokeOffset,
@@ -97,7 +106,7 @@ export function GuideLine({
                 backgroundColor: isSolid ? strokeColor : "transparent",
                 backgroundImage,
                 backgroundSize,
-                opacity: style.opacity,
+                 opacity,
               }
         }
       />

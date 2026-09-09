@@ -254,7 +254,7 @@ export const useMesurerDerived = ({
     () => ({
       outlineColor: `color-mix(in oklch, ${highlightColor} 80%, transparent)`,
       fillColor: `color-mix(in oklch, ${highlightColor} 8%, transparent)`,
-      guideColorActive: `color-mix(in oklch, ${guideColor} 100%, transparent)`,
+      guideColorActive: `color-mix(in oklch, ${highlightColor} 100%, transparent)`,
       guideColorHover: `color-mix(in oklch, ${guideColor} ${guideHighlightEnabled ? 90 : 70}%, transparent)`,
       guideColorDefault: `color-mix(in oklch, ${guideColor} 70%, transparent)`,
       guideColorPreview: `color-mix(in oklch, ${guideColor} ${guideHighlightEnabled ? 50 : 70}%, transparent)`,

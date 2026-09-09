@@ -1303,9 +1303,11 @@ export function MesurerClient({
           items: overlayGuides,
           selectedIds: selectedGuideIds,
           moveOffset: selectionDragOffset,
-          hover: hoverGuide,
-          draggingId: draggingGuideId,
-          style: settingsGuideStyle,
+           hover: hoverGuide,
+           draggingId: draggingGuideId,
+           highlightEnabled: settingsGuideHighlightEnabled,
+           selectEnabled: selectNewGuideEnabled,
+           style: settingsGuideStyle,
           pointerEvents:
             overlayInteractive && (toolMode !== "none" || rulersVisible),
           colors: {

@@ -63,6 +63,8 @@ type OverlayGuides = {
   moveOffset?: { x: number; y: number }
   hover: Guide | null
   draggingId: string | null
+  highlightEnabled: boolean
+  selectEnabled: boolean
   style: GuideStyle
   pointerEvents: boolean
   colors: {
@@ -246,7 +248,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     >
       <SelectionLayer
         visible={selectionVisible}
-        dragging={isDragging}
+         dragging={isDragging || Boolean(guides.draggingId)}
         fillColor={fillColor}
         outlineColor={outlineColor}
         measurements={selection.measurements}
@@ -294,6 +296,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           moveOffset={guides.moveOffset}
           hoverId={guides.hover?.id ?? null}
           draggingId={guides.draggingId}
+          highlightEnabled={guides.highlightEnabled}
+          selectEnabled={guides.selectEnabled}
           style={guides.style}
           pointerEvents={guides.pointerEvents}
           colors={guides.colors}

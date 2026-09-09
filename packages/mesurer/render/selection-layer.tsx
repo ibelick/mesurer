@@ -39,6 +39,7 @@ export function SelectionLayer({
   layoutDetailsEnabled,
 }: SelectionLayerProps) {
   if (!visible) return null
+  const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
 
   return (
     <>
@@ -46,7 +47,7 @@ export function SelectionLayer({
         <MeasurementBox
           key={measurement.id}
           measurement={measurement}
-          transitionMs={MEASURE_TRANSITION_MS}
+          transitionMs={transitionMs}
           labelOffset={MEASURE_LABEL_OFFSET}
           edgeVisibility={measurementEdges[index]}
           outlineColor={outlineColor}
@@ -80,7 +81,7 @@ export function SelectionLayer({
         <SelectedMeasurementBox
           key={measurement.id}
           measurement={measurement}
-          transitionMs={MEASURE_TRANSITION_MS}
+          transitionMs={transitionMs}
           labelOffset={MEASURE_LABEL_OFFSET}
           edgeVisibility={selectedEdges[index]}
           outlineColor={outlineColor}

@@ -17,6 +17,8 @@ type GuidesLayerProps = {
   moveOffset?: { x: number; y: number }
   hoverId: string | null
   draggingId: string | null
+  highlightEnabled: boolean
+  selectEnabled: boolean
   style: GuideStyle
   pointerEvents: boolean
   colors: GuideColors
@@ -32,6 +34,8 @@ export function GuidesLayer({
   moveOffset = { x: 0, y: 0 },
   hoverId,
   draggingId,
+  highlightEnabled,
+  selectEnabled,
   style,
   pointerEvents,
   colors,
@@ -66,6 +70,9 @@ export function GuidesLayer({
           }
           selected={selectedIds.includes(guide.id)}
           hovered={hoverId === guide.id || draggingId === guide.id}
+          dragging={draggingId === guide.id}
+          highlightEnabled={highlightEnabled}
+          selectEnabled={selectEnabled}
           style={style}
           pointerEvents={pointerEvents}
           colorActive={colors.active}
