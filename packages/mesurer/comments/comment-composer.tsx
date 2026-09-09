@@ -6,7 +6,7 @@ const COMPOSER_MAX_HEIGHT = 128
 const COMPOSER_SINGLE_ROW_HEIGHT = 34
 const COMPOSER_COMPACT_RIGHT_PADDING = 36
 const COMPOSER_EXPANDED_RIGHT_PADDING = 8
-const COMPOSER_COMPACT_BOTTOM_PADDING = 8
+const COMPOSER_COMPACT_BOTTOM_PADDING = 6
 const COMPOSER_EXPANDED_BOTTOM_PADDING = 32
 
 type CommentComposerProps = {
@@ -75,7 +75,7 @@ export function CommentComposer({
          rows={1}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:rounded-control msr:border msr:border-ink-200 msr:caret-[#0d99ff] msr:p-2 msr:text-[12px] msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]"
+         className="msr:block msr:min-h-6 msr:max-h-32 msr:w-full msr:resize-none msr:rounded-control msr:border msr:border-ink-200 msr:caret-[#0d99ff] msr:px-2 msr:py-1.5 msr:text-[13px] msr:leading-5 msr:text-ink-900 msr:outline-none msr:focus:border-[#0d99ff]"
         style={{
           paddingRight: expanded ? COMPOSER_EXPANDED_RIGHT_PADDING : COMPOSER_COMPACT_RIGHT_PADDING,
           paddingBottom: expanded ? COMPOSER_EXPANDED_BOTTOM_PADDING : COMPOSER_COMPACT_BOTTOM_PADDING,

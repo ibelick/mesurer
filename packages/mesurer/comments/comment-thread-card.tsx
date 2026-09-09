@@ -1,10 +1,11 @@
 import { useState } from "react"
 import type { CommentThread } from "./types"
-import { CloseIcon, MoreIcon, SendIcon, TrashIcon } from "../components/icons"
+import { CloseIcon, MoreIcon, SendIcon } from "../components/icons"
 import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { copyCommentSelector } from "./export"
 
 type CommentThreadCardProps = {
   comment: CommentThread
@@ -47,6 +48,7 @@ export function CommentThreadCard({
 }: CommentThreadCardProps) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [overflowOpenId, setOverflowOpenId] = useState<string | null>(null)
+  const [threadOverflowOpen, setThreadOverflowOpen] = useState(false)
   const message = comment.messages[0]
   const [editText, setEditText] = useState(message?.text ?? "")
   const saveEdit = (messageId: string) => {
@@ -81,19 +83,37 @@ export function CommentThreadCard({
         }
       }}
     >
-      <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:px-3 msr:py-1">
-        <button
-          type="button"
-          aria-label="Delete comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-red-50 msr:hover:text-red-600"
-          onClick={() => onRequestDelete(comment.id)}
-        >
-          <TrashIcon />
-        </button>
+      <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:pl-3 msr:pr-1.5 msr:py-1">
+        <div className="msr:relative">
+          <button
+            type="button"
+            aria-label="Comment actions"
+            aria-expanded={threadOverflowOpen}
+            className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
+            onClick={() => setThreadOverflowOpen((value) => !value)}
+          >
+            <MoreIcon />
+          </button>
+          {threadOverflowOpen ? (
+            <CommentOverflowMenu
+              commentId={comment.id}
+              onCopySelector={() => {
+                if (!ownerWindow) return
+                void copyCommentSelector(comment.target.selector, ownerWindow).finally(() => {
+                  setThreadOverflowOpen(false)
+                })
+              }}
+              onDelete={() => {
+                setThreadOverflowOpen(false)
+                onRequestDelete(comment.id)
+              }}
+            />
+          ) : null}
+        </div>
         <button
           type="button"
           aria-label="Close comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
+          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
           onClick={onClose}
         >
           <CloseIcon />

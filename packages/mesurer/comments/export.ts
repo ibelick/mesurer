@@ -45,3 +45,10 @@ export const copyCommentsForAgent = async (
   )
   return true
 }
+
+export const copyCommentSelector = async (
+  selector: string,
+  ownerWindow: Window = window,
+) => {
+  await ownerWindow.navigator.clipboard.writeText(selector)
+}

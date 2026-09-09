@@ -94,7 +94,7 @@ export const useCommentState = (
         }),
       )
       setDraft(null)
-      setSelectedId(existing.id)
+      setSelectedId(null)
       return existing
     }
     const comment: CommentThread = {
@@ -107,7 +107,7 @@ export const useCommentState = (
     }
     updateComments((previous) => [...previous, comment])
     setDraft(null)
-    setSelectedId(comment.id)
+    setSelectedId(null)
     return comment
   }
 

@@ -27,6 +27,8 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   await page.getByRole("button", { name: "Send comment" }).click();
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+  await page.locator("[data-mesurer-comment-pin]").click();
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText(
     "The nested button needs more contrast.",
   );
@@ -51,7 +53,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   expect(openBox.width).toBeCloseTo(hoverBox.width, 0);
   expect(openBox.x).toBeCloseTo(hoverBox.x, 0);
   expect(openBox.y).toBeCloseTo(hoverBox.y, 0);
-  await openCard.getByRole("button", { name: "Comment actions" }).nth(1).click();
+  await openCard.getByRole("button", { name: "Comment actions" }).nth(2).click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Yes" }).click();
   await expect(openCard).toContainText("The nested button needs more contrast.");
@@ -67,11 +69,10 @@ test("adds a new comment on an existing node as a reply", async ({ page }) => {
   await page.mouse.click(580, 500);
   await page.getByRole("textbox", { name: "Comment" }).fill("First note.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.keyboard.press("Escape");
+  await page.locator("[data-mesurer-comment-pin]").click();
 
-  await page.mouse.click(540, 440);
-  await page.getByRole("textbox", { name: "Comment" }).fill("Follow-up note.");
-  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.getByRole("textbox", { name: "Reply to comment" }).fill("Follow-up note.");
+  await page.getByRole("textbox", { name: "Reply to comment" }).press("Enter");
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
   const card = page.locator("[data-mesurer-comment-popover]");
@@ -90,6 +91,19 @@ test("closes the input when clicking elsewhere instead of moving it", async ({ p
   await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
 });
 
+test("closes a submitted comment so the next click starts a new comment", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Review this element.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("textbox", { name: "Comment" })).toBeVisible();
+});
+
 test("closes an open comment card and reopens it from the pin", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -99,6 +113,7 @@ test("closes an open comment card and reopens it from the pin", async ({ page })
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
 
   const pin = page.locator("[data-mesurer-comment-pin]");
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
   await pin.click();
   await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
   await page.mouse.click(240, 240);
@@ -114,12 +129,10 @@ test("shows every comment and opens a thread from the list", async ({ page }) =>
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("First feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.keyboard.press("Escape");
 
   await page.mouse.click(300, 560);
   await page.getByRole("textbox", { name: "Comment" }).fill("Second feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Comment menu" }).click();
   await page.getByRole("menuitem", { name: /Show all comments/ }).click();
@@ -200,6 +213,24 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
   expect(copied).not.toContain("```html");
 });
 
+test("copies a comment target selector from the thread menu", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Copy this selector.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  await page.getByRole("menuitem", { name: "Copy selector" }).click();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain("button");
+  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+});
+
 test("persists the comment thread after reload", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html?persist");
   await activateComments(page);
@@ -223,7 +254,8 @@ test("deletes a comment thread", async ({ page }) => {
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("Remove this feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).click();
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
   await page.getByRole("button", { name: "Yes" }).click();
@@ -239,14 +271,17 @@ test("can cancel comment deletion and edit the user message", async ({ page }) =
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("Original feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-  await page.getByRole("button", { name: "Delete comment" }).click();
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Delete comment" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Delete comment" }).click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "No", exact: true }).click();
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
 
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).nth(1).click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Edit" }).click();
   const editor = page.getByRole("textbox", { name: "Edit comment" });
   await editor.fill("Updated feedback.");
@@ -264,7 +299,6 @@ test("shows overflow actions for more than two replies on one element", async ({
     await page.mouse.click(x, y);
     await page.getByRole("textbox", { name: "Comment" }).fill(`Feedback ${x}-${y}.`);
     await page.getByRole("textbox", { name: "Comment" }).press("Enter");
-    await page.keyboard.press("Escape");
   }
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
@@ -275,7 +309,7 @@ test("shows overflow actions for more than two replies on one element", async ({
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 600-500.");
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 680-450.");
   await page.locator("[data-mesurer-comment-popover]").hover();
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).nth(1).click();
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
@@ -314,6 +348,7 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
 
   const pin = page.locator("[data-mesurer-comment-pin]");
+  await pin.click();
   const pinBox = await pin.boundingBox();
   if (!pinBox) throw new Error("Comment pin is not visible");
   await page.mouse.move(pinBox.x + pinBox.width / 2, pinBox.y + pinBox.height / 2);
