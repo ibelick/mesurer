@@ -11,7 +11,6 @@ import type {
   Arrow,
   Guide,
   InspectMeasurement,
-  Measurement,
   Rect,
   ToolMode,
   TextAnnotation,
@@ -38,8 +37,6 @@ type OverlayPointers = {
 }
 
 type OverlaySelection = {
-  measurements: Measurement[]
-  measurementEdges: EdgeVisibility[]
   activeRect: Rect | null
   activeWidth: number
   activeHeight: number
@@ -47,6 +44,9 @@ type OverlaySelection = {
   hoverEdges: EdgeVisibility | null
   selected: InspectMeasurement[]
   selectedEdges: EdgeVisibility[]
+  selectorPreview: { element: Element; rect: Rect; copied: boolean } | null
+  ownerWindow: Window | null
+  selectedSelectorCopied: boolean
 }
 
 type OverlayDistances = {
@@ -252,8 +252,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
          dragging={isDragging || Boolean(guides.draggingId)}
         fillColor={fillColor}
         outlineColor={outlineColor}
-        measurements={selection.measurements}
-        measurementEdges={selection.measurementEdges}
         active={{
           rect: selection.activeRect,
           width: selection.activeWidth,
@@ -264,6 +262,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selected={selection.selected}
         selectedEdges={selection.selectedEdges}
         layoutDetailsEnabled={layoutDetailsEnabled}
+        selectorPreview={selection.selectorPreview}
+        ownerWindow={selection.ownerWindow}
+        selectedSelectorCopied={selection.selectedSelectorCopied}
       />
 
       {toolMode === "selection" && marqueeRect ? (

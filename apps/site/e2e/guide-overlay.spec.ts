@@ -484,7 +484,8 @@ test("Select tool can inspect SVG elements", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
   await page.getByTestId("svg-rect").click({ force: true });
 
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 80");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("200 x 80");
+  await expect(page.getByText("200 x 80", { exact: true })).toHaveCount(1);
 });
 
 const expectSettingsSectionPinned = async (page: Page, id: string) => {
@@ -729,7 +730,7 @@ test("falls back to the default swatch for an invalid persisted color", async ({
 
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
-  const swatch = dialog.locator("[aria-label='Selection settings'] input[aria-label='Color color picker']").locator("..");
+  const swatch = dialog.locator("[aria-label='Inspect settings'] input[aria-label='Color color picker']").locator("..");
   await expect(swatch).toHaveCSS(
     "background-color",
     "oklch(0.62 0.18 255)",
@@ -740,7 +741,7 @@ test("settings color fields update hex and opacity values", async ({ page }) => 
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
 
-  const selection = page.getByRole("region", { name: "Selection settings" });
+  const selection = page.getByRole("region", { name: "Inspect settings" });
   const hex = selection.getByRole("textbox", { name: "Color hex value" });
   const opacity = selection.getByRole("textbox", { name: "Color opacity value" });
   const nativeColor = selection.getByLabel("Color color picker");
@@ -759,6 +760,28 @@ test("settings color fields update hex and opacity values", async ({ page }) => 
   });
   await expect(hex).toHaveValue("00FF00");
   await expect(opacity).toHaveValue("50%");
+});
+
+test("copies the selected inspect node selector from settings", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await activateSelect(page);
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const inspect = page.getByRole("region", { name: "Inspect settings" });
+  const mode = inspect.getByRole("combobox", { name: "Info card mode" });
+  await expect(mode).toHaveValue("click");
+  await page.keyboard.press("Escape");
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toHaveCount(0);
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("button");
+  await expect(page.locator("[data-mesurer-selector-copied]")).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("button");
 });
 
 test("P opens the native color picker", async ({ page }) => {
@@ -937,7 +960,7 @@ test("settings opens with all sections visible", async ({ page }) => {
 
   await page.getByRole("button", { name: "Inspect (I)" }).click();
   await settings.click();
-  await expectSettingsSectionPinned(page, "selection");
+  await expectSettingsSectionPinned(page, "inspect");
 });
 
 test("opening settings with a tool active pins that tool section", async ({ page }) => {
@@ -965,7 +988,7 @@ test("opening settings with a tool active pins that tool section", async ({ page
 
   await page.getByRole("button", { name: "Select (S)" }).click();
   await settings.click();
-  await expectSettingsSectionPinned(page, "selection");
+  await expectSettingsSectionPinned(page, "inspect");
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
@@ -1443,10 +1466,10 @@ test("cycles through nested elements on repeated clicks", async ({ page }) => {
   const y = box!.y + box!.height / 2;
 
   await page.mouse.click(x, y);
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("160 x 80");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("160 x 80");
 
   await page.mouse.click(x, y);
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 120");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("200 x 120");
 });
 
 test("does not run shortcuts while a page prompt has focus", async ({ page }) => {

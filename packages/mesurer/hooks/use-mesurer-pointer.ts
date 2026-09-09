@@ -90,6 +90,7 @@ type UseMesurerPointerArgs = {
   ) => void
   setSelectionOriginRect: (value: SetStateAction<Rect | null>) => void
   setSelectedElement: (value: Element | null) => void
+  onSelectElement?: (element: Element) => void
   setHoverRect: (value: SetStateAction<Rect | null>) => void
   setHoverElement: (value: Element | null) => void
   setHoverPointer: (value: SetStateAction<Point | null>) => void
@@ -147,6 +148,7 @@ export const useMesurerPointer = ({
   setSelectedMeasurement,
   setSelectionOriginRect,
   setSelectedElement,
+  onSelectElement,
   setHoverRect,
   setHoverElement,
   setHoverPointer,
@@ -186,6 +188,7 @@ export const useMesurerPointer = ({
     setSelectedPenStrokeIds,
     setSelectedGuideIds,
     setSelectedElement,
+    onSelectElement,
     setSelectedMeasurements,
     setSelectedMeasurement,
     setSelectionOriginRect,

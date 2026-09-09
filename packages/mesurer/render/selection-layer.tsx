@@ -1,27 +1,25 @@
-import { MeasurementBox } from "../components/measurement-box"
 import { SelectedMeasurementBox } from "../components/selected-measurement-box"
-import {
-  MEASURE_LABEL_OFFSET,
-  MEASURE_TRANSITION_MS,
-} from "../core/constants"
+import { MEASURE_TRANSITION_MS } from "../core/constants"
 import type { EdgeVisibility } from "../core/edge-visibility"
-import type { InspectMeasurement, Measurement, Rect } from "../core/types"
+import type { InspectMeasurement, Rect } from "../core/types"
 import { ActiveSelectionRect } from "./active-selection-rect"
 import { HoverRect } from "./hover-rect"
+import { InspectInfoCard } from "../components/inspect-info-card"
 
 type SelectionLayerProps = {
   visible: boolean
   dragging: boolean
   fillColor: string
   outlineColor: string
-  measurements: Measurement[]
-  measurementEdges: EdgeVisibility[]
   active: { rect: Rect | null; width: number; height: number }
   hoverRect: Rect | null
   hoverEdges: EdgeVisibility | null
   selected: InspectMeasurement[]
   selectedEdges: EdgeVisibility[]
   layoutDetailsEnabled: boolean
+  selectorPreview: { element: Element; rect: Rect; copied: boolean } | null
+  ownerWindow: Window | null
+  selectedSelectorCopied: boolean
 }
 
 export function SelectionLayer({
@@ -29,32 +27,27 @@ export function SelectionLayer({
   dragging,
   fillColor,
   outlineColor,
-  measurements,
-  measurementEdges,
   active,
   hoverRect,
   hoverEdges,
   selected,
   selectedEdges,
   layoutDetailsEnabled,
+  selectorPreview,
+  ownerWindow,
+  selectedSelectorCopied,
 }: SelectionLayerProps) {
   if (!visible) return null
   const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
+  const selectedMeasurement = selected[0] ?? null
+  const hoveringDifferentElement = Boolean(
+    selectedMeasurement &&
+      selectorPreview &&
+      selectorPreview.element !== selectedMeasurement.elementRef,
+  )
 
   return (
     <>
-      {measurements.map((measurement, index) => (
-        <MeasurementBox
-          key={measurement.id}
-          measurement={measurement}
-          transitionMs={transitionMs}
-          labelOffset={MEASURE_LABEL_OFFSET}
-          edgeVisibility={measurementEdges[index]}
-          outlineColor={outlineColor}
-          fillColor={fillColor}
-        />
-      ))}
-
       {active.rect && dragging ? (
         <ActiveSelectionRect
           left={active.rect.left}
@@ -82,13 +75,23 @@ export function SelectionLayer({
           key={measurement.id}
           measurement={measurement}
           transitionMs={transitionMs}
-          labelOffset={MEASURE_LABEL_OFFSET}
           edgeVisibility={selectedEdges[index]}
           outlineColor={outlineColor}
           fillColor={fillColor}
-          layoutDetailsEnabled={layoutDetailsEnabled}
         />
       ))}
+      {selectedMeasurement && !hoveringDifferentElement ? (
+        <InspectInfoCard
+          ownerWindow={ownerWindow}
+          rect={selectedMeasurement.rect}
+          element={selectedMeasurement.elementRef}
+          measurement={selectedMeasurement}
+          layoutDetailsEnabled={layoutDetailsEnabled}
+          copied={selectedSelectorCopied}
+        />
+      ) : selectorPreview ? (
+        <InspectInfoCard ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />
+      ) : null}
     </>
   )
 }

@@ -17,6 +17,7 @@ export type { TextFont, TextStyleSettings } from "./text-style"
 export const MESURER_STORAGE_VERSION = 2
 
 export type GuidePattern = "solid" | "dashed" | "dotted"
+export type InfoCardMode = "hover" | "click"
 
 export type GuideStyle = {
   opacity: number
@@ -70,6 +71,7 @@ export type MesurerStoredSettings = {
   arrowClickToPlace?: boolean
   selectNewGuideEnabled?: boolean
   multiMeasureEnabled?: boolean
+  infoCardMode?: InfoCardMode
   persistOnReload?: boolean
   shortcutsEnabled?: boolean
   guideStyle?: Partial<GuideStyle>
@@ -369,6 +371,11 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.arrowClickToPlace === "boolean" ? { arrowClickToPlace: input.arrowClickToPlace } : {}),
     ...(typeof input.selectNewGuideEnabled === "boolean" ? { selectNewGuideEnabled: input.selectNewGuideEnabled } : {}),
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
+    ...(input.infoCardMode === "hover" || input.infoCardMode === "click"
+      ? { infoCardMode: input.infoCardMode }
+      : input.copySelectorOnInspect === true
+        ? { infoCardMode: "click" as const }
+        : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
     ...(typeof input.shortcutsEnabled === "boolean" ? { shortcutsEnabled: input.shortcutsEnabled } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),

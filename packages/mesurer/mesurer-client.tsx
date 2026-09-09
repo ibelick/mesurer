@@ -36,7 +36,8 @@ import { useTextInspector } from "./hooks/use-text-inspector";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
-import { CommentRuntimeStore, copyCommentsForAgent, useCommentPointer } from "./comments";
+import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
+import { getElementSelector } from "./core/selector";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
@@ -385,6 +386,8 @@ export function MesurerClient({
     setHoverHighlightEnabled: setSettingsHoverHighlight,
     layoutDetailsEnabled: settingsLayoutDetailsEnabled,
     setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
+    infoCardMode: settingsInfoCardMode,
+    setInfoCardMode: setSettingsInfoCardMode,
     persistOnReload: settingsPersistOnReload,
     setPersistOnReload: setSettingsPersistOnReload,
     shortcutsEnabled: settingsShortcutsEnabled,
@@ -416,6 +419,7 @@ export function MesurerClient({
       guideHighlightEnabled,
       hoverHighlightEnabled,
       layoutDetailsEnabled,
+      infoCardMode: "click",
       persistOnReload,
       shortcutsEnabled: shortcutsEnabledDefault,
       colorPickerFormats,
@@ -824,7 +828,6 @@ export function MesurerClient({
     hoverRectToShow,
     selectedEdgeVisibility,
     hoverEdgeVisibility,
-    measurementEdgeVisibility,
   } = useMesurerDerived({
     document: ownerDocument,
     window: ownerWindow,
@@ -848,6 +851,11 @@ export function MesurerClient({
     highlightColor: settingsHighlightColor,
     guideColor: settingsGuideColor,
   });
+  const [copiedSelector, setCopiedSelector] = useState<string | null>(null);
+  const selectorCopyTimeoutRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
+  }, [ownerWindow]);
   const {
     handlePointerDown,
     handlePointerMove,
@@ -896,6 +904,19 @@ export function MesurerClient({
     setSelectedMeasurement,
     setSelectionOriginRect,
     setSelectedElement,
+    onSelectElement: (element) => {
+      const selector = getElementSelector(element);
+      void copyCommentSelector(selector, ownerWindow)
+        .then(() => {
+          setCopiedSelector(selector);
+          if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
+          selectorCopyTimeoutRef.current = ownerWindow.setTimeout(() => {
+            selectorCopyTimeoutRef.current = null;
+            setCopiedSelector(null);
+          }, 1200);
+        })
+        .catch(() => {});
+    },
     setHoverRect,
     setHoverElement,
     setHoverPointer,
@@ -1307,8 +1328,6 @@ export function MesurerClient({
           ...pointerHandlers,
         },
         selection: {
-          measurements: displayedMeasurements,
-          measurementEdges: measurementEdgeVisibility,
           activeRect,
           activeWidth,
           activeHeight,
@@ -1316,6 +1335,18 @@ export function MesurerClient({
           hoverEdges: hoverEdgeVisibility,
           selected: displayedSelectedMeasurements,
           selectedEdges: selectedEdgeVisibility,
+          selectorPreview:
+            settingsInfoCardMode === "hover" && hoverElement && hoverRect
+              ? {
+                  element: hoverElement,
+                  rect: hoverRect,
+                  copied: copiedSelector === getElementSelector(hoverElement),
+                }
+              : null,
+          ownerWindow,
+          selectedSelectorCopied: Boolean(
+            selectedElement && copiedSelector === getElementSelector(selectedElement),
+          ),
         },
         distances: {
           held: heldDistances,
@@ -1516,6 +1547,8 @@ export function MesurerClient({
                 setSnapEnabled,
                 multiMeasureEnabled,
                 setMultiMeasureEnabled,
+                infoCardMode: settingsInfoCardMode,
+                setInfoCardMode: setSettingsInfoCardMode,
               }}
               guides={{
                 guideColor: settingsGuideColor,

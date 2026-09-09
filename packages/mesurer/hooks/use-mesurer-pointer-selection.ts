@@ -75,6 +75,7 @@ type UseMesurerPointerSelectionArgs = {
   setSelectedPenStrokeIds: (value: SetStateAction<string[]>) => void
   setSelectedGuideIds: (value: SetStateAction<string[]>) => void
   setSelectedElement: (value: Element | null) => void
+  onSelectElement?: (element: Element) => void
   setSelectedMeasurements: (value: SetStateAction<InspectMeasurement[]>) => void
   setSelectedMeasurement: (
     value: SetStateAction<InspectMeasurement | null>
@@ -105,6 +106,7 @@ export const useMesurerPointerSelection = ({
   setSelectedPenStrokeIds,
   setSelectedGuideIds,
   setSelectedElement,
+  onSelectElement,
   setSelectedMeasurements,
   setSelectedMeasurement,
   setSelectionOriginRect,
@@ -348,6 +350,7 @@ export const useMesurerPointerSelection = ({
           commit()
           setSelectedMeasurements((prev) => [...prev, inspectMeasurement])
           setSelectedElement(target)
+          if (!selectionMode) onSelectElement?.(target)
           setSelectedMeasurement(inspectMeasurement)
           clearSelectionRect()
         }
@@ -356,6 +359,7 @@ export const useMesurerPointerSelection = ({
         return
       }
       setSelectedElement(target)
+      if (!selectionMode) onSelectElement?.(target)
       commit()
       setSelectedMeasurements([inspectMeasurement])
       setSelectedMeasurement(inspectMeasurement)
@@ -396,6 +400,7 @@ export const useMesurerPointerSelection = ({
     selectionMode,
     selectionRectRef,
     setSelectedElement,
+    onSelectElement,
     setSelectedMeasurement,
     setSelectedMeasurements,
     setSelectionOriginRect,

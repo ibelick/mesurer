@@ -9,7 +9,7 @@ import { CheckIcon } from "./icons"
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle, RulerSettings, ScreenshotSettings } from "../core/persistence"
+import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
@@ -18,7 +18,7 @@ export type SettingsFocusSection =
   | "guides"
   | "arrows"
   | "text"
-  | "selection"
+  | "inspect"
   | "color"
   | "screenshot"
   | "rulers"
@@ -32,7 +32,7 @@ export const settingsFocusSection = (
   if (toolMode === "guides") return "guides"
   if (toolMode === "arrows") return "arrows"
   if (toolMode === "text") return "text"
-  if (toolMode === "select" || toolMode === "selection") return "selection"
+  if (toolMode === "select" || toolMode === "selection") return "inspect"
   if (toolMode === "rulers" || (options.rulersVisible && toolMode === "none")) return "rulers"
   return undefined
 }
@@ -48,6 +48,8 @@ type SettingsSelectProps = {
   setSnapEnabled: Dispatch<SetStateAction<boolean>>
   multiMeasureEnabled: boolean
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>
+  infoCardMode: InfoCardMode
+  setInfoCardMode: Dispatch<SetStateAction<InfoCardMode>>
 }
 
 type SettingsGuidesProps = {
@@ -708,6 +710,8 @@ export function SettingsPanel({
     setSnapEnabled,
     multiMeasureEnabled,
     setMultiMeasureEnabled,
+    infoCardMode,
+    setInfoCardMode,
   } = select
   const {
     guideColor,
@@ -850,12 +854,24 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection id="selection" title="Selection" ariaLabel="Selection settings" focused={focusSection === "selection"}>
+      <SettingsSection id="inspect" title="Inspect" ariaLabel="Inspect settings" focused={focusSection === "inspect"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Spacing" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Info card</span>
+          <select
+            aria-label="Info card mode"
+            value={infoCardMode}
+            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+            onChange={(event) => setInfoCardMode(event.target.value as InfoCardMode)}
+          >
+            <option value="click">Click</option>
+            <option value="hover">Hover</option>
+          </select>
+        </label>
       </SettingsSection>
 
       <SectionDivider />

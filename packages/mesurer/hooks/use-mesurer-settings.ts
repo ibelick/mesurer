@@ -6,6 +6,7 @@ import type {
   MesurerStoredSettings,
   RulerSettings,
   ScreenshotSettings,
+  InfoCardMode,
 } from "../core/persistence";
 import type { PersistentToolMode } from "../core/types";
 import { DEFAULT_SCREENSHOT_SETTINGS } from "../core/persistence";
@@ -49,6 +50,7 @@ type UseMesurerSettingsOptions = {
     arrowClickToPlace: boolean;
     selectNewGuideEnabled: boolean;
     multiMeasureEnabled: boolean;
+    infoCardMode: InfoCardMode;
   };
   toggles: ToggleState;
 };
@@ -76,6 +78,9 @@ export const useMesurerSettings = ({
   );
   const [layoutDetailsEnabled, setLayoutDetailsEnabled] = useState(
     persistedSettings.layoutDetailsEnabled ?? defaults.layoutDetailsEnabled,
+  );
+  const [infoCardMode, setInfoCardMode] = useState<InfoCardMode>(
+    persistedSettings.infoCardMode ?? defaults.infoCardMode,
   );
   const [persistOnReload, setPersistOnReload] = useState(
     persistedSettings.persistOnReload ?? defaults.persistOnReload,
@@ -116,6 +121,7 @@ export const useMesurerSettings = ({
     setGuideHighlightEnabled(defaults.guideHighlightEnabled);
     setHoverHighlightEnabled(defaults.hoverHighlightEnabled);
     setLayoutDetailsEnabled(defaults.layoutDetailsEnabled);
+    setInfoCardMode(defaults.infoCardMode);
     setPersistOnReload(defaults.persistOnReload);
     setShortcutsEnabled(defaults.shortcutsEnabled);
     setColorPickerFormats([...defaults.colorPickerFormats]);
@@ -148,6 +154,7 @@ export const useMesurerSettings = ({
       arrowClickToPlace: toggles.arrowClickToPlace,
       selectNewGuideEnabled: toggles.selectNewGuideEnabled,
       multiMeasureEnabled: toggles.multiMeasureEnabled,
+      infoCardMode,
       persistOnReload,
       shortcutsEnabled,
       lastToolMode,
@@ -167,6 +174,7 @@ export const useMesurerSettings = ({
     highlightColor,
     hoverHighlightEnabled,
     layoutDetailsEnabled,
+    infoCardMode,
     toggles.multiMeasureEnabled,
     persistOnReload,
     shortcutsEnabled,
@@ -193,6 +201,9 @@ export const useMesurerSettings = ({
     }
     if (settings.layoutDetailsEnabled !== undefined) {
       setLayoutDetailsEnabled(settings.layoutDetailsEnabled);
+    }
+    if (settings.infoCardMode !== undefined) {
+      setInfoCardMode(settings.infoCardMode);
     }
     if (settings.colorPickerFormats !== undefined) {
       setColorPickerFormats(settings.colorPickerFormats);
@@ -246,6 +257,8 @@ export const useMesurerSettings = ({
     setHoverHighlightEnabled,
     layoutDetailsEnabled,
     setLayoutDetailsEnabled,
+    infoCardMode,
+    setInfoCardMode,
     persistOnReload,
     setPersistOnReload,
     shortcutsEnabled,

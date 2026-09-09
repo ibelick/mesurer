@@ -2,6 +2,7 @@ import { getRectFromDom } from "../core/dom"
 import { getAccessibleFrameDocument } from "../core/document-tree"
 import { getTargetElement } from "../core/selection"
 import { createId } from "../core/utils"
+import { getElementSelector } from "../core/selector"
 import type { CommentTarget, Point, Rect } from "../core/types"
 
 const MAX_HTML_LENGTH = 4000
@@ -16,30 +17,6 @@ const getElementAttributes = (element: Element) => {
     attributes[attribute.name] = attribute.value.slice(0, MAX_TEXT_LENGTH)
   }
   return attributes
-}
-
-const getElementSelector = (element: Element) => {
-  const parts: string[] = []
-  let current: Element | null = element
-  while (current && current !== current.ownerDocument.documentElement) {
-    const tag = getElementName(current)
-    if (current.id) {
-      parts.unshift(`${tag}#${CSS.escape(current.id)}`)
-      break
-    }
-    const parent: Element | null = current.parentElement
-    if (!parent) {
-      parts.unshift(tag)
-      break
-    }
-    const siblings = Array.from(parent.children).filter(
-      (sibling: Element) => sibling.tagName === current?.tagName,
-    )
-    const index = siblings.indexOf(current)
-    parts.unshift(siblings.length > 1 ? `${tag}:nth-of-type(${index + 1})` : tag)
-    current = parent
-  }
-  return parts.join(" > ") || getElementName(element)
 }
 
 const getFramePath = (element: Element) => {
