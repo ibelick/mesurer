@@ -325,6 +325,10 @@ const isDistanceOverlay = (value: unknown): value is DistanceOverlay => {
   }
   return (
     typeof distance.id === "string" &&
+    (!("guideIds" in distance) ||
+      (Array.isArray(distance.guideIds) &&
+        distance.guideIds.length <= 2 &&
+        distance.guideIds.every((guideId) => guideId === null || typeof guideId === "string"))) &&
     isRect(distance.rectA) &&
     isRect(distance.rectB) &&
     isNormalizedRect(distance.normalizedRectA) &&

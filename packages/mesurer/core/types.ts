@@ -118,6 +118,7 @@ export type Guide = {
 
 export type DistanceOverlay = {
   id: string
+  guideIds?: Array<string | null>
   rectA: Rect
   rectB: Rect
   normalizedRectA: NormalizedRect

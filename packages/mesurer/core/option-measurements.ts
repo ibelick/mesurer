@@ -90,13 +90,17 @@ export const getOptionPairOverlay = (params: {
     return null
   }
 
-  return getDistanceOverlay(
-    selectedTarget.rect,
-    hoverTarget.rect,
-    selectedTarget.element ?? null,
-    hoverTarget.element ?? null,
-    ownerWindow
-  )
+  const guideIds = [selectedTarget.guideId ?? null, hoverTarget.guideId ?? null]
+  return {
+    ...getDistanceOverlay(
+      selectedTarget.rect,
+      hoverTarget.rect,
+      selectedTarget.element ?? null,
+      hoverTarget.element ?? null,
+      ownerWindow,
+    ),
+    ...(guideIds.some(Boolean) ? { guideIds } : {}),
+  }
 }
 
 export const getOptionContainerLines = (params: {

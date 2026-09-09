@@ -753,6 +753,7 @@ export function MesurerClient({
       heldDistances.length > 0 ||
       hoverRect !== null,
     selectionEnabled: toolMode === "select",
+    guides,
     selectedMeasurements,
     selectedElementRef,
     hoverElementRef,
@@ -1143,8 +1144,22 @@ export function MesurerClient({
       recordSnapshot();
       setGuides((prev) => prev.filter((guide) => !guideIds.has(guide.id)));
       setSelectedGuideIdsPersisted((prev) => prev.filter((guideId) => !guideIds.has(guideId)));
+      setHeldDistancesPersisted((prev) =>
+        prev.filter(
+          (distance) =>
+            !distance.guideIds?.some(
+              (guideId) => guideId !== null && guideIds.has(guideId),
+            ),
+        ),
+      );
     },
-    [guides, recordSnapshot, setGuides, setSelectedGuideIdsPersisted],
+    [
+      guides,
+      recordSnapshot,
+      setGuides,
+      setHeldDistancesPersisted,
+      setSelectedGuideIdsPersisted,
+    ],
   );
   const {
     startGuideFromRuler,

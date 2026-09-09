@@ -2,9 +2,11 @@ import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
 import { applyPinCursor, getDistanceOverlay, withPin } from "../core/distances"
 import { getInspectMeasurement, getRectFromDom, isConnectedElement } from "../core/dom"
+import { getGuideRect } from "../core/guides"
 import { normalizeRect, rectAlmostEqual } from "../core/geometry"
 import type {
   DistanceOverlay,
+  Guide,
   InspectMeasurement,
   Measurement,
   Rect,
@@ -16,6 +18,7 @@ type LiveParams = {
   enabled: boolean
   active: boolean
   selectionEnabled: boolean
+  guides: Guide[]
   selectedMeasurements: InspectMeasurement[]
   selectedElementRef: RefObject<Element | null>
   hoverElementRef: RefObject<Element | null>
@@ -106,12 +109,22 @@ export const useLiveElementTracking = (params: LiveParams) => {
             distance.elementRefA && isConnectedElement(distance.elementRefA)
           const canTrackB =
             distance.elementRefB && isConnectedElement(distance.elementRefB)
-          if (!canTrackA && !canTrackB) return nextDistance
+          const guideA = distance.guideIds?.[0]
+            ? current.guides.find((guide) => guide.id === distance.guideIds?.[0])
+            : null
+          const guideB = distance.guideIds?.[1]
+            ? current.guides.find((guide) => guide.id === distance.guideIds?.[1])
+            : null
+          if (!canTrackA && !canTrackB && !guideA && !guideB) return nextDistance
 
-          const rectA = canTrackA
+          const rectA = guideA
+            ? getGuideRect(guideA, ownerWindow)
+            : canTrackA
             ? getRectFromDom(distance.elementRefA!)
             : distance.rectA
-          const rectB = canTrackB
+          const rectB = guideB
+            ? getGuideRect(guideB, ownerWindow)
+            : canTrackB
             ? getRectFromDom(distance.elementRefB!)
             : distance.rectB
           if (
