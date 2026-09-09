@@ -1116,6 +1116,46 @@ test("placed guides stay visible and update while settings is open", async ({
   await expect(line).toHaveCSS("background-image", /repeating-linear-gradient/);
 });
 
+test("guide context menu removes one guide", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Remove guide" }).click();
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+});
+
+test("guide context menu removes selected guides", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await page.mouse.click(500, 200, { modifiers: ["Shift"] });
+
+  const guides = page.locator("[data-mesurer-guide]");
+  await expect(guides).toHaveCount(2);
+  await guides.nth(0).click({ modifiers: ["Shift"], position: { x: 7, y: 200 } });
+  await guides.nth(1).click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guides" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Remove guides" }).click();
+  await expect(guides).toHaveCount(0);
+});
+
+test("guide context menu closes with Escape", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  const menu = page.getByRole("menuitem", { name: "Remove guide" });
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+});
+
 test("guide settings show a live preview when no guides are placed", async ({
   page,
 }) => {

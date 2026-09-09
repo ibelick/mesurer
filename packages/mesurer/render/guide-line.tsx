@@ -18,6 +18,7 @@ type GuideLineProps = {
   onPointerDown: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerUp: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerCancel: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
+  onContextMenu: (guide: Guide, event: React.MouseEvent<HTMLDivElement>) => void
 }
 
 export function GuideLine({
@@ -35,6 +36,7 @@ export function GuideLine({
   onPointerDown,
   onPointerUp,
   onPointerCancel,
+  onContextMenu,
 }: GuideLineProps) {
   const active = selectEnabled && selected && !dragging
   const highlighted = highlightEnabled && (hovered || dragging)
@@ -83,6 +85,7 @@ export function GuideLine({
       onPointerDown={(event) => onPointerDown(guide, event)}
       onPointerUp={(event) => onPointerUp(guide, event)}
       onPointerCancel={(event) => onPointerCancel(guide, event)}
+      onContextMenu={(event) => onContextMenu(guide, event)}
     >
       <div
         className="msr:absolute"

@@ -21,6 +21,7 @@ import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
+import { MenuItem, MenuSurface } from "./menu";
 import {
   CaretDownIcon,
   ArrowIcon,
@@ -936,16 +937,15 @@ function ToolbarComponent(
           anchorRef={guideMenuRef}
         />
         {guideMenuOpen ? (
-          <div
+          <MenuSurface
             className={cn(
-               "mesurer-menu-surface msr:absolute msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg msr:outline-none msr:focus:outline-none",
+              "msr:absolute msr:w-44",
               "msr:flex msr:flex-col msr:gap-px",
               menuSide === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
               menuAlign === "left" ? "msr:left-0" : "msr:right-0",
             )}
-            role="menu"
             tabIndex={0}
             onKeyDown={(event) => {
               const key = event.key.toLowerCase();
@@ -978,8 +978,7 @@ function ToolbarComponent(
               }
             }}
           >
-            <button
-              type="button"
+            <MenuItem
               className={cn(
                 "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
                 activeMenuIndex === 0 || guideOrientation === "horizontal"
@@ -999,9 +998,8 @@ function ToolbarComponent(
               <MinusIcon size={12} />
               <span className="msr:flex-1">Horizontal</span>
               <span>H</span>
-            </button>
-            <button
-              type="button"
+            </MenuItem>
+            <MenuItem
               className={cn(
                 "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
                 activeMenuIndex === 1 || guideOrientation === "vertical"
@@ -1021,8 +1019,8 @@ function ToolbarComponent(
               <MinusIcon size={12} className="msr:rotate-90" />
               <span className="msr:flex-1">Vertical</span>
               <span>V</span>
-            </button>
-          </div>
+            </MenuItem>
+          </MenuSurface>
         ) : null}
       </div>
       <ToolbarButton
@@ -1173,16 +1171,18 @@ function ToolbarComponent(
          }}
        >
          <CaretDownIcon size={8} />
-       </button>
-       {commentMenuOpen ? (
-         <div
+        </button>
+        {commentMenuOpen ? (
+          <MenuSurface
             className={cn(
-                commentsPanelOpen
-                ? "msr:static msr:w-0"
-                 : "mesurer-menu-surface msr:absolute msr:right-0 msr:z-[70] msr:w-44 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg",
-              !commentsPanelOpen && (tooltipSide === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
-           )}
-            role="menu"
+              commentsPanelOpen
+                ? "msr:static msr:w-0 msr:border-0 msr:bg-transparent msr:p-0 msr:shadow-none"
+                : "msr:absolute msr:right-0 msr:w-44",
+              !commentsPanelOpen &&
+                (tooltipSide === "bottom"
+                  ? "msr:top-full msr:mt-2"
+                  : "msr:bottom-full msr:mb-2"),
+            )}
             data-mesurer-comment-ui
           >
             {commentsPanelOpen ? (
@@ -1204,21 +1204,15 @@ function ToolbarComponent(
               />
             ) : (
               <>
-                <button
-                  type="button"
-                  role="menuitem"
+                <MenuItem
                   disabled={commentCount === 0}
-                  className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
                   onClick={openCommentsPanel}
                 >
                   <span className="msr:flex-1">Show all comments</span>
                   <span>{commentCount}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
+                </MenuItem>
+                <MenuItem
                   disabled={commentCount === 0}
-                   className="msr:flex msr:w-full msr:items-center msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white disabled:msr:cursor-not-allowed disabled:msr:opacity-40"
                   onClick={() => {
                     void onCopyComments()
                     setCommentMenuOpen(false)
@@ -1226,13 +1220,13 @@ function ToolbarComponent(
                 >
                   <span className="msr:flex-1">Copy to agent</span>
                   <span>{commentCount}</span>
-                </button>
+                </MenuItem>
               </>
             )}
-         </div>
-       ) : null}
-       </div>
-       <div ref={settingsRef} className="msr:relative msr:flex">
+          </MenuSurface>
+        ) : null}
+      </div>
+      <div ref={settingsRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="settings"
           active={settingsOpen}

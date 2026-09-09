@@ -1136,6 +1136,16 @@ export function MesurerClient({
     },
     [recordSnapshot, setHeldDistancesPersisted],
   );
+  const removeGuides = useCallback(
+    (ids: string[]) => {
+      const guideIds = new Set(ids)
+      if (!guides.some((guide) => guideIds.has(guide.id))) return;
+      recordSnapshot();
+      setGuides((prev) => prev.filter((guide) => !guideIds.has(guide.id)));
+      setSelectedGuideIdsPersisted((prev) => prev.filter((guideId) => !guideIds.has(guideId)));
+    },
+    [guides, recordSnapshot, setGuides, setSelectedGuideIdsPersisted],
+  );
   const {
     startGuideFromRuler,
     moveGuideFromRuler,
@@ -1319,9 +1329,10 @@ export function MesurerClient({
           },
           preview: guidePreview,
           onPointerDown: handleGuidePointerDown,
-          onPointerUp: handleGuidePointerUp,
-          onPointerCancel: handleGuidePointerUp,
-        },
+           onPointerUp: handleGuidePointerUp,
+           onPointerCancel: handleGuidePointerUp,
+           onRemoveGuides: removeGuides,
+         },
         arrows: {
           items: arrows,
           selectedIds: selectedArrowIds,

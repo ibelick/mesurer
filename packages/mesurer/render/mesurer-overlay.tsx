@@ -78,6 +78,7 @@ type OverlayGuides = {
   onPointerDown: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerUp: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerCancel: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
+  onRemoveGuides: (ids: string[]) => void
 }
 
 type MesurerOverlayProps = {
@@ -305,6 +306,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           onPointerDown={guides.onPointerDown}
           onPointerUp={guides.onPointerUp}
           onPointerCancel={guides.onPointerCancel}
+          onRemoveGuides={guides.onRemoveGuides}
         />
       ) : null}
 

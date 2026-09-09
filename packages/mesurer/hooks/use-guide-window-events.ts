@@ -162,6 +162,7 @@ export const useGuideWindowEvents = ({
       ) {
         return
       }
+      if (event.button !== 0) return
       const guideTarget = event.composedPath().some(
         (target) =>
           target instanceof OwnerElement &&
