@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
 import type { CommentThread } from "./types"
 import { CloseIcon, MoreIcon, SendIcon } from "../components/icons"
 import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
@@ -25,6 +25,7 @@ type CommentThreadCardProps = {
   onClose?: () => void
   ownerWindow: Window | null
   formatTime: (timestamp: number) => string
+  outsidePointerDownRef: MutableRefObject<() => boolean>
 }
 
 export function CommentThreadCard({
@@ -45,10 +46,13 @@ export function CommentThreadCard({
   onClose,
   ownerWindow,
   formatTime,
+  outsidePointerDownRef,
 }: CommentThreadCardProps) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [overflowOpenId, setOverflowOpenId] = useState<string | null>(null)
   const [threadOverflowOpen, setThreadOverflowOpen] = useState(false)
+  const [nudge, setNudge] = useState(false)
+  const outsideAttemptRef = useRef(false)
   const message = comment.messages[0]
   const [editText, setEditText] = useState(message?.text ?? "")
   const saveEdit = (messageId: string) => {
@@ -60,6 +64,24 @@ export function CommentThreadCard({
     if (!replyText.trim()) return
     onAddMessage(replyText)
   }
+  useEffect(() => {
+    outsidePointerDownRef.current = () => {
+      const hasActiveInput = Boolean(replyText.trim()) ||
+        (editingMessageId !== null && Boolean(editText.trim()))
+      if (!hasActiveInput) return false
+      if (!outsideAttemptRef.current) {
+        outsideAttemptRef.current = true
+        setNudge(true)
+        return true
+      }
+      outsideAttemptRef.current = false
+      onClose?.()
+      return true
+    }
+    return () => {
+      outsidePointerDownRef.current = () => false
+    }
+  }, [editText, editingMessageId, onClose, outsidePointerDownRef, replyText])
   const overlay = useOverlayPosition({
     ownerWindow,
     position: { left: point.x + 16, top: point.y - 12 },
@@ -73,9 +95,13 @@ export function CommentThreadCard({
       data-mesurer-comment-popover
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className="msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
+      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg ${nudge ? "mesurer-comment-nudge" : ""}`}
       style={{ paddingTop: 40 }}
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+        outsideAttemptRef.current = false
+        setNudge(false)
+        event.stopPropagation()
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault()
@@ -135,7 +161,11 @@ export function CommentThreadCard({
                     placeholder="Edit comment"
                     ariaLabel="Edit comment"
                     actionLabel="Save edit"
-                    onChange={(event) => setEditText(event.currentTarget.value)}
+                    onChange={(event) => {
+                      outsideAttemptRef.current = false
+                      setNudge(false)
+                      setEditText(event.currentTarget.value)
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") {
                         event.preventDefault()
@@ -198,7 +228,11 @@ export function CommentThreadCard({
           value={replyText}
           placeholder="Reply..."
           ariaLabel="Reply to comment"
-          onChange={(event) => onReplyTextChange(event.currentTarget.value)}
+          onChange={(event) => {
+            outsideAttemptRef.current = false
+            setNudge(false)
+            onReplyTextChange(event.currentTarget.value)
+          }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault()

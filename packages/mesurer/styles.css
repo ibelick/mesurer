@@ -344,6 +344,22 @@
   }
 }
 
+@keyframes mesurer-comment-nudge {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-3px); }
+  70% { transform: translateX(3px); }
+}
+
+.mesurer-comment-nudge {
+  animation: mesurer-comment-nudge 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesurer-comment-nudge {
+    animation: none;
+  }
+}
+
 .mesurer-thin-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--msr-color-ink-200) transparent;

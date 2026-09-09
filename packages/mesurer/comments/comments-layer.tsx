@@ -92,6 +92,9 @@ export function CommentsLayer({
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null)
   const [messageDeleteConfirmationId, setMessageDeleteConfirmationId] = useState<string | null>(null)
   const [draftRect, setDraftRect] = useState<Rect | null>(null)
+  const [draftNudge, setDraftNudge] = useState(false)
+  const draftOutsideAttemptRef = useRef(false)
+  const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
   const hoverTimeoutRef = useRef<number | null>(null)
   const selected = comments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null
@@ -111,6 +114,13 @@ export function CommentsLayer({
   const previewGroup = previewComment
     ? comments.filter((comment) => targetKey(comment) === targetKey(previewComment))
     : []
+  useEffect(() => {
+    if (!draft || !draftText.trim()) {
+      draftOutsideAttemptRef.current = false
+      setDraftNudge(false)
+    }
+  }, [draft, draftText])
+
   useEffect(() => {
     if (!draft) {
       setDraftRect(null)
@@ -159,9 +169,18 @@ export function CommentsLayer({
           pointerEvent.clientY >= draftRect.top &&
           pointerEvent.clientY <= draftRect.bottom
         : false
+      if (clickedDraft) {
+        draftOutsideAttemptRef.current = false
+        setDraftNudge(false)
+      }
       if (draft && !clickedDraft) {
         event.preventDefault()
         event.stopPropagation()
+        if (draftText.trim() && !draftOutsideAttemptRef.current) {
+          draftOutsideAttemptRef.current = true
+          setDraftNudge(true)
+          return
+        }
         onDraftCancel()
         if (selectedId) onClose?.()
         return
@@ -175,6 +194,11 @@ export function CommentsLayer({
         )
       })
       if (clickedCommentUi) return
+      if (selectedId && selectedOutsidePointerDownRef.current()) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
       if (draft || selectedId) {
         event.preventDefault()
         event.stopPropagation()
@@ -185,7 +209,7 @@ export function CommentsLayer({
     const eventTarget = ownerDocument.defaultView ?? ownerDocument
     eventTarget.addEventListener("pointerdown", handlePointerDown, true)
     return () => eventTarget.removeEventListener("pointerdown", handlePointerDown, true)
-  }, [draft, onClose, onDraftCancel, ownerDocument, selectedId])
+  }, [draft, draftText, onClose, onDraftCancel, ownerDocument, selectedId])
 
   return (
     <div
@@ -277,6 +301,7 @@ export function CommentsLayer({
           onClose={onClose}
           ownerWindow={ownerDocument.defaultView}
           formatTime={formatRelativeTime}
+          outsidePointerDownRef={selectedOutsidePointerDownRef}
         />
       ) : null}
 
@@ -289,8 +314,25 @@ export function CommentsLayer({
               onDraftCancel()
             }}
           />
-          <div ref={draftOverlay.overlayRef} data-mesurer-comment-popover data-mesurer-comment-ui className="msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg" onPointerDown={(event) => event.stopPropagation()}>
-            <CommentComposer value={draftText} placeholder="Leave a comment" ariaLabel="Comment" onChange={onDraftTextChange} onKeyDown={onDraftKeyDown} onSubmit={onDraftSubmit} />
+          <div
+            ref={draftOverlay.overlayRef}
+            data-mesurer-comment-popover
+            data-mesurer-comment-ui
+            className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg ${draftNudge ? "mesurer-comment-nudge" : ""}`}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <CommentComposer
+              value={draftText}
+              placeholder="Leave a comment"
+              ariaLabel="Comment"
+              onChange={(event) => {
+                draftOutsideAttemptRef.current = false
+                setDraftNudge(false)
+                onDraftTextChange(event)
+              }}
+              onKeyDown={onDraftKeyDown}
+              onSubmit={onDraftSubmit}
+            />
           </div>
         </>
       ) : null}

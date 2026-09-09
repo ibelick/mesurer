@@ -91,6 +91,39 @@ test("closes the input when clicking elsewhere instead of moving it", async ({ p
   await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
 });
 
+test("nudges an active comment input before closing on a second outside click", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Draft comment.");
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+  await expect(page.locator(".mesurer-comment-nudge")).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Thread comment.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+
+  await page.getByRole("textbox", { name: "Reply to comment" }).fill("Reply text.");
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).nth(1).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await page.getByRole("textbox", { name: "Edit comment" }).fill("Edited text.");
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+});
+
 test("closes a submitted comment so the next click starts a new comment", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
