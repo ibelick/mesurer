@@ -76,6 +76,7 @@ type HotkeyOptions = {
   setXrayVisible: Dispatch<SetStateAction<boolean>>
   setRulersVisible: Dispatch<SetStateAction<boolean>>
   setAltPressed: Dispatch<SetStateAction<boolean>>
+  pinDistance: () => boolean
   isOverlayActive: () => boolean
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>
   onInteract: () => void
@@ -236,7 +237,17 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       const key = event.key.toLowerCase()
       const toolGroupShortcut = getMesurerToolGroupShortcut(event)
-      if (event.altKey) return
+      if (event.key === "Alt") {
+        current.setAltPressed(true)
+      }
+      if (event.altKey) {
+        // Option+S pins the distance currently previewed under Option.
+        // Matched on `code`: macOS reports event.key as "ß" while Option is held.
+        if (event.code === "KeyS" && current.pinDistance()) {
+          event.preventDefault()
+        }
+        return
+      }
 
       if (key === "p") {
         event.preventDefault()
@@ -302,10 +313,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.setGuideOrientation("vertical")
           current.onInteract()
         }
-      }
-
-      if (event.key === "Alt") {
-        current.setAltPressed(true)
       }
 
       if (event.key === "Backspace" || event.key === "Delete") {

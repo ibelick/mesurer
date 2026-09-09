@@ -1,6 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
-import { getDistanceOverlay } from "../core/distances"
+import { applyPinCursor, getDistanceOverlay, withPin } from "../core/distances"
 import { getInspectMeasurement, getRectFromDom } from "../core/dom"
 import { normalizeRect, rectAlmostEqual } from "../core/geometry"
 import type {
@@ -82,11 +82,29 @@ export const useLiveElementTracking = (params: LiveParams) => {
       current.setHeldDistances((prev) => {
         let changed = false
         const next = prev.map((distance) => {
+          let nextDistance = distance
+          if (
+            distance.pinTargetRef &&
+            current.document.contains(distance.pinTargetRef)
+          ) {
+            const pinTargetRect = getRectFromDom(distance.pinTargetRef)
+            if (
+              !distance.pinTargetRect ||
+              !rectAlmostEqual(pinTargetRect, distance.pinTargetRect)
+            ) {
+              nextDistance = applyPinCursor({
+                ...nextDistance,
+                pinTargetRect,
+              })
+              changed = true
+            }
+          }
+
           const canTrackA =
             distance.elementRefA && current.document.contains(distance.elementRefA)
           const canTrackB =
             distance.elementRefB && current.document.contains(distance.elementRefB)
-          if (!canTrackA && !canTrackB) return distance
+          if (!canTrackA && !canTrackB) return nextDistance
 
           const rectA = canTrackA
             ? getRectFromDom(distance.elementRefA!)
@@ -95,10 +113,10 @@ export const useLiveElementTracking = (params: LiveParams) => {
             ? getRectFromDom(distance.elementRefB!)
             : distance.rectB
           if (
-            rectAlmostEqual(rectA, distance.rectA) &&
-            rectAlmostEqual(rectB, distance.rectB)
+            rectAlmostEqual(rectA, nextDistance.rectA) &&
+            rectAlmostEqual(rectB, nextDistance.rectB)
           ) {
-            return distance
+            return nextDistance
           }
 
           const updated = getDistanceOverlay(
@@ -110,10 +128,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
           )
 
           changed = true
-          return {
-            ...updated,
-            id: distance.id,
-          }
+          return withPin(updated, nextDistance)
         })
         return changed || prev.length === 0 ? next : prev
       })

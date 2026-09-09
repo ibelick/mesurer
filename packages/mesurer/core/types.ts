@@ -95,6 +95,10 @@ export type DistanceOverlay = {
   normalizedRectB: NormalizedRect
   elementRefA?: Element | null
   elementRefB?: Element | null
+  pinTargetRef?: Element | null
+  pinTargetRect?: Rect | null
+  pinCursor?: Point | null
+  pinCursorOffset?: Point | null
   horizontal: {
     x1: number
     x2: number

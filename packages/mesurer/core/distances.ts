@@ -1,11 +1,109 @@
+import { getRectFromDom } from "./dom"
 import {
   clamp,
   denormalizeRect,
   getViewportSize,
   normalizeRect,
+  rectContainsPoint,
 } from "./geometry"
-import type { DistanceOverlay, Rect } from "./types"
+import { getElementBetweenGuides } from "./guides"
+import type { DistanceOverlay, Point, Rect } from "./types"
 import { createId } from "./utils"
+
+export const isElementRect = (rect: Rect) => rect.width >= 1 && rect.height >= 1
+
+export const getPinnedLabelPoint = (distance: DistanceOverlay): Point | null => {
+  if (distance.pinTargetRect && distance.pinCursorOffset) {
+    return {
+      x: distance.pinTargetRect.left + distance.pinCursorOffset.x,
+      y: distance.pinTargetRect.top + distance.pinCursorOffset.y,
+    }
+  }
+  return distance.pinCursor ?? null
+}
+
+export const applyPinCursor = (distance: DistanceOverlay): DistanceOverlay => {
+  const point = getPinnedLabelPoint(distance)
+  if (!point) return distance
+  return {
+    ...distance,
+    horizontal: distance.horizontal
+      ? { ...distance.horizontal, y: point.y }
+      : null,
+    vertical: distance.vertical
+      ? { ...distance.vertical, x: point.x }
+      : null,
+  }
+}
+
+export const withPin = (
+  updated: DistanceOverlay,
+  source: DistanceOverlay,
+): DistanceOverlay =>
+  applyPinCursor({
+    ...updated,
+    id: source.id,
+    pinTargetRef: source.pinTargetRef,
+    pinTargetRect: source.pinTargetRect,
+    pinCursor: source.pinCursor,
+    pinCursorOffset: source.pinCursorOffset,
+  })
+
+export const attachPinnedGuideTarget = (params: {
+  distance: DistanceOverlay
+  document: Document
+  overlayNode: HTMLElement | null
+  pointer: Point | null
+}): DistanceOverlay => {
+  const { distance, pointer } = params
+  const candidates = [
+    isElementRect(distance.rectA)
+      ? { ref: distance.elementRefA, rect: distance.rectA }
+      : null,
+    isElementRect(distance.rectB)
+      ? { ref: distance.elementRefB, rect: distance.rectB }
+      : null,
+  ].filter((candidate) => candidate !== null)
+
+  let pinTargetRef: Element | undefined
+
+  if (candidates.length > 0) {
+    const underPointer = pointer
+      ? candidates.find((candidate) => rectContainsPoint(candidate.rect, pointer))
+      : undefined
+    pinTargetRef =
+      (underPointer ?? candidates[candidates.length - 1]).ref ?? undefined
+  } else if (pointer) {
+    // Both sides are guides: pin to the element the pair wraps under the cursor.
+    const verticalGuides = distance.rectA.width < 1 && distance.rectB.width < 1
+    const horizontalGuides = distance.rectA.height < 1 && distance.rectB.height < 1
+    if (verticalGuides || horizontalGuides) {
+      pinTargetRef =
+        getElementBetweenGuides({
+          document: params.document,
+          overlayNode: params.overlayNode,
+          orientation: verticalGuides ? "vertical" : "horizontal",
+          start: verticalGuides ? distance.rectA.left : distance.rectA.top,
+          end: verticalGuides ? distance.rectB.left : distance.rectB.top,
+          pointer,
+        }) ?? undefined
+    }
+  }
+
+  const pinTargetRect = pinTargetRef ? getRectFromDom(pinTargetRef) : undefined
+
+  return applyPinCursor({
+    ...distance,
+    id: createId(),
+    pinTargetRef,
+    pinTargetRect,
+    pinCursor: pointer ?? undefined,
+    pinCursorOffset:
+      pointer && pinTargetRect
+        ? { x: pointer.x - pinTargetRect.left, y: pointer.y - pinTargetRect.top }
+        : undefined,
+  })
+}
 
 export const getDistanceOverlay = (
   rectA: Rect,
@@ -122,8 +220,5 @@ export const updateDistanceForResize = (
     ownerWindow
   )
 
-  return {
-    ...updated,
-    id: distance.id,
-  }
+  return withPin(updated, distance)
 }

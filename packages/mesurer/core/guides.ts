@@ -1,6 +1,6 @@
 import { GUIDE_SNAP_DISTANCE, MIN_SINGLE_TARGET_SIZE } from "./constants"
 import { getBodyElementsCached, getRectFromDomCached } from "./dom"
-import { getViewportSize } from "./geometry"
+import { getViewportSize, rectContainsPoint } from "./geometry"
 import type { Guide, Point, Rect } from "./types"
 
 export const getGuideRect = (guide: Guide, ownerWindow: Window = window): Rect => {
@@ -138,6 +138,58 @@ export const getNearestElementToGuide = (params: {
       bestDistance = distance
       bestArea = area
       bestElement = element
+    }
+  }
+
+  return bestElement
+}
+
+export const getElementBetweenGuides = (params: {
+  document: Document
+  overlayNode: HTMLElement | null
+  orientation: Guide["orientation"]
+  start: number
+  end: number
+  pointer: Point
+}) => {
+  const min = Math.min(params.start, params.end)
+  const max = Math.max(params.start, params.end)
+  if (max - min < 1) return null
+
+  const ownerDocument = params.document
+  const overlayNode = params.overlayNode
+  const elements = getBodyElementsCached(ownerDocument)
+  const ElementConstructor = ownerDocument.defaultView?.HTMLElement ?? HTMLElement
+  let bestElement: Element | null = null
+  let bestArea = Number.POSITIVE_INFINITY
+
+  for (const element of elements) {
+    if (!(element instanceof ElementConstructor)) continue
+    if (overlayNode && (overlayNode === element || overlayNode.contains(element))) {
+      continue
+    }
+    if (element === ownerDocument.body || element === ownerDocument.documentElement) {
+      continue
+    }
+    const rect = getRectFromDomCached(element)
+    if (
+      rect.width < MIN_SINGLE_TARGET_SIZE ||
+      rect.height < MIN_SINGLE_TARGET_SIZE
+    ) {
+      continue
+    }
+    if (!rectContainsPoint(rect, params.pointer)) continue
+
+    const overlap =
+      params.orientation === "vertical"
+        ? Math.min(rect.left + rect.width, max) - Math.max(rect.left, min)
+        : Math.min(rect.top + rect.height, max) - Math.max(rect.top, min)
+    if (overlap <= 0) continue
+
+    const area = rect.width * rect.height
+    if (area < bestArea) {
+      bestElement = element
+      bestArea = area
     }
   }
 

@@ -58,6 +58,7 @@ type Options = {
   setArrowPreviewEnd: Dispatch<SetStateAction<Point | null>>;
   setXrayVisible: Dispatch<SetStateAction<boolean>>;
   setAltPressed: Dispatch<SetStateAction<boolean>>;
+  pinDistance: () => boolean;
   setToolMode: (mode: ToolMode) => void;
   clearSelectionRect: () => void;
   clearGuideDragHold: () => void;
@@ -238,6 +239,7 @@ export const useInteractionLifecycle = (options: Options) => {
     setXrayVisible: options.setXrayVisible,
     setRulersVisible: options.setRulersVisible,
     setAltPressed: options.setAltPressed,
+    pinDistance: options.pinDistance,
     isOverlayActive: () => overlayActive,
     setGuideOrientation: options.setGuideOrientation,
     onInteract: options.onInteract,

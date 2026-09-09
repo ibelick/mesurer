@@ -187,7 +187,7 @@ export const useMesurerPointer = ({
       const point = { x: event.clientX, y: event.clientY }
       selection.preparePointerDown(point, event.shiftKey)
 
-      if (altPressed && optionPairOverlay) {
+      if (!guidesEnabled && altPressed && optionPairOverlay) {
         commit()
         setHeldDistances((prev) => [
           ...prev,
@@ -234,7 +234,7 @@ export const useMesurerPointer = ({
       altPressed,
       clearSelectionRect,
       createActionCommit,
-          draggingGuideId,
+      draggingGuideId,
       document,
       enabled,
       settingsOpen,

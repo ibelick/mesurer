@@ -14,6 +14,7 @@ export const stripDistance = (distance: DistanceOverlay): DistanceOverlay => ({
   ...distance,
   elementRefA: undefined,
   elementRefB: undefined,
+  pinTargetRef: undefined,
 })
 
 export const getTabId = (ownerWindow: Window) => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef, type PointerEvent } from "react";
 import { MeasureTag } from "../components/measure-tag";
+import { getPinnedLabelPoint, isElementRect } from "../core/distances";
 import type { DistanceOverlay } from "../core/types";
 import { formatValue } from "../core/utils";
 
@@ -16,23 +17,28 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
   labelOffset,
   onRemove,
 }: DistanceOverlayItemProps) {
-  const showRectA = distance.rectA.width >= 1 && distance.rectA.height >= 1;
-  const showRectB = distance.rectB.width >= 1 && distance.rectB.height >= 1;
+  const showRectA = isElementRect(distance.rectA);
+  const showRectB = isElementRect(distance.rectB);
+  const pinPoint = getPinnedLabelPoint(distance);
+  // A pin is created under a stationary cursor, so it only becomes removable
+  // once the pointer has actually moved onto its label. Without this the click
+  // that places the next guide would land on the fresh label and delete it.
+  const armedRef = useRef(false);
+  const arm = onRemove
+    ? () => {
+        armedRef.current = true;
+      }
+    : undefined;
+  const handleRemove = onRemove
+    ? (event: PointerEvent<HTMLDivElement>) => {
+        if (event.button !== 0 || !armedRef.current) return;
+        event.stopPropagation();
+        onRemove(distance.id);
+      }
+    : undefined;
 
   return (
-    <div
-      className={
-        onRemove ? "msr:pointer-events-auto" : "msr:pointer-events-none"
-      }
-      onClick={
-        onRemove
-          ? (event) => {
-              event.stopPropagation();
-              onRemove(distance.id);
-            }
-          : undefined
-      }
-    >
+    <div className="msr:pointer-events-none">
       {showRectA ? (
         <div
           className="msr:absolute msr:rounded msr:border msr:border-[#2563eb]/70"
@@ -90,10 +96,15 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
           />
           <MeasureTag
             className="msr:-translate-x-1/2 msr:bg-ink-900/90"
+            interactive={Boolean(onRemove)}
             style={{
-              left: (distance.horizontal.x1 + distance.horizontal.x2) / 2,
+              left:
+                pinPoint?.x ??
+                (distance.horizontal.x1 + distance.horizontal.x2) / 2,
               top: distance.horizontal.y + labelOffset,
             }}
+            onPointerEnter={arm}
+            onPointerDown={handleRemove}
           >
             {formatValue(distance.horizontal.value)}
           </MeasureTag>
@@ -111,10 +122,15 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
           />
           <MeasureTag
             className="msr:-translate-y-1/2 msr:bg-ink-900/90"
+            interactive={Boolean(onRemove)}
             style={{
               left: distance.vertical.x + labelOffset,
-              top: (distance.vertical.y1 + distance.vertical.y2) / 2,
+              top:
+                pinPoint?.y ??
+                (distance.vertical.y1 + distance.vertical.y2) / 2,
             }}
+            onPointerEnter={arm}
+            onPointerDown={handleRemove}
           >
             {formatValue(distance.vertical.value)}
           </MeasureTag>

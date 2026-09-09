@@ -54,6 +54,12 @@ export const intersectionArea = (rectA: Rect, rectB: Rect) => {
   return width * height
 }
 
+export const rectContainsPoint = (rect: Rect, point: Point) =>
+  point.x >= rect.left &&
+  point.x <= rect.left + rect.width &&
+  point.y >= rect.top &&
+  point.y <= rect.top + rect.height
+
 export const rectAlmostEqual = (a: Rect, b: Rect, epsilon = 0.25) =>
   Math.abs(a.left - b.left) < epsilon &&
   Math.abs(a.top - b.top) < epsilon &&

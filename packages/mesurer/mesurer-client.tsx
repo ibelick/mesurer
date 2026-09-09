@@ -37,6 +37,7 @@ import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { getRectFromPoints } from "./core/geometry";
+import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
@@ -927,6 +928,29 @@ export function MesurerClient({
   const activateToolbar = useCallback(() => {
     setToolbarActive(true);
   }, [setToolbarActive]);
+  const pinableOverlay = guidesEnabled
+    ? (guideDistanceOverlay ?? optionPairOverlay)
+    : (optionPairOverlay ?? guideDistanceOverlay);
+  const pinDistance = useCallback(() => {
+    if (!pinableOverlay) return false;
+    recordSnapshot();
+    setHeldDistancesPersisted((prev) => [
+      ...prev,
+      attachPinnedGuideTarget({
+        distance: pinableOverlay,
+        document: ownerDocument,
+        overlayNode: overlayRef.current,
+        pointer: hoverPointer,
+      }),
+    ]);
+    return true;
+  }, [
+    hoverPointer,
+    ownerDocument,
+    pinableOverlay,
+    recordSnapshot,
+    setHeldDistancesPersisted,
+  ]);
   const restoreToolbar = useCallback(() => {
     setMinimized(false);
     setToolbarActive(true);
@@ -981,6 +1005,7 @@ export function MesurerClient({
     setArrowPreviewEnd,
     setXrayVisible,
     setAltPressed,
+    pinDistance,
     setToolMode,
     clearSelectionRect,
     clearGuideDragHold,
