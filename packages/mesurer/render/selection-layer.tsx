@@ -19,6 +19,7 @@ type SelectionLayerProps = {
   layoutDetailsEnabled: boolean
   selectorPreview: { element: Element; rect: Rect; copied: boolean } | null
   ownerWindow: Window | null
+  highlightColor: string
   selectedSelectorCopied: boolean
 }
 
@@ -35,6 +36,7 @@ export function SelectionLayer({
   layoutDetailsEnabled,
   selectorPreview,
   ownerWindow,
+  highlightColor,
   selectedSelectorCopied,
 }: SelectionLayerProps) {
   if (!visible) return null
@@ -42,9 +44,21 @@ export function SelectionLayer({
   const selectedMeasurement = selected[0] ?? null
   const hoveringDifferentElement = Boolean(
     selectedMeasurement &&
-      selectorPreview &&
-      selectorPreview.element !== selectedMeasurement.elementRef,
+    selectorPreview &&
+    selectorPreview.element !== selectedMeasurement.elementRef,
   )
+  const fullPageHover = Boolean(
+    hoverRect &&
+    ownerWindow &&
+    hoverRect.width >= ownerWindow.innerWidth * 0.98 &&
+    hoverRect.height >= ownerWindow.innerHeight * 0.98,
+  )
+  const hoverFillColor = fullPageHover
+    ? `color-mix(in oklch, ${highlightColor} 6%, transparent)`
+    : fillColor
+  const hoverOutlineColor = fullPageHover
+    ? `color-mix(in oklch, ${highlightColor} 60%, transparent)`
+    : outlineColor
 
   return (
     <>
@@ -64,8 +78,8 @@ export function SelectionLayer({
       {hoverRect ? (
         <HoverRect
           rect={hoverRect}
-          fillColor={fillColor}
-          outlineColor={outlineColor}
+          fillColor={hoverFillColor}
+          outlineColor={hoverOutlineColor}
           edges={hoverEdges}
         />
       ) : null}

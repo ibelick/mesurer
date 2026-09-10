@@ -46,6 +46,7 @@ type OverlaySelection = {
   selectedEdges: EdgeVisibility[]
   selectorPreview: { element: Element; rect: Rect; copied: boolean } | null
   ownerWindow: Window | null
+  highlightColor: string
   selectedSelectorCopied: boolean
 }
 
@@ -264,6 +265,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         layoutDetailsEnabled={layoutDetailsEnabled}
         selectorPreview={selection.selectorPreview}
         ownerWindow={selection.ownerWindow}
+        highlightColor={selection.highlightColor}
         selectedSelectorCopied={selection.selectedSelectorCopied}
       />
 

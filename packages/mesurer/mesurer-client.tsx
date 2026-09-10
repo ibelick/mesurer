@@ -1344,6 +1344,7 @@ export function MesurerClient({
                 }
               : null,
           ownerWindow,
+          highlightColor: settingsHighlightColor,
           selectedSelectorCopied: Boolean(
             selectedElement && copiedSelector === getElementSelector(selectedElement),
           ),
