@@ -167,17 +167,26 @@ test("shows every comment and opens a thread from the list", async ({ page }) =>
   await page.getByRole("textbox", { name: "Comment" }).fill("Second feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
 
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+  const toolbarBefore = await toolbar.boundingBox();
+  expect(toolbarBefore).not.toBeNull();
   await page.getByRole("button", { name: "Comment menu" }).click();
   await page.getByRole("menuitem", { name: /Show all comments/ }).click();
   const panel = page.getByRole("dialog", { name: "Comments" });
   await expect(panel).toContainText("First feedback.");
+  const toolbarAfter = await toolbar.boundingBox();
+  expect(toolbarAfter).not.toBeNull();
+  if (toolbarBefore && toolbarAfter) {
+    expect(toolbarAfter.width).toBeLessThanOrEqual(toolbarBefore.width + 1);
+    expect(toolbarAfter.height).toBeLessThanOrEqual(toolbarBefore.height + 1);
+  }
   await expect(panel).toContainText("Second feedback.");
   const search = panel.getByRole("searchbox", { name: "Search comments" });
   await search.fill("Second");
   await expect(panel).not.toContainText("First feedback.");
   await expect(panel).toContainText("Second feedback.");
   await search.fill("");
-  await panel.getByRole("button", { name: /You .*First feedback/ }).click();
+  await panel.getByText("First feedback.", { exact: true }).click();
   await expect(panel).toBeVisible();
   await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Annotate tools (2)" })).toHaveAttribute("aria-pressed", "true");

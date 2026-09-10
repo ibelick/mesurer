@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type { ToolMode } from "../core/types";
 import type { CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
@@ -333,6 +334,9 @@ function ToolbarComponent(
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
+  const commentPanelPortalTarget = commentButtonRef.current?.getRootNode().nodeType === 11
+    ? commentButtonRef.current.getRootNode() as DocumentFragment
+    : eventTarget.document.body;
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
@@ -514,6 +518,7 @@ function ToolbarComponent(
       eventTarget,
       open: commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
     });
 
   const selectMode = useCallback(() => {
@@ -1143,7 +1148,7 @@ function ToolbarComponent(
         />
       ) : null}
        </div>
-       <div ref={commentMenuRef} className="msr:relative msr:flex" data-mesurer-comment-ui>
+        <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
        <ToolbarButton
          id="comments"
          active={toolMode === "comments"}
@@ -1171,60 +1176,55 @@ function ToolbarComponent(
          }}
        >
          <CaretDownIcon size={8} />
-        </button>
-        {commentMenuOpen ? (
-          <MenuSurface
-            className={cn(
-              commentsPanelOpen
-                ? "msr:static msr:w-0 msr:border-0 msr:bg-transparent msr:p-0 msr:shadow-none"
-                : "msr:absolute msr:right-0 msr:w-44",
-              !commentsPanelOpen &&
-                (tooltipSide === "bottom"
-                  ? "msr:top-full msr:mt-2"
-                  : "msr:bottom-full msr:mb-2"),
-            )}
-            data-mesurer-comment-ui
-          >
-            {commentsPanelOpen ? (
-              <CommentsPanel
+         </button>
+         {commentMenuOpen ? (
+           commentsPanelOpen ? (
+              createPortal(<CommentsPanel
                 comments={commentThreads}
-                unresolvedIds={unresolvedIds}
-                selectedId={selectedId}
-                panelRef={commentsPanelRef}
-                placement={commentsPlacement}
-                onDelete={onDeleteComment}
-                onDeleteAll={onDeleteAllComments}
-                onCopy={onCopyComments}
-                ownerWindow={eventTarget}
-                copyShortcut={copyCommentsShortcut}
+               unresolvedIds={unresolvedIds}
+               selectedId={selectedId}
+               panelRef={commentsPanelRef}
+               placement={commentsPlacement}
+               onDelete={onDeleteComment}
+               onDeleteAll={onDeleteAllComments}
+               onCopy={onCopyComments}
+               ownerWindow={eventTarget}
+               copyShortcut={copyCommentsShortcut}
                 onSelect={(id) => {
                   if (toolMode !== "comments") preserveToolGroupRef.current = true;
                   onSelectComment(id)
                 }}
-              />
-            ) : (
-              <>
-                <MenuItem
-                  disabled={commentCount === 0}
-                  onClick={openCommentsPanel}
-                >
-                  <span className="msr:flex-1">Show all comments</span>
-                  <span>{commentCount}</span>
-                </MenuItem>
-                <MenuItem
-                  disabled={commentCount === 0}
-                  onClick={() => {
-                    void onCopyComments()
-                    setCommentMenuOpen(false)
-                  }}
-                >
-                  <span className="msr:flex-1">Copy to agent</span>
-                  <span>{commentCount}</span>
-                </MenuItem>
-              </>
-            )}
-          </MenuSurface>
-        ) : null}
+                fixed
+               />, commentPanelPortalTarget)
+           ) : (
+             <MenuSurface
+               className={cn(
+                 "msr:absolute msr:right-0 msr:w-44",
+                 tooltipSide === "bottom"
+                   ? "msr:top-full msr:mt-2"
+                   : "msr:bottom-full msr:mb-2",
+               )}
+               data-mesurer-comment-ui
+             >
+                <>
+                 <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
+                   <span className="msr:flex-1">Show all comments</span>
+                   <span>{commentCount}</span>
+                 </MenuItem>
+                 <MenuItem
+                   disabled={commentCount === 0}
+                   onClick={() => {
+                     void onCopyComments()
+                     setCommentMenuOpen(false)
+                   }}
+                 >
+                   <span className="msr:flex-1">Copy to agent</span>
+                   <span>{commentCount}</span>
+                 </MenuItem>
+               </>
+             </MenuSurface>
+           )
+         ) : null}
       </div>
       <div ref={settingsRef} className="msr:relative msr:flex">
         <ToolbarButton

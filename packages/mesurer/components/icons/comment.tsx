@@ -1,4 +1,4 @@
-export function CommentIcon({ size = 20, strokePx = 1.25, fill = 1 }: { size?: number; strokePx?: number; fill?: number }) {
+export function CommentIcon({ size = 20, strokePx = 1, fill = 1 }: { size?: number; strokePx?: number; fill?: number }) {
   const stroke = (strokePx * 12) / size / fill
 
   return (

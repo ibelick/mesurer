@@ -33,6 +33,7 @@ export function CommentsPanel({
   onDelete,
   panelRef,
   placement,
+  fixed = false,
 }: {
   comments: CommentThread[]
   unresolvedIds: ReadonlySet<string>
@@ -44,7 +45,8 @@ export function CommentsPanel({
   copyShortcut: string
   onDelete: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
-  placement: { side: "top" | "bottom"; height: number; right: number }
+  placement: { side: "top" | "bottom"; height: number; right: number; top?: number; bottom?: number }
+  fixed?: boolean
 }) {
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -89,7 +91,7 @@ export function CommentsPanel({
   }, [openMenuId, panelRef])
 
   return (
-    <div ref={panelRef} role="dialog" aria-label="Comments" className={`msr:absolute msr:right-0 msr:z-[70] msr:flex msr:w-72 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg ${placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"}`} style={{ right: placement.right, height: placement.height, maxHeight: placement.height }} data-mesurer-comment-ui onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+    <div ref={panelRef} role="dialog" aria-label="Comments" className={`${fixed ? "msr:fixed" : "msr:absolute"} msr:right-0 msr:z-[70] msr:flex msr:w-72 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg ${!fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2")}`} style={{ position: fixed ? "fixed" : "absolute", width: fixed ? "18rem" : undefined, zIndex: fixed ? 70 : undefined, pointerEvents: "auto", right: placement.right, top: placement.top, bottom: placement.bottom, height: placement.height, maxHeight: placement.height }} data-mesurer-comment-ui onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
       <div className="msr:flex msr:items-center msr:justify-between msr:px-3 msr:py-1">
         <div>
           <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
