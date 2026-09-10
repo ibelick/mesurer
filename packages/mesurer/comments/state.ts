@@ -1,24 +1,7 @@
 import { useRef, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import { createCommentId, getCommentTargetKey } from "./dom"
+import { createCommentId } from "./dom"
 import type { CommentMessage, CommentTarget, CommentThread } from "./types"
-
-const mergeCommentsByTarget = (comments: CommentThread[]) => {
-  const merged = new Map<string, CommentThread>()
-  for (const comment of comments) {
-    const existing = merged.get(getCommentTargetKey(comment.target))
-    if (!existing) {
-      merged.set(getCommentTargetKey(comment.target), { ...comment, messages: [...comment.messages] })
-      continue
-    }
-    existing.messages.push(...comment.messages)
-    if (comment.updatedAt > existing.updatedAt) {
-      existing.updatedAt = comment.updatedAt
-      existing.status = comment.status
-    }
-  }
-  return [...merged.values()]
-}
 
 export type CommentDraft = {
   target: CommentTarget
@@ -30,7 +13,10 @@ export const useCommentState = (
   initialComments: CommentThread[] = [],
   onChange?: (comments: CommentThread[]) => void,
 ) => {
-  const [comments, setComments] = useState(() => mergeCommentsByTarget(initialComments))
+  const [comments, setComments] = useState(() => initialComments.map((comment) => ({
+    ...comment,
+    messages: [...comment.messages],
+  })))
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<CommentDraft | null>(null)
   const commentsRef = useRef(comments)
@@ -76,27 +62,6 @@ export const useCommentState = (
     const value = text.trim()
     if (!value) return null
     const now = Date.now()
-    const matching = commentsRef.current.filter((comment) => getCommentTargetKey(comment.target) === getCommentTargetKey(draft.target))
-    const existing = matching[0]
-    if (existing) {
-      const message: CommentMessage = {
-        id: createCommentId(),
-        role: "user",
-        text: value,
-        createdAt: now,
-      }
-      updateComments((previous) =>
-        previous.flatMap((comment) => {
-          if (comment.id === existing.id) {
-            return [{ ...comment, messages: [...comment.messages, message], updatedAt: now }]
-          }
-          return matching.some((match) => match.id === comment.id) ? [] : [comment]
-        }),
-      )
-      setDraft(null)
-      setSelectedId(null)
-      return existing
-    }
     const comment: CommentThread = {
       id: createCommentId(),
       target: draft.target,

@@ -79,9 +79,6 @@ export const getCommentTargetAtPoint = (
 
 export const createCommentId = () => `comment-${createId()}`
 
-export const getCommentTargetKey = (target: CommentTarget) =>
-  `${(target.framePath ?? []).join("/")}::${target.selector}`
-
 export const resolveCommentTarget = (
   target: CommentTarget,
   ownerDocument: Document = document,

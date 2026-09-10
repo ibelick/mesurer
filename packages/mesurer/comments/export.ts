@@ -1,5 +1,4 @@
 import type { CommentThread } from "../core/types"
-import { getCommentTargetKey } from "./dom"
 
 const formatTarget = (comment: CommentThread) => {
   const { target } = comment
@@ -8,25 +7,11 @@ const formatTarget = (comment: CommentThread) => {
 }
 
 export const formatCommentsForAgent = (comments: CommentThread[], url = "") => {
-  const groups: Array<{ comment: CommentThread; messages: string[] }> = []
-  for (const comment of comments) {
-    const group = groups.find(
-      ({ comment: grouped }) => getCommentTargetKey(grouped.target) === getCommentTargetKey(comment.target),
-    )
-    if (group) {
-      group.messages.push(...comment.messages.map((message) => message.text))
-    } else {
-      groups.push({
-        comment,
-        messages: comment.messages.map((message) => message.text),
-      })
-    }
-  }
-
   return [
     "# Mesurer Comments",
     url ? `URL: ${url}` : "",
-    ...groups.map(({ comment, messages }, index) => {
+    ...comments.map((comment, index) => {
+      const messages = comment.messages.map((message) => message.text)
       const feedback = messages.length === 1
         ? messages[0]
         : messages.map((message) => `- ${message}`).join("\n")

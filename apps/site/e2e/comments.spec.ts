@@ -322,32 +322,64 @@ test("can cancel comment deletion and edit the user message", async ({ page }) =
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Updated feedback.");
 });
 
-test("shows overflow actions for more than two replies on one element", async ({ page }) => {
+test("keeps separate comments on the same element", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
 
-  for (const [x, y] of [[550, 440], [600, 500], [680, 450]]) {
+  const target = page.getByRole("button", { name: "Nested inner button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  if (!targetBox) return;
+  const points = [
+    { x: targetBox.x + 20, y: targetBox.y + targetBox.height / 2 },
+    { x: targetBox.x + 70, y: targetBox.y + targetBox.height / 2 },
+    { x: targetBox.x + 120, y: targetBox.y + targetBox.height / 2 },
+  ];
+  for (const [index, point] of points.entries()) {
     await page.mouse.move(10, 10);
     await page.waitForTimeout(150);
-    await page.mouse.click(x, y);
-    await page.getByRole("textbox", { name: "Comment" }).fill(`Feedback ${x}-${y}.`);
+    await page.mouse.click(point.x, point.y);
+    await page.getByRole("textbox", { name: "Comment" }).fill(`Feedback ${index}.`);
     await page.getByRole("textbox", { name: "Comment" }).press("Enter");
   }
 
-  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
-  await page.locator("[data-mesurer-comment-pin]").first().hover();
-  await expect(page.locator("[data-mesurer-comment-hover-card]").getByRole("button", { name: "Comment actions" })).toHaveCount(0);
-  await page.locator("[data-mesurer-comment-pin]").first().click();
-  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 550-440.");
-  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 600-500.");
-  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 680-450.");
-  await page.locator("[data-mesurer-comment-popover]").hover();
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).nth(1).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(3);
+  const pins = page.locator("[data-mesurer-comment-pin]");
+  const firstPinBox = await pins.nth(0).boundingBox();
+  const secondPinBox = await pins.nth(1).boundingBox();
+  expect(firstPinBox).not.toBeNull();
+  expect(secondPinBox).not.toBeNull();
+  if (firstPinBox && secondPinBox) {
+    expect(firstPinBox.x !== secondPinBox.x || firstPinBox.y !== secondPinBox.y).toBe(true);
+  }
+  await pins.first().hover();
+  await expect(page.locator("[data-mesurer-comment-hover-card]")).toContainText("Feedback 0.");
+  await expect(page.locator("[data-mesurer-comment-hover-card]")).not.toContainText("Feedback 1.");
+  await pins.first().click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("Feedback 0.");
+  await expect(page.locator("[data-mesurer-comment-popover]")).not.toContainText("Feedback 1.");
+});
+
+test("shows overflow actions for more than two replies on one thread", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(550, 440);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Thread root.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+
+  for (const reply of ["Reply one.", "Reply two.", "Reply three."]) {
+    await page.getByRole("textbox", { name: "Reply to comment" }).fill(reply);
+    await page.getByRole("textbox", { name: "Reply to comment" }).press("Enter");
+  }
+
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await expect(card).toContainText("Reply three.");
+  await card.hover();
+  await card.getByRole("button", { name: "Comment actions" }).nth(1).click();
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
   await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
-  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("button", { name: "Yes" }).click();
-  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
 });
 
 test("closes an open thread with Escape and keeps comment pins clickable when minimized", async ({ page }) => {
@@ -376,11 +408,15 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
 
+  await page.mouse.click(300, 560);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Existing feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("Move this feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
 
-  const pin = page.locator("[data-mesurer-comment-pin]");
+  const pin = page.locator("[data-mesurer-comment-pin]").nth(1);
   await pin.click();
   const pinBox = await pin.boundingBox();
   if (!pinBox) throw new Error("Comment pin is not visible");
@@ -400,12 +436,14 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await page.mouse.up();
   const movedPin = await pin.boundingBox();
   expect(movedPin).not.toBeNull();
-  expect(movedPin!.x + movedPin!.width / 2).toBeCloseTo(300, 0);
+  expect(movedPin!.x + movedPin!.width / 2).toBeCloseTo(318, 0);
   expect(movedPin!.y + movedPin!.height / 2).toBeCloseTo(560, 0);
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(2);
 
   await page.getByRole("button", { name: "Comment menu" }).click();
   await page.getByRole("menuitem", { name: "Copy to agent" }).click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain("Secondary app button");
+  expect(copied).toContain("Existing feedback.");
   expect(copied).toContain("Move this feedback.");
 });

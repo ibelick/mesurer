@@ -6,7 +6,7 @@ import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { getRectFromDom } from "../core/dom"
-import { getCommentTargetKey, isRectEqual } from "./dom"
+import { isRectEqual } from "./dom"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -44,10 +44,43 @@ const markerPoint = (
   y: point?.y ?? rect.top + rect.height * (anchor?.y ?? 0),
 })
 
-const markerStyle = (point: { x: number; y: number }) => ({
-  left: Math.max(4, point.x - 12),
-  top: Math.max(4, point.y - 12),
-})
+const MARKER_SIZE = 24
+const MARKER_OFFSET_DISTANCE = 18
+const MARKER_OFFSETS = [
+  { x: 0, y: 0 },
+  { x: MARKER_OFFSET_DISTANCE, y: 0 },
+  { x: -MARKER_OFFSET_DISTANCE, y: 0 },
+  { x: 0, y: MARKER_OFFSET_DISTANCE },
+  { x: 0, y: -MARKER_OFFSET_DISTANCE },
+  { x: MARKER_OFFSET_DISTANCE, y: MARKER_OFFSET_DISTANCE },
+  { x: -MARKER_OFFSET_DISTANCE, y: MARKER_OFFSET_DISTANCE },
+  { x: MARKER_OFFSET_DISTANCE, y: -MARKER_OFFSET_DISTANCE },
+  { x: -MARKER_OFFSET_DISTANCE, y: -MARKER_OFFSET_DISTANCE },
+]
+
+const markerStyleWithOffset = (
+  point: { x: number; y: number },
+  offsetIndex: number,
+  viewport: { innerWidth: number; innerHeight: number } | null,
+) => {
+  const offset = MARKER_OFFSETS[offsetIndex] ?? {
+    x: 0,
+    y: MARKER_OFFSET_DISTANCE * Math.ceil(offsetIndex / 2),
+  }
+  return {
+    left: Math.min(
+      Math.max(4, point.x - 12 + offset.x),
+      Math.max(4, (viewport?.innerWidth ?? Number.POSITIVE_INFINITY) - 28),
+    ),
+    top: Math.min(
+      Math.max(4, point.y - 12 + offset.y),
+      Math.max(4, (viewport?.innerHeight ?? Number.POSITIVE_INFINITY) - 28),
+    ),
+  }
+}
+
+const targetKey = (comment: CommentThread) =>
+  `${(comment.target.framePath ?? []).join("/")}::${comment.target.selector}`
 
 const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   const minutes = Math.max(0, Math.floor((now - timestamp) / 60000))
@@ -58,8 +91,6 @@ const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   const days = Math.floor(hours / 24)
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
-
-const targetKey = (comment: CommentThread) => getCommentTargetKey(comment.target)
 
 export function CommentsLayer({
   comments,
@@ -111,9 +142,7 @@ export function CommentsLayer({
     : null
   const previewComment = movingComment ?? hovered
   const previewPoint = movingPoint ?? hoveredPoint
-  const previewGroup = previewComment
-    ? comments.filter((comment) => targetKey(comment) === targetKey(previewComment))
-    : []
+  const previewGroup = previewComment ? [previewComment] : []
   useEffect(() => {
     if (!draft || !draftText.trim()) {
       draftOutsideAttemptRef.current = false
@@ -241,6 +270,20 @@ export function CommentsLayer({
       {comments.map((comment, index) => {
         const rect = rects.get(comment.id) ?? comment.target.rect
         const point = markerPoint(rect, comment.target.anchor, movingId === comment.id ? hoverPoint : null)
+        const duplicateIndex = comments
+          .slice(0, index)
+          .filter((candidate) => {
+            if (targetKey(candidate) !== targetKey(comment)) return false
+            const candidateRect = rects.get(candidate.id) ?? candidate.target.rect
+            const candidatePoint = markerPoint(
+              candidateRect,
+              candidate.target.anchor,
+              movingId === candidate.id ? hoverPoint : null,
+            )
+            return Math.abs(candidatePoint.x - point.x) < MARKER_SIZE &&
+              Math.abs(candidatePoint.y - point.y) < MARKER_SIZE
+          })
+          .length
         const active = selectedId === comment.id
         const unresolved = unresolvedIds.has(comment.id)
         return (
@@ -251,7 +294,11 @@ export function CommentsLayer({
             data-mesurer-comment-ui
             aria-label={`Comment ${index + 1}`}
             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:shadow-md msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
-            style={markerStyle(point)}
+            style={markerStyleWithOffset(
+              point,
+              movingId === comment.id ? 0 : duplicateIndex,
+              ownerDocument.defaultView,
+            )}
             onPointerDown={(event) => {
               onStartMove(comment.id, event)
             }}
