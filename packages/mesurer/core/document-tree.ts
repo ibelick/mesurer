@@ -95,3 +95,14 @@ export const getAccessibleDocumentElements = (ownerDocument: Document = document
   accessibleElementCache.set(ownerDocument, { version, elements })
   return elements
 }
+
+export const getAccessibleDocuments = (ownerDocument: Document = document): Document[] => {
+  const documents = [ownerDocument]
+  for (const element of getBodyElementsCached(ownerDocument)) {
+    const childDocument = getAccessibleFrameDocument(element)
+    if (childDocument && !documents.includes(childDocument)) {
+      documents.push(...getAccessibleDocuments(childDocument))
+    }
+  }
+  return documents
+}

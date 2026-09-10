@@ -30,5 +30,5 @@ export const syncXrayStyles = (ownerDocument: Document, visible: boolean) => {
     style.textContent = XRAY_STYLES
     ownerDocument.head.appendChild(style)
   }
-  ownerDocument.body.classList.toggle("xray-mode", visible)
+  ownerDocument.body?.classList.toggle("xray-mode", visible)
 }

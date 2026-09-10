@@ -42,22 +42,27 @@ export function SelectionLayer({
   if (!visible) return null
   const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
   const selectedMeasurement = selected[0] ?? null
+  const isFullPageRect = (rect: Rect) => Boolean(
+    ownerWindow &&
+      rect.width >= ownerWindow.innerWidth * 0.98 &&
+      rect.height >= ownerWindow.innerHeight * 0.98,
+  )
   const hoveringDifferentElement = Boolean(
     selectedMeasurement &&
     selectorPreview &&
     selectorPreview.element !== selectedMeasurement.elementRef,
   )
-  const fullPageHover = Boolean(
-    hoverRect &&
-    ownerWindow &&
-    hoverRect.width >= ownerWindow.innerWidth * 0.98 &&
-    hoverRect.height >= ownerWindow.innerHeight * 0.98,
+  const fullPageHover = Boolean(hoverRect && isFullPageRect(hoverRect))
+  const fullPageSelection = Boolean(
+    selectedMeasurement && isFullPageRect(selectedMeasurement.rect),
   )
+  const fullPageFillColor = `color-mix(in oklch, ${highlightColor} 3%, transparent)`
+  const fullPageOutlineColor = `color-mix(in oklch, ${highlightColor} 60%, transparent)`
   const hoverFillColor = fullPageHover
-    ? `color-mix(in oklch, ${highlightColor} 6%, transparent)`
+    ? fullPageFillColor
     : fillColor
   const hoverOutlineColor = fullPageHover
-    ? `color-mix(in oklch, ${highlightColor} 60%, transparent)`
+    ? fullPageOutlineColor
     : outlineColor
 
   return (
@@ -90,8 +95,8 @@ export function SelectionLayer({
           measurement={measurement}
           transitionMs={transitionMs}
           edgeVisibility={selectedEdges[index]}
-          outlineColor={outlineColor}
-          fillColor={fillColor}
+          outlineColor={fullPageSelection ? fullPageOutlineColor : outlineColor}
+          fillColor={fullPageSelection ? fullPageFillColor : fillColor}
         />
       ))}
       {selectedMeasurement && !hoveringDifferentElement ? (

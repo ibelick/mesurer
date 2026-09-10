@@ -32,6 +32,15 @@ test("inspect tool can select an element inside the iframe", async ({ page }) =>
   }
 });
 
+test("x-ray mode outlines accessible iframe content", async ({ page }) => {
+  await page.goto("/bench");
+  await page.getByRole("button", { name: "X-ray (X)" }).click();
+
+  const frame = page.frameLocator('iframe[title="Complex embedded application"]');
+  await expect(frame.locator("body")).toHaveClass(/xray-mode/);
+  await expect(frame.locator("h1")).toHaveCSS("outline-style", "solid");
+});
+
 test("inspect tool can hover an element inside the iframe", async ({ page }) => {
   await page.goto("/bench");
   const frame = page.getByTitle("Complex embedded application");
