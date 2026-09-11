@@ -60,6 +60,12 @@
   --msr-spacing: 4px;
 }
 
+/* The active eyedropper uses a crosshair; picker controls must always remain neutral. */
+.mesurer-color-picker,
+.mesurer-color-picker * {
+  cursor: default !important;
+}
+
 *,
 *::before,
 *::after {

@@ -1013,6 +1013,13 @@ test("color picker settings apply selected and copy formats", async ({ page }) =
   await expect(picker).toContainText("#ff0000");
   await expect(picker).not.toContainText("rgb");
   await expect(picker).not.toContainText("oklch");
+  await expect.poll(() => picker.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
+  const colorValue = picker.getByRole("button").first();
+  await expect.poll(() => colorValue.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
+  await colorValue.click();
+  await expect(picker).toBeVisible();
+  await page.mouse.click(20, 20);
+  await expect(picker).toHaveCount(0);
 });
 
 test("guide sliders do not drag the toolbar", async ({ page }) => {

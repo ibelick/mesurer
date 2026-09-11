@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { cn } from "../core/utils"
@@ -39,6 +39,17 @@ export function ColorPicker({
     },
     [ownerWindow, tooltip],
   )
+
+  useEffect(() => {
+    if (!active) return
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const panel = panelRef.current
+      if (panel && event.composedPath().includes(panel)) return
+      onClose()
+    }
+    ownerWindow.addEventListener("pointerdown", closeOnOutsidePointerDown)
+    return () => ownerWindow.removeEventListener("pointerdown", closeOnOutsidePointerDown)
+  }, [active, onClose, ownerWindow])
 
   useLayoutEffect(() => {
     if (!active) return
@@ -104,7 +115,7 @@ export function ColorPicker({
     <div
       ref={panelRef}
       className={cn(
-        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
+        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
         side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
       )}
       role="dialog"
@@ -145,7 +156,7 @@ export function ColorPicker({
                   copyValue(formatColor(sample, headerFormat))
                 }
                 tooltip={tooltip}
-                className="msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
+                className="msr:cursor-default msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
               />
             </div>
           ) : (
@@ -169,7 +180,7 @@ export function ColorPicker({
                   value={value}
                   onCopy={() => copyValue(value)}
                   tooltip={tooltip}
-                  className="msr:tabular-nums msr:text-black msr:hover:underline"
+                  className="msr:cursor-default msr:tabular-nums msr:text-black msr:hover:underline"
                 />
               </div>
             )
