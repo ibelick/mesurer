@@ -160,7 +160,6 @@ export type ToolMode =
   | "select"
   | "selection"
   | "guides"
-  | "text-inspector"
   | "xray"
   | "rulers"
   | "arrows"
@@ -168,4 +167,4 @@ export type ToolMode =
   | "text"
   | "comments"
 
-export type PersistentToolMode = Exclude<ToolMode, "none" | "text-inspector" | "xray" | "rulers">
+export type PersistentToolMode = Exclude<ToolMode, "none" | "xray" | "rulers">

@@ -38,7 +38,6 @@ import {
   MinusIcon,
   RulerIcon,
   RulersIcon,
-  TextInspectorIcon,
   TextIcon,
   XrayIcon,
   CommentIcon,
@@ -121,7 +120,6 @@ const toolGroupForMode = (
   if (colorPickerActive) return "inspect";
   if (
     mode === "select" ||
-    mode === "text-inspector" ||
     mode === "guides" ||
     mode === "xray" ||
     mode === "rulers"
@@ -150,7 +148,6 @@ const exclusiveToolId = (
   if (colorPickerActive) return "color-picker";
   switch (mode) {
     case "select":
-    case "text-inspector":
     case "guides":
     case "selection":
     case "arrows":
@@ -580,17 +577,6 @@ function ToolbarComponent(
     setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
     onInteract()
   }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
-
-  const textInspectorMode = useCallback(() => {
-    onCancelTransient();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
-    setToolMode((prev) =>
-      prev === "text-inspector" ? "none" : "text-inspector",
-    );
-    onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const textMode = useCallback(() => {
     onCancelTransient();
@@ -1043,17 +1029,6 @@ function ToolbarComponent(
           </MenuSurface>
         ) : null}
       </div>
-      <ToolbarButton
-        id="text-inspector"
-        active={toolMode === "text-inspector"}
-        label="Typography"
-        shortcut="A"
-        onClick={textInspectorMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text-inspector"}
-      >
-        <TextInspectorIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
       <ToolbarButton
         id="color-picker"
         active={colorPickerActive}

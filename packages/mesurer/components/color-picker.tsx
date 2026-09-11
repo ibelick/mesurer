@@ -5,7 +5,8 @@ import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { clampOverlayPosition } from "../core/overlay-position"
-import { Tooltip, useTooltip } from "./tooltip"
+import { CopyableValue } from "./copyable-value"
+import { useTooltip } from "./tooltip"
 
 type ColorPickerProps = {
   active: boolean
@@ -15,56 +16,6 @@ type ColorPickerProps = {
   favoriteFormat: ColorPickerFormat
   ownerWindow: Window
   onClose: () => void
-}
-
-type CopyableColorValueProps = {
-  id: string
-  value: string
-  copiedId: string | null
-  onCopy: () => void
-  onTooltipEnter: (id: string) => void
-  tooltip: ReturnType<typeof useTooltip>
-  className?: string
-}
-
-function CopyableColorValue({
-  id,
-  value,
-  copiedId,
-  onCopy,
-  onTooltipEnter,
-  tooltip,
-  className,
-}: CopyableColorValueProps) {
-  const copied = copiedId === id
-  const showTooltip =
-    tooltip.visibleTooltipId === id ||
-    (copied && tooltip.visibleTooltipId === null)
-
-  return (
-    <span
-      className="msr:relative msr:inline-flex"
-      onMouseLeave={tooltip.onTooltipLeave}
-    >
-      <button
-        type="button"
-        className={className}
-        onMouseEnter={() => onTooltipEnter(id)}
-        onFocus={() => onTooltipEnter(id)}
-        onBlur={tooltip.onTooltipLeave}
-        onClick={onCopy}
-      >
-        {value}
-      </button>
-      <Tooltip
-        label={copied ? "Copied!" : "Click to copy"}
-        visible={showTooltip}
-        instant={copied || tooltip.tooltipInstant}
-        side="bottom"
-        className="msr:z-10"
-      />
-    </span>
-  )
 }
 
 export function ColorPicker({
@@ -77,40 +28,16 @@ export function ColorPicker({
   onClose,
 }: ColorPickerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const copyTimeoutRef = useRef<number | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [side, setSide] = useState<"top" | "bottom">("bottom")
   const tooltip = useTooltip()
 
   const copyValue = useCallback(
-    (id: string, value: string) => {
+    (value: string) => {
       const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(value)
       void clipboardWrite?.catch(() => undefined)
       tooltip.onTooltipLeave()
-      setCopiedId(id)
-      if (copyTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(copyTimeoutRef.current)
-      }
-      copyTimeoutRef.current = ownerWindow.setTimeout(() => {
-        copyTimeoutRef.current = null
-        setCopiedId(null)
-      }, 1500)
     },
     [ownerWindow, tooltip],
-  )
-
-  const handleTooltipEnter = useCallback(
-    (id: string) => {
-      if (copiedId !== null && copiedId !== id) {
-        if (copyTimeoutRef.current !== null) {
-          ownerWindow.clearTimeout(copyTimeoutRef.current)
-          copyTimeoutRef.current = null
-        }
-        setCopiedId(null)
-      }
-      tooltip.onTooltipEnter(id)
-    },
-    [copiedId, ownerWindow, tooltip],
   )
 
   useLayoutEffect(() => {
@@ -158,10 +85,6 @@ export function ColorPicker({
     resizeObserver.observe(panel)
     return () => {
       if (scheduled) ownerWindow.cancelAnimationFrame(frame)
-      if (copyTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(copyTimeoutRef.current)
-        copyTimeoutRef.current = null
-      }
       resizeObserver.disconnect()
       ownerWindow.removeEventListener("resize", schedulePosition)
       ownerWindow.removeEventListener("scroll", schedulePosition, true)
@@ -215,14 +138,12 @@ export function ColorPicker({
                 style={{ backgroundColor: colorToHex(sample) }}
                 aria-hidden="true"
               />
-              <CopyableColorValue
+              <CopyableValue
                 id={headerFormat}
                 value={formatColor(sample, headerFormat)}
-                copiedId={copiedId}
                 onCopy={() =>
-                  copyValue(headerFormat, formatColor(sample, headerFormat))
+                  copyValue(formatColor(sample, headerFormat))
                 }
-                onTooltipEnter={handleTooltipEnter}
                 tooltip={tooltip}
                 className="msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
               />
@@ -243,12 +164,10 @@ export function ColorPicker({
                 <span className="msr:w-9 msr:text-black/45">
                   {format}
                 </span>
-                <CopyableColorValue
+                <CopyableValue
                   id={format}
                   value={value}
-                  copiedId={copiedId}
-                  onCopy={() => copyValue(format, value)}
-                  onTooltipEnter={handleTooltipEnter}
+                  onCopy={() => copyValue(value)}
                   tooltip={tooltip}
                   className="msr:tabular-nums msr:text-black msr:hover:underline"
                 />

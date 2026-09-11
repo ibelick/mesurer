@@ -14,7 +14,6 @@ import type { ToolMode } from "../core/types"
 
 const DOUBLE_ESCAPE_MS = 1000
 const SHORTCUT_TOOL_MODES: Partial<Record<string, ToolMode>> = {
-  a: "text-inspector",
   d: "arrows",
   g: "guides",
   i: "select",

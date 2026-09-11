@@ -6,9 +6,10 @@
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
-  --color-ink-900: #0f172a;
+  --color-ink-900: #18181b;
 }
 
 @layer base {
@@ -39,16 +40,17 @@
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
-  --color-ink-900: #0f172a;
+  --color-ink-900: #18181b;
 }
 
 :host {
   all: initial;
   display: block;
   color-scheme: light;
-  color: #0f172a;
+  color: var(--msr-color-ink-900);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   font-weight: 400;

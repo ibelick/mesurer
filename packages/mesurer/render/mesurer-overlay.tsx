@@ -21,6 +21,7 @@ import { DistancesLayer } from "./distances-layer"
 import { GuidesLayer } from "./guides-layer"
 import type { OptionContainerLines } from "./option-container-lines"
 import { SelectionLayer } from "./selection-layer"
+import type { TypographyInfo } from "../runtime/text-inspector-typography"
 import { ArrowsLayer } from "./arrows-layer"
 import { TextLayer } from "./text-layer"
 import { PenLayer } from "./pen-layer"
@@ -48,6 +49,7 @@ type OverlaySelection = {
   ownerWindow: Window | null
   highlightColor: string
   selectedSelectorCopied: boolean
+  selectedTypography: TypographyInfo | null
 }
 
 type OverlayDistances = {
@@ -200,7 +202,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     interactive &&
     overlayVisible &&
     (toolMode !== "none" || Boolean(comments?.selectedId)) &&
-    toolMode !== "text-inspector" &&
     toolMode !== "xray" &&
     toolMode !== "rulers"
   const selectionVisible = toolMode === "select"
@@ -267,6 +268,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         ownerWindow={selection.ownerWindow}
         highlightColor={selection.highlightColor}
         selectedSelectorCopied={selection.selectedSelectorCopied}
+        selectedTypography={selection.selectedTypography}
       />
 
       {toolMode === "selection" && marqueeRect ? (

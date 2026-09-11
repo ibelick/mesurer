@@ -32,7 +32,7 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { useTextInspector } from "./hooks/use-text-inspector";
+import { TypographyInspector, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
@@ -362,12 +362,10 @@ export function MesurerClient({
       updateTarget: updateCommentTarget,
     },
   });
-  const textInspector = useTextInspector(
-    portalTarget,
-    toolMode,
-    settingsOpen,
-    minimized,
-  );
+  const typographyInspectorRef = useRef<TypographyInspector | null>(null);
+  if (!typographyInspectorRef.current) {
+    typographyInspectorRef.current = new TypographyInspector(ownerDocument, ownerWindow);
+  }
   const textDraftInputRef = useRef<HTMLElement | null>(null);
   const textDraftRef = useRef(textDraft);
   const committedTextEditorsRef = useRef(new WeakSet<HTMLElement>());
@@ -612,13 +610,11 @@ export function MesurerClient({
     },
   });
   const undo = useCallback(() => {
-    if (toolMode === "text-inspector" && textInspector.undo()) return;
     undoHistory();
-  }, [textInspector, toolMode, undoHistory]);
+  }, [undoHistory]);
   const redo = useCallback(() => {
-    if (toolMode === "text-inspector" && textInspector.redo()) return;
     redoHistory();
-  }, [redoHistory, textInspector, toolMode]);
+  }, [redoHistory]);
   const annotationSelection = useAnnotationSelection({
     enabled,
     toolMode,
@@ -853,6 +849,58 @@ export function MesurerClient({
   });
   const [copiedSelector, setCopiedSelector] = useState<string | null>(null);
   const selectorCopyTimeoutRef = useRef<number | null>(null);
+  const [typographyRevision, setTypographyRevision] = useState(0);
+  useEffect(() => {
+    if (!selectedElement) return;
+    const elementWindow = selectedElement.ownerDocument.defaultView;
+    if (!elementWindow) return;
+    const refresh = () => setTypographyRevision((revision) => revision + 1);
+    const resizeObserver = typeof elementWindow.ResizeObserver === "function"
+      ? new elementWindow.ResizeObserver(refresh)
+      : null;
+    resizeObserver?.observe(selectedElement);
+    const mutationObserver = new elementWindow.MutationObserver(refresh);
+    const stylesheetObserver = new elementWindow.MutationObserver((records) => {
+      const stylesheetChanged = records.some((record) => {
+        if (record.type === "characterData") {
+          return (record.target.parentElement?.closest("style") ?? null) !== null;
+        }
+        return [record.target, ...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some((node) => {
+          if (!(node instanceof elementWindow.Element)) return false;
+          return node.matches("style, link[rel~='stylesheet']") || node.querySelector("style, link[rel~='stylesheet']") !== null;
+        });
+      });
+      if (stylesheetChanged) refresh();
+    });
+    let node: Element | null = selectedElement;
+    while (node) {
+      mutationObserver.observe(node, { attributes: true, attributeFilter: ["class", "style"] });
+      node = node.parentElement;
+    }
+    stylesheetObserver.observe(selectedElement.ownerDocument.head ?? selectedElement.ownerDocument, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    elementWindow.addEventListener("resize", refresh);
+    elementWindow.document.fonts?.addEventListener("loadingdone", refresh);
+    elementWindow.document.fonts?.addEventListener("loadingerror", refresh);
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
+      stylesheetObserver.disconnect();
+      elementWindow.removeEventListener("resize", refresh);
+      elementWindow.document.fonts?.removeEventListener("loadingdone", refresh);
+      elementWindow.document.fonts?.removeEventListener("loadingerror", refresh);
+    };
+  }, [selectedElement]);
+  const selectedTypography = useMemo<TypographyInfo | null>(() => {
+    if (!selectedElement) return null;
+    const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
+    if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
+    if (!selectedElement.textContent?.trim()) return null;
+    return typographyInspectorRef.current?.getFull(selectedElement) ?? null;
+  }, [selectedElement, typographyRevision]);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1137,8 +1185,7 @@ export function MesurerClient({
       return copied
     },
     dismissInspectorPins: () => {
-      const clearedInspectorPins = textInspector.clear()
-      if (heldDistancesRef.current.length === 0) return clearedInspectorPins
+      if (heldDistancesRef.current.length === 0) return false
       recordSnapshot()
       setHeldDistancesPersisted([])
       return true
@@ -1348,10 +1395,11 @@ export function MesurerClient({
               : null,
           ownerWindow,
           highlightColor: settingsHighlightColor,
-          selectedSelectorCopied: Boolean(
-            selectedElement && copiedSelector === getElementSelector(selectedElement),
-          ),
-        },
+           selectedSelectorCopied: Boolean(
+             selectedElement && copiedSelector === getElementSelector(selectedElement),
+           ),
+           selectedTypography,
+         },
         distances: {
           held: heldDistances,
           optionPair: optionPairOverlay,

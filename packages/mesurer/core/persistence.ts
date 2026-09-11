@@ -400,10 +400,11 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     !Array.isArray(input.measurements) ||
     !Array.isArray(input.heldDistances)
   ) return null
+  const toolMode = input.toolMode === "text-inspector" ? "select" : input.toolMode
   return {
     enabled: input.enabled,
     xrayVisible: typeof input.xrayVisible === "boolean" ? input.xrayVisible : input.toolMode === "xray",
-    toolMode: input.toolMode,
+    toolMode,
     rulersVisible: input.rulersVisible,
     guideOrientation: input.guideOrientation,
     guides: input.guides.filter(isGuide),

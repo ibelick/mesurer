@@ -42,7 +42,7 @@ export type TypographyInfo = {
 
 type FlatRule = { rule: CSSStyleRule; mediaOk: boolean; order: number };
 type Candidate = {
-  name: string;
+  name: string | null;
   specificity: number;
   order: number;
   important: boolean;
@@ -118,6 +118,8 @@ export class TypographyInspector {
           mediaOk,
           order: currentOrder,
         });
+      } else if ("cssRules" in rule) {
+        this.collectRules((rule as CSSGroupingRule).cssRules, output, mediaOk, order);
       }
     }
   }
@@ -146,10 +148,9 @@ export class TypographyInspector {
       while (node && result[prop] === null) {
         let winner: Candidate | undefined;
         const inlineValue = node.style.getPropertyValue(prop);
-        const inlineName = extractVarName(inlineValue);
-        if (inlineName) {
+        if (inlineValue) {
           winner = {
-            name: inlineName,
+            name: extractVarName(inlineValue),
             specificity: Number.MAX_SAFE_INTEGER,
             order: Number.MAX_SAFE_INTEGER,
             important: node.style.getPropertyPriority(prop) === "important",
@@ -165,10 +166,10 @@ export class TypographyInspector {
             continue;
           }
           if (!matches) continue;
-          const name = extractVarName(rule.style.getPropertyValue(prop));
-          if (!name) continue;
+          const value = rule.style.getPropertyValue(prop);
+          if (!value) continue;
           const candidate = {
-            name,
+            name: extractVarName(value),
             specificity: selectorSpecificity(rule.selectorText),
             order,
             important: rule.style.getPropertyPriority(prop) === "important",
@@ -176,7 +177,10 @@ export class TypographyInspector {
           if (wins(candidate, winner)) winner = candidate;
         }
 
-        if (winner) result[prop] = winner.name;
+        if (winner) {
+          if (winner.name) result[prop] = winner.name;
+          break;
+        }
         node = node.parentElement;
       }
     }

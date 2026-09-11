@@ -3,6 +3,9 @@ import type { InspectMeasurement, Rect } from "../core/types"
 import { formatLayoutDetailParts } from "../core/layout-details"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { CheckIcon } from "./icons"
+import type { TypographyInfo } from "../runtime/text-inspector-typography"
+import { CopyableValue } from "./copyable-value"
+import { useTooltip } from "./tooltip"
 
 type InspectInfoCardProps = {
   ownerWindow: Window | null
@@ -11,6 +14,7 @@ type InspectInfoCardProps = {
   measurement?: InspectMeasurement | null
   layoutDetailsEnabled: boolean
   copied: boolean
+  typography?: TypographyInfo | null
 }
 
 const formatValue = (value: number) => Math.round(value)
@@ -22,6 +26,7 @@ export function InspectInfoCard({
   measurement,
   layoutDetailsEnabled,
   copied,
+  typography,
 }: InspectInfoCardProps) {
   const overlay = useOverlayPosition({
     ownerWindow,
@@ -35,34 +40,73 @@ export function InspectInfoCard({
   })
   const selector = element ? getElementSelector(element) : null
   const displayRect = measurement?.rect ?? rect
+  const tooltip = useTooltip()
   const layoutDetails = measurement && layoutDetailsEnabled
     ? formatLayoutDetailParts({ padding: measurement.padding, gap: measurement.gap })
     : []
+
+  const copyValue = async (value: string) => {
+    try {
+      const clipboardWrite = ownerWindow?.navigator.clipboard?.writeText(value)
+      if (!clipboardWrite) return
+      await clipboardWrite
+      tooltip.onTooltipLeave()
+    } catch {
+      // Clipboard access can be unavailable outside a user gesture or secure context.
+    }
+  }
 
   return (
     <div
       ref={overlay.overlayRef}
       data-mesurer-inspect-info-card
-      className="msr:pointer-events-none msr:absolute msr:z-10 msr:w-60 msr:rounded msr:bg-ink-900 msr:px-1.5 msr:py-1 msr:text-[10px] msr:text-ink-50 msr:select-none"
+      className="msr:pointer-events-auto msr:absolute msr:z-10 msr:w-60 msr:rounded msr:bg-ink-900 msr:px-1.5 msr:py-1 msr:text-[10px] msr:text-ink-50 msr:select-text"
+      style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: 10 }}
       title={selector ?? undefined}
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerMove={(event) => event.stopPropagation()}
+      onPointerUp={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onMouseMove={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <div className="msr:flex msr:items-center msr:justify-between msr:gap-2">
         {selector ? (
           <div data-mesurer-inspect-selector className="msr:flex msr:min-w-0 msr:flex-1 msr:items-center msr:gap-1 msr:font-mono msr:font-medium">
-            <span className="msr:truncate">{selector}</span>
+            <CopyableValue
+              id="selector"
+              value={selector}
+              onCopy={() => copyValue(selector)}
+              tooltip={tooltip}
+              className="msr:min-w-0 msr:truncate msr:font-mono msr:font-medium msr:hover:underline"
+            />
             {copied ? <span data-mesurer-selector-copied aria-label="Selector copied" className="msr:shrink-0"><CheckIcon size={10} className="msr:text-ink-50" /></span> : null}
           </div>
         ) : <span />}
-        <div className="msr:shrink-0 msr:whitespace-nowrap msr:tabular-nums">
-          {formatValue(displayRect.width)} x {formatValue(displayRect.height)}
-        </div>
+        <CopyableValue
+          id="dimensions"
+          value={`${formatValue(displayRect.width)} x ${formatValue(displayRect.height)}`}
+          onCopy={() => copyValue(`${formatValue(displayRect.width)} x ${formatValue(displayRect.height)}`)}
+          tooltip={tooltip}
+          className="msr:shrink-0 msr:whitespace-nowrap msr:tabular-nums msr:hover:underline"
+        />
       </div>
       {layoutDetails.length > 0 ? (
         <div className="msr:mt-1 msr:flex msr:flex-col msr:gap-0.5" data-mesurer-layout-details="true">
           {layoutDetails.map((part) => (
             <div key={part.label} className="msr:flex msr:w-full msr:items-baseline msr:justify-between">
               <span className="msr:text-ink-300">{part.label}</span>
-              <span className="msr:tabular-nums msr:text-ink-50">{part.value}</span>
+              <CopyableValue id={`layout-${part.label}`} value={part.value} onCopy={() => copyValue(part.value)} tooltip={tooltip} className="msr:tabular-nums msr:text-ink-50 msr:hover:underline" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {typography ? (
+        <div className="msr:mt-1 msr:flex msr:flex-col msr:gap-0.5" data-mesurer-typography-details="true">
+          {typography.rows.map((row) => (
+            <div key={row.label} className="msr:flex msr:w-full msr:items-baseline msr:justify-between msr:gap-2">
+              <span className="msr:text-ink-300">{row.label}</span>
+              <CopyableValue id={`typography-${row.label}`} value={row.value} onCopy={() => copyValue(row.value)} tooltip={tooltip} />
             </div>
           ))}
         </div>

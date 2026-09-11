@@ -13,6 +13,88 @@ test("starts with the Select tool active", async ({ page }) => {
   );
 });
 
+test("Inspect shows typography details in the info card", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveCount(0);
+
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  const card = page.locator("[data-mesurer-inspect-info-card]");
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  const cardBox = await card.boundingBox();
+  expect(cardBox).not.toBeNull();
+  const hitTarget = await card.evaluate((node, point) => {
+    const root = node.getRootNode();
+    const element = root instanceof ShadowRoot ? root.elementFromPoint(point.x, point.y) : document.elementFromPoint(point.x, point.y);
+    return { matched: element?.closest("[data-mesurer-inspect-info-card]") !== null, tag: element?.tagName, className: element?.className };
+  }, { x: cardBox!.x + cardBox!.width / 2, y: cardBox!.y + cardBox!.height / 2 });
+  expect(hitTarget.matched).toBe(true);
+  await card.hover();
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
+  await expect(card).toContainText("Family");
+  const familyValue = card.getByRole("button", { name: "Arial" });
+  const familyBox = await familyValue.boundingBox();
+  expect(familyBox).not.toBeNull();
+  await page.mouse.move(familyBox!.x + familyBox!.width, familyBox!.y + familyBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(familyBox!.x, familyBox!.y + familyBox!.height / 2);
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toContain("Arial");
+  await expect(card).toContainText("Size");
+  await expect(card).toContainText("Weight");
+  await expect(card).toContainText("Line");
+  await expect(card).toContainText("Tracking");
+});
+
+test("Inspect value tooltip appears on hover", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  const card = page.locator("[data-mesurer-inspect-info-card]");
+  const familyValue = card.getByRole("button", { name: "Arial" });
+  const familyBox = await familyValue.boundingBox();
+  expect(familyBox).not.toBeNull();
+  const familyPoint = { x: familyBox!.x + familyBox!.width / 2, y: familyBox!.y + familyBox!.height / 2 };
+  await expect.poll(() => card.evaluate((node, point) => {
+    const root = node.getRootNode();
+    const element = root instanceof ShadowRoot ? root.elementFromPoint(point.x, point.y) : document.elementFromPoint(point.x, point.y);
+    return { tag: element?.tagName, text: element?.textContent };
+  }, familyPoint)).toMatchObject({ tag: "BUTTON", text: "Arial" });
+  await page.mouse.move(20, 20);
+  await page.mouse.move(familyPoint.x, familyPoint.y);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.className.includes("opacity-100")).length,
+  )).toBe(1);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.map((node) => getComputedStyle(node).opacity),
+  )).toContain("1");
+  await familyValue.click();
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Copied!" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(1);
+  const sizeValue = card.getByRole("button", { name: "13.3px" });
+  await sizeValue.hover();
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Copied!" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(0);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Click to copy" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(1);
+  await page.mouse.move(20, 20);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => getComputedStyle(node).opacity === "1").length,
+  )).toBe(0);
+});
+
 test("does not run shortcuts while typing in a page field", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Inspect (I)" }).click();
@@ -104,29 +186,6 @@ test("minimizes to one button and restores the workspace", async ({ page }) => {
     "true",
   );
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
-});
-
-test("minimizing pauses Typography without clearing pinned cards", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.mouse.click(300, 280);
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("button", { name: "Minimize toolbar" }).click();
-  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.mouse.click(300, 560);
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-
-  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
-  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
 });
 
 test("dragging the minimized button does not restore the toolbar", async ({ page }) => {
@@ -275,19 +334,6 @@ test("Escape turns off X-ray and rulers with the active inspect tool", async ({
     "aria-pressed",
     "false",
   );
-});
-
-test("Escape exits Typography after inspecting a page element", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-  await page.mouse.move(300, 280);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
 });
 
 test("double Escape minimizes after closing Settings", async ({ page }) => {
@@ -553,96 +599,6 @@ test("Selection mode draws a selection rectangle while dragging", async ({ page 
 
   await page.mouse.up();
   await expect(rectangle).toHaveCount(0);
-});
-
-test("font inspector mode participates in undo and redo history", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-
-  const textInspectorButton = page.getByRole("button", {
-    name: "Typography (A)",
-  });
-
-  await textInspectorButton.click();
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.keyboard.press("Control+Z");
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.keyboard.press("Control+Shift+Z");
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.mouse.move(100, 100);
-  await page.mouse.move(300, 280);
-  await page.mouse.click(300, 280);
-  const pinnedCard = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCard).toHaveCount(1);
-
-  await page.keyboard.press("Control+Z");
-  await expect(pinnedCard).toHaveCount(0);
-
-  await page.keyboard.press("Control+Shift+Z");
-  await expect(pinnedCard).toHaveCount(1);
-
-  await page.keyboard.press("Escape");
-  await expect(pinnedCard).toHaveCount(0);
-});
-
-test("font inspector refreshes styles and brings repeated pins to front", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-
-  await page.mouse.click(300, 280);
-  await page.mouse.click(300, 560);
-  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCards).toHaveCount(2);
-  await expect(pinnedCards.last()).toContainText("Secondary app button");
-
-  await page.mouse.click(300, 280);
-  await expect(pinnedCards).toHaveCount(2);
-  await expect(pinnedCards.last()).toContainText("Underlying app button");
-
-  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
-    (button as HTMLElement).style.fontSize = "24px";
-  });
-  await page.mouse.move(100, 100);
-  await page.mouse.move(300, 280);
-  await expect(
-    page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)"),
-  ).toContainText("24px");
-});
-
-test("text inspector does not inspect settings", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.getByRole("button", { name: "Settings" }).click();
-
-  const heading = page.getByRole("heading", { name: "Guides" });
-  await heading.hover();
-  await expect(page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)")).toHaveCount(0);
-
-  await heading.click();
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-});
-
-test("removing a source element silently removes its pinned card", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.mouse.click(300, 280);
-
-  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCards).toHaveCount(1);
-  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
-    button.remove();
-  });
-  await page.mouse.move(100, 100);
-  await expect(pinnedCards).toHaveCount(0);
 });
 
 test("x-ray mode outlines the page without hiding the toolbar", async ({

@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -131,7 +132,9 @@ export function Tooltip({
 
 export function useTooltip() {
   const [visibleTooltipId, setVisibleTooltipId] = useState<string | null>(null)
+  const [copiedTooltipId, setCopiedTooltipId] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
+  const copiedTimerRef = useRef<number | null>(null)
   const instantRef = useRef(false)
   const [tooltipInstant, setTooltipInstant] = useState(false)
 
@@ -141,9 +144,27 @@ export function useTooltip() {
     timerRef.current = null
   }, [])
 
-  const onTooltipEnter = useCallback((id: string) => {
+  const clearCopiedTimer = useCallback(() => {
+    if (copiedTimerRef.current === null) return
+    window.clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = null
+  }, [])
+
+  const clearCopiedTooltip = useCallback(() => {
+    clearCopiedTimer()
+    setCopiedTooltipId(null)
+  }, [clearCopiedTimer])
+
+  useEffect(() => () => {
     clearTimer()
-    if (instantRef.current) {
+    clearCopiedTimer()
+  }, [clearCopiedTimer, clearTimer])
+
+  const onTooltipEnter = useCallback((id: string, instant = false) => {
+    clearTimer()
+    if (copiedTooltipId && copiedTooltipId !== id) clearCopiedTooltip()
+    if (copiedTooltipId === id) return
+    if (instant || instantRef.current) {
       setTooltipInstant(true)
       setVisibleTooltipId(id)
       return
@@ -155,7 +176,18 @@ export function useTooltip() {
       instantRef.current = true
       timerRef.current = null
     }, TOOLTIP_DELAY_MS)
-  }, [clearTimer])
+  }, [clearCopiedTooltip, clearTimer, copiedTooltipId])
+
+  const onTooltipCopied = useCallback((id: string) => {
+    clearTimer()
+    clearCopiedTimer()
+    setVisibleTooltipId(null)
+    setCopiedTooltipId(id)
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null
+      setCopiedTooltipId(null)
+    }, 1200)
+  }, [clearCopiedTimer, clearTimer])
 
   const onTooltipLeave = useCallback(() => {
     clearTimer()
@@ -171,8 +203,10 @@ export function useTooltip() {
 
   return {
     visibleTooltipId,
+    copiedTooltipId,
     tooltipInstant,
     onTooltipEnter,
+    onTooltipCopied,
     onTooltipLeave,
     onTooltipContainerLeave,
   }

@@ -294,6 +294,16 @@ export const useMesurerPointer = ({
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const toolbarNode = toolbarRef.current
       if (toolbarNode && toolbarNode.contains(event.target as Node)) return
+      const isInspectCardEvent = event.nativeEvent.composedPath().some((node) => {
+        if (!node || typeof node !== "object" || !("getAttribute" in node)) return false
+        return (node as Element).getAttribute("data-mesurer-inspect-info-card") !== null
+      })
+      if (isInspectCardEvent) {
+        hover.hoverPointRef.current = null
+        setHoverRect(null)
+        setHoverElement(null)
+        return
+      }
       if (settingsOpen) return
       if (!enabled) return
       const point = { x: event.clientX, y: event.clientY }

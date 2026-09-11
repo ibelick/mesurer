@@ -5,6 +5,7 @@ import type { InspectMeasurement, Rect } from "../core/types"
 import { ActiveSelectionRect } from "./active-selection-rect"
 import { HoverRect } from "./hover-rect"
 import { InspectInfoCard } from "../components/inspect-info-card"
+import type { TypographyInfo } from "../runtime/text-inspector-typography"
 
 type SelectionLayerProps = {
   visible: boolean
@@ -21,6 +22,7 @@ type SelectionLayerProps = {
   ownerWindow: Window | null
   highlightColor: string
   selectedSelectorCopied: boolean
+  selectedTypography: TypographyInfo | null
 }
 
 export function SelectionLayer({
@@ -38,6 +40,7 @@ export function SelectionLayer({
   ownerWindow,
   highlightColor,
   selectedSelectorCopied,
+  selectedTypography,
 }: SelectionLayerProps) {
   if (!visible) return null
   const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
@@ -52,6 +55,7 @@ export function SelectionLayer({
     selectorPreview &&
     selectorPreview.element !== selectedMeasurement.elementRef,
   )
+  const showHoverRect = Boolean(hoverRect && (!selectedMeasurement || hoveringDifferentElement))
   const fullPageHover = Boolean(hoverRect && isFullPageRect(hoverRect))
   const fullPageSelection = Boolean(
     selectedMeasurement && isFullPageRect(selectedMeasurement.rect),
@@ -80,7 +84,7 @@ export function SelectionLayer({
         />
       ) : null}
 
-      {hoverRect ? (
+      {showHoverRect && hoverRect ? (
         <HoverRect
           rect={hoverRect}
           fillColor={hoverFillColor}
@@ -107,6 +111,7 @@ export function SelectionLayer({
           measurement={selectedMeasurement}
           layoutDetailsEnabled={layoutDetailsEnabled}
           copied={selectedSelectorCopied}
+          typography={selectedTypography}
         />
       ) : selectorPreview ? (
         <InspectInfoCard ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />

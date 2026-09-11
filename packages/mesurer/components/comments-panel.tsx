@@ -64,7 +64,7 @@ export function CommentsPanel({
         comment.messages.some((message) => message.text.toLowerCase().includes(normalizedQuery)),
       )
     : orderedComments
-  const portalTarget = (panelRef.current?.closest(".mesurer-root") ?? panelRef.current?.getRootNode() ?? ownerWindow.document.body) as Element | DocumentFragment
+  const portalTarget = panelRef.current ?? ownerWindow.document.body
 
   useEffect(() => {
     const handleCopied = () => {
@@ -91,7 +91,7 @@ export function CommentsPanel({
   }, [openMenuId, panelRef])
 
   return (
-    <div ref={panelRef} role="dialog" aria-label="Comments" className={`${fixed ? "msr:fixed" : "msr:absolute"} msr:right-0 msr:z-[70] msr:flex msr:w-72 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg ${!fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2")}`} style={{ position: fixed ? "fixed" : "absolute", width: fixed ? "18rem" : undefined, zIndex: fixed ? 70 : undefined, pointerEvents: "auto", right: placement.right, top: placement.top, bottom: placement.bottom, height: placement.height, maxHeight: placement.height }} data-mesurer-comment-ui onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+    <div ref={panelRef} role="dialog" aria-label="Comments" className={`${fixed ? "msr:fixed" : "msr:absolute"} msr:right-0 msr:z-[70] msr:flex msr:w-72 msr:flex-col ${openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden"} msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg ${!fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2")}`} style={{ position: fixed ? "fixed" : "absolute", width: fixed ? "18rem" : undefined, zIndex: fixed ? 70 : undefined, pointerEvents: "auto", right: placement.right, top: placement.top, bottom: placement.bottom, height: placement.height, maxHeight: placement.height }} data-mesurer-comment-ui onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
       <div className="msr:flex msr:items-center msr:justify-between msr:px-3 msr:py-1">
         <div>
           <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
@@ -198,11 +198,11 @@ export function CommentsPanel({
           aria-label="Comment actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
-          style={{ top: commentMenuPosition.top, right: commentMenuPosition.right }}
+           className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
+           style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onPointerDown={(event) => { event.stopPropagation(); setDeletePosition(commentMenuPosition); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
+           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeletePosition(commentMenuPosition); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
         </div>, portalTarget)
       ) : null}
       {openMenuId === "all" && listMenuPosition ? (
@@ -211,11 +211,11 @@ export function CommentsPanel({
           aria-label="Comment list actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
-          style={{ top: listMenuPosition.top, right: listMenuPosition.right }}
+           className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-lg"
+           style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onPointerDown={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
         </div>, portalTarget)
       ) : null}
       {deleteId && deletePosition ? (

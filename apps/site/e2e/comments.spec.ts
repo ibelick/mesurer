@@ -211,8 +211,8 @@ test("deletes a comment from the all comments menu", async ({ page }) => {
   await page.mouse.click(100, 300);
   await expect(page.getByRole("menu", { name: "Comment actions" })).toHaveCount(0);
   await panel.getByRole("button", { name: /Actions for comment: Delete from the list/ }).click();
-  await clickCenter(page, page.getByRole("menuitem", { name: "Delete" }));
-  await clickCenter(page, page.getByRole("dialog", { name: "Delete comment" }).getByRole("button", { name: "Yes" }));
+   await page.getByRole("menuitem", { name: "Delete" }).click();
+   await page.getByRole("dialog", { name: "Delete comment" }).getByRole("button", { name: "Yes" }).click();
   await expect(panel).not.toContainText("Delete from the list.");
 });
 
@@ -228,10 +228,10 @@ test("deletes all comments from the comments list menu", async ({ page }) => {
   await page.getByRole("menuitem", { name: /Show all comments/ }).click();
   const panel = page.getByRole("dialog", { name: "Comments" });
   await panel.getByRole("button", { name: "Comment list actions" }).click();
-  await clickCenter(page, page.getByRole("menuitem", { name: "Delete all comments" }));
+   await page.getByRole("menuitem", { name: "Delete all comments" }).click();
   const confirmation = page.getByRole("dialog", { name: "Delete comment" });
   await expect(confirmation).toContainText("delete all comments");
-  await clickCenter(page, confirmation.getByRole("button", { name: "Yes" }));
+   await confirmation.getByRole("button", { name: "Yes" }).click();
   await expect(panel).toContainText("No comments yet.");
 });
 
