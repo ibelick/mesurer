@@ -60,7 +60,7 @@ export function InspectInfoCard({
     <div
       ref={overlay.overlayRef}
       data-mesurer-inspect-info-card
-      className="msr:pointer-events-auto msr:absolute msr:z-10 msr:w-60 msr:rounded msr:bg-ink-900 msr:px-1.5 msr:py-1 msr:text-[10px] msr:text-ink-50 msr:select-text"
+      className="msr:pointer-events-auto msr:absolute msr:z-10 msr:w-60 msr:rounded msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[10px] msr:text-ink-900 msr:shadow-lg msr:select-text"
       style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: 10 }}
       title={selector ?? undefined}
       onPointerDown={(event) => event.stopPropagation()}
@@ -80,7 +80,7 @@ export function InspectInfoCard({
               tooltip={tooltip}
               className="msr:min-w-0 msr:truncate msr:font-mono msr:font-medium msr:hover:underline"
             />
-            {copied ? <span data-mesurer-selector-copied aria-label="Selector copied" className="msr:shrink-0"><CheckIcon size={10} className="msr:text-ink-50" /></span> : null}
+            {copied ? <span data-mesurer-selector-copied aria-label="Selector copied" className="msr:shrink-0"><CheckIcon size={10} className="msr:text-ink-900" /></span> : null}
           </div>
         ) : <span />}
         <CopyableValue
@@ -95,8 +95,8 @@ export function InspectInfoCard({
         <div className="msr:mt-1 msr:flex msr:flex-col msr:gap-0.5" data-mesurer-layout-details="true">
           {layoutDetails.map((part) => (
             <div key={part.label} className="msr:flex msr:w-full msr:items-baseline msr:justify-between">
-              <span className="msr:text-ink-300">{part.label}</span>
-              <CopyableValue id={`layout-${part.label}`} value={part.value} onCopy={() => copyValue(part.value)} tooltip={tooltip} className="msr:tabular-nums msr:text-ink-50 msr:hover:underline" />
+              <span className="msr:text-ink-500">{part.label}</span>
+              <CopyableValue id={`layout-${part.label}`} value={part.value} onCopy={() => copyValue(part.value)} tooltip={tooltip} className="msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
             </div>
           ))}
         </div>
@@ -105,8 +105,8 @@ export function InspectInfoCard({
         <div className="msr:mt-1 msr:flex msr:flex-col msr:gap-0.5" data-mesurer-typography-details="true">
           {typography.rows.map((row) => (
             <div key={row.label} className="msr:flex msr:w-full msr:items-baseline msr:justify-between msr:gap-2">
-              <span className="msr:text-ink-300">{row.label}</span>
-              <CopyableValue id={`typography-${row.label}`} value={row.value} onCopy={() => copyValue(row.value)} tooltip={tooltip} />
+              <span className="msr:text-ink-500">{row.label}</span>
+              <CopyableValue id={`typography-${row.label}`} value={row.value} onCopy={() => copyValue(row.value)} tooltip={tooltip} className="msr:truncate msr:text-right msr:text-ink-900 msr:hover:underline" />
             </div>
           ))}
         </div>

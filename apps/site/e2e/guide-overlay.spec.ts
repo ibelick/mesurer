@@ -25,6 +25,8 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
 
   const card = page.locator("[data-mesurer-inspect-info-card]");
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect.poll(() => card.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(255, 255, 255)");
+  await expect.poll(() => card.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
   const cardBox = await card.boundingBox();
   expect(cardBox).not.toBeNull();
   const hitTarget = await card.evaluate((node, point) => {

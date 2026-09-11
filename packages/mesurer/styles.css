@@ -66,6 +66,11 @@
   cursor: default !important;
 }
 
+.mesurer-root [data-mesurer-inspect-info-card],
+.mesurer-root [data-mesurer-inspect-info-card] * {
+  cursor: default !important;
+}
+
 *,
 *::before,
 *::after {
