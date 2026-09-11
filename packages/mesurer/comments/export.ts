@@ -8,7 +8,6 @@ const formatTarget = (comment: CommentThread) => {
 
 export const formatCommentsForAgent = (comments: CommentThread[], url = "") => {
   return [
-    "# Mesurer Comments",
     url ? `URL: ${url}` : "",
     ...comments.map((comment, index) => {
       const messages = comment.messages.map((message) => message.text)

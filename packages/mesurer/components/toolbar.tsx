@@ -5,6 +5,7 @@ import {
   forwardRef,
   memo,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -327,6 +328,7 @@ function ToolbarComponent(
   const [guideMenuOpen, setGuideMenuOpen] = useState(false);
   const [commentMenuOpen, setCommentMenuOpen] = useState(false);
   const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  const [commentsCopied, setCommentsCopied] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
   );
@@ -345,6 +347,19 @@ function ToolbarComponent(
   const collapseStageRef = useRef<HTMLDivElement | null>(null);
   const expandedPanelRef = useRef<HTMLDivElement | null>(null);
   const iconSlotRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let timeout: number | undefined;
+    const handleCopied = () => {
+      setCommentsCopied(true);
+      if (timeout !== undefined) eventTarget.clearTimeout(timeout);
+      timeout = eventTarget.setTimeout(() => setCommentsCopied(false), 1800);
+    };
+    eventTarget.addEventListener("mesurer:comments-copied", handleCopied);
+    return () => {
+      eventTarget.removeEventListener("mesurer:comments-copied", handleCopied);
+      if (timeout !== undefined) eventTarget.clearTimeout(timeout);
+    };
+  }, [eventTarget]);
   const { markReady: markToolbarMotionReady } = useToolbarGroupMotion({
     eventTarget,
     toolGroup,
@@ -1209,7 +1224,6 @@ function ToolbarComponent(
                 <>
                  <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
                    <span className="msr:flex-1">Show all comments</span>
-                   <span>{commentCount}</span>
                  </MenuItem>
                  <MenuItem
                    disabled={commentCount === 0}
@@ -1218,8 +1232,8 @@ function ToolbarComponent(
                      setCommentMenuOpen(false)
                    }}
                  >
-                   <span className="msr:flex-1">Copy to agent</span>
-                   <span>{commentCount}</span>
+                   <span className="msr:flex-1">Copy comments</span>
+                   {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
                  </MenuItem>
                </>
              </MenuSurface>

@@ -1080,6 +1080,7 @@ export function MesurerClient({
     selectedElement,
     commentDraftActive: commentDraft !== null,
     cancelCommentDraft,
+    hasComments: () => comments.length > 0,
     start,
     arrowStart,
     draggingGuideId,
@@ -1128,10 +1129,12 @@ export function MesurerClient({
     onInteract: activateToolbar,
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
-    onCopyComments: () => {
-      void copyCommentsForAgent(comments, ownerWindow).then((copied) => {
-        if (copied) ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
-      })
+    onCopyComments: async () => {
+      const copied = await copyCommentsForAgent(comments, ownerWindow)
+      if (copied) {
+        ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
+      }
+      return copied
     },
     dismissInspectorPins: () => {
       const clearedInspectorPins = textInspector.clear()

@@ -244,15 +244,20 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
   await page.getByRole("textbox", { name: "Comment" }).fill("Inspect this element.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
 
-  await page.getByRole("button", { name: "Comment menu" }).click();
-  await page.getByRole("menuitem", { name: "Copy to agent" }).click();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toBe("");
   const copied = await page.evaluate(() => navigator.clipboard.readText());
 
-  expect(copied).toContain("# Mesurer Comments");
+  expect(copied).not.toContain("Mesurer Comments");
+  expect(copied).toContain("URL: ");
   expect(copied).toContain("Inspect this element.");
   expect(copied).toContain("[<button>Nested inner button</button> selector:");
   expect(copied).not.toContain("### Computed Styles");
   expect(copied).not.toContain("```html");
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  const copyMenuItem = page.getByRole("menuitem", { name: /Copy comments/ });
+  await expect(copyMenuItem.locator("svg")).toHaveCount(1);
 });
 
 test("copies a comment target selector from the thread menu", async ({ page, context }) => {
@@ -450,7 +455,7 @@ test("moves a comment to a different DOM element", async ({ page, context }) => 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(2);
 
   await page.getByRole("button", { name: "Comment menu" }).click();
-  await page.getByRole("menuitem", { name: "Copy to agent" }).click();
+  await page.getByRole("menuitem", { name: /Copy comments/ }).click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain("Secondary app button");
   expect(copied).toContain("Existing feedback.");

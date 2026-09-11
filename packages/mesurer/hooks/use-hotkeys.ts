@@ -68,6 +68,7 @@ type HotkeyOptions = {
   closeComment: () => void
   commentDraftActive: boolean
   cancelCommentDraft: () => void
+  hasComments: () => boolean
   minimizeMesurer: () => void
   shortcutsEnabled: boolean
   minimized: boolean
@@ -86,7 +87,7 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onScreenshot: () => void
-  onCopyComments: () => void | Promise<void>
+  onCopyComments: () => void | Promise<boolean>
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
   onToggleXray: () => void
@@ -201,6 +202,22 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.minimizeMesurer()
         return
       }
+      const hasPrimaryModifier =
+        event.metaKey ||
+        event.ctrlKey ||
+        event.getModifierState("Meta") ||
+        event.getModifierState("Control")
+      const isCopyComments =
+        current.shortcutsEnabled &&
+        hasPrimaryModifier &&
+        event.key.toLowerCase() === "k"
+      if (isCopyComments) {
+        if (!current.hasComments()) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        current.onCopyComments()
+        return
+      }
       if (current.commentDraftActive) return
       if (isTypingInMesurer(event, target)) {
         return
@@ -210,11 +227,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       if (!current.shortcutsEnabled) return
 
-      const hasPrimaryModifier =
-        event.metaKey ||
-        event.ctrlKey ||
-        event.getModifierState("Meta") ||
-        event.getModifierState("Control")
       const isSelectAll =
         hasPrimaryModifier &&
         ((event.key && event.key.toLowerCase() === "a") || event.code === "KeyA")
@@ -230,11 +242,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (hasPrimaryModifier) {
-        if (event.key.toLowerCase() === "k") {
-          event.preventDefault()
-          current.onCopyComments()
-          return
-        }
         if (event.key === ",") {
           event.preventDefault()
           current.onInteract()

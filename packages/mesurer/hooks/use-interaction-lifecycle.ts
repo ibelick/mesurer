@@ -41,6 +41,7 @@ type Options = {
   selectedElement: Element | null;
   commentDraftActive: boolean;
   cancelCommentDraft: () => void;
+  hasComments: () => boolean;
   start: Point | null;
   arrowStart: Point | null;
   draggingGuideId: string | null;
@@ -98,7 +99,7 @@ type Options = {
   onInteract: () => void;
   onMinimize: () => void;
   onToggleSettings: () => void;
-  onCopyComments: () => void | Promise<void>;
+   onCopyComments: () => void | Promise<boolean>;
   dismissInspectorPins: () => boolean;
   selectedCommentId: string | null;
   closeComment: () => void;
@@ -234,8 +235,9 @@ export const useInteractionLifecycle = (options: Options) => {
     dismissInspectorPins: options.dismissInspectorPins,
     hasOpenComment: () => options.selectedCommentId !== null,
     closeComment: options.closeComment,
-    commentDraftActive: options.commentDraftActive,
-    cancelCommentDraft: options.cancelCommentDraft,
+     commentDraftActive: options.commentDraftActive,
+     cancelCommentDraft: options.cancelCommentDraft,
+     hasComments: options.hasComments,
     minimizeMesurer: options.onMinimize,
     shortcutsEnabled: options.shortcutsEnabled,
     minimized: options.minimized,
