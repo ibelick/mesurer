@@ -1,5 +1,5 @@
 import { useLayoutEffect } from "react"
-import { installKeyboardGate } from "../core/keyboard-gate"
+import { addMesurerCaptureListener, installKeyboardGate } from "../core/keyboard-gate"
 import {
   getDeepActiveElement,
   isInsideMesurer,
@@ -57,13 +57,23 @@ export const useOverlayKeyboard = ({
       claimedRef.current = true
       setMesurerKeyboardOwned(eventTarget.document, true)
     }
-    eventTarget.document.addEventListener("focusin", onFocusIn, true)
-    eventTarget.document.addEventListener("pointerdown", onPointerDown, true)
+    const detachFocusIn = addMesurerCaptureListener(
+      eventTarget,
+      eventTarget.document,
+      "focusin",
+      onFocusIn as EventListener,
+    )
+    const detachPointerDown = addMesurerCaptureListener(
+      eventTarget,
+      eventTarget,
+      "pointerdown",
+      onPointerDown as EventListener,
+    )
     return () => {
       claimedRef.current = false
       setMesurerKeyboardOwned(eventTarget.document, false)
-      eventTarget.document.removeEventListener("focusin", onFocusIn, true)
-      eventTarget.document.removeEventListener("pointerdown", onPointerDown, true)
+      detachFocusIn()
+      detachPointerDown()
     }
   }, [eventTarget, overlayActive])
 }

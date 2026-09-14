@@ -7,6 +7,7 @@ import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { getRectFromDom } from "../core/dom"
 import { isRectEqual } from "./dom"
+import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
@@ -91,6 +92,16 @@ const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   const days = Math.floor(hours / 24)
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
+
+const isCommentChromeEvent = (event: Event) =>
+  event.composedPath().some((node) => {
+    if (!(node instanceof Element)) return false
+    return (
+      node.hasAttribute("data-mesurer-comment-pin") ||
+      node.hasAttribute("data-mesurer-comment-popover") ||
+      (node.hasAttribute("data-mesurer-comment-ui") && !node.hasAttribute("data-mesurer-comments-layer"))
+    )
+  })
 
 export function CommentsLayer({
   comments,
@@ -214,15 +225,7 @@ export function CommentsLayer({
         if (selectedId) onClose?.()
         return
       }
-      const clickedCommentUi = event.composedPath().some((target) => {
-        if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
-        const element = target as Element
-        return (
-          element.getAttribute("data-mesurer-comment-ui") !== null &&
-          element.getAttribute("data-mesurer-comments-layer") === null
-        )
-      })
-      if (clickedCommentUi) return
+      if (isCommentChromeEvent(event)) return
       if (selectedId && selectedOutsidePointerDownRef.current()) {
         event.preventDefault()
         event.stopPropagation()
@@ -235,9 +238,9 @@ export function CommentsLayer({
       if (draft) onDraftCancel()
       if (selectedId) onClose?.()
     }
-    const eventTarget = ownerDocument.defaultView ?? ownerDocument
-    eventTarget.addEventListener("pointerdown", handlePointerDown, true)
-    return () => eventTarget.removeEventListener("pointerdown", handlePointerDown, true)
+    const view = ownerDocument.defaultView
+    if (!view) return
+    return addMesurerCaptureListener(view, view, "pointerdown", handlePointerDown)
   }, [draft, draftText, onClose, onDraftCancel, ownerDocument, selectedId])
 
   return (
@@ -300,6 +303,7 @@ export function CommentsLayer({
               ownerDocument.defaultView,
             )}
             onPointerDown={(event) => {
+              event.stopPropagation()
               onStartMove(comment.id, event)
             }}
             onPointerMove={onMoveComment}

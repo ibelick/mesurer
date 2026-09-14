@@ -451,6 +451,41 @@ test("deletes selected text with Backspace after a page editor had focus", async
   await expect(textItems(page)).toHaveCount(0);
 });
 
+test("deletes a text annotation after clicking it then pressing Backspace", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateText(page);
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Click then delete");
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("button", { name: "Select (S)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await textItems(page).click();
+  await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(1);
+  await page.keyboard.press("Backspace");
+  await expect(textItems(page)).toHaveCount(0);
+});
+
+test("Control+A selects every text annotation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateText(page);
+  await page.mouse.click(180, 160);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("One");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(320, 220);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Two");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("Control+a");
+  await expect(page.locator("[data-mesurer-text-frame]")).toHaveCount(2);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
+  await page.keyboard.press("Backspace");
+  await expect(textItems(page)).toHaveCount(0);
+});
+
 test("rotates a selected text annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateText(page);

@@ -6,6 +6,7 @@ import { CommentDeleteConfirmation } from "../comments/comment-delete-confirmati
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { CheckIcon, MoreIcon } from "./icons"
+import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -78,16 +79,17 @@ export function CommentsPanel({
   useEffect(() => {
     if (!openMenuId) return
     const ownerDocument = panelRef.current?.ownerDocument
-    if (!ownerDocument) return
-    const handlePointerDown = (event: PointerEvent) => {
-      const clickedMenu = event.composedPath().some((target) => {
+    const ownerView = ownerDocument?.defaultView
+    if (!ownerDocument || !ownerView) return
+    const handlePointerDown = (event: Event) => {
+      const pointerEvent = event as PointerEvent
+      const clickedMenu = pointerEvent.composedPath().some((target) => {
         if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
         return (target as Element).getAttribute("data-mesurer-comment-actions") !== null
       })
       if (!clickedMenu) setOpenMenuId(null)
     }
-    ownerDocument.addEventListener("pointerdown", handlePointerDown, true)
-    return () => ownerDocument.removeEventListener("pointerdown", handlePointerDown, true)
+    return addMesurerCaptureListener(ownerView, ownerDocument, "pointerdown", handlePointerDown)
   }, [openMenuId, panelRef])
 
   return (

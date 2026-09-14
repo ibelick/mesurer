@@ -1,7 +1,10 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
+import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import {
+  getDeepActiveElement,
   getMesurerToolGroupShortcut,
+  isEditableElement,
   isInsideMesurer,
   isMesurerKeyboardBridge,
   isMesurerKeyboardBridgeKey,
@@ -101,13 +104,16 @@ type HotkeyOptions = {
 }
 
 const attachCapture = (
+  view: Window,
   roots: EventTarget[],
   type: string,
   listener: EventListener,
 ) => {
-  for (const root of roots) root.addEventListener(type, listener, true)
+  const detachers = roots.map((root) =>
+    addMesurerCaptureListener(view, root, type, listener),
+  )
   return () => {
-    for (const root of roots) root.removeEventListener(type, listener, true)
+    for (const detach of detachers) detach()
   }
 }
 
@@ -224,16 +230,27 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
       if (current.commentDraftActive) return
       if (isTypingInMesurer(event, target)) {
-        return
+        if (event.key !== "Backspace" && event.key !== "Delete") return
+        const active = getDeepActiveElement(target)
+        if (isEditableElement(active)) return
       }
       if (isTypingInPage(target) && !isMesurerKeyboardOwned(target)) return
       if (current.minimized) return
 
-      if (!current.shortcutsEnabled) return
-
+      const isDeleteKey = event.key === "Backspace" || event.key === "Delete"
       const isSelectAll =
         hasPrimaryModifier &&
         ((event.key && event.key.toLowerCase() === "a") || event.code === "KeyA")
+
+      if (isDeleteKey) {
+        if (current.removeSelected()) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+        return
+      }
+
+      if (!current.shortcutsEnabled) return
 
       if (isSelectAll) {
         const didSelect = current.selectAllAnnotations()
@@ -350,10 +367,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
         }
       }
-
-      if (event.key === "Backspace" || event.key === "Delete") {
-        if (current.removeSelected()) event.preventDefault()
-      }
     }
 
     const handleKeyUp = (event: KeyboardEvent, bridged = false) => {
@@ -408,9 +421,10 @@ export const useHotkeys = (options: HotkeyOptions) => {
     const overlayRoot = options.overlayRef.current?.getRootNode()
     if (overlayRoot && overlayRoot !== target.document) roots.push(overlayRoot)
 
-    const detachKeyDown = attachCapture(roots, "keydown", handleKeyDown as EventListener)
-    const detachKeyUp = attachCapture(roots, "keyup", handleKeyUp as EventListener)
+    const detachKeyDown = attachCapture(target, roots, "keydown", handleKeyDown as EventListener)
+    const detachKeyUp = attachCapture(target, roots, "keyup", handleKeyUp as EventListener)
     const detachPointerDown = attachCapture(
+      target,
       roots,
       "pointerdown",
       clearDoubleEscape as EventListener,

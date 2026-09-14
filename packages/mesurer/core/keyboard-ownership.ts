@@ -117,17 +117,33 @@ export const isMesurerKeyboardBridge = (
 export const isEditableElement = (node: EventTarget | null) => {
   if (!(node instanceof Element)) return false
   const element = node as HTMLElement
+  const editable = element.getAttribute("contenteditable")
+  if (editable === "false") return false
   const tag = element.tagName
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
   if (element.isContentEditable) return true
-  const editable = element.getAttribute("contenteditable")
-  return editable !== null && editable !== "false"
+  return editable !== null
 }
 
 export const getDeepActiveElement = (eventTarget: Window) => {
   let active: Element | null = eventTarget.document.activeElement
-  while (active?.shadowRoot?.activeElement) {
-    active = active.shadowRoot.activeElement
+  while (active) {
+    if (active.shadowRoot?.activeElement) {
+      active = active.shadowRoot.activeElement
+      continue
+    }
+    if (active instanceof HTMLIFrameElement) {
+      try {
+        const inner = active.contentDocument?.activeElement
+        if (inner && inner !== active.contentDocument?.documentElement) {
+          active = inner
+          continue
+        }
+      } catch {
+        break
+      }
+    }
+    break
   }
   return active
 }
@@ -138,6 +154,10 @@ export const isInsideMesurer = (node: EventTarget | null) => {
   while (current) {
     if (current instanceof Element && current.classList.contains("mesurer-root")) {
       return true
+    }
+    if (current instanceof Document) {
+      current = current.defaultView?.frameElement ?? null
+      continue
     }
     const parent: Node | null = current.parentNode
     current = parent instanceof ShadowRoot ? parent.host : parent
@@ -195,6 +215,39 @@ export const setMesurerKeyboardOwned = (document: Document, owned: boolean) => {
 
 export const isMesurerKeyboardOwned = (eventTarget: Window) =>
   eventTarget.document.documentElement.hasAttribute(MESURER_KEYBOARD_ATTR)
+
+export const getMesurerPageWindow = (view: Window | null) => {
+  if (!view) return null
+  try {
+    if (view.frameElement) return view.parent
+  } catch {
+    return view
+  }
+  return view
+}
+
+export const isPageTextEntry = (node: EventTarget | null) => {
+  if (!(node instanceof Element) || isInsideMesurer(node)) return false
+  if (isEditableElement(node)) return true
+  return Boolean(
+    node.closest(
+      '[contenteditable]:not([contenteditable="false"]), textarea, input:not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="file"]), [role="textbox"]',
+    ),
+  )
+}
+
+export const findMesurerTypingTarget = (view: Window) => {
+  const roots: ParentNode[] = [view.document]
+  const host = view.document.getElementById("mesurer-extension-host")
+  if (host?.shadowRoot) roots.push(host.shadowRoot)
+  for (const root of roots) {
+    const typing = root.querySelector<HTMLElement>(
+      "[data-mesurer-text-input], [data-mesurer-comment-ui] textarea, [data-mesurer-comment-ui] [contenteditable='true']",
+    )
+    if (typing) return typing
+  }
+  return null
+}
 
 export const blurPageFocus = (eventTarget: Window) => {
   const active = getDeepActiveElement(eventTarget)

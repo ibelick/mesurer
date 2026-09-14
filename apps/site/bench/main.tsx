@@ -125,6 +125,18 @@ function TestCanvas({ count }: { count: number }) {
         </div>
       </section>
 
+      <section className="bench-card" aria-labelledby="composer-title">
+        <div className="bench-card-heading">
+          <div>
+            <span className="bench-kicker">02 / host</span>
+            <h2 id="composer-title">Focus-stealing composer</h2>
+          </div>
+          <span className="bench-coordinate">ChatGPT · Claude</span>
+        </div>
+        <p className="bench-card-instruction">This prompt steals focus on blur, like ChatGPT. Use the Text tool on the corners above; typing should stay in Mesurer.</p>
+        <HostComposer />
+      </section>
+
       <section className="bench-card" aria-labelledby="elements-title">
         <div className="bench-card-heading">
           <div>
@@ -398,6 +410,40 @@ function FloatingUiExamples() {
         document.body,
       ) : null}
     </section>
+  )
+}
+
+function HostComposer() {
+  const promptRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const prompt = promptRef.current
+    if (!prompt) return
+    const stealFocus = () => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement
+        if (active instanceof Element && active.closest('[role="menu"], [role="listbox"], [role="dialog"], [data-mesurer-root], .mesurer-root')) {
+          return
+        }
+        prompt.focus()
+      })
+    }
+    prompt.addEventListener("blur", stealFocus)
+    return () => prompt.removeEventListener("blur", stealFocus)
+  }, [])
+
+  return (
+    <div className="bench-host-composer" data-testid="host-composer">
+      <div
+        ref={promptRef}
+        className="bench-host-prompt"
+        role="textbox"
+        aria-label="Host prompt"
+        contentEditable
+        suppressContentEditableWarning
+        data-testid="host-prompt"
+      />
+    </div>
   )
 }
 
