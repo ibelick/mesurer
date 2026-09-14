@@ -1,4 +1,5 @@
-import { getRectFromDom } from "./dom"
+import { getRectFromDom, isConnectedElement } from "./dom"
+import { withOverlayHitTesting } from "./overlay-hit-test"
 import type { InspectMeasurement, Point } from "./types"
 
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
@@ -27,7 +28,7 @@ export const getSelectedMeasurementHit = (params: {
   const candidates = params.selectedMeasurements
     .map((measurement) => {
       const element = measurement.elementRef
-      if (!element || !ownerDocument.contains(element)) return null
+      if (!isConnectedElement(element)) return null
       const rect = getRectFromDom(element)
       return {
         measurement,
@@ -41,7 +42,9 @@ export const getSelectedMeasurementHit = (params: {
 
   if (candidates.length === 0) return null
 
-  const stack = ownerDocument.elementsFromPoint(params.point.x, params.point.y)
+  const stack = withOverlayHitTesting(params.overlayNode, () =>
+    ownerDocument.elementsFromPoint(params.point.x, params.point.y),
+  )
   for (const element of stack) {
     if (!(element instanceof ElementConstructor)) continue
     if (params.overlayNode && params.overlayNode.contains(element)) continue

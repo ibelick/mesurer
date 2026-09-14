@@ -60,6 +60,23 @@ test("switching to Inspect does not dismiss an open portaled surface", async ({ 
   }
 });
 
+test("inspect mode keeps the default cursor and ignores page controls", async ({ page }) => {
+  await page.goto("/bench");
+  const checkbox = page.locator(".bench-native-elements input[type='checkbox']");
+  await checkbox.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  const box = await checkbox.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("[data-mesurer-overlay]")).toHaveCSS("cursor", "default");
+
+  await expect(checkbox).not.toBeChecked();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(checkbox).not.toBeChecked();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+});
+
 test("inspect tool can select a portaled popover", async ({ page }) => {
   await page.goto("/bench");
   const trigger = page.getByRole("button", { name: "Toggle popover" });

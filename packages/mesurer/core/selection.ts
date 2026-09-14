@@ -7,6 +7,7 @@ import {
   getRectFromDomCached,
 } from "./dom"
 import { rectsOverlap } from "./geometry"
+import { withOverlayHitTesting } from "./overlay-hit-test"
 import { pickMultiTargets, pickPointTarget } from "./targets"
 import type { Point, Rect } from "./types"
 
@@ -109,25 +110,37 @@ const getDeepestElementAt = (
   element: Element,
   point: Point,
 ): Element => {
-  const childDocument = getAccessibleFrameDocument(element)
-  if (childDocument) {
-    const frameRect = element.getBoundingClientRect()
-    const childPoint = {
-      x: point.x - frameRect.left - element.clientLeft,
-      y: point.y - frameRect.top - element.clientTop,
-    }
-    const child = childDocument.elementFromPoint(childPoint.x, childPoint.y)
-    if (child && child !== childDocument.body && child !== childDocument.documentElement) {
-      return getDeepestElementAt(child, childPoint)
-    }
-  }
   let current = element
-  const ElementConstructor = element.ownerDocument.defaultView?.Element ?? Element
-  while (current instanceof ElementConstructor && current.shadowRoot) {
-    const nested = current.shadowRoot.elementFromPoint(point.x, point.y)
-    if (!nested || nested === current) break
-    current = nested
+  let currentPoint = point
+  const seen = new Set<Element>()
+
+  while (!seen.has(current)) {
+    seen.add(current)
+    const childDocument = getAccessibleFrameDocument(current)
+    if (childDocument) {
+      const frameRect = current.getBoundingClientRect()
+      const childPoint = {
+        x: currentPoint.x - frameRect.left - current.clientLeft,
+        y: currentPoint.y - frameRect.top - current.clientTop,
+      }
+      const child = childDocument.elementFromPoint(childPoint.x, childPoint.y)
+      if (child && child !== childDocument.body && child !== childDocument.documentElement) {
+        current = child
+        currentPoint = childPoint
+        continue
+      }
+    }
+    const ElementConstructor = current.ownerDocument.defaultView?.Element ?? Element
+    if (current instanceof ElementConstructor && current.shadowRoot) {
+      const nested = current.shadowRoot.elementFromPoint(currentPoint.x, currentPoint.y)
+      if (nested && nested !== current) {
+        current = nested
+        continue
+      }
+    }
+    break
   }
+
   return current
 }
 
@@ -152,16 +165,10 @@ const readElementsFromPoint = (
   point: Point,
   overlayNode: HTMLDivElement | null,
   ownerDocument: Document,
-) => {
-  if (overlayNode) {
-    const previous = overlayNode.style.pointerEvents
-    overlayNode.style.pointerEvents = "none"
-    const elements = ownerDocument.elementsFromPoint(point.x, point.y)
-    overlayNode.style.pointerEvents = previous
-    return elements
-  }
-  return ownerDocument.elementsFromPoint(point.x, point.y)
-}
+) =>
+  withOverlayHitTesting(overlayNode, () =>
+    ownerDocument.elementsFromPoint(point.x, point.y),
+  )
 
 export const getElementsAtPoint = (
   point: Point,
@@ -188,7 +195,14 @@ export const getTargetElement = (
   overlayNode: HTMLDivElement | null,
   ownerDocument: Document = document,
 ) => {
-  return getElementsAtPoint(point, overlayNode, ownerDocument)[0] ?? null
+  const overlayHost = getOverlayHost(overlayNode)
+  return withOverlayHitTesting(overlayNode, () => {
+    const raw = ownerDocument.elementFromPoint(point.x, point.y)
+    if (!raw) return null
+    const element = getDeepestElementAt(raw, point)
+    if (!isSelectableElement(element, overlayNode, overlayHost)) return null
+    return element
+  })
 }
 
 export const getShiftClickTarget = (
@@ -197,7 +211,7 @@ export const getShiftClickTarget = (
   ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
-  const elements = ownerDocument.elementsFromPoint(point.x, point.y)
+  const elements = readElementsFromPoint(point, overlayNode, ownerDocument)
   for (let i = elements.length - 1; i >= 0; i -= 1) {
     const element = getDeepestElementAt(elements[i], point)
     if (!isSelectableElement(element, overlayNode, overlayHost)) continue

@@ -202,9 +202,11 @@ export const useMesurerPointer = ({
       const commit = createActionCommit()
       const toolbarNode = toolbarRef.current
       if (toolbarNode && toolbarNode.contains(event.target as Node)) return
+      if (event.target instanceof Element && event.target.closest("[data-mesurer-inspect-info-card]")) return
       if (settingsOpen) return
       if (!enabled || event.button !== 0) return
       if (toolMode === "none") return
+      if (toolMode === "select") event.preventDefault()
       clearSelectionRect()
       const point = { x: event.clientX, y: event.clientY }
       selection.preparePointerDown(
@@ -310,9 +312,7 @@ export const useMesurerPointer = ({
         return (node as Element).getAttribute("data-mesurer-inspect-info-card") !== null
       })
       if (isInspectCardEvent) {
-        hover.hoverPointRef.current = null
-        setHoverRect(null)
-        setHoverElement(null)
+        hover.clearHover()
         return
       }
       if (settingsOpen) return
@@ -345,10 +345,7 @@ export const useMesurerPointer = ({
       }
 
       if (toolMode === "none") {
-        if (hoverHighlightEnabled) {
-          setHoverRect(null)
-          setHoverElement(null)
-        }
+        if (hoverHighlightEnabled) hover.clearHover()
         setHoverPointer(null)
         setGuidePreview(null)
         return
@@ -424,9 +421,7 @@ export const useMesurerPointer = ({
       setEnd,
       setGuidePreview,
       setGuides,
-      setHoverElement,
       setHoverPointer,
-      setHoverRect,
       setIsDragging,
       snapGuidesEnabled,
       selectedGuideIds.length,
@@ -530,6 +525,7 @@ export const useMesurerPointer = ({
       window.cancelAnimationFrame(hover.hoverFrameRef.current)
       hover.hoverFrameRef.current = null
     }
+    hover.clearHover()
     clearGuideDragHold()
     setStart(null)
     setEnd(null)
@@ -538,6 +534,7 @@ export const useMesurerPointer = ({
     setGuidePreview(null)
   }, [
     clearGuideDragHold,
+    hover,
     setDraggingGuideId,
     setEnd,
     setGuidePreview,
@@ -563,7 +560,7 @@ export const useMesurerPointer = ({
   }
 
   useEffect(() => {
-    if (!enabled || settingsOpen || (toolMode !== "select" && toolMode !== "selection")) return
+    if (!enabled || settingsOpen || toolMode !== "selection") return
 
     const getDocumentOffset = (sourceDocument: Document) => {
       let currentDocument = sourceDocument
@@ -710,20 +707,11 @@ export const useMesurerPointer = ({
         frameOwners.delete(frame)
       }
     }
-    const observeRoot = (root: Document | ShadowRoot, sourceDocument: Document) => {
-      if (rootObservers.has(root)) return
-      const Observer = root.ownerDocument?.defaultView?.MutationObserver ?? MutationObserver
-      const observer = new Observer(() => registerFrameDocuments(document))
-      observer.observe(root, { childList: true, subtree: true })
-      rootObservers.set(root, observer)
-      rootOwners.set(root, sourceDocument)
-    }
-    const collectFrames = (root: Document | ShadowRoot, sourceDocument: Document) => {
-      observeRoot(root, sourceDocument)
-      const frames: HTMLIFrameElement[] = []
-      for (const element of Array.from(root.querySelectorAll("*"))) {
-        if (element.tagName === "IFRAME") {
-          const frame = element as HTMLIFrameElement
+    const collectFramesFromTree = (root: Document | ShadowRoot | Element, sourceDocument: Document, frames: HTMLIFrameElement[]) => {
+      const IFrameConstructor = sourceDocument.defaultView?.HTMLIFrameElement
+      const visit = (currentRoot: Document | ShadowRoot | Element) => {
+        if (IFrameConstructor && currentRoot instanceof IFrameConstructor) {
+          const frame = currentRoot
           frames.push(frame)
           if (!frameLoadListeners.has(frame)) {
             const listener: EventListener = () => registerFrameDocuments(document)
@@ -732,11 +720,73 @@ export const useMesurerPointer = ({
             frame.addEventListener("load", listener)
           }
         }
-        if (element.shadowRoot) {
-          observeRoot(element.shadowRoot, sourceDocument)
-          frames.push(...collectFrames(element.shadowRoot, sourceDocument))
+        if (currentRoot instanceof Element && currentRoot.shadowRoot) {
+          observeRoot(currentRoot.shadowRoot, sourceDocument)
+          visit(currentRoot.shadowRoot)
+        }
+        const ownerDocument = currentRoot instanceof Document ? currentRoot : currentRoot.ownerDocument ?? sourceDocument
+        const walker = ownerDocument.createTreeWalker(currentRoot, 1)
+        let node = walker.nextNode()
+        while (node) {
+          if (IFrameConstructor && node instanceof IFrameConstructor) {
+            const frame = node
+            frames.push(frame)
+            if (!frameLoadListeners.has(frame)) {
+              const listener: EventListener = () => registerFrameDocuments(document)
+              frameLoadListeners.set(frame, listener)
+              frameOwners.set(frame, sourceDocument)
+              frame.addEventListener("load", listener)
+            }
+          }
+          if (node instanceof Element && node.shadowRoot) {
+            observeRoot(node.shadowRoot, sourceDocument)
+            visit(node.shadowRoot)
+          }
+          node = walker.nextNode()
         }
       }
+      visit(root)
+    }
+    const subtreeNeedsFrameRescan = (element: Element) => {
+      if (element.tagName === "IFRAME" || element.shadowRoot) return true
+      for (const child of element.querySelectorAll("*")) {
+        if (child.tagName === "IFRAME" || child.shadowRoot) return true
+      }
+      return false
+    }
+    const observeRoot = (root: Document | ShadowRoot, sourceDocument: Document) => {
+      if (rootObservers.has(root)) return
+      const Observer = root.ownerDocument?.defaultView?.MutationObserver ?? MutationObserver
+      const observer = new Observer((mutations) => {
+        let shouldRescan = false
+        for (const mutation of mutations) {
+          for (const node of mutation.removedNodes) {
+            if (node.nodeType !== 1) continue
+            const element = node as Element
+            if (subtreeNeedsFrameRescan(element)) {
+              shouldRescan = true
+              break
+            }
+          }
+          if (shouldRescan) break
+        }
+        const addedFrames: HTMLIFrameElement[] = []
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== 1) continue
+            collectFramesFromTree(node as Element, sourceDocument, addedFrames)
+          }
+        }
+        if (shouldRescan || addedFrames.length > 0) registerFrameDocuments(document)
+      })
+      observer.observe(root, { childList: true, subtree: true })
+      rootObservers.set(root, observer)
+      rootOwners.set(root, sourceDocument)
+    }
+    const collectFrames = (root: Document | ShadowRoot, sourceDocument: Document) => {
+      observeRoot(root, sourceDocument)
+      const frames: HTMLIFrameElement[] = []
+      collectFramesFromTree(root, sourceDocument, frames)
       return frames
     }
     registerFrameDocuments = (sourceDocument: Document, reachable = new Set<Document>()) => {

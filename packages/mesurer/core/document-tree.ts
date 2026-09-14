@@ -44,19 +44,38 @@ let documentTreeVersion = 0
 
 export const getDocumentTreeVersion = () => documentTreeVersion
 
-const observeShadowRoots = (ownerDocument: Document, root: Document | ShadowRoot) => {
-  const elements = Array.from(root.querySelectorAll("*"))
-  for (const element of elements) {
-    const shadowRoot = element.shadowRoot
-    if (!shadowRoot || observedShadowRoots.has(shadowRoot)) continue
-    observedShadowRoots.add(shadowRoot)
-    const Observer = ownerDocument.defaultView?.MutationObserver ?? MutationObserver
-    const observer = new Observer(() => {
-      documentTreeVersion += 1
-      observeShadowRoots(ownerDocument, shadowRoot)
-    })
-    observer.observe(shadowRoot, { childList: true, subtree: true })
-    observeShadowRoots(ownerDocument, shadowRoot)
+const observeShadowRoot = (ownerDocument: Document, shadowRoot: ShadowRoot) => {
+  if (observedShadowRoots.has(shadowRoot)) return
+  observedShadowRoots.add(shadowRoot)
+  const Observer = ownerDocument.defaultView?.MutationObserver ?? MutationObserver
+  const observer = new Observer((mutations) => {
+    documentTreeVersion += 1
+    attachShadowsInMutations(ownerDocument, mutations)
+  })
+  observer.observe(shadowRoot, { childList: true, subtree: true })
+  attachShadowsInTree(ownerDocument, shadowRoot)
+}
+
+const attachShadowsInTree = (ownerDocument: Document, root: Document | ShadowRoot | Element) => {
+  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
+  if (root instanceof ElementConstructor && root.shadowRoot) {
+    observeShadowRoot(ownerDocument, root.shadowRoot)
+  }
+  const walker = ownerDocument.createTreeWalker(root, 1)
+  let node = walker.nextNode()
+  while (node) {
+    if (node instanceof ElementConstructor && node.shadowRoot) {
+      observeShadowRoot(ownerDocument, node.shadowRoot)
+    }
+    node = walker.nextNode()
+  }
+}
+
+const attachShadowsInMutations = (ownerDocument: Document, mutations: MutationRecord[]) => {
+  for (const mutation of mutations) {
+    for (const node of mutation.addedNodes) {
+      if (node.nodeType === 1) attachShadowsInTree(ownerDocument, node as Element)
+    }
   }
 }
 
@@ -65,15 +84,15 @@ const observeDocument = (ownerDocument: Document) => {
   observedDocuments.add(ownerDocument)
   ownerDocument.addEventListener("load", () => {
     documentTreeVersion += 1
-    observeShadowRoots(ownerDocument, ownerDocument)
+    attachShadowsInTree(ownerDocument, ownerDocument)
   }, true)
   if (typeof MutationObserver === "undefined" || !ownerDocument.body) return
-  const observer = new MutationObserver(() => {
+  const observer = new MutationObserver((mutations) => {
     documentTreeVersion += 1
-    observeShadowRoots(ownerDocument, ownerDocument)
+    attachShadowsInMutations(ownerDocument, mutations)
   })
   observer.observe(ownerDocument.body, { childList: true, subtree: true })
-  observeShadowRoots(ownerDocument, ownerDocument)
+  attachShadowsInTree(ownerDocument, ownerDocument)
 }
 
 export const getBodyElementsCached = (ownerDocument: Document = document) => {

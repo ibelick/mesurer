@@ -73,6 +73,11 @@
   cursor: default !important;
 }
 
+[data-mesurer-overlay][data-mesurer-inspect],
+[data-mesurer-overlay][data-mesurer-inspect] * {
+  cursor: default !important;
+}
+
 .mesurer-root,
 .mesurer-root *,
 .mesurer-root *::before,
@@ -81,11 +86,14 @@
 }
 
 @layer base {
+  /* Scoped Tailwind preflight: `msr:border` sets width + `border-style: var(--tw-border-style)`.
+     Without a solid 0-width reset inside the root, those utilities render as `none`. */
   .mesurer-root,
   .mesurer-root *,
   .mesurer-root *::before,
   .mesurer-root *::after,
   .mesurer-root::backdrop {
+    border: 0 solid;
     --tw-border-style: solid;
     --tw-outline-style: solid;
     --tw-shadow: 0 0 #0000;

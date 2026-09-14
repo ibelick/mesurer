@@ -48,6 +48,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
     const tick = () => {
       const current = paramsRef.current
       current.setMeasurements((prev) => {
+        if (prev.length === 0) return prev
         let changed = false
         const next = prev.map((measurement) => {
           if (
@@ -68,7 +69,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
             originRect: undefined,
           }
         })
-        return changed || prev.length === 0 ? next : prev
+        return changed ? next : prev
       })
 
       current.setActiveMeasurement((prev) => {
@@ -85,6 +86,7 @@ export const useLiveElementTracking = (params: LiveParams) => {
       })
 
       current.setHeldDistances((prev) => {
+        if (prev.length === 0) return prev
         let changed = false
         const next = prev.map((distance) => {
           let nextDistance = distance
@@ -145,26 +147,27 @@ export const useLiveElementTracking = (params: LiveParams) => {
           changed = true
           return withPin(updated, nextDistance)
         })
-        return changed || prev.length === 0 ? next : prev
+        return changed ? next : prev
       })
 
       const selected = current.selectedElementRef.current ?? current.selectedMeasurements[current.selectedMeasurements.length - 1]?.elementRef ?? null
       if (isConnectedElement(selected)) {
         current.setSelectedMeasurement((prev) => {
-          const next = getInspectMeasurement(selected, ownerWindow)
-          if (prev && rectAlmostEqual(prev.rect, next.rect)) return prev
-          return next
+          const rect = getRectFromDom(selected)
+          if (prev?.elementRef === selected && rectAlmostEqual(prev.rect, rect)) return prev
+          return getInspectMeasurement(selected, ownerWindow)
         })
       }
 
       current.setSelectedMeasurements((prev) => {
+        if (prev.length === 0) return prev
         let changed = false
         const next = prev.map((measurement) => {
           if (!measurement.elementRef || !isConnectedElement(measurement.elementRef)) return measurement
-          const next = getInspectMeasurement(measurement.elementRef, ownerWindow)
-          if (rectAlmostEqual(next.rect, measurement.rect)) return measurement
+          const rect = getRectFromDom(measurement.elementRef)
+          if (rectAlmostEqual(rect, measurement.rect)) return measurement
           changed = true
-          return { ...next, id: measurement.id }
+          return { ...getInspectMeasurement(measurement.elementRef, ownerWindow), id: measurement.id }
         })
         return changed ? next : prev
       })
