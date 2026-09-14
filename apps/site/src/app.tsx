@@ -4,6 +4,7 @@ import {
   ArrowsCounterClockwiseIcon,
   CalculatorIcon,
   CameraIcon,
+  ChatCircleIcon,
   CursorIcon,
   GridFourIcon,
   GearIcon,
@@ -139,6 +140,11 @@ function HomeContent() {
       icon: <SelectionAllIcon size={16} weight="light" />,
       title: "Annotation selection",
       description: "Multi-select and manipulate annotations together",
+    },
+    {
+      icon: <ChatCircleIcon size={16} weight="light" />,
+      title: "Comments",
+      description: "Pin threads to live elements and copy feedback for agents",
     },
     {
       icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
@@ -550,6 +556,10 @@ function App() {
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + ,</code></div>
             <div className="max-w-[60%] text-right text-balance text-muted">Open Settings</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + K</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Copy comments for an agent</div>
           </div>
         </div>
       </div>

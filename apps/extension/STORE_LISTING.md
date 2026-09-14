@@ -37,6 +37,12 @@ Use Mesurer to inspect UI, understand layout and typography, annotate live inter
 - Add, edit, resize, and rotate text annotations
 - Select and transform multiple annotations together
 
+### Comments
+
+- Pin comment threads to live elements
+- Reply, edit, move, and search comments
+- Copy structured feedback for your coding agent
+
 ### Capture
 
 - Capture your interface with Mesurer overlays included

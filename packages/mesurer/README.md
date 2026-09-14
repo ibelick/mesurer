@@ -101,6 +101,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 | `Cmd/Ctrl + Shift + Z` | Redo.                                                 |
 | `Cmd/Ctrl + A`         | Select all annotations.                               |
 | `Cmd/Ctrl + ,`         | Open Settings.                                        |
+| `Cmd/Ctrl + K`         | Copy comments for an agent.                           |
 
 ## Features
 
@@ -115,6 +116,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 - **Screenshot** - Drag a region of the visible tab and copy or download it. In a React integration without the extension, the browser may show a tab-sharing prompt.
 - **Distance overlays** - Hold Alt for quick spacing checks
 - **Undo/redo** - Command history for guides, measurements, arrows, pen strokes, and text annotations
+- **Comments** - Pin threads to live elements, add replies, move targets, search threads, and copy structured feedback for agents
 - **Settings** - Configure selection, guide, ruler, arrow, text, color, format, and persistence behavior
 - **Workspace controls** - Restore defaults or clear guides, measurements, and annotations; minimize Mesurer to a single toolbar button
 

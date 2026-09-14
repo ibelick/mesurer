@@ -1,5 +1,10 @@
 # mesurer
 
+## Unreleased
+
+- add anchored comment threads with replies, moving, persistence, search, and agent-ready copy
+- support comments on targets inside iframes and open Shadow DOM roots
+
 ## 0.1.4
 
 - inject extension scripts only after the user activates the extension
