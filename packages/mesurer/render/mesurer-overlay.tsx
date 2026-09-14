@@ -224,11 +224,16 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           : "msr:pointer-events-none msr:opacity-0"
       }`}
       style={{ pointerEvents: overlayCapturesPointer ? "auto" : "none" }}
-      tabIndex={overlayCapturesPointer ? -1 : undefined}
+      tabIndex={overlayCapturesPointer && toolMode === "comments" ? -1 : undefined}
       data-mesurer-overlay
       data-mesurer-inspect={toolMode === "select" ? "" : undefined}
+      onMouseDown={(event) => {
+        if (event.button !== 0) return
+        const target = event.target instanceof Element ? event.target : null
+        if (target?.closest("input, textarea, select, [contenteditable]")) return
+        event.preventDefault()
+      }}
       onPointerDown={(event) => {
-        event.currentTarget.focus({ preventScroll: true })
         const target = event.target instanceof Element ? event.target : null
         const clickedCommentUi = target?.closest("[data-mesurer-comment-ui]")
         if (toolMode === "comments" && comments?.draft && !target?.closest("[data-mesurer-comment-popover]")) {

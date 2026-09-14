@@ -214,6 +214,56 @@ test("extension keyboard gate isolates Mesurer and bridges page-editor shortcuts
   expect(result.releasedPageListenerEvents).toBe(2);
 });
 
+test("extension keyboard gate does not let page menus dismiss from toolbar clicks", async ({
+  page,
+}) => {
+  await page.goto("about:blank");
+  await page.evaluate(() => {
+    const host = document.createElement("div");
+    host.id = "mesurer-extension-host";
+    const shadow = host.attachShadow({ mode: "open" });
+    const root = document.createElement("div");
+    root.className = "mesurer-root";
+    const toolbar = document.createElement("button");
+    toolbar.type = "button";
+    toolbar.textContent = "Inspect";
+    root.append(toolbar);
+    shadow.append(root);
+    document.body.append(host);
+    const overlay = document.createElement("div");
+    overlay.setAttribute("data-mesurer-overlay", "");
+    overlay.textContent = "overlay";
+    root.append(overlay);
+
+    (window as Window & { __gateToolbar?: HTMLButtonElement }).__gateToolbar = toolbar;
+    (window as Window & { __gateOverlay?: HTMLDivElement }).__gateOverlay = overlay;
+  });
+  await page.addScriptTag({ path: extensionGate });
+
+  const result = await page.evaluate(() => {
+    const state = { dismissals: 0 };
+    window.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (!event.composedPath().some((node) => node instanceof Element && node.classList.contains("mesurer-root"))) {
+          return;
+        }
+        state.dismissals += 1;
+      },
+      true,
+    );
+    const toolbar = (window as Window & { __gateToolbar: HTMLButtonElement }).__gateToolbar;
+    const overlay = (window as Window & { __gateOverlay: HTMLDivElement }).__gateOverlay;
+    toolbar.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
+    const afterToolbar = state.dismissals;
+    overlay.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
+    return { afterToolbar, afterOverlay: state.dismissals };
+  });
+
+  expect(result.afterToolbar).toBe(0);
+  expect(result.afterOverlay).toBe(0);
+});
+
 test("extension keyboard gate leaves embedded Mesurer inputs interactive", async ({
   page,
 }) => {

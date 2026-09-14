@@ -13,6 +13,18 @@ test("starts with the Select tool active", async ({ page }) => {
   );
 });
 
+test("inspect clicks do not steal focus from a page field", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  const field = page.getByRole("textbox", { name: "Page field" });
+  await field.focus();
+  await expect(field).toBeFocused();
+
+  await page.mouse.click(120, 160);
+  await expect(field).toBeFocused();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+});
+
 test("does not reset host-page border styles", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
 

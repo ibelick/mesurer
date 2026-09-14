@@ -45,6 +45,9 @@ test("switching to Inspect does not dismiss an open portaled surface", async ({ 
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute("data-value", "inspect");
   await expect(popover).toBeVisible();
 
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(popover).toBeVisible();
+
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await page.getByRole("button", { name: "Open confirmation" }).dispatchEvent("click");
@@ -58,6 +61,65 @@ test("switching to Inspect does not dismiss an open portaled surface", async ({ 
     await page.mouse.click(dialogBox.x + dialogBox.width / 2, dialogBox.y + dialogBox.height / 2);
     await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
   }
+});
+
+test("clicking the Mesurer toolbar does not dismiss a hostile page menu", async ({
+  page,
+}) => {
+  await page.goto("/bench");
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await page.evaluate(() => {
+    window.addEventListener(
+      "pointerdown",
+      (event) => {
+        const menu = document.querySelector('[role="menu"][aria-label="Bench actions"]');
+        if (!(menu instanceof HTMLElement)) return;
+        const path = event.composedPath();
+        if (path.includes(menu)) return;
+        const trigger = document.querySelector('[aria-haspopup="menu"]');
+        if (trigger && path.includes(trigger)) return;
+        menu.dataset.hostileDismissed = "true";
+        menu.remove();
+      },
+      true,
+    );
+  });
+
+  await page.getByRole("button", { name: "Open actions" }).dispatchEvent("click");
+  const menu = page.getByRole("menu", { name: "Bench actions" });
+  await expect(menu).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(menu).toBeVisible();
+
+  await page.getByRole("heading", { name: "Test every edge case." }).dispatchEvent("pointerdown");
+  await expect(menu).toHaveCount(0);
+});
+
+test("inspecting a focus-dismissed model selector keeps it open", async ({ page }) => {
+  await page.goto("/bench");
+  const trigger = page.getByRole("button", { name: "Open model selector" });
+  await trigger.evaluate((element) => {
+    if (!(element instanceof HTMLButtonElement)) return;
+    element.scrollIntoView({ block: "center", behavior: "instant" });
+    element.focus();
+    element.click();
+  });
+  const listbox = page.getByRole("listbox", { name: "Model selector" });
+  await expect(listbox).toBeVisible();
+  await expect(trigger).toBeFocused();
+
+  const box = await listbox.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(listbox).toBeVisible();
+  await expect(trigger).toBeFocused();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(listbox).toBeVisible();
 });
 
 test("inspect mode keeps the default cursor and ignores page controls", async ({ page }) => {

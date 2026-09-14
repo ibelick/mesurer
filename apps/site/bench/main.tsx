@@ -265,24 +265,29 @@ function FloatingUiExamples() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [modelOpen, setModelOpen] = useState(false)
   const popoverTriggerRef = useRef<HTMLButtonElement>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const modelTriggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const modelMenuRef = useRef<HTMLDivElement>(null)
   const popoverPosition = useAnchoredSurface(popoverOpen, popoverTriggerRef)
   const menuPosition = useAnchoredSurface(menuOpen, menuTriggerRef)
+  const modelPosition = useAnchoredSurface(modelOpen, modelTriggerRef)
 
   useEffect(() => {
-    if (!dialogOpen && !popoverOpen && !menuOpen) return
+    if (!dialogOpen && !popoverOpen && !menuOpen && !modelOpen) return
     const dismissOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
       setDialogOpen(false)
       setPopoverOpen(false)
       setMenuOpen(false)
+      setModelOpen(false)
     }
     window.addEventListener("keydown", dismissOnEscape)
     return () => window.removeEventListener("keydown", dismissOnEscape)
-  }, [dialogOpen, menuOpen, popoverOpen])
+  }, [dialogOpen, menuOpen, modelOpen, popoverOpen])
 
   useEffect(() => {
     if (!popoverOpen && !menuOpen) return
@@ -300,6 +305,27 @@ function FloatingUiExamples() {
     window.addEventListener("pointerdown", dismissOnOutsidePointerDown, true)
     return () => window.removeEventListener("pointerdown", dismissOnOutsidePointerDown, true)
   }, [menuOpen, popoverOpen])
+
+  useEffect(() => {
+    if (!modelOpen) return
+    const trigger = modelTriggerRef.current
+    const dismissOnPointerDown = (event: PointerEvent) => {
+      const path = event.composedPath()
+      if (path.includes(modelMenuRef.current!) || (trigger && path.includes(trigger))) return
+      setModelOpen(false)
+    }
+    const dismissOnFocusOut = (event: FocusEvent) => {
+      const next = event.relatedTarget
+      if (next instanceof Node && (modelMenuRef.current?.contains(next) || trigger?.contains(next))) return
+      setModelOpen(false)
+    }
+    window.addEventListener("pointerdown", dismissOnPointerDown, true)
+    trigger?.addEventListener("focusout", dismissOnFocusOut)
+    return () => {
+      window.removeEventListener("pointerdown", dismissOnPointerDown, true)
+      trigger?.removeEventListener("focusout", dismissOnFocusOut)
+    }
+  }, [modelOpen])
 
   return (
     <section className="bench-card" aria-labelledby="overlays-title">
@@ -321,6 +347,18 @@ function FloatingUiExamples() {
           <span className="bench-control-label">Dialog</span>
           <button type="button" onClick={() => setDialogOpen(true)}>Open confirmation</button>
         </div>
+        <div className="bench-floating-example">
+          <span className="bench-control-label">Model selector</span>
+          <button
+            ref={modelTriggerRef}
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={modelOpen}
+            onClick={() => setModelOpen((open) => !open)}
+          >
+            Open model selector
+          </button>
+        </div>
       </div>
       {popoverOpen && popoverPosition ? createPortal(
         <div ref={popoverRef} className="bench-popover" role="dialog" aria-label="Bench popover" style={popoverPosition}>
@@ -335,6 +373,13 @@ function FloatingUiExamples() {
           <button type="button" role="menuitem" onClick={() => setMenuOpen(false)}>Duplicate target</button>
           <button type="button" role="menuitem" onClick={() => setMenuOpen(false)}>Archive target</button>
           <button type="button" role="menuitem" className="bench-menu-danger" onClick={() => setMenuOpen(false)}>Remove target</button>
+        </div>,
+        document.body,
+      ) : null}
+      {modelOpen && modelPosition ? createPortal(
+        <div ref={modelMenuRef} className="bench-action-menu" role="listbox" aria-label="Model selector" style={modelPosition}>
+          <button type="button" role="option">Sonnet</button>
+          <button type="button" role="option">Opus</button>
         </div>,
         document.body,
       ) : null}

@@ -822,6 +822,17 @@ function ToolbarComponent(
         onInteract();
         onPointerDown(event);
       }}
+      onMouseDown={(event) => {
+        if (event.button !== 0) return
+        const target = event.target
+        if (
+          target instanceof Element &&
+          target.closest("input, textarea, select, [contenteditable]")
+        ) {
+          return
+        }
+        event.preventDefault()
+      }}
       onClickCapture={onClickCapture}
       onMouseLeave={onToolbarLeave}
     >

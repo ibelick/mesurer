@@ -206,7 +206,6 @@ export const useMesurerPointer = ({
       if (settingsOpen) return
       if (!enabled || event.button !== 0) return
       if (toolMode === "none") return
-      if (toolMode === "select") event.preventDefault()
       clearSelectionRect()
       const point = { x: event.clientX, y: event.clientY }
       selection.preparePointerDown(
