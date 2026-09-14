@@ -799,8 +799,12 @@ test("cancelling screenshot pointer input does not capture", async ({ page }) =>
 
 test("screenshot selection captures and copies the selected region", async ({ page }) => {
   await page.addInitScript(() => {
-    const onePixelPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const canvas = document.createElement("canvas");
+    canvas.width = 40;
+    canvas.height = 30;
+    const context = canvas.getContext("2d");
+    context?.fillRect(0, 0, canvas.width, canvas.height);
+    const capturePng = canvas.toDataURL("image/png");
     Object.defineProperty(window, "chrome", {
       configurable: true,
       value: {
@@ -808,13 +812,23 @@ test("screenshot selection captures and copies the selected region", async ({ pa
           id: "test-extension",
           lastError: undefined,
           sendMessage: (_message: unknown, callback: (response: unknown) => void) =>
-            callback({ ok: true, dataUrl: onePixelPng }),
+            callback({ ok: true, dataUrl: capturePng }),
         },
       },
     });
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
-      value: { write: () => Promise.resolve() },
+       value: {
+         write: async (items: ClipboardItems) => {
+           const blob = await items[0].getType("image/png");
+           const bitmap = await createImageBitmap(blob);
+           (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize = {
+             width: bitmap.width,
+             height: bitmap.height,
+           };
+           bitmap.close();
+         },
+       },
     });
   });
   await page.goto("/e2e/fixtures/guide-overlay.html");
@@ -827,6 +841,17 @@ test("screenshot selection captures and copies the selected region", async ({ pa
   await page.mouse.move(280, 220);
   await page.mouse.up();
   await expect(page.getByRole("status", { name: "Screenshot copied" })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize))
+    .not.toBeUndefined();
+  const captureSize = await page.evaluate(() => (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize);
+  expect(captureSize).toBeDefined();
+  if (!captureSize) return;
+  const expectedSize = await page.evaluate(() => ({
+    width: Math.max(1, Math.round((160 * 40) / window.innerWidth)),
+    height: Math.max(1, Math.round((80 * 30) / window.innerHeight)),
+  }));
+  expect(captureSize).toEqual(expectedSize);
   await expect(selection).toHaveCount(0);
 });
 

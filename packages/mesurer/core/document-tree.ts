@@ -39,21 +39,41 @@ export const getViewportRect = (element: Element): Rect => {
 const elementCache = new WeakMap<Document, { version: number; elements: Element[] }>()
 const accessibleElementCache = new WeakMap<Document, { version: number; elements: Element[] }>()
 const observedDocuments = new WeakSet<Document>()
+const observedShadowRoots = new WeakSet<ShadowRoot>()
 let documentTreeVersion = 0
 
 export const getDocumentTreeVersion = () => documentTreeVersion
+
+const observeShadowRoots = (ownerDocument: Document, root: Document | ShadowRoot) => {
+  const elements = Array.from(root.querySelectorAll("*"))
+  for (const element of elements) {
+    const shadowRoot = element.shadowRoot
+    if (!shadowRoot || observedShadowRoots.has(shadowRoot)) continue
+    observedShadowRoots.add(shadowRoot)
+    const Observer = ownerDocument.defaultView?.MutationObserver ?? MutationObserver
+    const observer = new Observer(() => {
+      documentTreeVersion += 1
+      observeShadowRoots(ownerDocument, shadowRoot)
+    })
+    observer.observe(shadowRoot, { childList: true, subtree: true })
+    observeShadowRoots(ownerDocument, shadowRoot)
+  }
+}
 
 const observeDocument = (ownerDocument: Document) => {
   if (observedDocuments.has(ownerDocument)) return
   observedDocuments.add(ownerDocument)
   ownerDocument.addEventListener("load", () => {
     documentTreeVersion += 1
+    observeShadowRoots(ownerDocument, ownerDocument)
   }, true)
   if (typeof MutationObserver === "undefined" || !ownerDocument.body) return
   const observer = new MutationObserver(() => {
     documentTreeVersion += 1
+    observeShadowRoots(ownerDocument, ownerDocument)
   })
   observer.observe(ownerDocument.body, { childList: true, subtree: true })
+  observeShadowRoots(ownerDocument, ownerDocument)
 }
 
 export const getBodyElementsCached = (ownerDocument: Document = document) => {

@@ -49,6 +49,16 @@ export class CommentRuntimeStore {
   getSnapshot = () => this.snapshot
   getServerSnapshot = () => this.snapshot
 
+  dispose() {
+    this.stop()
+    this.listeners.clear()
+    this.elements.clear()
+    this.targets.clear()
+    this.rects.clear()
+    this.retryDelays.clear()
+    this.retryAt.clear()
+  }
+
   useSnapshot() {
     return useSyncExternalStore(this.subscribe, this.getSnapshot, this.getServerSnapshot)
   }

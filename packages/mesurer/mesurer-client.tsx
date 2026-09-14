@@ -327,11 +327,11 @@ export function MesurerClient({
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
-  const commentRuntimeRef = useRef<CommentRuntimeStore | null>(null);
-  if (commentRuntimeRef.current === null) {
-    commentRuntimeRef.current = new CommentRuntimeStore(ownerDocument, ownerWindow);
-  }
-  const commentRuntime = commentRuntimeRef.current;
+  const commentRuntime = useMemo(
+    () => new CommentRuntimeStore(ownerDocument, ownerWindow),
+    [ownerDocument, ownerWindow],
+  );
+  useEffect(() => () => commentRuntime.dispose(), [commentRuntime]);
   const commentRuntimeSnapshot = commentRuntime.useSnapshot();
   useEffect(() => {
     const commentIds = new Set(comments.map((comment) => comment.id));
@@ -364,10 +364,10 @@ export function MesurerClient({
       updateTarget: updateCommentTarget,
     },
   });
-  const typographyInspectorRef = useRef<TypographyInspector | null>(null);
-  if (!typographyInspectorRef.current) {
-    typographyInspectorRef.current = new TypographyInspector(ownerDocument, ownerWindow);
-  }
+  const typographyInspector = useMemo(
+    () => new TypographyInspector(ownerDocument, ownerWindow),
+    [ownerDocument, ownerWindow],
+  );
   const textDraftInputRef = useRef<HTMLElement | null>(null);
   const textDraftRef = useRef(textDraft);
   const committedTextEditorsRef = useRef(new WeakSet<HTMLElement>());
@@ -879,11 +879,19 @@ export function MesurerClient({
       mutationObserver.observe(node, { attributes: true, attributeFilter: ["class", "style"] });
       node = node.parentElement;
     }
-    stylesheetObserver.observe(selectedElement.ownerDocument.head ?? selectedElement.ownerDocument, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
+    const selectedRoot = selectedElement.getRootNode();
+    const stylesheetRoots: Node[] = [selectedElement.ownerDocument.head ?? selectedElement.ownerDocument];
+    if (selectedRoot !== selectedElement.ownerDocument) {
+      mutationObserver.observe(selectedRoot, { attributes: true, childList: true, subtree: true });
+      stylesheetRoots.push(selectedRoot);
+    }
+    for (const root of stylesheetRoots) {
+      stylesheetObserver.observe(root, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
     elementWindow.addEventListener("resize", refresh);
     elementWindow.document.fonts?.addEventListener("loadingdone", refresh);
     elementWindow.document.fonts?.addEventListener("loadingerror", refresh);
@@ -901,7 +909,7 @@ export function MesurerClient({
     const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
     if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
     if (!selectedElement.textContent?.trim()) return null;
-    return typographyInspectorRef.current?.getFull(selectedElement) ?? null;
+    return typographyInspector.getFull(selectedElement) ?? null;
   }, [selectedElement, typographyRevision]);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);

@@ -41,6 +41,7 @@ export type CommentMessage = {
 export type CommentTarget = {
   selector: string
   framePath?: string[]
+  frameShadowPaths?: string[][]
   shadowPath?: string[]
   tagName: string
   textSnippet: string

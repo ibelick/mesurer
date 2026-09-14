@@ -25,20 +25,27 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== CAPTURE_VISIBLE_MESSAGE) return false;
   const windowId = sender.tab?.windowId;
-  if (windowId === undefined) {
+  const senderTabId = sender.tab?.id;
+  if (windowId === undefined || senderTabId === undefined) {
     sendResponse({ ok: false, error: "No window to capture" });
     return false;
   }
 
-  chrome.tabs.captureVisibleTab(windowId, { format: "png" }, (dataUrl) => {
-    if (chrome.runtime.lastError || !dataUrl) {
-      sendResponse({
-        ok: false,
-        error: chrome.runtime.lastError?.message ?? "Capture failed",
-      });
+  chrome.tabs.query({ active: true, windowId }, (tabs) => {
+    if (chrome.runtime.lastError || tabs[0]?.id !== senderTabId) {
+      sendResponse({ ok: false, error: "Capture request came from an inactive tab" });
       return;
     }
-    sendResponse({ ok: true, dataUrl });
+    chrome.tabs.captureVisibleTab(windowId, { format: "png" }, (dataUrl) => {
+      if (chrome.runtime.lastError || !dataUrl) {
+        sendResponse({
+          ok: false,
+          error: chrome.runtime.lastError?.message ?? "Capture failed",
+        });
+        return;
+      }
+      sendResponse({ ok: true, dataUrl });
+    });
   });
   return true;
 });

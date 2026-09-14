@@ -282,6 +282,7 @@ const isCommentThread = (value: unknown): value is CommentThread => {
     typeof target.htmlPreview === "string" &&
     typeof target.styles === "string" &&
     (target.framePath === undefined || (Array.isArray(target.framePath) && target.framePath.every((selector) => typeof selector === "string"))) &&
+    (target.frameShadowPaths === undefined || (Array.isArray(target.frameShadowPaths) && target.frameShadowPaths.every((path) => Array.isArray(path) && path.every((selector) => typeof selector === "string")))) &&
     (target.shadowPath === undefined || (Array.isArray(target.shadowPath) && target.shadowPath.every((selector) => typeof selector === "string"))) &&
     isRect(target.rect) &&
     (anchor === undefined || (

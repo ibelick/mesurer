@@ -46,12 +46,18 @@ const iframeSrcDoc = `<!doctype html>
       </section>
       <section class="panel" style="margin: 16px"><h2>Table and rendered graphics</h2><table><thead><tr><th>Signal</th><th>Status</th><th>Value</th></tr></thead><tbody><tr><td>Layout</td><td>Ready</td><td>98%</td></tr><tr><td>Motion</td><td>Active</td><td>60fps</td></tr><tr><td>Boundary</td><td>Nested</td><td>iframe</td></tr></tbody></table><div class="graphics"><svg viewBox="0 0 150 74" role="img" aria-label="Iframe SVG"><path d="M4 62 C28 8 53 70 76 30 S122 12 146 54" fill="none" stroke="#2563eb" stroke-width="3" /><circle cx="76" cy="30" r="7" fill="#f97316" /></svg><canvas id="frame-canvas" width="300" height="148" aria-label="Iframe canvas"></canvas></div></section>
       <div class="footer">End of embedded document. Scroll the iframe itself to test the boundary.</div>
-      <section class="panel" style="margin: 16px"><h2>Nested iframe boundary</h2><iframe title="Nested child iframe" srcdoc="<button style='margin:18px;padding:12px'>nested iframe target</button>"></iframe></section>
+       <section class="panel" style="margin: 16px"><h2>Nested iframe boundary</h2><iframe title="Nested child iframe" srcdoc="<button style='margin:18px;padding:12px'>nested iframe target</button>"></iframe><div id="shadow-frame-host"></div></section>
     </div>
     <script>
       const host = document.querySelector('#shadow-host');
       const shadow = host.attachShadow({ mode: 'open' });
       shadow.innerHTML = '<button style="padding:10px;border:1px solid #64748b;border-radius:4px;background:#dbeafe">shadow button</button>';
+      const shadowFrameHost = document.querySelector('#shadow-frame-host');
+      if (!shadowFrameHost) throw new Error('Shadow iframe host is missing');
+      const shadowFrame = document.createElement('iframe');
+      shadowFrame.title = 'Shadow child iframe';
+      shadowFrame.srcdoc = '<button style="margin:18px;padding:12px">shadow iframe target</button>';
+      shadowFrameHost.attachShadow({ mode: 'open' }).append(shadowFrame);
       const canvas = document.querySelector('#frame-canvas');
       const context = canvas.getContext('2d');
       context.scale(2, 2); context.fillStyle = '#dcfce7'; context.fillRect(0, 0, 150, 74); context.fillStyle = '#172033'; context.font = '12px monospace'; context.fillText('canvas pixels', 28, 40);

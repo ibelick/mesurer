@@ -21,12 +21,14 @@ const getElementAttributes = (element: Element) => {
 
 const getFramePath = (element: Element) => {
   const path: string[] = []
+  const shadowPaths: string[][] = []
   let frame = element.ownerDocument.defaultView?.frameElement
   while (frame) {
     path.unshift(getElementSelector(frame))
+    shadowPaths.unshift(getShadowPath(frame))
     frame = frame.ownerDocument.defaultView?.frameElement
   }
-  return path
+  return { path, shadowPaths }
 }
 
 const getShadowPath = (element: Element) => {
@@ -77,9 +79,11 @@ export const captureCommentTarget = (
 ): CommentTarget => {
   const html = element.outerHTML.replace(/\s+/g, " ").trim()
   const rect = getRectFromDom(element)
+  const frame = getFramePath(element)
   return {
     selector: getElementSelector(element),
-    framePath: getFramePath(element),
+    framePath: frame.path,
+    frameShadowPaths: frame.shadowPaths,
     shadowPath: getShadowPath(element),
     tagName: getElementName(element),
     textSnippet: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH),
@@ -112,8 +116,14 @@ export const resolveCommentTarget = (
 ) => {
   try {
     let targetDocument = ownerDocument
-    for (const frameSelector of target.framePath ?? []) {
-      const frame = targetDocument.querySelector(frameSelector)
+    for (const [index, frameSelector] of (target.framePath ?? []).entries()) {
+      let frameRoot: Document | ShadowRoot = targetDocument
+      for (const hostSelector of target.frameShadowPaths?.[index] ?? []) {
+        const host: Element | null = frameRoot.querySelector(hostSelector)
+        if (!host?.shadowRoot) return null
+        frameRoot = host.shadowRoot
+      }
+      const frame = frameRoot.querySelector(frameSelector)
       if (!frame) return null
       const childDocument = getAccessibleFrameDocument(frame)
       if (!childDocument) return null

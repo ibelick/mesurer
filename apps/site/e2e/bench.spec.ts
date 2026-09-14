@@ -87,13 +87,12 @@ test("inspect tool can select an element inside the iframe", async ({ page }) =>
   const selected = page.locator("[data-mesurer-selected-measurement] > div");
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
   const target = await frame.contentFrame()?.getByRole("heading", { name: "Iframe application" }).boundingBox();
-  const selection = await selected.first().boundingBox();
   expect(target).not.toBeNull();
-  expect(selection).not.toBeNull();
-  if (target && selection) {
-    expect(Math.abs(selection.x - target.x)).toBeLessThan(3);
-    expect(Math.abs(selection.y - target.y)).toBeLessThan(3);
-  }
+  await expect.poll(async () => {
+    const selection = await selected.first().boundingBox();
+    if (!target || !selection) return Number.POSITIVE_INFINITY;
+    return Math.max(Math.abs(selection.x - target.x), Math.abs(selection.y - target.y));
+  }).toBeLessThan(3);
 });
 
 test("x-ray mode outlines accessible iframe content", async ({ page }) => {
@@ -137,6 +136,23 @@ test("inspect tool can reach a nested iframe", async ({ page }) => {
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
 });
 
+test("inspect tool can reach an iframe inside Shadow DOM", async ({ page }) => {
+  await page.goto("/bench");
+  const embeddedFrame = page.getByTitle("Complex embedded application").contentFrame();
+  const frame = embeddedFrame?.locator("#shadow-frame-host iframe[title='Shadow child iframe']");
+  expect(frame).toBeDefined();
+  if (!frame) return;
+  await frame.scrollIntoViewIfNeeded();
+  const target = frame.contentFrame()?.getByRole("button", { name: "shadow iframe target" });
+  await expect(target!).toBeVisible();
+  const box = await target!.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /button/);
+});
+
 test("inspect selection follows an animated target", async ({ page }) => {
   await page.goto("/bench");
   const target = page.getByRole("button", { name: "orbiting target" });
@@ -148,15 +164,17 @@ test("inspect selection follows an animated target", async ({ page }) => {
   await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
   const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
   await expect(selected).toBeVisible();
-  await page.waitForTimeout(1000);
-  const selectionBox = await selected.boundingBox();
-  const currentTargetBox = await target.boundingBox();
-  expect(selectionBox).not.toBeNull();
-  expect(currentTargetBox).not.toBeNull();
-  if (selectionBox && currentTargetBox) {
-    expect(Math.abs(selectionBox.x - currentTargetBox.x)).toBeLessThan(4);
-    expect(Math.abs(selectionBox.y - currentTargetBox.y)).toBeLessThan(4);
-  }
+  // Live tracking updates on animation frames, so compare until the overlay
+  // converges within one frame of the continuously moving target.
+  await expect.poll(async () => {
+    const selectionBox = await selected.boundingBox();
+    const currentTargetBox = await target.boundingBox();
+    if (!selectionBox || !currentTargetBox) return Number.POSITIVE_INFINITY;
+    return Math.max(
+      Math.abs(selectionBox.x - currentTargetBox.x),
+      Math.abs(selectionBox.y - currentTargetBox.y),
+    );
+  }).toBeLessThan(10);
 });
 
 test("inspect selection remains after moving the pointer away", async ({ page }) => {
@@ -190,19 +208,20 @@ test("comment draft follows an animated target", async ({ page }) => {
   const composerBox = await composer.boundingBox();
   const draft = page.locator("[data-mesurer-comment-draft-target]");
   await expect(draft).toBeVisible();
-  await page.waitForTimeout(700);
-  const draftBox = await draft.boundingBox();
-  const currentTargetBox = await target.boundingBox();
-  const currentComposerBox = await composer.boundingBox();
-  expect(draftBox).not.toBeNull();
-  expect(currentTargetBox).not.toBeNull();
-  expect(currentComposerBox).not.toBeNull();
-  if (draftBox && currentTargetBox && composerBox && currentComposerBox) {
-    expect(Math.abs(draftBox.x - currentTargetBox.x)).toBeLessThan(4);
-    expect(Math.abs(draftBox.y - currentTargetBox.y)).toBeLessThan(4);
-    expect(Math.abs(composerBox.x - currentComposerBox.x)).toBeLessThan(4);
-    expect(Math.abs(composerBox.y - currentComposerBox.y)).toBeLessThan(4);
-  }
+  expect(composerBox).not.toBeNull();
+  if (!composerBox) return;
+  await expect.poll(async () => {
+    const draftBox = await draft.boundingBox();
+    const currentTargetBox = await target.boundingBox();
+    const currentComposerBox = await composer.boundingBox();
+    if (!draftBox || !currentTargetBox || !currentComposerBox) return Number.POSITIVE_INFINITY;
+    return Math.max(
+      Math.abs(draftBox.x - currentTargetBox.x),
+      Math.abs(draftBox.y - currentTargetBox.y),
+      Math.abs(composerBox.x - currentComposerBox.x),
+      Math.abs(composerBox.y - currentComposerBox.y),
+    );
+  }, { timeout: 2_000 }).toBeLessThan(4);
 });
 
 test("comments in an iframe resolve after reload", async ({ page }) => {
