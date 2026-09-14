@@ -11,7 +11,17 @@ export const getElementSelector = (element: Element) => {
     }
     const parent: Element | null = current.parentElement
     if (!parent) {
-      parts.unshift(tag)
+      const root = current.getRootNode()
+      if (root.nodeType === Node.DOCUMENT_FRAGMENT_NODE && "children" in root) {
+        const siblings = Array.from((root as ShadowRoot).children).filter(
+          (sibling) => sibling.tagName === current?.tagName,
+        )
+        const index = siblings.indexOf(current)
+        const selector = siblings.length > 1 ? `${tag}:nth-of-type(${index + 1})` : tag
+        parts.unshift(selector)
+      } else {
+        parts.unshift(tag)
+      }
       break
     }
     const siblings = Array.from(parent.children).filter(

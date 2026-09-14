@@ -204,6 +204,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     (toolMode !== "none" || Boolean(comments?.selectedId)) &&
     toolMode !== "xray" &&
     toolMode !== "rulers"
+  const overlayCapturesPointer = overlayInteractive && toolMode !== "select" && toolMode !== "selection"
   const selectionVisible = toolMode === "select"
   const showGuidePreview = interactive && guidesEnabled && Boolean(guides.preview)
 
@@ -222,8 +223,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
             } msr:opacity-100`
           : "msr:pointer-events-none msr:opacity-0"
       }`}
-      style={{ pointerEvents: overlayInteractive ? "auto" : "none" }}
-      tabIndex={overlayInteractive ? -1 : undefined}
+      style={{ pointerEvents: overlayCapturesPointer ? "auto" : "none" }}
+      tabIndex={overlayCapturesPointer ? -1 : undefined}
+      data-mesurer-overlay
       onPointerDown={(event) => {
         event.currentTarget.focus({ preventScroll: true })
         const target = event.target instanceof Element ? event.target : null

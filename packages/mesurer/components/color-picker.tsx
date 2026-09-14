@@ -42,13 +42,17 @@ export function ColorPicker({
 
   useEffect(() => {
     if (!active) return
+    let closeTimer: number | null = null
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
       const panel = panelRef.current
       if (panel && event.composedPath().includes(panel)) return
-      onClose()
+      closeTimer = ownerWindow.setTimeout(onClose, 0)
     }
     ownerWindow.addEventListener("pointerdown", closeOnOutsidePointerDown)
-    return () => ownerWindow.removeEventListener("pointerdown", closeOnOutsidePointerDown)
+    return () => {
+      if (closeTimer !== null) ownerWindow.clearTimeout(closeTimer)
+      ownerWindow.removeEventListener("pointerdown", closeOnOutsidePointerDown)
+    }
   }, [active, onClose, ownerWindow])
 
   useLayoutEffect(() => {

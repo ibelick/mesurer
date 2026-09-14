@@ -32,6 +32,8 @@ export function ToolGroupSwitch({
       data-value={value}
       role="group"
       aria-label="Tool group"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <span className="mesurer-toolbar-tool-switch-pill" aria-hidden="true" />
       <div

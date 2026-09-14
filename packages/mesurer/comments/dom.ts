@@ -29,6 +29,32 @@ const getFramePath = (element: Element) => {
   return path
 }
 
+const getShadowPath = (element: Element) => {
+  const path: string[] = []
+  let root: Node = element.getRootNode()
+  while (root.nodeType === Node.DOCUMENT_FRAGMENT_NODE && "host" in root) {
+    const host = (root as ShadowRoot).host
+    const tag = getElementName(host)
+    if (host.id) {
+      path.unshift(`${tag}#${CSS.escape(host.id)}`)
+    } else if (host.parentElement) {
+      path.unshift(getElementSelector(host))
+    } else {
+      const parent = host.parentNode
+      const siblings = parent && "children" in parent
+        ? Array.from(parent.children).filter(
+        (sibling) => sibling.tagName === host.tagName,
+          )
+        : []
+      const index = siblings.indexOf(host)
+      const selector = siblings.length > 1 ? `${tag}:nth-of-type(${index + 1})` : tag
+      path.unshift(`:scope > ${selector}`)
+    }
+    root = host.getRootNode()
+  }
+  return path
+}
+
 const getStyles = (element: Element, ownerWindow: Window) => {
   const style = element.ownerDocument.defaultView?.getComputedStyle(element) ?? ownerWindow.getComputedStyle(element)
   return [
@@ -54,6 +80,7 @@ export const captureCommentTarget = (
   return {
     selector: getElementSelector(element),
     framePath: getFramePath(element),
+    shadowPath: getShadowPath(element),
     tagName: getElementName(element),
     textSnippet: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH),
     htmlPreview: html.slice(0, MAX_HTML_LENGTH),
@@ -92,7 +119,14 @@ export const resolveCommentTarget = (
       if (!childDocument) return null
       targetDocument = childDocument
     }
-    const element = targetDocument.querySelector(target.selector)
+    let targetRoot: Document | ShadowRoot = targetDocument
+    for (const hostSelector of target.shadowPath ?? []) {
+      const host: Element | null = targetRoot.querySelector(hostSelector)
+      if (!host?.shadowRoot) return null
+      targetRoot = host.shadowRoot
+    }
+    const candidates = Array.from(targetRoot.querySelectorAll(target.selector))
+    const element = candidates.find((candidate) => candidate.parentNode === targetRoot) ?? candidates[0]
     if (!element || getElementName(element) !== target.tagName) return null
     return element
   } catch {

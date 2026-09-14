@@ -1,7 +1,29 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { captureCommentTarget, resolveCommentTarget } from "../../../../packages/mesurer/comments/dom";
 
 const stealPagePrompt = new URLSearchParams(location.search).has("prompt");
+
+Object.assign(window, {
+  __mesurerCommentTargetTest: { captureCommentTarget, resolveCommentTarget },
+});
+
+function ShadowCommentTarget() {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || host.shadowRoot) return;
+    const shadow = host.attachShadow({ mode: "open" });
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Shadow comment button";
+    button.style.cssText = "width: 200px; height: 100px; border: 0; background: #d4d4d8;";
+    shadow.append(button);
+  }, []);
+
+  return <div ref={hostRef} id="shadow-comment-host" data-testid="shadow-comment-host" style={{ position: "absolute", left: 760, top: 240, width: 200, height: 100 }} />;
+}
 
 function Fixture() {
   const [clicks, setClicks] = useState(0);
@@ -22,6 +44,7 @@ function Fixture() {
       >
         Underlying app button
       </button>
+      <ShadowCommentTarget />
       <div
         data-testid="layout-flex"
         style={{

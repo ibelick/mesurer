@@ -52,6 +52,24 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-field { display: flex; flex-direction: column; gap: 6px; color: #64748b; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; }
 .bench-field input, .bench-field select { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; color: #172033; background: #fff; font: 12px ui-sans-serif, system-ui, sans-serif; text-transform: none; }
 .bench-shadow-host { min-height: 38px; display: flex; align-items: center; }
+.bench-floating-examples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.bench-floating-example { min-height: 112px; border: 1px dashed #94a3b8; padding: 12px; background: #fff; }
+.bench-floating-example > button { margin-top: 12px; border: 1px solid #64748b; border-radius: 4px; padding: 7px 9px; color: #172033; background: #f8fafc; font-size: 11px; }
+.bench-popover, .bench-action-menu { position: fixed; z-index: 60; min-width: 190px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px; color: #172033; background: #fff; box-shadow: 0 12px 28px rgb(15 23 42 / 18%); }
+.bench-popover strong { display: block; font-size: 12px; }
+.bench-popover p { margin: 5px 0 10px; color: #64748b; font-size: 11px; line-height: 1.4; }
+.bench-popover button { border: 1px solid #172033; border-radius: 4px; padding: 5px 7px; color: #fff; background: #172033; font-size: 10px; }
+.bench-action-menu { display: grid; gap: 2px; padding: 5px; }
+.bench-action-menu button { border: 0; border-radius: 3px; padding: 7px; color: #334155; background: transparent; font-size: 11px; text-align: left; }
+.bench-action-menu button:hover { background: #f1f5f9; }
+.bench-action-menu .bench-menu-danger { color: #b91c1c; }
+.bench-dialog-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 40%); }
+.bench-dialog { width: min(380px, 100%); border: 1px solid #64748b; border-radius: 8px; padding: 20px; color: #172033; background: #fff; box-shadow: 0 24px 60px rgb(15 23 42 / 30%); }
+.bench-dialog h2 { margin: 8px 0; font-size: 20px; }
+.bench-dialog p { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
+.bench-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.bench-dialog-actions button { border: 1px solid #94a3b8; border-radius: 4px; padding: 7px 9px; color: #334155; background: #fff; font-size: 11px; }
+.bench-dialog-actions .bench-dialog-confirm { border-color: #172033; color: #fff; background: #172033; }
 .bench-iframe { width: 100%; min-height: 90px; border: 1px solid #cbd5e1; background: #fff; }
 .bench-complex-iframe { min-height: 680px; }
 .bench-native-elements { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 22px; padding-top: 16px; border-top: 1px solid #e2e8f0; color: #475569; font-size: 11px; }
@@ -83,4 +101,4 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 @media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before { animation-play-state: paused; } }
 .bench-guide-line { position: fixed; z-index: 1; pointer-events: none; background: #f97316; }
 .bench-guide-horizontal { top: 50%; left: 0; width: 100%; height: 1px; }
-@media (max-width: 800px) { .bench-page { padding: 28px 14px 90px; } .bench-header { align-items: start; flex-direction: column; } .bench-how-to, .bench-split-grid, .bench-special-items { grid-template-columns: 1fr; } .bench-coordinate { display: none; } }
+@media (max-width: 800px) { .bench-page { padding: 28px 14px 90px; } .bench-header { align-items: start; flex-direction: column; } .bench-how-to, .bench-split-grid, .bench-special-items, .bench-floating-examples { grid-template-columns: 1fr; } .bench-coordinate { display: none; } }

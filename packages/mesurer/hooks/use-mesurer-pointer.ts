@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -251,14 +251,14 @@ export const useMesurerPointer = ({
           { id, orientation: guideOrientation, position },
         ])
         scheduleGuideDragHold(id, setDraggingGuideId)
-        event.currentTarget.setPointerCapture(event.pointerId)
+        if (event.isTrusted) event.currentTarget.setPointerCapture(event.pointerId)
         return
       }
 
       setStart(point)
       setEnd(point)
       setIsDragging(false)
-      event.currentTarget.setPointerCapture(event.pointerId)
+      if (event.isTrusted) event.currentTarget.setPointerCapture(event.pointerId)
     },
     [
       altPressed,
@@ -437,7 +437,7 @@ export const useMesurerPointer = ({
       clearGuideDragHold()
       if (guidesEnabled) {
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-          event.currentTarget.releasePointerCapture(event.pointerId)
+          if (event.isTrusted) event.currentTarget.releasePointerCapture(event.pointerId)
         }
         setDraggingGuideId(null)
         setStart(null)
@@ -462,7 +462,7 @@ export const useMesurerPointer = ({
       }
 
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
+          if (event.isTrusted) event.currentTarget.releasePointerCapture(event.pointerId)
       }
 
       if (draggingGuideId) {
@@ -523,6 +523,110 @@ export const useMesurerPointer = ({
     setIsDragging,
     setStart,
   ])
+
+  useEffect(() => {
+    if (!enabled || settingsOpen || (toolMode !== "select" && toolMode !== "selection")) return
+
+    const getDocumentOffset = (sourceDocument: Document) => {
+      let currentDocument = sourceDocument
+      let left = 0
+      let top = 0
+      while (currentDocument !== document) {
+        const frame = currentDocument.defaultView?.frameElement
+        if (!frame) break
+        const rect = frame.getBoundingClientRect()
+        left += rect.left + frame.clientLeft
+        top += rect.top + frame.clientTop
+        currentDocument = frame.ownerDocument
+      }
+      return { left, top }
+    }
+
+    const handlePortaledPointer = (event: PointerEvent, sourceDocument: Document = document) => {
+      const overlayNode = overlayRef.current
+      const path = event.composedPath()
+      if (!overlayNode || path.includes(overlayNode)) return
+      if (sourceDocument === document && toolbarRef.current && path.includes(toolbarRef.current)) return
+      const eventTarget = overlayNode.querySelector<HTMLElement>("[data-mesurer-overlay]")
+      if (!eventTarget) return
+      const offset = getDocumentOffset(sourceDocument)
+
+      const forwardedEvent = new PointerEvent(event.type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: event.clientX + offset.left,
+        clientY: event.clientY + offset.top,
+        button: event.button,
+        buttons: event.buttons,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        isPrimary: event.isPrimary,
+        pressure: event.pressure,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+      })
+
+      // Keep the application surface passive while Inspect is active, then
+      // let the existing overlay handlers resolve the real target by point.
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      eventTarget.dispatchEvent(forwardedEvent)
+    }
+
+    const handlePortaledClick = (event: MouseEvent, sourceDocument: Document = document) => {
+      const overlayNode = overlayRef.current
+      const path = event.composedPath()
+      if (!overlayNode || path.includes(overlayNode)) return
+      if (sourceDocument === document && toolbarRef.current && path.includes(toolbarRef.current)) return
+      if (event.detail === 0) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+
+    const listeners: Array<{ sourceDocument: Document; type: string; listener: EventListener }> = []
+    const registeredDocuments = new Set<Document>()
+    const registerDocument = (sourceDocument: Document) => {
+      if (registeredDocuments.has(sourceDocument)) return
+      registeredDocuments.add(sourceDocument)
+      const registrations: Array<[string, EventListener]> = [
+        ["pointerdown", (event) => handlePortaledPointer(event as PointerEvent, sourceDocument)],
+        ["pointermove", (event) => handlePortaledPointer(event as PointerEvent, sourceDocument)],
+        ["pointerup", (event) => handlePortaledPointer(event as PointerEvent, sourceDocument)],
+        ["pointercancel", (event) => handlePortaledPointer(event as PointerEvent, sourceDocument)],
+        ["click", (event) => handlePortaledClick(event as MouseEvent, sourceDocument)],
+      ]
+      for (const [type, listener] of registrations) {
+        sourceDocument.addEventListener(type, listener, true)
+        listeners.push({ sourceDocument, type, listener })
+      }
+    }
+    const registerFrameDocuments = (sourceDocument: Document) => {
+      registerDocument(sourceDocument)
+      for (const frame of Array.from(sourceDocument.querySelectorAll("iframe"))) {
+        try {
+          const childDocument = frame.contentDocument
+          if (!childDocument) continue
+          registerFrameDocuments(childDocument)
+        } catch {
+          // Cross-origin frames cannot expose a document to inspect.
+        }
+      }
+    }
+    registerFrameDocuments(document)
+    const handleDocumentLoad = () => registerFrameDocuments(document)
+    document.addEventListener("load", handleDocumentLoad, true)
+    const frameObserver = new MutationObserver(registerFrameDocuments.bind(null, document))
+    frameObserver.observe(document.documentElement, { childList: true, subtree: true })
+    return () => {
+      document.removeEventListener("load", handleDocumentLoad, true)
+      frameObserver.disconnect()
+      for (const { sourceDocument, type, listener } of listeners) {
+        sourceDocument.removeEventListener(type, listener, true)
+      }
+    }
+  }, [document, enabled, overlayRef, settingsOpen, toolbarRef, toolMode])
 
   return {
     handlePointerDown,

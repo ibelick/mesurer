@@ -294,6 +294,67 @@ test("persists the comment thread after reload", async ({ page }) => {
   );
 });
 
+test("resolves a persisted target inside an open Shadow DOM root", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const shadowButton = page.getByRole("button", { name: "Shadow comment button" });
+  const shadowBox = await shadowButton.boundingBox();
+  expect(shadowBox).not.toBeNull();
+  const target = await page.evaluate((point) => {
+    const button = document.querySelector("[data-testid='shadow-comment-host']")?.shadowRoot?.querySelector("button");
+    if (!button) throw new Error("Expected Shadow DOM button");
+    return (window as any).__mesurerCommentTargetTest.captureCommentTarget(button, point, window);
+  }, { x: shadowBox!.x + shadowBox!.width / 2, y: shadowBox!.y + shadowBox!.height / 2 });
+  expect(target.shadowPath).toEqual(["div#shadow-comment-host"]);
+  await page.reload();
+
+  await expect.poll(() => page.evaluate((persistedTarget) => {
+    const element = (window as any).__mesurerCommentTargetTest.resolveCommentTarget(persistedTarget);
+    return element?.textContent;
+  }, target)).toBe("Shadow comment button");
+});
+
+test("resolves targets in distinct ID-less Shadow DOM hosts", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const targets = await page.evaluate(() => {
+    const hosts = [document.createElement("div"), document.createElement("div")];
+    const buttons = hosts.map((host, index) => {
+      document.body.append(host);
+      const root = host.attachShadow({ mode: "open" });
+      const button = document.createElement("button");
+      button.textContent = `Shadow target ${index}`;
+      root.append(button);
+      return button;
+    });
+    const testApi = (window as any).__mesurerCommentTargetTest;
+    return buttons.map((button) => {
+      const target = testApi.captureCommentTarget(button, { x: 0, y: 0 }, window);
+      return { path: target.shadowPath, text: testApi.resolveCommentTarget(target)?.textContent };
+    });
+  });
+
+  expect(targets[0].path).not.toEqual(targets[1].path);
+  expect(targets.map((target) => target.text)).toEqual(["Shadow target 0", "Shadow target 1"]);
+});
+
+test("re-resolves a comment after its target is replaced", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await clickCenter(page, page.getByRole("button", { name: "Underlying app button" }));
+  await page.getByRole("textbox", { name: "Comment" }).fill("Keep replacement feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Underlying app button" }).evaluate((button) => {
+    button.replaceWith(button.cloneNode(true));
+  });
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toContainText(
+    "Keep replacement feedback.",
+  );
+});
+
 test("deletes a comment thread", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);

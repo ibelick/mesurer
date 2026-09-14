@@ -1,4 +1,5 @@
-import { useEffect, useRef, type CSSProperties } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react"
+import { createPortal } from "react-dom"
 import { Mesurer } from "mesurer"
 import "./styles.css"
 
@@ -191,16 +192,17 @@ function TestCanvas({ count }: { count: number }) {
         <p className="bench-card-instruction">Inspect the button rendered inside a separate shadow root.</p>
         <div ref={shadowRef} className="bench-shadow-host" aria-label="Shadow DOM target" />
       </section>
+      <FloatingUiExamples />
       <section className="bench-card" aria-labelledby="iframe-title">
         <div className="bench-card-heading">
-          <div><span className="bench-kicker">08 / boundary</span><h2 id="iframe-title">Iframe target</h2></div>
+          <div><span className="bench-kicker">09 / boundary</span><h2 id="iframe-title">Iframe target</h2></div>
         </div>
         <p className="bench-card-instruction">Use Inspect (I), not Select (S), to select elements inside this iframe. Try the sticky toolbar, animated target, form, shadow root, table, SVG, and canvas.</p>
         <iframe title="Complex embedded application" className="bench-iframe bench-complex-iframe" srcDoc={iframeSrcDoc} />
       </section>
       <section className="bench-card" aria-labelledby="motion-title">
         <div className="bench-card-heading">
-          <div><span className="bench-kicker">09 / motion</span><h2 id="motion-title">Animated targets</h2></div>
+          <div><span className="bench-kicker">10 / motion</span><h2 id="motion-title">Animated targets</h2></div>
           <span className="bench-coordinate">transform / opacity</span>
         </div>
         <p className="bench-card-instruction">Inspect these while they move. Check that measurements and comments stay anchored to the animated target.</p>
@@ -212,7 +214,7 @@ function TestCanvas({ count }: { count: number }) {
       </section>
       <section className="bench-card" aria-labelledby="layers-title">
         <div className="bench-card-heading">
-          <div><span className="bench-kicker">10 / layers</span><h2 id="layers-title">Sticky header and overlapping cards</h2></div>
+          <div><span className="bench-kicker">11 / layers</span><h2 id="layers-title">Sticky header and overlapping cards</h2></div>
         </div>
         <p className="bench-card-instruction">Scroll inside this panel. Inspect the sticky bar and the cards that overlap it at different depths.</p>
         <div className="bench-layer-frame">
@@ -227,6 +229,124 @@ function TestCanvas({ count }: { count: number }) {
         </div>
       </section>
     </>
+  )
+}
+
+type SurfacePosition = { left: number; top: number }
+
+function useAnchoredSurface(open: boolean, anchorRef: RefObject<HTMLButtonElement | null>) {
+  const [position, setPosition] = useState<SurfacePosition | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const update = () => {
+      const rect = anchorRef.current?.getBoundingClientRect()
+      if (rect) setPosition({ left: rect.left, top: rect.bottom + 8 })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [anchorRef, open])
+
+  return position
+}
+
+function FloatingUiExamples() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const popoverTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const popoverPosition = useAnchoredSurface(popoverOpen, popoverTriggerRef)
+  const menuPosition = useAnchoredSurface(menuOpen, menuTriggerRef)
+
+  useEffect(() => {
+    if (!dialogOpen && !popoverOpen && !menuOpen) return
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      setDialogOpen(false)
+      setPopoverOpen(false)
+      setMenuOpen(false)
+    }
+    window.addEventListener("keydown", dismissOnEscape)
+    return () => window.removeEventListener("keydown", dismissOnEscape)
+  }, [dialogOpen, menuOpen, popoverOpen])
+
+  useEffect(() => {
+    if (!popoverOpen && !menuOpen) return
+    const dismissOnOutsidePointerDown = (event: PointerEvent) => {
+      const path = event.composedPath()
+      const isMesurerInteraction = path.some((node) => node instanceof Element && node.closest("[data-mesurer-root]"))
+      if (isMesurerInteraction) return
+      if (popoverOpen && !path.includes(popoverRef.current!) && !path.includes(popoverTriggerRef.current!)) {
+        setPopoverOpen(false)
+      }
+      if (menuOpen && !path.includes(menuRef.current!) && !path.includes(menuTriggerRef.current!)) {
+        setMenuOpen(false)
+      }
+    }
+    window.addEventListener("pointerdown", dismissOnOutsidePointerDown, true)
+    return () => window.removeEventListener("pointerdown", dismissOnOutsidePointerDown, true)
+  }, [menuOpen, popoverOpen])
+
+  return (
+    <section className="bench-card" aria-labelledby="overlays-title">
+      <div className="bench-card-heading">
+        <div><span className="bench-kicker">08 / floating ui</span><h2 id="overlays-title">Dialog, popover, and menu</h2></div>
+        <span className="bench-coordinate">portal / stacking / dismissal</span>
+      </div>
+      <p className="bench-card-instruction">These surfaces are portaled to the document body, matching common Base UI behavior. Inspect triggers, surfaces, and nested controls.</p>
+      <div className="bench-floating-examples">
+        <div className="bench-floating-example">
+          <span className="bench-control-label">Popover</span>
+          <button ref={popoverTriggerRef} type="button" aria-expanded={popoverOpen} aria-haspopup="dialog" onClick={() => setPopoverOpen((open) => !open)}>Toggle popover</button>
+        </div>
+        <div className="bench-floating-example">
+          <span className="bench-control-label">Menu</span>
+          <button ref={menuTriggerRef} type="button" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>Open actions</button>
+        </div>
+        <div className="bench-floating-example">
+          <span className="bench-control-label">Dialog</span>
+          <button type="button" onClick={() => setDialogOpen(true)}>Open confirmation</button>
+        </div>
+      </div>
+      {popoverOpen && popoverPosition ? createPortal(
+        <div ref={popoverRef} className="bench-popover" role="dialog" aria-label="Bench popover" style={popoverPosition}>
+          <strong>Build status</strong>
+          <p>Three targets overlap this portaled surface.</p>
+          <button type="button" onClick={() => setPopoverOpen(false)}>Review changes</button>
+        </div>,
+        document.body,
+      ) : null}
+      {menuOpen && menuPosition ? createPortal(
+        <div ref={menuRef} className="bench-action-menu" role="menu" aria-label="Bench actions" style={menuPosition}>
+          <button type="button" role="menuitem" onClick={() => setMenuOpen(false)}>Duplicate target</button>
+          <button type="button" role="menuitem" onClick={() => setMenuOpen(false)}>Archive target</button>
+          <button type="button" role="menuitem" className="bench-menu-danger" onClick={() => setMenuOpen(false)}>Remove target</button>
+        </div>,
+        document.body,
+      ) : null}
+      {dialogOpen ? createPortal(
+        <div className="bench-dialog-backdrop" onMouseDown={() => setDialogOpen(false)}>
+          <div className="bench-dialog" role="dialog" aria-modal="true" aria-label="Bench confirmation dialog" onMouseDown={(event) => event.stopPropagation()}>
+            <span className="bench-kicker">Dialog / modal layer</span>
+            <h2>Archive this test target?</h2>
+            <p>Use this modal to test fixed positioning, backdrop hit testing, and nested button selection.</p>
+            <div className="bench-dialog-actions">
+              <button type="button" onClick={() => setDialogOpen(false)}>Cancel</button>
+              <button type="button" className="bench-dialog-confirm" onClick={() => setDialogOpen(false)}>Archive target</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+    </section>
   )
 }
 

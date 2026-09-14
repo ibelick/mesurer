@@ -12,6 +12,70 @@ test("loads the stress bench at both slash variants", async ({ page }) => {
   }
 });
 
+test("renders functional dialog, popover, and menu examples", async ({ page }) => {
+  await page.goto("/bench");
+  await expect(page.getByRole("heading", { name: "Dialog, popover, and menu" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Toggle popover" }).dispatchEvent("click");
+  await expect(page.getByRole("dialog", { name: "Bench popover" })).toBeVisible();
+  await expect(page.locator("body > .bench-popover")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Bench popover" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Open actions" }).dispatchEvent("click");
+  await expect(page.getByRole("menu", { name: "Bench actions" })).toBeVisible();
+  await expect(page.locator("body > .bench-action-menu")).toBeVisible();
+  await page.getByRole("menuitem", { name: "Archive target" }).dispatchEvent("click");
+  await expect(page.getByRole("menu", { name: "Bench actions" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Open confirmation" }).dispatchEvent("click");
+  await expect(page.getByRole("dialog", { name: "Bench confirmation dialog" })).toBeVisible();
+  await page.locator(".bench-dialog-backdrop").dispatchEvent("mousedown");
+  await expect(page.getByRole("dialog", { name: "Bench confirmation dialog" })).toHaveCount(0);
+});
+
+test("switching to Inspect does not dismiss an open portaled surface", async ({ page }) => {
+  await page.goto("/bench");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Toggle popover" }).dispatchEvent("click");
+  const popover = page.getByRole("dialog", { name: "Bench popover" });
+  await expect(popover).toBeVisible();
+
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute("data-value", "inspect");
+  await expect(popover).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Open confirmation" }).dispatchEvent("click");
+  const dialog = page.getByRole("dialog", { name: "Bench confirmation dialog" });
+  await expect(dialog).toBeVisible();
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await expect(dialog).toBeVisible();
+  const dialogBox = await dialog.boundingBox();
+  expect(dialogBox).not.toBeNull();
+  if (dialogBox) {
+    await page.mouse.click(dialogBox.x + dialogBox.width / 2, dialogBox.y + dialogBox.height / 2);
+    await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+  }
+});
+
+test("inspect tool can select a portaled popover", async ({ page }) => {
+  await page.goto("/bench");
+  const trigger = page.getByRole("button", { name: "Toggle popover" });
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.dispatchEvent("click");
+  const popover = page.getByRole("dialog", { name: "Bench popover" });
+  await expect(popover).toBeVisible();
+  const box = await popover.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+});
+
 test("inspect tool can select an element inside the iframe", async ({ page }) => {
   await page.goto("/bench");
   const frame = page.getByTitle("Complex embedded application");

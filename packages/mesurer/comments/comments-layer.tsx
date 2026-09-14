@@ -80,7 +80,7 @@ const markerStyleWithOffset = (
 }
 
 const targetKey = (comment: CommentThread) =>
-  `${(comment.target.framePath ?? []).join("/")}::${comment.target.selector}`
+  `${(comment.target.framePath ?? []).join("/")}::${(comment.target.shadowPath ?? []).join("/")}::${comment.target.selector}`
 
 const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   const minutes = Math.max(0, Math.floor((now - timestamp) / 60000))

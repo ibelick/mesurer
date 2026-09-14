@@ -347,7 +347,9 @@ export function MesurerClient({
       for (const comment of comments) commentRuntime.resolve(comment.id, comment.target);
     };
     ownerDocument.addEventListener("load", resolveAfterFrameLoad, true);
-    return () => ownerDocument.removeEventListener("load", resolveAfterFrameLoad, true);
+    return () => {
+      ownerDocument.removeEventListener("load", resolveAfterFrameLoad, true);
+    };
   }, [commentRuntime, comments, ownerDocument]);
   const commentPointer = useCommentPointer({
     overlayRef,
