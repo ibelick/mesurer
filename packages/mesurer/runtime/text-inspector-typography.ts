@@ -86,11 +86,28 @@ const wins = (next: Candidate, previous: Candidate | undefined) => {
   return next.order > previous.order;
 };
 
+export const hasRenderableText = (element: Element) => {
+  const document = element.ownerDocument
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  let node = walker.nextNode()
+  while (node) {
+    if (node.nodeValue?.trim()) return true
+    node = walker.nextNode()
+  }
+  return false
+}
+
 export class TypographyInspector {
+  private rulesCache: FlatRule[] | null = null
+
   constructor(
     private readonly document: Document,
     private readonly window: Window,
   ) {}
+
+  invalidate() {
+    this.rulesCache = null
+  }
 
   private collectRules(
     rules: CSSRuleList,
@@ -125,66 +142,70 @@ export class TypographyInspector {
   }
 
   private getRules() {
-    const rules: FlatRule[] = [];
-    const order = { value: 0 };
+    if (this.rulesCache) return this.rulesCache
+    const rules: FlatRule[] = []
+    const order = { value: 0 }
     for (const sheet of Array.from(this.document.styleSheets)) {
       try {
-        this.collectRules(sheet.cssRules, rules, true, order);
+        this.collectRules(sheet.cssRules, rules, true, order)
       } catch {
-        continue;
+        continue
       }
     }
-    return rules;
+    this.rulesCache = rules
+    return rules
   }
 
   private findVarReferences(el: HTMLElement): Record<TypoProp, string | null> {
     const result = Object.fromEntries(
       TYPO_PROPS.map((prop) => [prop, null]),
-    ) as Record<TypoProp, string | null>;
-    const rules = this.getRules();
+    ) as Record<TypoProp, string | null>
+    const rules = this.getRules().filter((entry) => {
+      if (!entry.mediaOk) return false
+      return TYPO_PROPS.some((prop) => entry.rule.style.getPropertyValue(prop))
+    })
 
     for (const prop of TYPO_PROPS) {
-      let node: HTMLElement | null = el;
+      let node: HTMLElement | null = el
       while (node && result[prop] === null) {
-        let winner: Candidate | undefined;
-        const inlineValue = node.style.getPropertyValue(prop);
+        let winner: Candidate | undefined
+        const inlineValue = node.style.getPropertyValue(prop)
         if (inlineValue) {
           winner = {
             name: extractVarName(inlineValue),
             specificity: Number.MAX_SAFE_INTEGER,
             order: Number.MAX_SAFE_INTEGER,
             important: node.style.getPropertyPriority(prop) === "important",
-          };
+          }
         }
 
-        for (const { rule, mediaOk, order } of rules) {
-          if (!mediaOk) continue;
-          let matches = false;
+        for (const { rule, order } of rules) {
+          let matches = false
           try {
-            matches = node.matches(rule.selectorText);
+            matches = node.matches(rule.selectorText)
           } catch {
-            continue;
+            continue
           }
-          if (!matches) continue;
-          const value = rule.style.getPropertyValue(prop);
-          if (!value) continue;
+          if (!matches) continue
+          const value = rule.style.getPropertyValue(prop)
+          if (!value) continue
           const candidate = {
             name: extractVarName(value),
             specificity: selectorSpecificity(rule.selectorText),
             order,
             important: rule.style.getPropertyPriority(prop) === "important",
-          };
-          if (wins(candidate, winner)) winner = candidate;
+          }
+          if (wins(candidate, winner)) winner = candidate
         }
 
         if (winner) {
-          if (winner.name) result[prop] = winner.name;
-          break;
+          if (winner.name) result[prop] = winner.name
+          break
         }
-        node = node.parentElement;
+        node = node.parentElement
       }
     }
-    return result;
+    return result
   }
 
   getFast(el: HTMLElement): TypographyInfo {

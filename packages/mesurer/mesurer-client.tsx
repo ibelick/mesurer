@@ -32,7 +32,7 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { TypographyInspector, type TypographyInfo } from "./runtime/text-inspector-typography";
+import { TypographyInspector, hasRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
@@ -861,7 +861,10 @@ export function MesurerClient({
     if (!selectedElement) return;
     const elementWindow = selectedElement.ownerDocument.defaultView;
     if (!elementWindow) return;
-    const refresh = () => setTypographyRevision((revision) => revision + 1);
+    const refresh = () => {
+      typographyInspector.invalidate()
+      setTypographyRevision((revision) => revision + 1)
+    }
     const resizeObserver = typeof elementWindow.ResizeObserver === "function"
       ? new elementWindow.ResizeObserver(refresh)
       : null;
@@ -908,14 +911,14 @@ export function MesurerClient({
       elementWindow.document.fonts?.removeEventListener("loadingdone", refresh);
       elementWindow.document.fonts?.removeEventListener("loadingerror", refresh);
     };
-  }, [selectedElement]);
+  }, [selectedElement, typographyInspector]);
   const selectedTypography = useMemo<TypographyInfo | null>(() => {
     if (!selectedElement) return null;
     const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
     if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
-    if (!selectedElement.textContent?.trim()) return null;
-    return typographyInspector.getFull(selectedElement) ?? null;
-  }, [selectedElement, typographyRevision]);
+    if (!hasRenderableText(selectedElement)) return null;
+    return typographyInspector.getFast(selectedElement);
+  }, [selectedElement, typographyRevision, typographyInspector]);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
