@@ -135,6 +135,26 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect(card).toContainText("Tracking");
 });
 
+test("Option+S pins the current distance overlay", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+
+  const selectedTarget = page.getByRole("button", { name: "Underlying app button" });
+  const selectedBox = await selectedTarget.boundingBox();
+  expect(selectedBox).not.toBeNull();
+  await page.mouse.click(selectedBox!.x + selectedBox!.width / 2, selectedBox!.y + selectedBox!.height / 2);
+
+  const hoverTarget = page.getByRole("button", { name: "Secondary app button" });
+  const hoverBox = await hoverTarget.boundingBox();
+  expect(hoverBox).not.toBeNull();
+  await page.keyboard.down("Alt");
+  await page.mouse.move(hoverBox!.x + hoverBox!.width / 2, hoverBox!.y + hoverBox!.height / 2);
+  await page.keyboard.press("s");
+  await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
+  await page.keyboard.up("Alt");
+  await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
+});
+
 test("Inspect value tooltip appears on hover", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);

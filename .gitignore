@@ -18,3 +18,4 @@ packages/mesurer/styles.generated.ts
 *.tsbuildinfo
 *.tgz
 *.zip
+apps/extension/mesurer-extension-*/

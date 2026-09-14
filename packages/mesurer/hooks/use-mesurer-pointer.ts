@@ -360,7 +360,7 @@ export const useMesurerPointer = ({
               hover.updateHoverElement(latest)
             }
           }
-          if (latest && guides.length > 0) {
+          if (latest && (guides.length > 0 || event.altKey || altPressed)) {
             setHoverPointer(latest)
           } else {
             setHoverPointer(null)

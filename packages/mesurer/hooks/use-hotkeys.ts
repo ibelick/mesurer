@@ -294,7 +294,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (event.altKey) {
         // Option+S pins the distance currently previewed under Option.
         // Matched on `code`: macOS reports event.key as "ß" while Option is held.
-        if (event.code === "KeyS" && current.pinDistance()) {
+        if (!event.repeat && event.code === "KeyS" && current.pinDistance()) {
           event.preventDefault()
         }
         return

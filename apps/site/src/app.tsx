@@ -518,6 +518,16 @@ function App() {
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
+              <code className="code">Option + S</code>
+              <span className="px-1 text-muted">/</span>
+              <code className="code">Alt + S</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Pin the distance currently shown under Option/Alt
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
               <code className="code">Esc</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
