@@ -60,8 +60,8 @@ export function InspectInfoCard({
     <div
       ref={overlay.overlayRef}
       data-mesurer-inspect-info-card
-      className="msr:pointer-events-auto msr:absolute msr:z-10 msr:w-60 msr:rounded msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:py-1 msr:text-[10px] msr:text-ink-900 msr:shadow-lg msr:select-text"
-      style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: 10 }}
+      className="msr:pointer-events-auto msr:absolute msr:z-50 msr:w-60 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:text-[10px] msr:text-ink-900 msr:shadow-lg msr:select-text"
+      style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: 50 }}
       title={selector ?? undefined}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}

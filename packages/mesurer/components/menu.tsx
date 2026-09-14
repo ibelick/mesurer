@@ -41,7 +41,7 @@ export function MenuItem({
         variant === "accent"
           ? "msr:hover:bg-[#0d99ff] msr:hover:text-white"
           : "msr:hover:bg-ink-50",
-        "disabled:msr:cursor-not-allowed disabled:msr:opacity-40",
+        "msr:disabled:cursor-not-allowed msr:disabled:opacity-40",
         className,
       )}
     >

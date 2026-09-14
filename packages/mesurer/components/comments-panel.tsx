@@ -3,10 +3,11 @@ import type { RefObject } from "react"
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
 import { CommentDeleteConfirmation } from "../comments/comment-delete-confirmation"
+import { addMesurerCaptureListener } from "../core/keyboard-gate"
+import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { CheckIcon, MoreIcon } from "./icons"
-import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -93,11 +94,32 @@ export function CommentsPanel({
   }, [openMenuId, panelRef])
 
   return (
-    <div ref={panelRef} role="dialog" aria-label="Comments" className={`${fixed ? "msr:fixed" : "msr:absolute"} msr:right-0 msr:z-[70] msr:flex msr:w-72 msr:flex-col ${openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden"} msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg ${!fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2")}`} style={{ position: fixed ? "fixed" : "absolute", width: fixed ? "18rem" : undefined, zIndex: fixed ? 70 : undefined, pointerEvents: "auto", right: placement.right, top: placement.top, bottom: placement.bottom, height: placement.height, maxHeight: placement.height }} data-mesurer-comment-ui onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
-      <div className="msr:flex msr:items-center msr:justify-between msr:px-3 msr:py-1">
-        <div>
-          <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
-        </div>
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-label="Comments"
+      className={cn(
+        "mesurer-menu-surface msr:right-0 msr:z-80 msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg",
+        fixed ? "msr:fixed" : "msr:absolute",
+        openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden",
+        !fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
+      )}
+      style={{
+        position: fixed ? "fixed" : "absolute",
+        width: fixed ? "18rem" : undefined,
+        zIndex: fixed ? 80 : undefined,
+        pointerEvents: "auto",
+        right: placement.right,
+        top: placement.top,
+        bottom: placement.bottom,
+        maxHeight: placement.height,
+      }}
+      data-mesurer-comment-ui
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:px-3">
+        <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
         <SettingsButton
           type="button"
           className="msr:h-6 msr:gap-1.5"
@@ -109,10 +131,10 @@ export function CommentsPanel({
             window.setTimeout(() => setCopied(false), 1800)
           }}
         >
-          <span>Copy comments</span>
+          Copy comments
         </SettingsButton>
       </div>
-      <div className="msr:px-3 msr:py-1">
+      <div className="msr:shrink-0 msr:px-3 msr:pb-2">
         <div className="msr:relative msr:flex msr:items-center msr:gap-1.5">
           <TextInput
             type="search"
@@ -154,7 +176,7 @@ export function CommentsPanel({
         </div>
       </div>
       {filteredComments.length > 0 ? (
-        <ul className="mesurer-thin-scrollbar msr:m-0 msr:flex msr:flex-col msr:overflow-y-auto msr:p-0" aria-label="Comment threads">
+        <ul className="mesurer-thin-scrollbar msr:m-0 msr:flex msr:min-h-0 msr:flex-1 msr:list-none msr:flex-col msr:overflow-y-auto msr:p-0" aria-label="Comment threads">
           {filteredComments.map((comment) => {
             const message = comment.messages[0]
             const replyCount = Math.max(0, comment.messages.length - 1)

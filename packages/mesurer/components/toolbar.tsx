@@ -336,9 +336,8 @@ function ToolbarComponent(
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
-  const commentPanelPortalTarget = commentButtonRef.current?.getRootNode().nodeType === 11
-    ? commentButtonRef.current.getRootNode() as DocumentFragment
-    : eventTarget.document.body;
+  const commentPanelPortalTarget =
+    commentMenuRef.current?.closest("[data-mesurer-root]") ?? eventTarget.document.body;
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
@@ -1209,7 +1208,7 @@ function ToolbarComponent(
            ) : (
              <MenuSurface
                className={cn(
-                 "msr:absolute msr:right-0 msr:w-44",
+                 "msr:absolute msr:right-0 msr:flex msr:w-44 msr:flex-col msr:gap-px",
                  tooltipSide === "bottom"
                    ? "msr:top-full msr:mt-2"
                    : "msr:bottom-full msr:mb-2",

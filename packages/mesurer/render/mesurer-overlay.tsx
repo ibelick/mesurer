@@ -230,11 +230,12 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       onMouseDown={(event) => {
         if (event.button !== 0) return
         const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
-        if (origin?.closest("input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui]")) return
+        if (origin?.closest("input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui], [data-mesurer-inspect-info-card]")) return
         event.preventDefault()
       }}
       onPointerDown={(event) => {
         const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
+        if (origin?.closest("[data-mesurer-inspect-info-card]")) return
         const clickedCommentUi = origin?.closest("[data-mesurer-comment-ui]")
         if (toolMode === "comments" && comments?.draft && !origin?.closest("[data-mesurer-comment-popover]")) {
           comments.onDraftCancel?.()

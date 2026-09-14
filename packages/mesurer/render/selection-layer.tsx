@@ -103,7 +103,7 @@ export function SelectionLayer({
           fillColor={fullPageSelection ? fullPageFillColor : fillColor}
         />
       ))}
-      {selectedMeasurement && !hoveringDifferentElement ? (
+      {selectedMeasurement ? (
         <InspectInfoCard
           ownerWindow={ownerWindow}
           rect={selectedMeasurement.rect}

@@ -311,7 +311,6 @@ export const useMesurerPointer = ({
         return (node as Element).getAttribute("data-mesurer-inspect-info-card") !== null
       })
       if (isInspectCardEvent) {
-        hover.clearHover()
         return
       }
       if (settingsOpen) return
