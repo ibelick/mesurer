@@ -4,6 +4,7 @@
 
 - add anchored comment threads with replies, moving, persistence, search, and agent-ready copy
 - support comments on targets inside iframes and open Shadow DOM roots
+- add feature flags for Screenshot, Rulers, and Settings
 
 ## 0.1.4
 

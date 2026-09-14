@@ -58,6 +58,7 @@ function App() {
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
 | `persistence`           | Optional storage adapter for custom or extension-backed persistence.           |
 | `captureVisibleTab`      | Optional function supplying a PNG of the visible tab for Screenshot capture.  |
+| `features`               | Enable or disable `screenshot`, `rulers`, and `settings`; each defaults to `true`. |
 | `onPersistenceError`    | Called when persistence is unavailable or a storage write fails.              |
 | `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
 | `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |

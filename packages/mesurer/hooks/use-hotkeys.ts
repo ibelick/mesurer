@@ -11,6 +11,7 @@ import {
   isTypingInPage,
 } from "../core/keyboard-ownership"
 import type { ToolMode } from "../core/types"
+import type { ResolvedMesurerFeatures } from "../core/features"
 
 const DOUBLE_ESCAPE_MS = 1000
 const SHORTCUT_TOOL_MODES: Partial<Record<string, ToolMode>> = {
@@ -95,6 +96,8 @@ type HotkeyOptions = {
   isSettingsOpen: () => boolean
   onCloseColorPicker: () => void
   isColorPickerActive: () => boolean
+  features: ResolvedMesurerFeatures
+  isFeatureVisible: (feature: keyof ResolvedMesurerFeatures) => boolean
 }
 
 const attachCapture = (
@@ -127,6 +130,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
         )
       }
       const current = optionsRef.current
+      const isFeatureAvailable = (feature: keyof ResolvedMesurerFeatures) =>
+        current.features[feature] && current.isFeatureVisible(feature)
       if (
         !bridged &&
         isTypingInPage(target) &&
@@ -242,6 +247,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       if (hasPrimaryModifier) {
         if (event.key === ",") {
+          if (!isFeatureAvailable("settings")) return
           event.preventDefault()
           current.onInteract()
           current.onCloseScreenshot()
@@ -286,6 +292,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (key === "c") {
+        if (!isFeatureAvailable("screenshot")) return
         event.preventDefault()
         current.onInteract()
         current.onScreenshot()
@@ -293,6 +300,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (key === "x" || key === "r") {
+        if (key === "r" && !isFeatureAvailable("rulers")) return
         event.preventDefault()
         current.onInteract()
         current.setEnabled(true)

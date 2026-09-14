@@ -367,6 +367,10 @@ function App() {
             <div className="max-w-[60%] text-right text-balance text-muted">Provides a visible-tab PNG for Screenshot capture</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">features</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Enable or disable Screenshot, Rulers, and Settings</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">snapEnabled</code>
             </div>

@@ -54,6 +54,7 @@ import {
   resolveTextFontFamily,
   type TextStyleSettings,
 } from "./core/text-style";
+import type { MesurerFeatures, ResolvedMesurerFeatures } from "./core/features";
 import {
   getTabId,
   LEGACY_STORAGE_KEY,
@@ -85,6 +86,7 @@ export type MesurerProps = {
   persistence?: MesurerPersistence;
   onPersistenceError?: (error: unknown) => void;
   captureVisibleTab?: () => Promise<Blob>;
+  features?: MesurerFeatures;
 };
 let mesurerInstanceCount = 0;
 export function MesurerClient({
@@ -112,6 +114,7 @@ export function MesurerClient({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  features,
 }: Required<
   Omit<
     MesurerProps,
@@ -122,6 +125,7 @@ export function MesurerClient({
     | "rulerSettings"
     | "textStyle"
     | "captureVisibleTab"
+    | "features"
   >
 > &
   Pick<
@@ -131,6 +135,7 @@ export function MesurerClient({
     guideStyle: GuideStyle;
     rulerSettings: RulerSettings;
     textStyle: TextStyleSettings;
+    features: ResolvedMesurerFeatures;
   }) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
@@ -1111,6 +1116,11 @@ export function MesurerClient({
     screenshot.closeUi();
     setMinimized(true);
   }, [colorPicker, screenshot, setMinimized, setSettingsOpen]);
+  useEffect(() => {
+    if (!features.screenshot) screenshot.closeUi();
+    if (!features.rulers) setRulersVisible(false);
+    if (!features.settings) setSettingsOpen(false);
+  }, [features.rulers, features.screenshot, features.settings, screenshot, setRulersVisible, setSettingsOpen]);
   const { clearTransientState } = useInteractionLifecycle({
     enabled,
     toolMode,
@@ -1202,6 +1212,7 @@ export function MesurerClient({
     },
     selectedCommentId,
     closeComment: () => setSelectedCommentId(null),
+    features,
   });
   const clearAllTransientState = useCallback(() => {
     clearTransientState();
@@ -1332,7 +1343,7 @@ export function MesurerClient({
       screenshotOverlayRef={screenshot.overlayRef}
       rulers={{
         ownerWindow,
-        visible: enabled && rulersVisible,
+        visible: enabled && features.rulers && rulersVisible,
         settings: settingsRulerSettings,
         interactive: !settingsOpen && !minimized,
         forceVisible: settingsOpen,
@@ -1427,7 +1438,7 @@ export function MesurerClient({
            selectEnabled: selectNewGuideEnabled,
            style: settingsGuideStyle,
           pointerEvents:
-            overlayInteractive && (toolMode !== "none" || rulersVisible),
+            overlayInteractive && (toolMode !== "none" || (features.rulers && rulersVisible)),
           colors: {
             active: guideColorActive,
             hover: guideColorHover,
@@ -1523,8 +1534,8 @@ export function MesurerClient({
         } : undefined,
       }}
       screenshot={{
-        active: screenshot.active,
-        rect: screenshot.rect,
+        active: features.screenshot && screenshot.active,
+        rect: features.screenshot ? screenshot.rect : null,
         onPointerDown: screenshot.handlePointerDown,
         onPointerMove: screenshot.handlePointerMove,
         onPointerUp: screenshot.handlePointerUp,
@@ -1536,6 +1547,7 @@ export function MesurerClient({
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
         onCancelTransient: clearAllTransientState,
+        features,
         tools: {
           mode: toolMode,
           setMode: setToolModeWithHistory,

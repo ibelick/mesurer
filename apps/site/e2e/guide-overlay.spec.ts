@@ -26,6 +26,43 @@ test("does not reset host-page border styles", async ({ page }) => {
     .toBe("3px dashed rgb(17, 24, 39)");
 });
 
+test("does not trigger shortcuts for CSS-hidden controls", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.addStyleTag({
+    content: `
+      [data-tool-id="screenshot"],
+      [data-tool-id="rulers"] { display: none !important; }
+      [data-tool-id="settings"] { visibility: hidden !important; }
+    `,
+  });
+
+  await page.keyboard.press("c");
+  await expect(page.getByRole("application", { name: "Screenshot selection" })).toHaveCount(0);
+
+  await page.keyboard.press("r");
+  await expect(page.locator("[data-mesurer-rulers]")).toHaveCount(0);
+
+  await page.keyboard.press("Control+,");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
+test("disables feature controls and their shortcuts", async ({ page }) => {
+  await page.goto("/e2e/fixtures/feature-flags.html");
+
+  await expect(page.getByRole("button", { name: "Screenshot (C)" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Rulers (R)" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Settings/ })).toHaveCount(0);
+
+  await page.keyboard.press("c");
+  await expect(page.getByRole("application", { name: "Screenshot selection" })).toHaveCount(0);
+
+  await page.keyboard.press("r");
+  await expect(page.locator("[data-mesurer-rulers]")).toHaveCount(0);
+
+  await page.keyboard.press("Control+,");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
 test("Inspect shows typography details in the info card", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);

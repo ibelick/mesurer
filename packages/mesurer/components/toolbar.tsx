@@ -24,6 +24,7 @@ import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
 import { MenuItem, MenuSurface } from "./menu";
+import type { ResolvedMesurerFeatures } from "../core/features";
 import {
   CaretDownIcon,
   ArrowIcon,
@@ -102,6 +103,7 @@ type ToolbarProps = {
   screenshot: ToolbarScreenshot;
   comments: ToolbarComments;
   settings: ToolbarSettings;
+  features: ResolvedMesurerFeatures;
 };
 const GUIDE_MENU_WIDTH = 176;
 const VIEWPORT_PADDING = 8;
@@ -264,6 +266,7 @@ function ToolbarComponent(
     screenshot,
     comments,
     settings,
+    features,
   }: ToolbarProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -885,18 +888,20 @@ function ToolbarComponent(
       >
         <XrayIcon size={20} />
       </ToolbarButton>
-      <ToolbarButton
-        id="rulers"
-        active={rulersVisible}
-        label="Rulers"
-        shortcut="R"
-        onClick={rulersMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
-      >
-        <RulersIcon size={20} />
-      </ToolbarButton>
-      <ToolbarButton
+       {features.rulers ? (
+         <ToolbarButton
+           id="rulers"
+           active={rulersVisible}
+           label="Rulers"
+           shortcut="R"
+           onClick={rulersMode}
+           tooltip={toolbarTooltip}
+           tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
+         >
+           <RulersIcon size={20} />
+         </ToolbarButton>
+       ) : null}
+       <ToolbarButton
         id="guides"
         active={toolMode === "guides"}
         label="Guides"
@@ -1105,39 +1110,43 @@ function ToolbarComponent(
        <ToolbarDivider />
         <ToolbarGroup label="Capture and settings" className="msr:px-1">
       <div className="msr:relative">
-      <ToolbarButton
-        id="screenshot"
-        active={screenshotActive}
-        label="Screenshot"
-        shortcut="C"
-         onClick={() => {
-           setCommentMenuOpen(false)
-           screenshotMode()
-         }}
-        tooltip={toolbarTooltip}
-        tooltipVisible={
-          tooltipsEnabled &&
-          !screenshotPreviewUrl &&
-          visibleTooltipId === "screenshot"
-        }
-      >
-        <CameraIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
-      {screenshotPreviewUrl ? (
-        <ScreenshotPreview
-          url={screenshotPreviewUrl}
-          side={tooltipSide}
-          label={
-            screenshotCopy && !screenshotDownload
-              ? "Screenshot copied"
-              : screenshotDownload && !screenshotCopy
-                ? "Screenshot downloaded"
-                : "Screenshot saved"
-          }
-          onExited={onScreenshotPreviewExited}
-        />
-      ) : null}
-       </div>
+        {features.screenshot ? (
+          <>
+            <ToolbarButton
+              id="screenshot"
+              active={screenshotActive}
+              label="Screenshot"
+              shortcut="C"
+              onClick={() => {
+                setCommentMenuOpen(false)
+                screenshotMode()
+              }}
+              tooltip={toolbarTooltip}
+              tooltipVisible={
+                tooltipsEnabled &&
+                !screenshotPreviewUrl &&
+                visibleTooltipId === "screenshot"
+              }
+            >
+              <CameraIcon size={20} aria-hidden="true" />
+            </ToolbarButton>
+            {screenshotPreviewUrl ? (
+              <ScreenshotPreview
+                url={screenshotPreviewUrl}
+                side={tooltipSide}
+                label={
+                  screenshotCopy && !screenshotDownload
+                    ? "Screenshot copied"
+                    : screenshotDownload && !screenshotCopy
+                      ? "Screenshot downloaded"
+                      : "Screenshot saved"
+                }
+                onExited={onScreenshotPreviewExited}
+              />
+            ) : null}
+          </>
+        ) : null}
+        </div>
         <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
        <ToolbarButton
          id="comments"
@@ -1149,7 +1158,7 @@ function ToolbarComponent(
          tooltipVisible={tooltipsEnabled && visibleTooltipId === "comments"}
        >
          <CommentIcon size={20} />
-       </ToolbarButton>
+        </ToolbarButton>
         <button
           type="button"
           ref={commentButtonRef}
@@ -1215,7 +1224,7 @@ function ToolbarComponent(
            )
          ) : null}
       </div>
-      <div ref={settingsRef} className="msr:relative msr:flex">
+       {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="settings"
           active={settingsOpen}
@@ -1257,8 +1266,8 @@ function ToolbarComponent(
             {settingsPanel}
           </div>
         ) : null}
-      </div>
-      </ToolbarGroup>
+       </div> : null}
+       </ToolbarGroup>
        </div>
     </div>
     </div>
