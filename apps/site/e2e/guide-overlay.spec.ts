@@ -13,6 +13,19 @@ test("starts with the Select tool active", async ({ page }) => {
   );
 });
 
+test("does not reset host-page border styles", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await expect
+    .poll(() =>
+      page.getByTestId("host-border-control").evaluate((element) => {
+        const style = getComputedStyle(element);
+        return `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`;
+      }),
+    )
+    .toBe("3px dashed rgb(17, 24, 39)");
+});
+
 test("Inspect shows typography details in the info card", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);

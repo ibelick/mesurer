@@ -1,5 +1,7 @@
 @source "./**/*.{ts,tsx,js,jsx}";
-@import "tailwindcss" prefix(msr);
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(msr);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(msr);
 
 @theme {
   --radius-control: 5px;
@@ -71,17 +73,19 @@
   cursor: default !important;
 }
 
-*,
-*::before,
-*::after {
+.mesurer-root,
+.mesurer-root *,
+.mesurer-root *::before,
+.mesurer-root *::after {
   box-sizing: border-box;
 }
 
 @layer base {
-  *,
-  ::before,
-  ::after,
-  ::backdrop {
+  .mesurer-root,
+  .mesurer-root *,
+  .mesurer-root *::before,
+  .mesurer-root *::after,
+  .mesurer-root::backdrop {
     --tw-border-style: solid;
     --tw-outline-style: solid;
     --tw-shadow: 0 0 #0000;
@@ -94,10 +98,10 @@
     --tw-translate-z: 0;
   }
 
-  button,
-  input,
-  select,
-  textarea {
+  .mesurer-root button,
+  .mesurer-root input,
+  .mesurer-root select,
+  .mesurer-root textarea {
     appearance: none;
     background-color: transparent;
     padding: 0;
