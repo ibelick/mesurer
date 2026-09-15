@@ -47,6 +47,7 @@ export const withPin = (
     pinTargetRect: source.pinTargetRect,
     pinCursor: source.pinCursor,
     pinCursorOffset: source.pinCursorOffset,
+    guideIds: source.guideIds,
   })
 
 export const attachPinnedGuideTarget = (params: {

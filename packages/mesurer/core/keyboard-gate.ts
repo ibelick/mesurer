@@ -1,19 +1,21 @@
 import {
+  findMesurerTypingTarget,
   isBrowserReservedChord,
   isInsideMesurer,
   isMesurerKeyboardBridgeKey,
   isMesurerKeyboardEvent,
   isMesurerUiNode,
+  isPageTextEntry,
   isTypingInMesurer,
   MESURER_KEYBOARD_BRIDGE,
   MESURER_KEYBOARD_ATTR,
 } from "./keyboard-ownership"
 
-const INSTALLED = "__MESURER_KEYBOARD_GATE_V2__"
+const INSTALLED = "__MESURER_KEYBOARD_GATE_V9__"
 
 type GateWindow = Window & { [INSTALLED]?: boolean }
 
-const MESURER_EVENT_TYPES = new Set([
+const MESURER_KEYBOARD_EVENT_TYPES = new Set([
   "beforeinput",
   "blur",
   "compositionend",
@@ -31,11 +33,55 @@ const MESURER_EVENT_TYPES = new Set([
   "paste",
 ])
 
+const MESURER_POINTER_EVENT_TYPES = new Set([
+  "auxclick",
+  "click",
+  "contextmenu",
+  "mousedown",
+  "pointerdown",
+  "touchstart",
+])
+
+const nativeListenerMethods = new WeakMap<
+  Window,
+  {
+    add: typeof EventTarget.prototype.addEventListener
+    remove: typeof EventTarget.prototype.removeEventListener
+  }
+>()
+
+export const addMesurerCaptureListener = (
+  view: Window,
+  target: EventTarget,
+  type: string,
+  listener: EventListener,
+) => {
+  const methods = nativeListenerMethods.get(view)
+  const add = methods?.add ?? EventTarget.prototype.addEventListener
+  const remove = methods?.remove ?? EventTarget.prototype.removeEventListener
+  add.call(target, type, listener, true)
+  return () => {
+    remove.call(target, type, listener, true)
+  }
+}
+
 const ownsKeyboard = (view: Window) =>
   view.document.documentElement.hasAttribute(MESURER_KEYBOARD_ATTR)
 
 const isMesurerEventPath = (event: Event) =>
   event.composedPath().some((node) => isMesurerUiNode(node))
+
+const isAnnotationHotkey = (event: Event) => {
+  if (!(event instanceof KeyboardEvent)) return false
+  if (event.key === "Backspace" || event.key === "Delete") return true
+  const hasMod =
+    event.metaKey ||
+    event.ctrlKey ||
+    event.getModifierState("Meta") ||
+    event.getModifierState("Control")
+  const key = event.key.toLowerCase()
+  return hasMod && (key === "a" || event.code === "KeyA")
+}
 
 export const installKeyboardGate = (
   view: Window = window,
@@ -48,11 +94,32 @@ export const installKeyboardGate = (
   if (gated[INSTALLED]) return
   gated[INSTALLED] = true
 
+  const HtmlElement = (view as Window & { HTMLElement: typeof HTMLElement }).HTMLElement
+  const nativeFocus = HtmlElement.prototype.focus
+
   const isIsolatedMesurerEvent = (event: Event) =>
     !isolationHostId ||
     event.composedPath().some(
       (node) => node instanceof Element && node.id === isolationHostId,
     )
+
+  const bridgeKey = (event: KeyboardEvent) => {
+    view.postMessage(
+      {
+        type: MESURER_KEYBOARD_BRIDGE,
+        eventType: event.type,
+        key: event.key,
+        code: event.code,
+        location: event.location,
+        repeat: event.repeat,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+      },
+      view.location.origin === "null" ? "*" : view.location.origin,
+    )
+  }
 
   const blockPageKey = (event: Event) => {
     if (!ownsKeyboard(view)) {
@@ -65,23 +132,11 @@ export const installKeyboardGate = (
         return
       }
       if (event instanceof KeyboardEvent && isMesurerKeyboardBridgeKey(event.key, event)) {
-        view.postMessage(
-          {
-            type: MESURER_KEYBOARD_BRIDGE,
-            eventType: event.type,
-            key: event.key,
-            code: event.code,
-            location: event.location,
-            repeat: event.repeat,
-            altKey: event.altKey,
-            ctrlKey: event.ctrlKey,
-            metaKey: event.metaKey,
-            shiftKey: event.shiftKey,
-          },
-          view.location.origin === "null" ? "*" : view.location.origin,
-        )
+        bridgeKey(event)
       }
       event.preventDefault()
+      // Keep annotation shortcuts on the native event so hotkeys still run.
+      if (isAnnotationHotkey(event)) return
       event.stopImmediatePropagation()
       return
     }
@@ -90,25 +145,12 @@ export const installKeyboardGate = (
       if (isBrowserReservedChord(event)) return
       if (event.type === "keydown" || event.type === "keyup") {
         if (isolateMesurerEvents && isMesurerKeyboardBridgeKey(event.key, event)) {
-          view.postMessage(
-            {
-              type: MESURER_KEYBOARD_BRIDGE,
-              eventType: event.type,
-              key: event.key,
-              code: event.code,
-              location: event.location,
-              repeat: event.repeat,
-              altKey: event.altKey,
-              ctrlKey: event.ctrlKey,
-              metaKey: event.metaKey,
-              shiftKey: event.shiftKey,
-            },
-            view.location.origin === "null" ? "*" : view.location.origin,
-          )
+          bridgeKey(event)
         }
       }
     }
     event.preventDefault()
+    if (isAnnotationHotkey(event)) return
     if (isolateMesurerEvents) event.stopImmediatePropagation()
     else event.stopPropagation()
   }
@@ -161,10 +203,37 @@ export const installKeyboardGate = (
     view.addEventListener(type, blockPageInput, true)
   }
 
-  if (!isolateMesurerEvents) return
+  const shouldWrapType = (type: string) =>
+    MESURER_POINTER_EVENT_TYPES.has(type) ||
+    (isolateMesurerEvents && MESURER_KEYBOARD_EVENT_TYPES.has(type))
+
+  const isPageScopedListenerTarget = (target: EventTarget) =>
+    target === view ||
+    target === view.document ||
+    target === view.document.documentElement ||
+    target === view.document.body
+
+  const isFocusMovingIntoMesurer = (event: Event) => {
+    if (event.type !== "blur" && event.type !== "focusout") return false
+    return isMesurerUiNode((event as FocusEvent).relatedTarget)
+  }
+
+  const shouldSkipPageListener = (type: string, target: EventTarget, event: Event) => {
+    if (!isPageScopedListenerTarget(target) || !isIsolatedMesurerEvent(event)) {
+      return false
+    }
+    if (MESURER_POINTER_EVENT_TYPES.has(type)) {
+      return isMesurerEventPath(event)
+    }
+    return ownsKeyboard(view) && (isMesurerEventPath(event) || isFocusMovingIntoMesurer(event))
+  }
 
   const nativeAddEventListener = EventTarget.prototype.addEventListener
   const nativeRemoveEventListener = EventTarget.prototype.removeEventListener
+  nativeListenerMethods.set(view, {
+    add: nativeAddEventListener,
+    remove: nativeRemoveEventListener,
+  })
   const wrappedListeners = new WeakMap<
     EventListenerOrEventListenerObject,
     Map<string, EventListener>
@@ -179,7 +248,7 @@ export const installKeyboardGate = (
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ) {
-    if (!listener || !MESURER_EVENT_TYPES.has(type)) {
+    if (!listener || !shouldWrapType(type)) {
       return nativeAddEventListener.call(this, type, listener, options)
     }
     const key = listenerKey(type, options)
@@ -193,11 +262,7 @@ export const installKeyboardGate = (
       const once = typeof options !== "boolean" && Boolean(options?.once)
       const signal = typeof options !== "boolean" ? options?.signal : undefined
       wrapped = function (this: EventTarget, event: Event) {
-        if (
-          ownsKeyboard(view) &&
-          isMesurerEventPath(event) &&
-          isIsolatedMesurerEvent(event)
-        ) {
+        if (shouldSkipPageListener(type, this, event)) {
           if (once && !signal?.aborted) {
             nativeAddEventListener.call(this, type, wrapped!, options)
           }
@@ -234,5 +299,29 @@ export const installKeyboardGate = (
     )
     if (wrapped) wrappedListeners.get(listener!)?.delete(listenerKey(type, options))
     return result
+  }
+
+  const preservePageFocus = (event: Event) => {
+    if (!isMesurerEventPath(event)) return
+    if ("button" in event && (event as MouseEvent).button !== 0) return
+    const target = event.composedPath()[0]
+    if (
+      target instanceof Element &&
+      target.closest("input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui]")
+    ) {
+      return
+    }
+    event.preventDefault()
+  }
+  nativeAddEventListener.call(view, "mousedown", preservePageFocus, true)
+
+  HtmlElement.prototype.focus = function (
+    this: HTMLElement,
+    options?: FocusOptions,
+  ) {
+    if (isPageTextEntry(this) && findMesurerTypingTarget(view)) {
+      return
+    }
+    return nativeFocus.call(this, options)
   }
 }

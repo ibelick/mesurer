@@ -1,7 +1,10 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
+import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import {
+  getDeepActiveElement,
   getMesurerToolGroupShortcut,
+  isEditableElement,
   isInsideMesurer,
   isMesurerKeyboardBridge,
   isMesurerKeyboardBridgeKey,
@@ -11,10 +14,10 @@ import {
   isTypingInPage,
 } from "../core/keyboard-ownership"
 import type { ToolMode } from "../core/types"
+import type { ResolvedMesurerFeatures } from "../core/features"
 
 const DOUBLE_ESCAPE_MS = 1000
 const SHORTCUT_TOOL_MODES: Partial<Record<string, ToolMode>> = {
-  a: "text-inspector",
   d: "arrows",
   g: "guides",
   i: "select",
@@ -64,6 +67,11 @@ type HotkeyOptions = {
   clearSelection: () => void
   exitActiveTool: () => void
   dismissInspectorPins: () => boolean
+  hasOpenComment: () => boolean
+  closeComment: () => void
+  commentDraftActive: boolean
+  cancelCommentDraft: () => void
+  hasComments: () => boolean
   minimizeMesurer: () => void
   shortcutsEnabled: boolean
   minimized: boolean
@@ -82,6 +90,7 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onScreenshot: () => void
+  onCopyComments: () => void | Promise<boolean>
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
   onToggleXray: () => void
@@ -90,16 +99,21 @@ type HotkeyOptions = {
   isSettingsOpen: () => boolean
   onCloseColorPicker: () => void
   isColorPickerActive: () => boolean
+  features: ResolvedMesurerFeatures
+  isFeatureVisible: (feature: keyof ResolvedMesurerFeatures) => boolean
 }
 
 const attachCapture = (
+  view: Window,
   roots: EventTarget[],
   type: string,
   listener: EventListener,
 ) => {
-  for (const root of roots) root.addEventListener(type, listener, true)
+  const detachers = roots.map((root) =>
+    addMesurerCaptureListener(view, root, type, listener),
+  )
   return () => {
-    for (const root of roots) root.removeEventListener(type, listener, true)
+    for (const detach of detachers) detach()
   }
 }
 
@@ -122,6 +136,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
         )
       }
       const current = optionsRef.current
+      const isFeatureAvailable = (feature: keyof ResolvedMesurerFeatures) =>
+        current.features[feature] && current.isFeatureVisible(feature)
       if (
         !bridged &&
         isTypingInPage(target) &&
@@ -131,6 +147,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (isEscapeKey(event)) {
         if (event.repeat) return
         if (current.minimized) return
+        if (current.commentDraftActive) {
+          event.preventDefault()
+          current.cancelCommentDraft()
+          lastEscapeAtRef.current = null
+          return
+        }
         const pageOwnsKeyboard =
           isTypingInPage(target) && !isMesurerKeyboardOwned(target)
         if (pageOwnsKeyboard) {
@@ -165,6 +187,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onCloseColorPicker()
           return
         }
+        if (current.hasOpenComment()) {
+          lastEscapeAtRef.current = now
+          current.closeComment()
+          return
+        }
         if (!current.isToolbarIdle()) {
           if (current.hasTransientInteraction()) {
             current.clearTransientState()
@@ -185,22 +212,45 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.minimizeMesurer()
         return
       }
-      if (isTypingInMesurer(event, target)) {
-        return
-      }
-      if (isTypingInPage(target) && !isMesurerKeyboardOwned(target)) return
-      if (current.minimized) return
-
-      if (!current.shortcutsEnabled) return
-
       const hasPrimaryModifier =
         event.metaKey ||
         event.ctrlKey ||
         event.getModifierState("Meta") ||
         event.getModifierState("Control")
+      const isCopyComments =
+        current.shortcutsEnabled &&
+        hasPrimaryModifier &&
+        event.key.toLowerCase() === "k"
+      if (isCopyComments) {
+        if (!current.hasComments()) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        current.onCopyComments()
+        return
+      }
+      if (current.commentDraftActive) return
+      if (isTypingInMesurer(event, target)) {
+        if (event.key !== "Backspace" && event.key !== "Delete") return
+        const active = getDeepActiveElement(target)
+        if (isEditableElement(active)) return
+      }
+      if (isTypingInPage(target) && !isMesurerKeyboardOwned(target)) return
+      if (current.minimized) return
+
+      const isDeleteKey = event.key === "Backspace" || event.key === "Delete"
       const isSelectAll =
         hasPrimaryModifier &&
         ((event.key && event.key.toLowerCase() === "a") || event.code === "KeyA")
+
+      if (isDeleteKey) {
+        if (current.removeSelected()) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+        return
+      }
+
+      if (!current.shortcutsEnabled) return
 
       if (isSelectAll) {
         const didSelect = current.selectAllAnnotations()
@@ -214,6 +264,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
       if (hasPrimaryModifier) {
         if (event.key === ",") {
+          if (!isFeatureAvailable("settings")) return
           event.preventDefault()
           current.onInteract()
           current.onCloseScreenshot()
@@ -243,7 +294,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       if (event.altKey) {
         // Option+S pins the distance currently previewed under Option.
         // Matched on `code`: macOS reports event.key as "ß" while Option is held.
-        if (event.code === "KeyS" && current.pinDistance()) {
+        if (!event.repeat && event.code === "KeyS" && current.pinDistance()) {
           event.preventDefault()
         }
         return
@@ -258,6 +309,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (key === "c") {
+        if (!isFeatureAvailable("screenshot")) return
         event.preventDefault()
         current.onInteract()
         current.onScreenshot()
@@ -265,6 +317,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (key === "x" || key === "r") {
+        if (key === "r" && !isFeatureAvailable("rulers")) return
         event.preventDefault()
         current.onInteract()
         current.setEnabled(true)
@@ -313,10 +366,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.setGuideOrientation("vertical")
           current.onInteract()
         }
-      }
-
-      if (event.key === "Backspace" || event.key === "Delete") {
-        if (current.removeSelected()) event.preventDefault()
       }
     }
 
@@ -372,9 +421,10 @@ export const useHotkeys = (options: HotkeyOptions) => {
     const overlayRoot = options.overlayRef.current?.getRootNode()
     if (overlayRoot && overlayRoot !== target.document) roots.push(overlayRoot)
 
-    const detachKeyDown = attachCapture(roots, "keydown", handleKeyDown as EventListener)
-    const detachKeyUp = attachCapture(roots, "keyup", handleKeyUp as EventListener)
+    const detachKeyDown = attachCapture(target, roots, "keydown", handleKeyDown as EventListener)
+    const detachKeyUp = attachCapture(target, roots, "keyup", handleKeyUp as EventListener)
     const detachPointerDown = attachCapture(
+      target,
       roots,
       "pointerdown",
       clearDoubleEscape as EventListener,

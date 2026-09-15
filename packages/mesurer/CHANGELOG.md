@@ -1,5 +1,15 @@
 # mesurer
 
+## 0.1.5
+
+- add DOM-attached comment threads with replies, persistence, iframe and Shadow DOM targets, and agent-ready copy
+- improve inspection with copyable info cards, typography details, iframe selection, and X-ray support
+- add guide-linked measurements, Option+S pinned measurements, and shared guide controls
+- add configurable Screenshot, Rulers, and Settings features with matching shortcut control
+- isolate Mesurer styles and keyboard behavior from host pages
+- harden extension screenshot capture by removing the page-injected capture bridge
+- Thanks to [Moumen Soliman](https://github.com/moumen-soliman) for [adding Option+S pinned measurements](https://github.com/ibelick/mesurer/pull/25).
+
 ## 0.1.4
 
 - inject extension scripts only after the user activates the extension

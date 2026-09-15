@@ -1,12 +1,88 @@
 import { CLICK_CYCLE_THRESHOLD, MIN_MULTI_TARGET_SIZE } from "./constants"
 import {
-  getBodyElementsCached,
+  getAccessibleDocumentElements,
+  getAccessibleFrameDocument,
+  getDocumentTreeVersion,
   getFrameToken,
   getRectFromDomCached,
 } from "./dom"
 import { rectsOverlap } from "./geometry"
-import { pickMultiTargets, pickPointTarget, pickSingleTarget } from "./targets"
+import { withOverlayHitTesting } from "./overlay-hit-test"
+import { pickMultiTargets, pickPointTarget } from "./targets"
 import type { Point, Rect } from "./types"
+
+const SELECTION_BUCKET_SIZE = 160
+const MAX_INDEXED_BUCKET_SPAN = 32
+
+type SelectionEntry = { element: Element; rect: Rect }
+type SelectionIndex = {
+  frame: number
+  version: number
+  buckets: Map<string, SelectionEntry[]>
+  large: SelectionEntry[]
+}
+
+const selectionIndexes = new WeakMap<Document, SelectionIndex>()
+
+const bucketCoordinate = (value: number) => Math.floor(value / SELECTION_BUCKET_SIZE)
+const bucketKey = (x: number, y: number) => `${x}:${y}`
+
+const getSelectionIndex = (ownerDocument: Document): SelectionIndex => {
+  const frame = getFrameToken()
+  const version = getDocumentTreeVersion()
+  const cached = selectionIndexes.get(ownerDocument)
+  if (cached?.frame === frame && cached.version === version) return cached
+
+  const buckets = new Map<string, SelectionEntry[]>()
+  const large: SelectionEntry[] = []
+  for (const element of getAccessibleDocumentElements(ownerDocument)) {
+    if (element === element.ownerDocument.body || element === element.ownerDocument.documentElement) continue
+    const rect = getRectFromDomCached(element)
+    if (rect.width <= 2 || rect.height <= 2) continue
+
+    const minX = bucketCoordinate(rect.left)
+    const minY = bucketCoordinate(rect.top)
+    const maxX = bucketCoordinate(rect.left + rect.width)
+    const maxY = bucketCoordinate(rect.top + rect.height)
+    const entry = { element, rect }
+    if (maxX - minX > MAX_INDEXED_BUCKET_SPAN || maxY - minY > MAX_INDEXED_BUCKET_SPAN) {
+      large.push(entry)
+      continue
+    }
+    for (let x = minX; x <= maxX; x += 1) {
+      for (let y = minY; y <= maxY; y += 1) {
+        const key = bucketKey(x, y)
+        const bucket = buckets.get(key)
+        if (bucket) bucket.push(entry)
+        else buckets.set(key, [entry])
+      }
+    }
+  }
+
+  const index = { frame, version, buckets, large }
+  selectionIndexes.set(ownerDocument, index)
+  return index
+}
+
+const getIndexedCandidates = (rect: Rect, ownerDocument: Document) => {
+  const index = getSelectionIndex(ownerDocument)
+  const candidates = [...index.large]
+  const seen = new Set<Element>(candidates.map(({ element }) => element))
+  const minX = bucketCoordinate(rect.left)
+  const minY = bucketCoordinate(rect.top)
+  const maxX = bucketCoordinate(rect.left + rect.width)
+  const maxY = bucketCoordinate(rect.top + rect.height)
+  for (let x = minX; x <= maxX; x += 1) {
+    for (let y = minY; y <= maxY; y += 1) {
+      for (const entry of index.buckets.get(bucketKey(x, y)) ?? []) {
+        if (seen.has(entry.element)) continue
+        seen.add(entry.element)
+        candidates.push(entry)
+      }
+    }
+  }
+  return candidates
+}
 
 export type ClickCycleState = {
   point: Point
@@ -35,12 +111,36 @@ const getDeepestElementAt = (
   point: Point,
 ): Element => {
   let current = element
-  const ElementConstructor = element.ownerDocument.defaultView?.Element ?? Element
-  while (current instanceof ElementConstructor && current.shadowRoot) {
-    const nested = current.shadowRoot.elementFromPoint(point.x, point.y)
-    if (!nested || nested === current) break
-    current = nested
+  let currentPoint = point
+  const seen = new Set<Element>()
+
+  while (!seen.has(current)) {
+    seen.add(current)
+    const childDocument = getAccessibleFrameDocument(current)
+    if (childDocument) {
+      const frameRect = current.getBoundingClientRect()
+      const childPoint = {
+        x: currentPoint.x - frameRect.left - current.clientLeft,
+        y: currentPoint.y - frameRect.top - current.clientTop,
+      }
+      const child = childDocument.elementFromPoint(childPoint.x, childPoint.y)
+      if (child && child !== childDocument.body && child !== childDocument.documentElement) {
+        current = child
+        currentPoint = childPoint
+        continue
+      }
+    }
+    const ElementConstructor = current.ownerDocument.defaultView?.Element ?? Element
+    if (current instanceof ElementConstructor && current.shadowRoot) {
+      const nested = current.shadowRoot.elementFromPoint(currentPoint.x, currentPoint.y)
+      if (nested && nested !== current) {
+        current = nested
+        continue
+      }
+    }
+    break
   }
+
   return current
 }
 
@@ -48,12 +148,12 @@ const isSelectableElement = (
   element: Element,
   overlayNode: HTMLDivElement | null,
   overlayHost: Element | null,
-  ownerDocument: Document,
 ): boolean => {
-  const ElementConstructor = ownerDocument.defaultView?.Element ?? Element
+  const elementDocument = element.ownerDocument
+  const ElementConstructor = elementDocument.defaultView?.Element ?? Element
   if (!(element instanceof ElementConstructor)) return false
   if (isOverlayElement(element, overlayNode, overlayHost)) return false
-  if (element === ownerDocument.body || element === ownerDocument.documentElement) {
+  if (element === elementDocument.body || element === elementDocument.documentElement) {
     return false
   }
   const rect = element.getBoundingClientRect()
@@ -65,16 +165,10 @@ const readElementsFromPoint = (
   point: Point,
   overlayNode: HTMLDivElement | null,
   ownerDocument: Document,
-) => {
-  if (overlayNode) {
-    const previous = overlayNode.style.pointerEvents
-    overlayNode.style.pointerEvents = "none"
-    const elements = ownerDocument.elementsFromPoint(point.x, point.y)
-    overlayNode.style.pointerEvents = previous
-    return elements
-  }
-  return ownerDocument.elementsFromPoint(point.x, point.y)
-}
+) =>
+  withOverlayHitTesting(overlayNode, () =>
+    ownerDocument.elementsFromPoint(point.x, point.y),
+  )
 
 export const getElementsAtPoint = (
   point: Point,
@@ -87,7 +181,7 @@ export const getElementsAtPoint = (
 
   for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
     const element = getDeepestElementAt(rawElement, point)
-    if (!isSelectableElement(element, overlayNode, overlayHost, ownerDocument)) continue
+    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
     if (seen.has(element)) continue
     seen.add(element)
     elements.push(element)
@@ -101,7 +195,14 @@ export const getTargetElement = (
   overlayNode: HTMLDivElement | null,
   ownerDocument: Document = document,
 ) => {
-  return getElementsAtPoint(point, overlayNode, ownerDocument)[0] ?? null
+  const overlayHost = getOverlayHost(overlayNode)
+  return withOverlayHitTesting(overlayNode, () => {
+    const raw = ownerDocument.elementFromPoint(point.x, point.y)
+    if (!raw) return null
+    const element = getDeepestElementAt(raw, point)
+    if (!isSelectableElement(element, overlayNode, overlayHost)) return null
+    return element
+  })
 }
 
 export const getShiftClickTarget = (
@@ -110,15 +211,10 @@ export const getShiftClickTarget = (
   ownerDocument: Document = document,
 ) => {
   const overlayHost = getOverlayHost(overlayNode)
-  const elements = ownerDocument.elementsFromPoint(point.x, point.y)
+  const elements = readElementsFromPoint(point, overlayNode, ownerDocument)
   for (let i = elements.length - 1; i >= 0; i -= 1) {
     const element = getDeepestElementAt(elements[i], point)
-    if (!(element instanceof (ownerDocument.defaultView?.Element ?? Element))) continue
-    if (isOverlayElement(element, overlayNode, overlayHost)) continue
-    if (element === ownerDocument.body || element === ownerDocument.documentElement)
-      continue
-    const rect = element.getBoundingClientRect()
-    if (rect.width <= 2 || rect.height <= 2) continue
+    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
     return element
   }
   return null
@@ -130,7 +226,20 @@ export const getSnappedClickTarget = (
   snapEnabled: boolean,
   ownerDocument: Document = document,
 ) => {
-  if (!snapEnabled) return getTargetElement(point, overlayNode, ownerDocument)
+  const elements = getElementsAtPoint(point, overlayNode, ownerDocument)
+  return getSnappedTargetFromElements(point, elements, overlayNode, snapEnabled, ownerDocument)
+}
+
+const getSnappedTargetFromElements = (
+  point: Point,
+  elements: Element[],
+  overlayNode: HTMLDivElement | null,
+  snapEnabled: boolean,
+  ownerDocument: Document,
+) => {
+  const directTarget = elements[0] ?? null
+  if (!snapEnabled) return directTarget
+  if (directTarget && directTarget.ownerDocument !== ownerDocument) return directTarget
   const probeRect: Rect = {
     left: point.x - 20,
     top: point.y - 20,
@@ -138,27 +247,12 @@ export const getSnappedClickTarget = (
     height: 40,
   }
   const entries = getSelectionEntries(probeRect, overlayNode, ownerDocument)
-  return (
-    pickPointTarget(point, entries) ??
-    pickSingleTarget(probeRect, point, entries) ??
-    getTargetElement(point, overlayNode, ownerDocument)
-  )
+  return pickPointTarget(point, entries) ?? directTarget
 }
 
 const isSameClickSpot = (a: Point, b: Point) =>
   Math.abs(a.x - b.x) <= CLICK_CYCLE_THRESHOLD &&
   Math.abs(a.y - b.y) <= CLICK_CYCLE_THRESHOLD
-
-const buildClickCycleStack = (
-  point: Point,
-  overlayNode: HTMLDivElement | null,
-  initial: Element,
-  ownerDocument: Document,
-) => {
-  const stack = getElementsAtPoint(point, overlayNode, ownerDocument)
-  if (stack.includes(initial)) return stack
-  return [initial, ...stack]
-}
 
 export const getCycledClickTarget = (
   point: Point,
@@ -183,28 +277,25 @@ export const getCycledClickTarget = (
     }
   }
 
-  const initial = getSnappedClickTarget(
+  const stack = getElementsAtPoint(point, overlayNode, ownerDocument)
+  const initial = getSnappedTargetFromElements(
     point,
+    stack,
     overlayNode,
     snapEnabled,
     ownerDocument,
   )
   if (!initial) return { target: null, cycle: null }
 
-  const stack = buildClickCycleStack(
-    point,
-    overlayNode,
-    initial,
-    ownerDocument,
-  )
-  const index = stack.indexOf(initial)
+  const cycleStack = stack.includes(initial) ? stack : [initial, ...stack]
+  const index = cycleStack.indexOf(initial)
 
   return {
     target: initial,
     cycle: {
       point,
       index: index >= 0 ? index : 0,
-      stack,
+      stack: cycleStack,
     },
   }
 }
@@ -241,25 +332,16 @@ export const getSelectionEntries = (
   const minTop = rect.top - 1
   const maxRight = rect.left + rect.width + 1
   const maxBottom = rect.top + rect.height + 1
-  const elements = getBodyElementsCached(ownerDocument)
-  const entries = elements
-    .map((element) => ({ element, rect: getRectFromDomCached(element) }))
-    .filter(({ element, rect: elementRect }) => {
-      if (isOverlayElement(element, overlayNode, overlayHost)) return false
-      if (element === ownerDocument.body || element === ownerDocument.documentElement)
-        return false
-      if (
-        elementRect.width < MIN_MULTI_TARGET_SIZE ||
-        elementRect.height < MIN_MULTI_TARGET_SIZE
-      ) {
-        return false
-      }
-      if (elementRect.left > maxRight || elementRect.top > maxBottom)
-        return false
-      if (elementRect.left + elementRect.width < minLeft) return false
-      if (elementRect.top + elementRect.height < minTop) return false
-      return rectsOverlap(rect, elementRect)
-    })
+  const candidates = getIndexedCandidates(rect, ownerDocument)
+  const entries: Array<{ element: Element; rect: Rect }> = []
+  for (const { element, rect: elementRect } of candidates) {
+    if (isOverlayElement(element, overlayNode, overlayHost)) continue
+    if (element === element.ownerDocument.body || element === element.ownerDocument.documentElement) continue
+    if (elementRect.width < MIN_MULTI_TARGET_SIZE || elementRect.height < MIN_MULTI_TARGET_SIZE) continue
+    if (elementRect.left > maxRight || elementRect.top > maxBottom) continue
+    if (elementRect.left + elementRect.width < minLeft || elementRect.top + elementRect.height < minTop) continue
+    if (rectsOverlap(rect, elementRect)) entries.push({ element, rect: elementRect })
+  }
 
   cachedSelectionFrame = frame
   cachedSelectionKey = key

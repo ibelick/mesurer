@@ -192,13 +192,16 @@ export const useMesurerDerived = ({
       hoverGuide &&
       selectedGuide.id !== hoverGuide.id
     ) {
-      return getDistanceOverlay(
-        getGuideRect(selectedGuide, window),
-        getGuideRect(hoverGuide, window),
-        null,
-        null,
-        window,
-      )
+      return {
+        ...getDistanceOverlay(
+          getGuideRect(selectedGuide, window),
+          getGuideRect(hoverGuide, window),
+          null,
+          null,
+          window,
+        ),
+        guideIds: [selectedGuide.id, hoverGuide.id],
+      }
     }
 
     if (!guidePreview) return null
@@ -226,13 +229,16 @@ export const useMesurerDerived = ({
     )
 
     if (!nearest) return null
-    return getDistanceOverlay(
-      getGuideRect(previewGuide, window),
-      getGuideRect(nearest.guide, window),
-      null,
-      null,
-      window,
-    )
+    return {
+      ...getDistanceOverlay(
+        getGuideRect(previewGuide, window),
+        getGuideRect(nearest.guide, window),
+        null,
+        null,
+        window,
+      ),
+      guideIds: [null, nearest.guide.id],
+    }
   }, [
     altPressed,
     guidePreview,
@@ -254,7 +260,7 @@ export const useMesurerDerived = ({
     () => ({
       outlineColor: `color-mix(in oklch, ${highlightColor} 80%, transparent)`,
       fillColor: `color-mix(in oklch, ${highlightColor} 8%, transparent)`,
-      guideColorActive: `color-mix(in oklch, ${guideColor} 100%, transparent)`,
+      guideColorActive: `color-mix(in oklch, ${highlightColor} 100%, transparent)`,
       guideColorHover: `color-mix(in oklch, ${guideColor} ${guideHighlightEnabled ? 90 : 70}%, transparent)`,
       guideColorDefault: `color-mix(in oklch, ${guideColor} 70%, transparent)`,
       guideColorPreview: `color-mix(in oklch, ${guideColor} ${guideHighlightEnabled ? 50 : 70}%, transparent)`,

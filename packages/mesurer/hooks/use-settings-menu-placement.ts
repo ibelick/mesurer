@@ -8,6 +8,8 @@ type SettingsMenuPlacement = {
   side: "top" | "bottom"
   height: number
   right: number
+  top?: number
+  bottom?: number
 }
 
 type UseSettingsMenuPlacementOptions = {
@@ -15,6 +17,7 @@ type UseSettingsMenuPlacementOptions = {
   eventTarget: Window
   open: boolean
   refreshKey?: string | number
+  fixed?: boolean
 }
 
 export const useSettingsMenuPlacement = ({
@@ -22,6 +25,7 @@ export const useSettingsMenuPlacement = ({
   eventTarget,
   open,
   refreshKey,
+  fixed = false,
 }: UseSettingsMenuPlacementOptions) => {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [placement, setPlacement] = useState<SettingsMenuPlacement>({
@@ -56,13 +60,19 @@ export const useSettingsMenuPlacement = ({
         eventTarget.innerWidth - VIEWPORT_PADDING - menuWidth,
       )
       const menuLeft = Math.min(maxLeft, Math.max(minLeft, desiredLeft))
-      const containingRight =
-        anchorRef.current?.parentElement?.getBoundingClientRect().right ?? anchor.right
+      const containingRight = fixed
+        ? eventTarget.innerWidth
+        : anchorRef.current?.parentElement?.getBoundingClientRect().right ?? anchor.right
 
       setPlacement({
         side,
         height: Math.min(DEFAULT_HEIGHT, availableHeight),
         right: containingRight - menuLeft - menuWidth,
+        ...(fixed
+          ? side === "bottom"
+            ? { top: anchor.bottom + MENU_GAP }
+            : { bottom: eventTarget.innerHeight - anchor.top + MENU_GAP }
+          : {}),
       })
     }
 
@@ -73,7 +83,7 @@ export const useSettingsMenuPlacement = ({
       eventTarget.removeEventListener("resize", measure)
       eventTarget.removeEventListener("scroll", measure, true)
     }
-  }, [anchorRef, eventTarget, open, refreshKey])
+  }, [anchorRef, eventTarget, fixed, open, refreshKey])
 
   return { menuRef, placement }
 }

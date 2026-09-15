@@ -13,6 +13,186 @@ test("starts with the Select tool active", async ({ page }) => {
   );
 });
 
+test("inspect clicks do not steal focus from a page field", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  const field = page.getByRole("textbox", { name: "Page field" });
+  await field.focus();
+  await expect(field).toBeFocused();
+
+  await page.mouse.click(120, 160);
+  await expect(field).toBeFocused();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+});
+
+test("does not reset host-page border styles", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await expect
+    .poll(() =>
+      page.getByTestId("host-border-control").evaluate((element) => {
+        const style = getComputedStyle(element);
+        return `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`;
+      }),
+    )
+    .toBe("3px dashed rgb(17, 24, 39)");
+});
+
+test("Mesurer controls keep 1px solid borders", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: /Settings/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => dialog.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return `${style.borderTopWidth} ${style.borderTopStyle}`;
+  })).toBe("1px solid");
+  const select = dialog.locator("select").first();
+  await expect.poll(() => select.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return `${style.borderTopWidth} ${style.borderTopStyle}`;
+  })).toBe("1px solid");
+});
+
+test("does not trigger shortcuts for CSS-hidden controls", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.addStyleTag({
+    content: `
+      [data-tool-id="screenshot"],
+      [data-tool-id="rulers"] { display: none !important; }
+      [data-tool-id="settings"] { visibility: hidden !important; }
+    `,
+  });
+
+  await page.keyboard.press("c");
+  await expect(page.getByRole("application", { name: "Screenshot selection" })).toHaveCount(0);
+
+  await page.keyboard.press("r");
+  await expect(page.locator("[data-mesurer-rulers]")).toHaveCount(0);
+
+  await page.keyboard.press("Control+,");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
+test("disables feature controls and their shortcuts", async ({ page }) => {
+  await page.goto("/e2e/fixtures/feature-flags.html");
+
+  await expect(page.getByRole("button", { name: "Screenshot (C)" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Rulers (R)" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Settings/ })).toHaveCount(0);
+
+  await page.keyboard.press("c");
+  await expect(page.getByRole("application", { name: "Screenshot selection" })).toHaveCount(0);
+
+  await page.keyboard.press("r");
+  await expect(page.locator("[data-mesurer-rulers]")).toHaveCount(0);
+
+  await page.keyboard.press("Control+,");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
+test("Inspect shows typography details in the info card", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveCount(0);
+
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  const card = page.locator("[data-mesurer-inspect-info-card]");
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect.poll(() => card.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(255, 255, 255)");
+  await expect.poll(() => card.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
+  await expect.poll(() => card.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return `${style.borderTopWidth} ${style.borderTopStyle}`;
+  })).toBe("1px solid");
+  const cardBox = await card.boundingBox();
+  expect(cardBox).not.toBeNull();
+  const hitTarget = await card.evaluate((node, point) => {
+    const root = node.getRootNode();
+    const element = root instanceof ShadowRoot ? root.elementFromPoint(point.x, point.y) : document.elementFromPoint(point.x, point.y);
+    return { matched: element?.closest("[data-mesurer-inspect-info-card]") !== null, tag: element?.tagName, className: element?.className };
+  }, { x: cardBox!.x + cardBox!.width / 2, y: cardBox!.y + cardBox!.height / 2 });
+  expect(hitTarget.matched).toBe(true);
+  await card.hover();
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
+  await expect(card).toContainText("Family");
+  const familyValue = card.getByRole("button", { name: "Arial" });
+  await expect(familyValue).toBeVisible();
+  await expect(card).toContainText("Size");
+  await expect(card).toContainText("Weight");
+  await expect(card).toContainText("Line");
+  await expect(card).toContainText("Tracking");
+});
+
+test("Option+S pins the current distance overlay", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+
+  const selectedTarget = page.getByRole("button", { name: "Underlying app button" });
+  const selectedBox = await selectedTarget.boundingBox();
+  expect(selectedBox).not.toBeNull();
+  await page.mouse.click(selectedBox!.x + selectedBox!.width / 2, selectedBox!.y + selectedBox!.height / 2);
+
+  const hoverTarget = page.getByRole("button", { name: "Secondary app button" });
+  const hoverBox = await hoverTarget.boundingBox();
+  expect(hoverBox).not.toBeNull();
+  await page.keyboard.down("Alt");
+  await page.mouse.move(hoverBox!.x + hoverBox!.width / 2, hoverBox!.y + hoverBox!.height / 2);
+  await page.keyboard.press("s");
+  await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
+  await page.keyboard.up("Alt");
+  await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
+});
+
+test("Inspect value tooltip appears on hover", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  const card = page.locator("[data-mesurer-inspect-info-card]");
+  const familyValue = card.getByRole("button", { name: "Arial" });
+  const familyBox = await familyValue.boundingBox();
+  expect(familyBox).not.toBeNull();
+  const familyPoint = { x: familyBox!.x + familyBox!.width / 2, y: familyBox!.y + familyBox!.height / 2 };
+  await expect.poll(() => card.evaluate((node, point) => {
+    const root = node.getRootNode();
+    const element = root instanceof ShadowRoot ? root.elementFromPoint(point.x, point.y) : document.elementFromPoint(point.x, point.y);
+    return { tag: element?.tagName, text: element?.textContent };
+  }, familyPoint)).toMatchObject({ tag: "BUTTON", text: "Arial" });
+  await page.mouse.move(20, 20);
+  await page.mouse.move(familyPoint.x, familyPoint.y);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.className.includes("opacity-100")).length,
+  )).toBe(1);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.map((node) => getComputedStyle(node).opacity),
+  )).toContain("1");
+  await familyValue.click();
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Copied!" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(1);
+  const sizeValue = card.getByRole("button", { name: "13.3px" });
+  await sizeValue.hover();
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Copied!" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(0);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.textContent === "Click to copy" && getComputedStyle(node).opacity === "1").length,
+  )).toBe(1);
+  await page.mouse.move(20, 20);
+  await expect.poll(() => card.locator("[role='tooltip']").evaluateAll((nodes) =>
+    nodes.filter((node) => getComputedStyle(node).opacity === "1").length,
+  )).toBe(0);
+});
+
 test("does not run shortcuts while typing in a page field", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Inspect (I)" }).click();
@@ -106,29 +286,6 @@ test("minimizes to one button and restores the workspace", async ({ page }) => {
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 });
 
-test("minimizing pauses Typography without clearing pinned cards", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.mouse.click(300, 280);
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("button", { name: "Minimize toolbar" }).click();
-  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.mouse.click(300, 560);
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-
-  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
-  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(1);
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-});
-
 test("dragging the minimized button does not restore the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
@@ -150,6 +307,30 @@ test("dragging the minimized button does not restore the toolbar", async ({ page
 
   await restore.click();
   await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+});
+
+test("minimized Mesurer does not inspect the page", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
+});
+
+test("initialState seeds annotations and toolbar state", async ({ page }) => {
+  await page.goto("/e2e/fixtures/initial-state.html");
+
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+  await expect(page.locator('[data-mesurer-arrow="true"][data-mesurer-arrow-id="initial-arrow"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-text="true"][data-mesurer-text-id="initial-text"]')).toContainText("Initial annotation");
 });
 
 test("double Escape minimizes Mesurer", async ({ page }) => {
@@ -275,19 +456,6 @@ test("Escape turns off X-ray and rulers with the active inspect tool", async ({
     "aria-pressed",
     "false",
   );
-});
-
-test("Escape exits Typography after inspecting a page element", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-  await page.mouse.move(300, 280);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Typography (A)" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
 });
 
 test("double Escape minimizes after closing Settings", async ({ page }) => {
@@ -484,7 +652,8 @@ test("Select tool can inspect SVG elements", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
   await page.getByTestId("svg-rect").click({ force: true });
 
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 80");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("200 x 80");
+  await expect(page.getByText("200 x 80", { exact: true })).toHaveCount(1);
 });
 
 const expectSettingsSectionPinned = async (page: Page, id: string) => {
@@ -554,96 +723,6 @@ test("Selection mode draws a selection rectangle while dragging", async ({ page 
   await expect(rectangle).toHaveCount(0);
 });
 
-test("font inspector mode participates in undo and redo history", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-
-  const textInspectorButton = page.getByRole("button", {
-    name: "Typography (A)",
-  });
-
-  await textInspectorButton.click();
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.keyboard.press("Control+Z");
-  await expect(page.locator("body")).not.toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.keyboard.press("Control+Shift+Z");
-  await expect(page.locator("body")).toHaveClass(/mesurer-text-inspector-\d+-mode/);
-
-  await page.mouse.move(100, 100);
-  await page.mouse.move(300, 280);
-  await page.mouse.click(300, 280);
-  const pinnedCard = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCard).toHaveCount(1);
-
-  await page.keyboard.press("Control+Z");
-  await expect(pinnedCard).toHaveCount(0);
-
-  await page.keyboard.press("Control+Shift+Z");
-  await expect(pinnedCard).toHaveCount(1);
-
-  await page.keyboard.press("Escape");
-  await expect(pinnedCard).toHaveCount(0);
-});
-
-test("font inspector refreshes styles and brings repeated pins to front", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-
-  await page.mouse.click(300, 280);
-  await page.mouse.click(300, 560);
-  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCards).toHaveCount(2);
-  await expect(pinnedCards.last()).toContainText("Secondary app button");
-
-  await page.mouse.click(300, 280);
-  await expect(pinnedCards).toHaveCount(2);
-  await expect(pinnedCards.last()).toContainText("Underlying app button");
-
-  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
-    (button as HTMLElement).style.fontSize = "24px";
-  });
-  await page.mouse.move(100, 100);
-  await page.mouse.move(300, 280);
-  await expect(
-    page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)"),
-  ).toContainText("24px");
-});
-
-test("text inspector does not inspect settings", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.getByRole("button", { name: "Settings" }).click();
-
-  const heading = page.getByRole("heading", { name: "Guides" });
-  await heading.hover();
-  await expect(page.locator(".mesurer-ti-card:not(.mesurer-ti-card--pinned)")).toHaveCount(0);
-
-  await heading.click();
-  await expect(page.locator(".mesurer-ti-card--pinned")).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-});
-
-test("removing a source element silently removes its pinned card", async ({
-  page,
-}) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Typography (A)" }).click();
-  await page.mouse.click(300, 280);
-
-  const pinnedCards = page.locator(".mesurer-ti-card--pinned");
-  await expect(pinnedCards).toHaveCount(1);
-  await page.locator("button").filter({ hasText: "Underlying" }).evaluate((button) => {
-    button.remove();
-  });
-  await page.mouse.move(100, 100);
-  await expect(pinnedCards).toHaveCount(0);
-});
-
 test("x-ray mode outlines the page without hiding the toolbar", async ({
   page,
 }) => {
@@ -660,12 +739,12 @@ test("x-ray mode outlines the page without hiding the toolbar", async ({
   await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
-test("marketing site renders the current x-ray toolbar icon", async ({ page }) => {
+test("marketing site starts with the minimized Mesurer toolbar", async ({ page }) => {
   await page.goto("/");
 
-  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
-  await expect(xrayButton).toBeVisible();
-  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+  const restoreButton = page.getByRole("button", { name: "Show Mesurer toolbar" });
+  await expect(restoreButton).toBeVisible();
+  await expect(restoreButton.locator("svg")).toBeVisible();
 });
 
 test("native color picker shows color formats", async ({ page }) => {
@@ -729,7 +808,7 @@ test("falls back to the default swatch for an invalid persisted color", async ({
 
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
-  const swatch = dialog.locator("[aria-label='Selection settings'] input[aria-label='Color color picker']").locator("..");
+  const swatch = dialog.locator("[aria-label='Inspect settings'] input[aria-label='Color color picker']").locator("..");
   await expect(swatch).toHaveCSS(
     "background-color",
     "oklch(0.62 0.18 255)",
@@ -740,7 +819,7 @@ test("settings color fields update hex and opacity values", async ({ page }) => 
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
 
-  const selection = page.getByRole("region", { name: "Selection settings" });
+  const selection = page.getByRole("region", { name: "Inspect settings" });
   const hex = selection.getByRole("textbox", { name: "Color hex value" });
   const opacity = selection.getByRole("textbox", { name: "Color opacity value" });
   const nativeColor = selection.getByLabel("Color color picker");
@@ -759,6 +838,28 @@ test("settings color fields update hex and opacity values", async ({ page }) => 
   });
   await expect(hex).toHaveValue("00FF00");
   await expect(opacity).toHaveValue("50%");
+});
+
+test("copies the selected inspect node selector from settings", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await activateSelect(page);
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.getByRole("button", { name: "Settings" }).click();
+
+  const inspect = page.getByRole("region", { name: "Inspect settings" });
+  const mode = inspect.getByRole("combobox", { name: "Info card mode" });
+  await expect(mode).toHaveValue("click");
+  await page.keyboard.press("Escape");
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toHaveCount(0);
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("button");
+  await expect(page.locator("[data-mesurer-selector-copied]")).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("button");
 });
 
 test("P opens the native color picker", async ({ page }) => {
@@ -818,8 +919,12 @@ test("cancelling screenshot pointer input does not capture", async ({ page }) =>
 
 test("screenshot selection captures and copies the selected region", async ({ page }) => {
   await page.addInitScript(() => {
-    const onePixelPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const canvas = document.createElement("canvas");
+    canvas.width = 40;
+    canvas.height = 30;
+    const context = canvas.getContext("2d");
+    context?.fillRect(0, 0, canvas.width, canvas.height);
+    const capturePng = canvas.toDataURL("image/png");
     Object.defineProperty(window, "chrome", {
       configurable: true,
       value: {
@@ -827,13 +932,23 @@ test("screenshot selection captures and copies the selected region", async ({ pa
           id: "test-extension",
           lastError: undefined,
           sendMessage: (_message: unknown, callback: (response: unknown) => void) =>
-            callback({ ok: true, dataUrl: onePixelPng }),
+            callback({ ok: true, dataUrl: capturePng }),
         },
       },
     });
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
-      value: { write: () => Promise.resolve() },
+       value: {
+         write: async (items: ClipboardItems) => {
+           const blob = await items[0].getType("image/png");
+           const bitmap = await createImageBitmap(blob);
+           (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize = {
+             width: bitmap.width,
+             height: bitmap.height,
+           };
+           bitmap.close();
+         },
+       },
     });
   });
   await page.goto("/e2e/fixtures/guide-overlay.html");
@@ -846,6 +961,17 @@ test("screenshot selection captures and copies the selected region", async ({ pa
   await page.mouse.move(280, 220);
   await page.mouse.up();
   await expect(page.getByRole("status", { name: "Screenshot copied" })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize))
+    .not.toBeUndefined();
+  const captureSize = await page.evaluate(() => (window as Window & { __mesurerCaptureSize?: { width: number; height: number } }).__mesurerCaptureSize);
+  expect(captureSize).toBeDefined();
+  if (!captureSize) return;
+  const expectedSize = await page.evaluate(() => ({
+    width: Math.max(1, Math.round((160 * 40) / window.innerWidth)),
+    height: Math.max(1, Math.round((80 * 30) / window.innerHeight)),
+  }));
+  expect(captureSize).toEqual(expectedSize);
   await expect(selection).toHaveCount(0);
 });
 
@@ -937,7 +1063,7 @@ test("settings opens with all sections visible", async ({ page }) => {
 
   await page.getByRole("button", { name: "Inspect (I)" }).click();
   await settings.click();
-  await expectSettingsSectionPinned(page, "selection");
+  await expectSettingsSectionPinned(page, "inspect");
 });
 
 test("opening settings with a tool active pins that tool section", async ({ page }) => {
@@ -965,7 +1091,7 @@ test("opening settings with a tool active pins that tool section", async ({ page
 
   await page.getByRole("button", { name: "Select (S)" }).click();
   await settings.click();
-  await expectSettingsSectionPinned(page, "selection");
+  await expectSettingsSectionPinned(page, "inspect");
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
@@ -1034,6 +1160,13 @@ test("color picker settings apply selected and copy formats", async ({ page }) =
   await expect(picker).toContainText("#ff0000");
   await expect(picker).not.toContainText("rgb");
   await expect(picker).not.toContainText("oklch");
+  await expect.poll(() => picker.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
+  const colorValue = picker.getByRole("button").first();
+  await expect.poll(() => colorValue.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
+  await colorValue.click();
+  await expect(picker).toBeVisible();
+  await page.mouse.click(700, 700);
+  await expect(picker).toHaveCount(0);
 });
 
 test("guide sliders do not drag the toolbar", async ({ page }) => {
@@ -1114,6 +1247,101 @@ test("placed guides stay visible and update while settings is open", async ({
 
   await page.getByRole("radio", { name: "Dashed guide pattern" }).click();
   await expect(line).toHaveCSS("background-image", /repeating-linear-gradient/);
+});
+
+test("guide context menu removes one guide", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Remove guide" }).click();
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+});
+
+test("guide context menu removes selected guides", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await page.mouse.click(500, 200, { modifiers: ["Shift"] });
+
+  const guides = page.locator("[data-mesurer-guide]");
+  await expect(guides).toHaveCount(2);
+  await guides.nth(0).click({ modifiers: ["Shift"], position: { x: 7, y: 200 } });
+  await guides.nth(1).click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guides" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Remove guides" }).click();
+  await expect(guides).toHaveCount(0);
+});
+
+test("guide context menu closes with Escape", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  const menu = page.getByRole("menuitem", { name: "Remove guide" });
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+});
+
+test("comments and guide menus do not stay open together", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Initial comment");
+  await page.getByRole("button", { name: "Send comment" }).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: "Show all comments" }).click();
+  await expect(page.getByRole("dialog", { name: "Comments" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Comments" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("comment dropdown and guide menus do not stay open together", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("toolbar tools close Settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
 
 test("guide settings show a live preview when no guides are placed", async ({
@@ -1403,10 +1631,10 @@ test("cycles through nested elements on repeated clicks", async ({ page }) => {
   const y = box!.y + box!.height / 2;
 
   await page.mouse.click(x, y);
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("160 x 80");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("160 x 80");
 
   await page.mouse.click(x, y);
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toContainText("200 x 120");
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("200 x 120");
 });
 
 test("does not run shortcuts while a page prompt has focus", async ({ page }) => {

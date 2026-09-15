@@ -1,28 +1,58 @@
 @source "./**/*.{ts,tsx,js,jsx}";
-@import "tailwindcss" prefix(msr);
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(msr);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(msr);
 
 @theme {
+  --radius-control: 5px;
   --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
-  --color-ink-900: #0f172a;
+  --color-ink-900: #18181b;
+}
+
+@layer base {
+  .mesurer-root {
+    font-family: var(--msr-font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .mesurer-root button,
+  .mesurer-root input,
+  .mesurer-root select,
+  .mesurer-root textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+}
+
+@layer utilities {
+  .msr\:rounded-control {
+    border-radius: var(--msr-radius-control);
+  }
 }
 
 :root,
 :host {
   --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
-  --color-ink-900: #0f172a;
+  --color-ink-900: #18181b;
 }
 
 :host {
   all: initial;
   display: block;
   color-scheme: light;
-  color: #0f172a;
+  color: var(--msr-color-ink-900);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   font-weight: 400;
@@ -32,17 +62,38 @@
   --msr-spacing: 4px;
 }
 
-*,
-*::before,
-*::after {
+/* The active eyedropper uses a crosshair; picker controls must always remain neutral. */
+.mesurer-color-picker,
+.mesurer-color-picker * {
+  cursor: default !important;
+}
+
+.mesurer-root [data-mesurer-inspect-info-card],
+.mesurer-root [data-mesurer-inspect-info-card] * {
+  cursor: default !important;
+}
+
+[data-mesurer-overlay][data-mesurer-inspect],
+[data-mesurer-overlay][data-mesurer-inspect] * {
+  cursor: default !important;
+}
+
+.mesurer-root,
+.mesurer-root *,
+.mesurer-root *::before,
+.mesurer-root *::after {
   box-sizing: border-box;
 }
 
 @layer base {
-  *,
-  ::before,
-  ::after,
-  ::backdrop {
+  /* Scoped Tailwind preflight: `msr:border` sets width + `border-style: var(--tw-border-style)`.
+     Without a solid 0-width reset inside the root, those utilities render as `none`. */
+  .mesurer-root,
+  .mesurer-root *,
+  .mesurer-root *::before,
+  .mesurer-root *::after,
+  .mesurer-root::backdrop {
+    border: 0 solid;
     --tw-border-style: solid;
     --tw-outline-style: solid;
     --tw-shadow: 0 0 #0000;
@@ -55,10 +106,10 @@
     --tw-translate-z: 0;
   }
 
-  button,
-  input,
-  select,
-  textarea {
+  .mesurer-root button,
+  .mesurer-root input,
+  .mesurer-root select,
+  .mesurer-root textarea {
     appearance: none;
     background-color: transparent;
     padding: 0;
@@ -85,7 +136,7 @@
   inset: 0;
   z-index: 0;
   overflow: visible;
-  border-radius: 12px;
+  border-radius: 9px;
   background: #fff;
   outline: 1px solid transparent;
   transform-origin: 0 50%;
@@ -250,7 +301,7 @@
   z-index: 1;
   flex: none;
   isolation: isolate;
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 9px 9px 0;
   background: #fff;
 }
 
@@ -268,7 +319,7 @@
   z-index: 0;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 3px;
   background: var(--color-ink-200);
   transform: translateX(0);
 }
@@ -318,8 +369,38 @@
   }
 }
 
-.mesurer-settings-panel::-webkit-scrollbar {
-  display: none;
+@keyframes mesurer-comment-nudge {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-3px); }
+  70% { transform: translateX(3px); }
+}
+
+.mesurer-comment-nudge {
+  animation: mesurer-comment-nudge 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesurer-comment-nudge {
+    animation: none;
+  }
+}
+
+.mesurer-thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--msr-color-ink-200) transparent;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--msr-color-ink-200);
+  border-radius: 999px;
 }
 
 .mesurer-toast-surface {

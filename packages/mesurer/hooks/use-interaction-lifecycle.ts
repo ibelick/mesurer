@@ -13,6 +13,7 @@ import type {
 import type { TextDraft } from "./use-annotation-callbacks";
 import { useHotkeys } from "./use-hotkeys";
 import { useOverlayKeyboard } from "./use-overlay-keyboard";
+import type { ResolvedMesurerFeatures } from "../core/features";
 
 type Options = {
   enabled: boolean;
@@ -39,6 +40,9 @@ type Options = {
   selectedMeasurements: InspectMeasurement[];
   selectedMeasurement: InspectMeasurement | null;
   selectedElement: Element | null;
+  commentDraftActive: boolean;
+  cancelCommentDraft: () => void;
+  hasComments: () => boolean;
   start: Point | null;
   arrowStart: Point | null;
   draggingGuideId: string | null;
@@ -96,7 +100,11 @@ type Options = {
   onInteract: () => void;
   onMinimize: () => void;
   onToggleSettings: () => void;
+   onCopyComments: () => void | Promise<boolean>;
   dismissInspectorPins: () => boolean;
+  selectedCommentId: string | null;
+  closeComment: () => void;
+  features: ResolvedMesurerFeatures;
 };
 
 export const useInteractionLifecycle = (options: Options) => {
@@ -227,6 +235,11 @@ export const useInteractionLifecycle = (options: Options) => {
     clearSelection: options.clearSelection,
     exitActiveTool,
     dismissInspectorPins: options.dismissInspectorPins,
+    hasOpenComment: () => options.selectedCommentId !== null,
+    closeComment: options.closeComment,
+     commentDraftActive: options.commentDraftActive,
+     cancelCommentDraft: options.cancelCommentDraft,
+     hasComments: options.hasComments,
     minimizeMesurer: options.onMinimize,
     shortcutsEnabled: options.shortcutsEnabled,
     minimized: options.minimized,
@@ -248,6 +261,7 @@ export const useInteractionLifecycle = (options: Options) => {
       void options.colorPicker.open();
     },
     onScreenshot: options.screenshot.toggleSelection,
+    onCopyComments: options.onCopyComments,
     onCloseScreenshot: options.screenshot.closeUi,
     isScreenshotActive: () =>
       options.screenshot.active || Boolean(options.screenshot.previewUrl),
@@ -291,6 +305,27 @@ export const useInteractionLifecycle = (options: Options) => {
     isSettingsOpen: () => options.settingsOpen,
     onCloseColorPicker: () => options.colorPicker.setActive(false),
     isColorPickerActive: () => options.colorPicker.active,
+    features: options.features,
+    isFeatureVisible: (feature) => {
+      const node = options.toolbarRef.current?.querySelector(
+        `[data-tool-id="${feature}"]`,
+      ) as HTMLElement | null;
+      if (!node || node.getClientRects().length === 0) return false;
+      if (
+        (node.closest(".mesurer-toolbar-motion") as HTMLElement | null)?.style
+          .visibility === "hidden"
+      ) {
+        return true;
+      }
+      const view = node.ownerDocument.defaultView;
+      for (let current: HTMLElement | null = node; current; current = current.parentElement) {
+        // Inactive tool groups intentionally use visibility:hidden while their
+        // shortcuts remain available, so stop before evaluating that container.
+        if (current.classList.contains("mesurer-toolbar-tool-slot")) break;
+        if (view?.getComputedStyle(current).visibility === "hidden") return false;
+      }
+      return true;
+    },
   });
 
   return {

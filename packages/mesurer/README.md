@@ -58,6 +58,7 @@ function App() {
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |
 | `persistence`           | Optional storage adapter for custom or extension-backed persistence.           |
 | `captureVisibleTab`      | Optional function supplying a PNG of the visible tab for Screenshot capture.  |
+| `features`               | Enable or disable `screenshot`, `rulers`, and `settings`; each defaults to `true`. |
 | `onPersistenceError`    | Called when persistence is unavailable or a storage write fails.              |
 | `colorPickerFormats`     | Color formats displayed in the picker popover, in display order.             |
 | `colorPickerClickFormat` | Format copied to the clipboard when a color is picked.                       |
@@ -94,13 +95,20 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 | `H`                    | Set guide orientation to horizontal.                  |
 | `V`                    | Set guide orientation to vertical.                    |
 | `Alt`                  | Temporarily enable option/guide measurement overlays. |
-| `Alt + S`              | Pin the measurement currently shown under `Alt` so it stays on screen. |
+| `Option + S` / `Alt + S` | Pin the measurement currently shown under `Option` / `Alt` so it stays on screen. |
 | `Esc`                  | Close an open panel, cancel the current interaction, or deselect the tool. Press again to minimize Mesurer. |
 | `Backspace` / `Delete` | Remove selected guides, arrows, pen strokes, or text. |
 | `Cmd/Ctrl + Z`         | Undo.                                                 |
 | `Cmd/Ctrl + Shift + Z` | Redo.                                                 |
 | `Cmd/Ctrl + A`         | Select all annotations.                               |
 | `Cmd/Ctrl + ,`         | Open Settings.                                        |
+| `Cmd/Ctrl + K`         | Copy comments for an agent.                           |
+
+`initialState` accepts `enabled`, `minimized`, `toolbarPosition`, `toolMode`, guides, arrows, pen strokes, text annotations, measurements, and comments. Saved workspace state overrides it.
+
+```tsx
+<Mesurer initialState={{ minimized: true, toolbarPosition: { x: 24, y: 24 } }} />
+```
 
 ## Features
 
@@ -115,6 +123,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 - **Screenshot** - Drag a region of the visible tab and copy or download it. In a React integration without the extension, the browser may show a tab-sharing prompt.
 - **Distance overlays** - Hold Alt for quick spacing checks
 - **Undo/redo** - Command history for guides, measurements, arrows, pen strokes, and text annotations
+- **Comments** - Pin threads to live elements, add replies, move targets, search threads, and copy structured feedback for agents
 - **Settings** - Configure selection, guide, ruler, arrow, text, color, format, and persistence behavior
 - **Workspace controls** - Restore defaults or clear guides, measurements, and annotations; minimize Mesurer to a single toolbar button
 

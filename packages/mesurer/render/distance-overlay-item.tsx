@@ -38,7 +38,10 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
     : undefined;
 
   return (
-    <div className="msr:pointer-events-none">
+    <div
+      data-mesurer-held-distance={onRemove ? distance.id : undefined}
+      className="msr:pointer-events-none"
+    >
       {showRectA ? (
         <div
           className="msr:absolute msr:rounded msr:border msr:border-[#2563eb]/70"

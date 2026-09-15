@@ -10,8 +10,10 @@ import {
 } from "react"
 import type { TextAnnotation } from "../core/types"
 import {
+  getDeepActiveElement,
   isInsideMesurer,
   isMesurerKeyboardOwned,
+  isPageTextEntry,
 } from "../core/keyboard-ownership"
 import {
   boxCenter,
@@ -194,20 +196,21 @@ export const TextLayer = memo(function TextLayer({
     const next = event.relatedTarget
     if (next instanceof HTMLElement && next.closest("[data-mesurer-text], [data-mesurer-text-input]")) return
     const view = event.currentTarget.ownerDocument.defaultView
+    const editor = event.currentTarget
+    const finish = () => {
+      if (!editor.isConnected || draftInputRef.current !== editor) return
+      const active = view ? getDeepActiveElement(view) : null
+      if (view && isPageTextEntry(active) && isMesurerKeyboardOwned(view)) {
+        editor.focus({ preventScroll: true })
+        return
+      }
+      onDraftBlur()
+    }
     if (view && isMesurerKeyboardOwned(view) && !isInsideMesurer(next)) {
-      const editor = event.currentTarget
-      requestAnimationFrame(() => {
-        if (
-          editor.isConnected &&
-          draftInputRef.current === editor &&
-          isMesurerKeyboardOwned(view)
-        ) {
-          editor.focus({ preventScroll: true })
-        }
-      })
+      requestAnimationFrame(() => requestAnimationFrame(finish))
       return
     }
-    onDraftBlur()
+    finish()
   }
 
   if (items.length === 0 && !draft) return null
@@ -358,6 +361,7 @@ function TextItem({
 
   const startMove = (event: PointerEvent<HTMLElement>) => {
     onSelect(item.id, event.shiftKey)
+    boxRef.current?.focus({ preventScroll: true })
     if (event.shiftKey) return
     onMoveStart(item.id)
     dragRef.current = {
@@ -439,6 +443,7 @@ function TextItem({
       className={`msr:absolute msr:h-max ${boxWidth ? "msr:w-auto" : "msr:w-max"} ${
         interactive || editable ? "msr:pointer-events-auto" : "msr:pointer-events-none"
       } ${interactive ? "msr:cursor-default" : editable ? "msr:cursor-text" : ""}`}
+      tabIndex={selected && !editing ? -1 : undefined}
       data-mesurer-text="true"
       data-mesurer-text-id={item.id}
     >
@@ -458,7 +463,7 @@ function TextItem({
         }}
         role={editing ? "textbox" : undefined}
         aria-label={editing ? "Text annotation" : undefined}
-        contentEditable={editing ? "plaintext-only" : "false"}
+        contentEditable={editing ? "plaintext-only" : undefined}
         suppressContentEditableWarning
         spellCheck={false}
         onPointerDown={(event: PointerEvent<HTMLDivElement>) => {

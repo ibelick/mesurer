@@ -6,8 +6,10 @@ import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { CheckIcon } from "./icons"
+import { TextInput } from "./text-input"
+import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle, RulerSettings, ScreenshotSettings } from "../core/persistence"
+import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
@@ -16,7 +18,7 @@ export type SettingsFocusSection =
   | "guides"
   | "arrows"
   | "text"
-  | "selection"
+  | "inspect"
   | "color"
   | "screenshot"
   | "rulers"
@@ -30,7 +32,7 @@ export const settingsFocusSection = (
   if (toolMode === "guides") return "guides"
   if (toolMode === "arrows") return "arrows"
   if (toolMode === "text") return "text"
-  if (toolMode === "select" || toolMode === "selection") return "selection"
+  if (toolMode === "select" || toolMode === "selection") return "inspect"
   if (toolMode === "rulers" || (options.rulersVisible && toolMode === "none")) return "rulers"
   return undefined
 }
@@ -46,6 +48,8 @@ type SettingsSelectProps = {
   setSnapEnabled: Dispatch<SetStateAction<boolean>>
   multiMeasureEnabled: boolean
   setMultiMeasureEnabled: Dispatch<SetStateAction<boolean>>
+  infoCardMode: InfoCardMode
+  setInfoCardMode: Dispatch<SetStateAction<InfoCardMode>>
 }
 
 type SettingsGuidesProps = {
@@ -118,7 +122,7 @@ const roundToTwo = (value: number) => Number(value.toFixed(2))
 function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <div
-      className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-[5px] msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
+      className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
     >
       <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
       <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
@@ -247,7 +251,7 @@ function SliderControl({
             aria-hidden="true"
           />
           <div
-            className="msr:absolute msr:rounded-[5px] msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+            className="msr:absolute msr:rounded-control msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -427,14 +431,15 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
           </>
         }
         right={
-          <input
+          <TextInput
             ref={alphaInputRef}
+            containerClassName="msr:h-full msr:w-full"
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"
             value={alphaFocused ? (alphaDraft ? `${alphaDraft}%` : "") : `${alphaValue}%`}
             maxLength={4}
-             className="msr:h-full msr:w-full msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+             className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
             onFocus={() => {
               setAlphaDraft(String(alphaValue))
               setAlphaFocused(true)
@@ -509,9 +514,11 @@ function FormatMultiSelect({
   onChange: (formats: ColorPickerFormat[]) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [menuSide, setMenuSide] = useState<"top" | "bottom">("bottom")
   const [activeIndex, setActiveIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const listboxRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const listboxId = `${useId()}-color-formats`
 
@@ -522,6 +529,33 @@ function FormatMultiSelect({
     ownerWindow.document.addEventListener("pointerdown", handlePointerDown)
     return () => ownerWindow.document.removeEventListener("pointerdown", handlePointerDown)
   }, [ownerWindow])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const trigger = triggerRef.current
+    const listbox = listboxRef.current
+    if (!trigger || !listbox) return
+
+    const updatePlacement = () => {
+      const triggerRect = trigger.getBoundingClientRect()
+      const listboxHeight = listbox.getBoundingClientRect().height
+      const edgePadding = 8
+      const belowFits = triggerRect.bottom + 4 + listboxHeight <= ownerWindow.innerHeight - edgePadding
+      const aboveFits = triggerRect.top - 4 - listboxHeight >= edgePadding
+      setMenuSide(belowFits || !aboveFits ? "bottom" : "top")
+    }
+
+    updatePlacement()
+    ownerWindow.addEventListener("resize", updatePlacement)
+    ownerWindow.addEventListener("scroll", updatePlacement, true)
+    const resizeObserver = new ResizeObserver(updatePlacement)
+    resizeObserver.observe(listbox)
+    return () => {
+      ownerWindow.removeEventListener("resize", updatePlacement)
+      ownerWindow.removeEventListener("scroll", updatePlacement, true)
+      resizeObserver.disconnect()
+    }
+  }, [open, ownerWindow])
 
   const toggleFormat = (format: ColorPickerFormat) => {
     if (selectedFormats.includes(format)) {
@@ -550,7 +584,7 @@ function FormatMultiSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls={listboxId}
-        className="msr:relative msr:h-6 msr:w-full msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+        className="msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
@@ -572,11 +606,12 @@ function FormatMultiSelect({
       </button>
       {open ? (
         <div
+          ref={listboxRef}
           role="listbox"
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-          className="msr:absolute msr:left-0 msr:right-0 msr:top-full msr:z-10 msr:mt-1 msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md"
+          className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)
@@ -675,6 +710,8 @@ export function SettingsPanel({
     setSnapEnabled,
     multiMeasureEnabled,
     setMultiMeasureEnabled,
+    infoCardMode,
+    setInfoCardMode,
   } = select
   const {
     guideColor,
@@ -740,7 +777,7 @@ export function SettingsPanel({
   return (
     <div
       ref={panelRef}
-      className="mesurer-settings-panel msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
+      className="mesurer-settings-panel mesurer-thin-scrollbar msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
       onPointerDown={(event) => event.stopPropagation()}
     >
       <SettingsSection id="guides" title="Guides" ariaLabel="Guide settings" focused={focusSection === "guides"}>
@@ -760,7 +797,7 @@ export function SettingsPanel({
                   aria-label={`${label} guide pattern`}
                   aria-checked={selected}
                   className={cn(
-                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-[5px] msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-control msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
                     selected ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
                   )}
                   onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
@@ -802,7 +839,7 @@ export function SettingsPanel({
             <select
               aria-label="Font"
               value={textSettings.font}
-              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
               onChange={(event) =>
                 setTextSettings((style) => ({ ...style, font: event.target.value as TextFont }))
               }
@@ -817,12 +854,24 @@ export function SettingsPanel({
       </SettingsSection>
 
       <SectionDivider />
-      <SettingsSection id="selection" title="Selection" ariaLabel="Selection settings" focused={focusSection === "selection"}>
+      <SettingsSection id="inspect" title="Inspect" ariaLabel="Inspect settings" focused={focusSection === "inspect"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Spacing" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Info card</span>
+          <select
+            aria-label="Info card mode"
+            value={infoCardMode}
+            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+            onChange={(event) => setInfoCardMode(event.target.value as InfoCardMode)}
+          >
+            <option value="click">Click</option>
+            <option value="hover">Hover</option>
+          </select>
+        </label>
       </SettingsSection>
 
       <SectionDivider />
@@ -834,7 +883,7 @@ export function SettingsPanel({
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Copy</span>
           <span className="msr:relative msr:block msr:w-full">
-            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-[5px] msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
+            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
               {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
             </select>
             <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
@@ -882,14 +931,13 @@ export function SettingsPanel({
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
-          <button
-            type="button"
+          <SettingsButton
             aria-label="Minimize toolbar"
-            className="msr:h-6 msr:justify-self-end msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+            className="msr:justify-self-end"
             onClick={onMinimize}
           >
             Minimize
-          </button>
+          </SettingsButton>
         </div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Version</span>
@@ -898,22 +946,19 @@ export function SettingsPanel({
           </span>
         </div>
         <div className="msr:col-span-2 msr:flex msr:h-8 msr:w-full msr:justify-end msr:gap-1">
-          <button
-            type="button"
+          <SettingsButton
             aria-label="Reset settings to defaults"
-            className="msr:h-6 msr:rounded-[5px] msr:border msr:border-ink-200 msr:px-2 msr:text-[11px] msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
             onClick={onResetSettings}
           >
             Use defaults
-          </button>
-          <button
-            type="button"
+          </SettingsButton>
+          <SettingsButton
             aria-label="Clear workspace"
-            className="msr:h-6 msr:rounded-[5px] msr:border msr:border-red-200 msr:px-2 msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#ef4444]"
+            variant="danger"
             onClick={onClearWorkspace}
           >
             Clear workspace
-          </button>
+          </SettingsButton>
         </div>
       </SettingsSection>
     </div>

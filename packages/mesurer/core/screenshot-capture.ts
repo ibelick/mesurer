@@ -1,17 +1,4 @@
 const CAPTURE_VISIBLE_MESSAGE = "mesurer:capture-visible";
-const CAPTURE_BRIDGE_PING = "mesurer:capture-bridge-ping";
-const CAPTURE_BRIDGE_PONG = "mesurer:capture-bridge-pong";
-const CAPTURE_BRIDGE_REQUEST = "mesurer:capture-bridge-request";
-const CAPTURE_BRIDGE_RESPONSE = "mesurer:capture-bridge-response";
-
-const canUseCaptureBridge = (ownerWindow: Window) => {
-  const { hostname, protocol } = ownerWindow.location;
-  return (
-    hostname === "mesurer.dev" ||
-    (protocol === "http:" &&
-      (hostname === "localhost" || hostname === "127.0.0.1"))
-  );
-};
 
 type CaptureOk = { ok: true; dataUrl: string };
 type CaptureFail = { ok: false; error?: string };
@@ -164,62 +151,11 @@ const captureViaDisplayMedia = async (
   });
 };
 
-const pingCaptureBridge = (ownerWindow: Window) =>
-  new Promise<boolean>((resolve) => {
-    const id = ownerWindow.crypto.randomUUID();
-    const origin = ownerWindow.location.origin;
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== ownerWindow) return;
-      if (event.origin !== origin) return;
-      if (event.data?.type !== CAPTURE_BRIDGE_PONG || event.data.id !== id) {
-        return;
-      }
-      ownerWindow.removeEventListener("message", onMessage);
-      ownerWindow.clearTimeout(timeoutId);
-      resolve(true);
-    };
-    const timeoutId = ownerWindow.setTimeout(() => {
-      ownerWindow.removeEventListener("message", onMessage);
-      resolve(false);
-    }, 80);
-    ownerWindow.addEventListener("message", onMessage);
-    ownerWindow.postMessage({ type: CAPTURE_BRIDGE_PING, id }, origin);
-  });
-
-const captureViaBridge = (ownerWindow: Window) =>
-  new Promise<Blob | null>((resolve, reject) => {
-    const id = ownerWindow.crypto.randomUUID();
-    const origin = ownerWindow.location.origin;
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== ownerWindow) return;
-      if (event.origin !== origin) return;
-      if (event.data?.type !== CAPTURE_BRIDGE_RESPONSE || event.data.id !== id) {
-        return;
-      }
-      ownerWindow.removeEventListener("message", onMessage);
-      ownerWindow.clearTimeout(timeoutId);
-      if (!event.data.ok || typeof event.data.dataUrl !== "string") {
-        resolve(null);
-        return;
-      }
-      void fetch(event.data.dataUrl).then((result) => result.blob()).then(resolve, reject);
-    };
-    const timeoutId = ownerWindow.setTimeout(() => {
-      ownerWindow.removeEventListener("message", onMessage);
-      resolve(null);
-    }, 4000);
-    ownerWindow.addEventListener("message", onMessage);
-    ownerWindow.postMessage({ type: CAPTURE_BRIDGE_REQUEST, id }, origin);
-  });
-
 export const prepareScreenshotCapture = async (
   ownerDocument: Document,
   ownerWindow: Window,
 ) => {
   if (getExtensionRuntime()) return;
-  if (canUseCaptureBridge(ownerWindow) && (await pingCaptureBridge(ownerWindow))) {
-    return;
-  }
   await startTabCapture(ownerDocument, ownerWindow);
 };
 
@@ -229,12 +165,5 @@ export const captureVisibleTabPng = async (
 ) => {
   const runtime = getExtensionRuntime();
   if (runtime) return captureViaExtension(runtime);
-  if (
-    canUseCaptureBridge(ownerWindow) &&
-    (await pingCaptureBridge(ownerWindow))
-  ) {
-    const bridged = await captureViaBridge(ownerWindow);
-    if (bridged) return bridged;
-  }
   return captureViaDisplayMedia(ownerDocument, ownerWindow);
 };

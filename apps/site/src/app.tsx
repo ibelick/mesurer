@@ -4,6 +4,7 @@ import {
   ArrowsCounterClockwiseIcon,
   CalculatorIcon,
   CameraIcon,
+  ChatCircleIcon,
   CursorIcon,
   GridFourIcon,
   GearIcon,
@@ -139,6 +140,11 @@ function HomeContent() {
       icon: <SelectionAllIcon size={16} weight="light" />,
       title: "Annotation selection",
       description: "Multi-select and manipulate annotations together",
+    },
+    {
+      icon: <ChatCircleIcon size={16} weight="light" />,
+      title: "Comments",
+      description: "Pin threads to live elements and copy feedback for agents",
     },
     {
       icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
@@ -361,6 +367,14 @@ function App() {
             <div className="max-w-[60%] text-right text-balance text-muted">Provides a visible-tab PNG for Screenshot capture</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">features</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Enable or disable Screenshot, Rulers, and Settings</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">initialState</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Set initial workspace data and toolbar state; saved state wins</div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
               <code className="code">snapEnabled</code>
             </div>
@@ -508,6 +522,16 @@ function App() {
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
+              <code className="code">Option + S</code>
+              <span className="px-1 text-muted">/</span>
+              <code className="code">Alt + S</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Pin the distance currently shown under Option/Alt
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong">
               <code className="code">Esc</code>
             </div>
             <div className="max-w-[60%] text-right text-balance text-muted">
@@ -551,6 +575,10 @@ function App() {
             <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + ,</code></div>
             <div className="max-w-[60%] text-right text-balance text-muted">Open Settings</div>
           </div>
+          <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
+            <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + K</code></div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Copy comments for an agent</div>
+          </div>
         </div>
       </div>
     </>
@@ -584,7 +612,7 @@ function PrivacyContent() {
 export function App() {
   return (
     <main className="min-h-screen px-5 py-20">
-      <Mesurer />
+      <Mesurer initialState={{ minimized: true }} />
       <div className="mx-auto flex max-w-2xl flex-col gap-14">
         <Header showDescription={!isDocsPage} linkToHome={isDocsPage} />
         {isChangelogPage ? (

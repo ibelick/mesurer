@@ -13,7 +13,6 @@ import {
   getCycledClickTarget,
   getElementsInRectCached,
   getSnappedClickTarget,
-  getTargetElement,
   type ClickCycleState,
 } from "../core/selection"
 import { getSelectedMeasurementHit } from "../core/selection-helpers"
@@ -76,6 +75,7 @@ type UseMesurerPointerSelectionArgs = {
   setSelectedPenStrokeIds: (value: SetStateAction<string[]>) => void
   setSelectedGuideIds: (value: SetStateAction<string[]>) => void
   setSelectedElement: (value: Element | null) => void
+  onSelectElement?: (element: Element) => void
   setSelectedMeasurements: (value: SetStateAction<InspectMeasurement[]>) => void
   setSelectedMeasurement: (
     value: SetStateAction<InspectMeasurement | null>
@@ -106,6 +106,7 @@ export const useMesurerPointerSelection = ({
   setSelectedPenStrokeIds,
   setSelectedGuideIds,
   setSelectedElement,
+  onSelectElement,
   setSelectedMeasurements,
   setSelectedMeasurement,
   setSelectionOriginRect,
@@ -196,14 +197,14 @@ export const useMesurerPointerSelection = ({
     setSelectedTextIds,
   ])
 
-  const preparePointerDown = useCallback((point: Point, shiftKey: boolean) => {
+  const preparePointerDown = useCallback((point: Point, shiftKey: boolean, ownerDocument = document, localPoint = point) => {
     shiftDragRef.current = shiftKey
     shiftToggleElementRef.current = shiftKey
       ? (getSelectedMeasurementHit({
-          point,
+          point: localPoint,
           selectedMeasurements,
           overlayNode: overlayRef.current,
-          document,
+          document: ownerDocument,
         })?.elementRef ?? null)
       : null
     selectionCacheRef.current.key = ""
@@ -221,6 +222,8 @@ export const useMesurerPointerSelection = ({
     isDragging: boolean,
     commit: () => void,
     resetDragState: () => void,
+    ownerDocument = document,
+    localPoint = point,
   ) => {
     const additive = event.shiftKey || shiftDragRef.current
 
@@ -245,7 +248,7 @@ export const useMesurerPointerSelection = ({
         selectionRect,
         overlayRef.current,
         selectionCacheRef.current,
-        document
+        ownerDocument
       )
       const hasSameSelection =
         elements.length === selectedMeasurements.length &&
@@ -259,7 +262,7 @@ export const useMesurerPointerSelection = ({
         if (!hasSameSelection) {
           commit()
           const nextMeasurements = elements.map((element) => ({
-            ...getInspectMeasurement(element, window),
+            ...getInspectMeasurement(element, ownerDocument.defaultView ?? window),
             originRect: selectionRect,
           }))
           setSelectedMeasurements(nextMeasurements)
@@ -291,10 +294,10 @@ export const useMesurerPointerSelection = ({
             measurement.elementRef === shiftToggleElementRef.current
         ) ?? null)
       : getSelectedMeasurementHit({
-          point,
+          point: localPoint,
           selectedMeasurements,
           overlayNode: overlayRef.current,
-          document,
+          document: ownerDocument,
         })
     const removeSelected = (hit: InspectMeasurement) => {
       commit()
@@ -322,24 +325,31 @@ export const useMesurerPointerSelection = ({
     }
 
     let target: Element | null = null
+    const ElementConstructor = ownerDocument.defaultView?.Element
+    const eventTarget = ownerDocument !== document && ElementConstructor && event.target instanceof ElementConstructor && event.target.ownerDocument === ownerDocument
+      ? event.target
+      : null
     if (additive) {
-      target =
-        getTargetElement(point, overlayRef.current, document) ??
-        getSnappedClickTarget(point, overlayRef.current, snapEnabled, document)
+      target = eventTarget ?? getSnappedClickTarget(localPoint, overlayRef.current, snapEnabled, ownerDocument)
       clickCycleRef.current = null
     } else {
-      const cycled = getCycledClickTarget(
-        point,
-        overlayRef.current,
-        snapEnabled,
-        document,
-        clickCycleRef.current
-      )
-      target = cycled.target
-      clickCycleRef.current = cycled.cycle
+      if (eventTarget) {
+        target = eventTarget
+        clickCycleRef.current = null
+      } else {
+        const cycled = getCycledClickTarget(
+          localPoint,
+          overlayRef.current,
+          snapEnabled,
+          ownerDocument,
+          clickCycleRef.current
+        )
+        target = cycled.target
+        clickCycleRef.current = cycled.cycle
+      }
     }
     if (target) {
-      const inspectMeasurement = getInspectMeasurement(target, window)
+      const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window)
       clearTransientMeasurements()
       if (additive) {
         const alreadySelected = selectedMeasurements.some(
@@ -351,6 +361,7 @@ export const useMesurerPointerSelection = ({
           commit()
           setSelectedMeasurements((prev) => [...prev, inspectMeasurement])
           setSelectedElement(target)
+          if (!selectionMode) onSelectElement?.(target)
           setSelectedMeasurement(inspectMeasurement)
           clearSelectionRect()
         }
@@ -359,6 +370,7 @@ export const useMesurerPointerSelection = ({
         return
       }
       setSelectedElement(target)
+      if (!selectionMode) onSelectElement?.(target)
       commit()
       setSelectedMeasurements([inspectMeasurement])
       setSelectedMeasurement(inspectMeasurement)
@@ -399,6 +411,7 @@ export const useMesurerPointerSelection = ({
     selectionMode,
     selectionRectRef,
     setSelectedElement,
+    onSelectElement,
     setSelectedMeasurement,
     setSelectedMeasurements,
     setSelectionOriginRect,

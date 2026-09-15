@@ -9,6 +9,7 @@ import {
   DEFAULT_RULER_SETTINGS,
 } from "./core/persistence";
 import { DEFAULT_TEXT_STYLE } from "./core/text-style";
+import { resolveMesurerFeatures } from "./core/features";
 
 export type { MesurerProps } from "./mesurer-client";
 
@@ -37,6 +38,8 @@ export default function Mesurer({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  features,
+  initialState,
 }: MesurerProps) {
   if (typeof document !== "undefined") {
     ensureMesurerStyles(MESURER_STYLES, portalTarget);
@@ -70,6 +73,8 @@ export default function Mesurer({
       persistence={persistence}
       onPersistenceError={onPersistenceError}
       captureVisibleTab={captureVisibleTab}
+      features={resolveMesurerFeatures(features)}
+      initialState={initialState}
       portalTarget={portalTarget ?? document.body}
     />
   );

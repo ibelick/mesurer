@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DistanceOverlay, Guide, Measurement, Rect, TextAnnotation, ToolMode } from "../core/types";
+import type { CommentThread, DistanceOverlay, Guide, Measurement, OpenMenu, Rect, TextAnnotation, ToolMode } from "../core/types";
 import type { MesurerStoredWorkspace } from "../core/persistence";
 import { useDragState } from "./use-drag-state";
 import { useGuideState } from "./use-guide-state";
@@ -11,6 +11,7 @@ import { useArrowState } from "./use-arrow-state";
 import { usePenState } from "./use-pen-state";
 import { useTextAnnotationState } from "./use-text-annotation-state";
 import { useOverlayRefs } from "./use-overlay-refs";
+import { useCommentState } from "../comments/state";
 
 type UseMesurerWorkspaceStateOptions = {
   persistedState: MesurerStoredWorkspace | null;
@@ -21,7 +22,9 @@ type UseMesurerWorkspaceStateOptions = {
   arrowClickToPlaceDefault: boolean;
   selectNewGuideEnabledDefault: boolean;
   multiMeasureEnabledDefault: boolean;
-  initialTextAnnotations?: TextAnnotation[];
+  initialState?: Partial<MesurerStoredWorkspace> & { minimized?: boolean };
+  initialComments?: CommentThread[];
+  onCommentsChange?: (comments: CommentThread[]) => void;
 };
 
 export const useMesurerWorkspaceState = ({
@@ -33,33 +36,35 @@ export const useMesurerWorkspaceState = ({
   arrowClickToPlaceDefault,
   selectNewGuideEnabledDefault,
   multiMeasureEnabledDefault,
-  initialTextAnnotations,
+  initialState,
+  initialComments,
+  onCommentsChange,
 }: UseMesurerWorkspaceStateOptions) => {
   const selectionRectRef = useRef<Rect | null>(null);
   const enabledRef = useRef(false);
   const toolModeRef = useRef<ToolMode>(
-    persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialToolMode,
+    persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialState?.toolMode ?? initialToolMode,
   );
   const rulersVisibleRef = useRef(
-    persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
+    persistedState?.rulersVisible ?? initialState?.rulersVisible ?? persistedState?.toolMode === "rulers",
   );
   const xrayVisibleRef = useRef(
-    persistedState?.xrayVisible ?? persistedState?.toolMode === "xray",
+    persistedState?.xrayVisible ?? initialState?.xrayVisible ?? persistedState?.toolMode === "xray",
   );
   const guideOrientationRef = useRef<"vertical" | "horizontal">(
-    persistedState?.guideOrientation ?? "vertical",
+    persistedState?.guideOrientation ?? initialState?.guideOrientation ?? "vertical",
   );
-  const measurementsRef = useRef<Measurement[]>(persistedState?.measurements ?? []);
+  const measurementsRef = useRef<Measurement[]>(persistedState?.measurements ?? initialState?.measurements ?? []);
   const activeMeasurementRef = useRef<Measurement | null>(
-    persistedState?.activeMeasurement ?? null,
+    persistedState?.activeMeasurement ?? initialState?.activeMeasurement ?? null,
   );
-  const heldDistancesRef = useRef<DistanceOverlay[]>(persistedState?.heldDistances ?? []);
-  const guidesRef = useRef<Guide[]>(persistedState?.guides ?? []);
-  const selectedGuideIdsRef = useRef<string[]>(persistedState?.selectedGuideIds ?? []);
-  const arrowsRef = useRef(persistedState?.arrows ?? []);
-  const selectedArrowIdsRef = useRef(persistedState?.selectedArrowIds ?? []);
-  const penStrokesRef = useRef(persistedState?.penStrokes ?? []);
-  const selectedPenStrokeIdsRef = useRef<string[]>(persistedState?.selectedPenStrokeIds ?? []);
+  const heldDistancesRef = useRef<DistanceOverlay[]>(persistedState?.heldDistances ?? initialState?.heldDistances ?? []);
+  const guidesRef = useRef<Guide[]>(persistedState?.guides ?? initialState?.guides ?? []);
+  const selectedGuideIdsRef = useRef<string[]>(persistedState?.selectedGuideIds ?? initialState?.selectedGuideIds ?? []);
+  const arrowsRef = useRef(persistedState?.arrows ?? initialState?.arrows ?? []);
+  const selectedArrowIdsRef = useRef(persistedState?.selectedArrowIds ?? initialState?.selectedArrowIds ?? []);
+  const penStrokesRef = useRef(persistedState?.penStrokes ?? initialState?.penStrokes ?? []);
+  const selectedPenStrokeIdsRef = useRef<string[]>(persistedState?.selectedPenStrokeIds ?? initialState?.selectedPenStrokeIds ?? []);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const localState = useMesurerLocalState({
@@ -68,11 +73,11 @@ export const useMesurerWorkspaceState = ({
     selectionRectRef,
   });
   const toggles = useMeasureToggles({
-    initialEnabled: persistedState?.enabled,
+    initialEnabled: persistedState?.enabled ?? initialState?.enabled,
     initialToolMode:
-      persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialToolMode,
+      persistedState?.toolMode === "rulers" ? "none" : persistedState?.toolMode ?? initialState?.toolMode ?? initialToolMode,
     initialRulersVisible:
-      persistedState?.rulersVisible ?? persistedState?.toolMode === "rulers",
+      persistedState?.rulersVisible ?? initialState?.rulersVisible ?? persistedState?.toolMode === "rulers",
     initialSnapEnabled: snapEnabledDefault,
     initialSnapGuidesEnabled: snapGuidesEnabledDefault,
     initialSnapArrowsEnabled: snapArrowsEnabledDefault,
@@ -82,29 +87,34 @@ export const useMesurerWorkspaceState = ({
   });
   const drag = useDragState();
   const measurements = useMeasurementState({
-    initialActiveMeasurement: persistedState?.activeMeasurement ?? null,
-    initialMeasurements: persistedState?.measurements ?? [],
-    initialHeldDistances: persistedState?.heldDistances ?? [],
+    initialActiveMeasurement: persistedState?.activeMeasurement ?? initialState?.activeMeasurement ?? null,
+    initialMeasurements: persistedState?.measurements ?? initialState?.measurements ?? [],
+    initialHeldDistances: persistedState?.heldDistances ?? initialState?.heldDistances ?? [],
   });
   const guides = useGuideState({
-    initialGuides: persistedState?.guides ?? [],
-    initialSelectedGuideIds: persistedState?.selectedGuideIds ?? [],
+    initialGuides: persistedState?.guides ?? initialState?.guides ?? [],
+    initialSelectedGuideIds: persistedState?.selectedGuideIds ?? initialState?.selectedGuideIds ?? [],
   });
   const arrows = useArrowState({
-    initialArrows: persistedState?.arrows,
-    initialSelectedArrowIds: persistedState?.selectedArrowIds,
+    initialArrows: persistedState?.arrows ?? initialState?.arrows,
+    initialSelectedArrowIds: persistedState?.selectedArrowIds ?? initialState?.selectedArrowIds,
   });
-  const pen = usePenState(persistedState?.penStrokes, persistedState?.selectedPenStrokeIds);
-  const text = useTextAnnotationState(
-    initialTextAnnotations,
-    persistedState?.selectedTextIds,
+  const pen = usePenState(
+    persistedState?.penStrokes ?? initialState?.penStrokes,
+    persistedState?.selectedPenStrokeIds ?? initialState?.selectedPenStrokeIds,
   );
+  const text = useTextAnnotationState(
+    persistedState?.textAnnotations ?? initialState?.textAnnotations,
+    persistedState?.selectedTextIds ?? initialState?.selectedTextIds,
+  );
+  const comments = useCommentState(initialComments ?? persistedState?.comments ?? initialState?.comments ?? [], onCommentsChange);
   const [toolbarActive, setToolbarActive] = useState(true);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(initialState?.minimized ?? false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
   const [guideOrientation, setGuideOrientation] = useState<"vertical" | "horizontal">(
-    persistedState?.guideOrientation ?? "vertical",
+    persistedState?.guideOrientation ?? initialState?.guideOrientation ?? "vertical",
   );
 
   return {
@@ -134,10 +144,13 @@ export const useMesurerWorkspaceState = ({
     ...arrows,
     ...pen,
     ...text,
+    ...comments,
     toolbarActive,
     setToolbarActive,
     minimized,
     setMinimized,
+    openMenu,
+    setOpenMenu,
     settingsOpen,
     setSettingsOpen,
     xrayVisible,

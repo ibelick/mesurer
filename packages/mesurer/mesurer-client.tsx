@@ -32,18 +32,22 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { useTextInspector } from "./hooks/use-text-inspector";
+import { TypographyInspector, hasRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
+import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
+import { getElementSelector } from "./core/selector";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
+import type { CommentThread, ToolMode } from "./core/types";
 import {
   createLocalStoragePersistence,
   type MesurerPersistence,
+  type MesurerStoredWorkspace,
   type GuideStyle,
   type RulerSettings,
 } from "./core/persistence";
@@ -51,6 +55,7 @@ import {
   resolveTextFontFamily,
   type TextStyleSettings,
 } from "./core/text-style";
+import type { MesurerFeatures, ResolvedMesurerFeatures } from "./core/features";
 import {
   getTabId,
   LEGACY_STORAGE_KEY,
@@ -82,6 +87,28 @@ export type MesurerProps = {
   persistence?: MesurerPersistence;
   onPersistenceError?: (error: unknown) => void;
   captureVisibleTab?: () => Promise<Blob>;
+  features?: MesurerFeatures;
+  initialState?: {
+    enabled?: boolean;
+    minimized?: boolean;
+    toolMode?: ToolMode;
+    toolbarPosition?: { x: number; y: number };
+    xrayVisible?: boolean;
+    rulersVisible?: boolean;
+    guideOrientation?: "vertical" | "horizontal";
+    guides?: MesurerStoredWorkspace["guides"];
+    selectedGuideIds?: string[];
+    arrows?: MesurerStoredWorkspace["arrows"];
+    selectedArrowIds?: string[];
+    penStrokes?: MesurerStoredWorkspace["penStrokes"];
+    selectedPenStrokeIds?: string[];
+    textAnnotations?: MesurerStoredWorkspace["textAnnotations"];
+    selectedTextIds?: string[];
+    measurements?: MesurerStoredWorkspace["measurements"];
+    activeMeasurement?: MesurerStoredWorkspace["activeMeasurement"];
+    heldDistances?: MesurerStoredWorkspace["heldDistances"];
+    comments?: CommentThread[];
+  };
 };
 let mesurerInstanceCount = 0;
 export function MesurerClient({
@@ -109,6 +136,8 @@ export function MesurerClient({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  features,
+  initialState,
 }: Required<
   Omit<
     MesurerProps,
@@ -119,15 +148,22 @@ export function MesurerClient({
     | "rulerSettings"
     | "textStyle"
     | "captureVisibleTab"
+    | "features"
+    | "initialState"
   >
 > &
   Pick<
     MesurerProps,
-    "persistKey" | "persistence" | "onPersistenceError" | "captureVisibleTab"
+    | "persistKey"
+    | "persistence"
+    | "onPersistenceError"
+    | "captureVisibleTab"
+    | "initialState"
   > & {
     guideStyle: GuideStyle;
     rulerSettings: RulerSettings;
     textStyle: TextStyleSettings;
+    features: ResolvedMesurerFeatures;
   }) {
   const instanceIdRef = useRef<number | null>(null);
   if (instanceIdRef.current === null) {
@@ -183,6 +219,7 @@ export function MesurerClient({
   const hasPenInteractionRef = useRef<() => boolean>(() => false);
   const workspacePersistTimeoutRef = useRef<number | null>(null);
   const applyingExternalPersistenceRef = useRef(false);
+  const persistCommentsRef = useRef<(comments: CommentThread[]) => void>(() => {});
   const workspace = useMesurerWorkspaceState({
     persistedState,
     initialToolMode: persistedSettings.lastToolMode ?? "select",
@@ -197,7 +234,9 @@ export function MesurerClient({
       persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
     multiMeasureEnabledDefault:
       persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
-    initialTextAnnotations: persistedState?.textAnnotations,
+    initialState,
+    initialComments: persistedState?.comments ?? initialState?.comments,
+    onCommentsChange: (value) => persistCommentsRef.current(value),
   });
   const {
     selectionRectRef,
@@ -303,16 +342,72 @@ export function MesurerClient({
     setMinimized,
     settingsOpen,
     setSettingsOpen,
+    openMenu,
+    setOpenMenu,
     xrayVisible,
     setXrayVisible,
     guideOrientation,
     setGuideOrientation,
+    comments,
+    selectedId: selectedCommentId,
+    setSelectedId: setSelectedCommentId,
+    draft: commentDraft,
+    createDraft: createCommentDraft,
+    cancelDraft: cancelCommentDraft,
+    commitDraft: commitCommentDraft,
+    addMessage: addCommentMessage,
+    deleteComment,
+    deleteAllComments,
+    deleteMessage: deleteCommentMessage,
+    updateTarget: updateCommentTarget,
+    updateMessage: updateCommentMessage,
   } = workspace;
-  const textInspector = useTextInspector(
-    portalTarget,
-    toolMode,
-    settingsOpen,
-    minimized,
+  useEffect(() => {
+    setOpenMenu((current) => {
+      if (settingsOpen) return { type: "settings" };
+      return current?.type === "settings" ? null : current;
+    });
+  }, [setOpenMenu, settingsOpen]);
+  const commentRuntime = useMemo(
+    () => new CommentRuntimeStore(ownerDocument, ownerWindow),
+    [ownerDocument, ownerWindow],
+  );
+  useEffect(() => () => commentRuntime.dispose(), [commentRuntime]);
+  const commentRuntimeSnapshot = commentRuntime.useSnapshot();
+  useEffect(() => {
+    const commentIds = new Set(comments.map((comment) => comment.id));
+    for (const id of commentRuntime.getIds()) {
+      if (!commentIds.has(id)) commentRuntime.detach(id);
+    }
+    for (const comment of comments) {
+      if (!commentRuntime.getElement(comment.id)?.isConnected) {
+        commentRuntime.resolve(comment.id, comment.target);
+      }
+    }
+    const resolveAfterFrameLoad = () => {
+      for (const comment of comments) commentRuntime.resolve(comment.id, comment.target);
+    };
+    ownerDocument.addEventListener("load", resolveAfterFrameLoad, true);
+    return () => {
+      ownerDocument.removeEventListener("load", resolveAfterFrameLoad, true);
+    };
+  }, [commentRuntime, comments, ownerDocument]);
+  const commentPointer = useCommentPointer({
+    overlayRef,
+    ownerDocument,
+    ownerWindow,
+    runtime: commentRuntime,
+    state: {
+      draft: commentDraft,
+      createDraft: createCommentDraft,
+      cancelDraft: cancelCommentDraft,
+      commitDraft: commitCommentDraft,
+      updateTarget: updateCommentTarget,
+    },
+  });
+  const typographyInspector = useMemo(
+    () => new TypographyInspector(ownerDocument, ownerWindow),
+    [ownerDocument, ownerWindow],
   );
   const textDraftInputRef = useRef<HTMLElement | null>(null);
   const textDraftRef = useRef(textDraft);
@@ -332,6 +427,8 @@ export function MesurerClient({
     setHoverHighlightEnabled: setSettingsHoverHighlight,
     layoutDetailsEnabled: settingsLayoutDetailsEnabled,
     setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
+    infoCardMode: settingsInfoCardMode,
+    setInfoCardMode: setSettingsInfoCardMode,
     persistOnReload: settingsPersistOnReload,
     setPersistOnReload: setSettingsPersistOnReload,
     shortcutsEnabled: settingsShortcutsEnabled,
@@ -363,6 +460,7 @@ export function MesurerClient({
       guideHighlightEnabled,
       hoverHighlightEnabled,
       layoutDetailsEnabled,
+      infoCardMode: "click",
       persistOnReload,
       shortcutsEnabled: shortcutsEnabledDefault,
       colorPickerFormats,
@@ -428,7 +526,9 @@ export function MesurerClient({
     setPenStrokesPersisted,
     setSelectedPenStrokeIdsPersisted,
     setSelectedTextIdsPersisted,
+    setCommentsPersisted,
   } = workspaceLifecycle;
+  persistCommentsRef.current = setCommentsPersisted;
   usePersistenceLifecycle({
     ownerWindow,
     activePersistence,
@@ -471,6 +571,11 @@ export function MesurerClient({
   measurementsRef.current = measurements;
   activeMeasurementRef.current = activeMeasurement;
   heldDistancesRef.current = heldDistances;
+  useEffect(() => {
+    if ((toolMode === "none" || !enabled) && heldDistances.length > 0) {
+      setHeldDistancesPersisted([]);
+    }
+  }, [enabled, heldDistances.length, setHeldDistancesPersisted, toolMode]);
   guidesRef.current = guides;
   selectedGuideIdsRef.current = selectedGuideIds;
   arrowsRef.current = arrows;
@@ -532,6 +637,10 @@ export function MesurerClient({
       selectedPenStrokeIds,
       setSelectedPenStrokeIds,
     },
+    comments: {
+      comments,
+      setComments: setCommentsPersisted,
+    },
     transient: {
       setStart,
       setEnd,
@@ -544,13 +653,11 @@ export function MesurerClient({
     },
   });
   const undo = useCallback(() => {
-    if (toolMode === "text-inspector" && textInspector.undo()) return;
     undoHistory();
-  }, [textInspector, toolMode, undoHistory]);
+  }, [undoHistory]);
   const redo = useCallback(() => {
-    if (toolMode === "text-inspector" && textInspector.redo()) return;
     redoHistory();
-  }, [redoHistory, textInspector, toolMode]);
+  }, [redoHistory]);
   const annotationSelection = useAnnotationSelection({
     enabled,
     toolMode,
@@ -636,9 +743,11 @@ export function MesurerClient({
   const toggleSettings = useCallback(() => {
     if (settingsOpen) {
       screenshot.closeUi();
+      setOpenMenu(null);
       setSettingsOpen(false);
       return;
     }
+    setOpenMenu({ type: "settings" });
     setSettingsFocus(
       settingsFocusSection(toolMode, {
         colorPicker: colorPicker.active,
@@ -683,7 +792,14 @@ export function MesurerClient({
     document: ownerDocument,
     window: ownerWindow,
     enabled,
+    active:
+      measurements.length > 0 ||
+      selectedMeasurements.length > 0 ||
+      heldDistances.length > 0 ||
+      hoverRect !== null,
     selectionEnabled: toolMode === "select",
+    guides,
+    selectedMeasurements,
     selectedElementRef,
     hoverElementRef,
     setSelectedMeasurement,
@@ -753,7 +869,6 @@ export function MesurerClient({
     hoverRectToShow,
     selectedEdgeVisibility,
     hoverEdgeVisibility,
-    measurementEdgeVisibility,
   } = useMesurerDerived({
     document: ownerDocument,
     window: ownerWindow,
@@ -777,6 +892,74 @@ export function MesurerClient({
     highlightColor: settingsHighlightColor,
     guideColor: settingsGuideColor,
   });
+  const [copiedSelector, setCopiedSelector] = useState<string | null>(null);
+  const selectorCopyTimeoutRef = useRef<number | null>(null);
+  const [typographyRevision, setTypographyRevision] = useState(0);
+  useEffect(() => {
+    if (!selectedElement) return;
+    const elementWindow = selectedElement.ownerDocument.defaultView;
+    if (!elementWindow) return;
+    const refresh = () => {
+      typographyInspector.invalidate()
+      setTypographyRevision((revision) => revision + 1)
+    }
+    const resizeObserver = typeof elementWindow.ResizeObserver === "function"
+      ? new elementWindow.ResizeObserver(refresh)
+      : null;
+    resizeObserver?.observe(selectedElement);
+    const mutationObserver = new elementWindow.MutationObserver(refresh);
+    const stylesheetObserver = new elementWindow.MutationObserver((records) => {
+      const stylesheetChanged = records.some((record) => {
+        if (record.type === "characterData") {
+          return (record.target.parentElement?.closest("style") ?? null) !== null;
+        }
+        return [record.target, ...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some((node) => {
+          if (!(node instanceof elementWindow.Element)) return false;
+          return node.matches("style, link[rel~='stylesheet']") || node.querySelector("style, link[rel~='stylesheet']") !== null;
+        });
+      });
+      if (stylesheetChanged) refresh();
+    });
+    let node: Element | null = selectedElement;
+    while (node) {
+      mutationObserver.observe(node, { attributes: true, attributeFilter: ["class", "style"] });
+      node = node.parentElement;
+    }
+    const selectedRoot = selectedElement.getRootNode();
+    const stylesheetRoots: Node[] = [selectedElement.ownerDocument.head ?? selectedElement.ownerDocument];
+    if (selectedRoot !== selectedElement.ownerDocument) {
+      mutationObserver.observe(selectedRoot, { attributes: true, childList: true, subtree: true });
+      stylesheetRoots.push(selectedRoot);
+    }
+    for (const root of stylesheetRoots) {
+      stylesheetObserver.observe(root, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+    elementWindow.addEventListener("resize", refresh);
+    elementWindow.document.fonts?.addEventListener("loadingdone", refresh);
+    elementWindow.document.fonts?.addEventListener("loadingerror", refresh);
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
+      stylesheetObserver.disconnect();
+      elementWindow.removeEventListener("resize", refresh);
+      elementWindow.document.fonts?.removeEventListener("loadingdone", refresh);
+      elementWindow.document.fonts?.removeEventListener("loadingerror", refresh);
+    };
+  }, [selectedElement, typographyInspector]);
+  const selectedTypography = useMemo<TypographyInfo | null>(() => {
+    if (!selectedElement) return null;
+    const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
+    if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
+    if (!hasRenderableText(selectedElement)) return null;
+    return typographyInspector.getFast(selectedElement);
+  }, [selectedElement, typographyRevision, typographyInspector]);
+  useEffect(() => () => {
+    if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
+  }, [ownerWindow]);
   const {
     handlePointerDown,
     handlePointerMove,
@@ -792,6 +975,7 @@ export function MesurerClient({
     clearGuideDragHold,
     scheduleGuideDragHold,
     enabled,
+    minimized,
     settingsOpen,
     toolMode,
     guidesEnabled,
@@ -825,6 +1009,19 @@ export function MesurerClient({
     setSelectedMeasurement,
     setSelectionOriginRect,
     setSelectedElement,
+    onSelectElement: (element) => {
+      const selector = getElementSelector(element);
+      void copyCommentSelector(selector, ownerWindow)
+        .then(() => {
+          setCopiedSelector(selector);
+          if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
+          selectorCopyTimeoutRef.current = ownerWindow.setTimeout(() => {
+            selectorCopyTimeoutRef.current = null;
+            setCopiedSelector(null);
+          }, 1200);
+        })
+        .catch(() => {});
+    },
     setHoverRect,
     setHoverElement,
     setHoverPointer,
@@ -927,7 +1124,9 @@ export function MesurerClient({
   } = annotationCallbacks;
   const activateToolbar = useCallback(() => {
     setToolbarActive(true);
-  }, [setToolbarActive]);
+    setOpenMenu(null);
+    setSettingsOpen(false);
+  }, [setOpenMenu, setSettingsOpen, setToolbarActive]);
   const pinableOverlay = guidesEnabled
     ? (guideDistanceOverlay ?? optionPairOverlay)
     : (optionPairOverlay ?? guideDistanceOverlay);
@@ -961,6 +1160,11 @@ export function MesurerClient({
     screenshot.closeUi();
     setMinimized(true);
   }, [colorPicker, screenshot, setMinimized, setSettingsOpen]);
+  useEffect(() => {
+    if (!features.screenshot) screenshot.closeUi();
+    if (!features.rulers) setRulersVisible(false);
+    if (!features.settings) setSettingsOpen(false);
+  }, [features.rulers, features.screenshot, features.settings, screenshot, setRulersVisible, setSettingsOpen]);
   const { clearTransientState } = useInteractionLifecycle({
     enabled,
     toolMode,
@@ -986,6 +1190,9 @@ export function MesurerClient({
     selectedMeasurements,
     selectedMeasurement,
     selectedElement,
+    commentDraftActive: commentDraft !== null,
+    cancelCommentDraft,
+    hasComments: () => comments.length > 0,
     start,
     arrowStart,
     draggingGuideId,
@@ -1034,9 +1241,29 @@ export function MesurerClient({
     onInteract: activateToolbar,
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
-    dismissInspectorPins: () => textInspector.clear(),
+    onCopyComments: async () => {
+      const copied = await copyCommentsForAgent(comments, ownerWindow)
+      if (copied) {
+        ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
+      }
+      return copied
+    },
+    dismissInspectorPins: () => {
+      if (heldDistancesRef.current.length === 0) return false
+      recordSnapshot()
+      setHeldDistancesPersisted([])
+      return true
+    },
+    selectedCommentId,
+    closeComment: () => setSelectedCommentId(null),
+    features,
   });
-  clearWorkspaceTransientRef.current = clearTransientState;
+  const clearAllTransientState = useCallback(() => {
+    clearTransientState();
+    cancelCommentDraft();
+    commentRuntime.setHoverElement(null);
+  }, [cancelCommentDraft, clearTransientState, commentRuntime]);
+  clearWorkspaceTransientRef.current = clearAllTransientState;
   const removeHeldDistance = useCallback(
     (id: string) => {
       recordSnapshot();
@@ -1045,6 +1272,30 @@ export function MesurerClient({
       );
     },
     [recordSnapshot, setHeldDistancesPersisted],
+  );
+  const removeGuides = useCallback(
+    (ids: string[]) => {
+      const guideIds = new Set(ids)
+      if (!guides.some((guide) => guideIds.has(guide.id))) return;
+      recordSnapshot();
+      setGuides((prev) => prev.filter((guide) => !guideIds.has(guide.id)));
+      setSelectedGuideIdsPersisted((prev) => prev.filter((guideId) => !guideIds.has(guideId)));
+      setHeldDistancesPersisted((prev) =>
+        prev.filter(
+          (distance) =>
+            !distance.guideIds?.some(
+              (guideId) => guideId !== null && guideIds.has(guideId),
+            ),
+        ),
+      );
+    },
+    [
+      guides,
+      recordSnapshot,
+      setGuides,
+      setHeldDistancesPersisted,
+      setSelectedGuideIdsPersisted,
+    ],
   );
   const {
     startGuideFromRuler,
@@ -1102,6 +1353,13 @@ export function MesurerClient({
     arrows: arrowsPointer,
     pen: penPointer,
     text: { handlePointerDown: handleTextPointerDown },
+    comments: {
+      handlePointerDown: commentPointer.onPointerDown,
+      handlePointerMove: commentPointer.onPointerMove,
+      handlePointerUp: commentPointer.onPointerUp,
+      handlePointerLeave: commentPointer.onPointerLeave,
+      handlePointerCancel: commentPointer.onPointerCancel,
+    },
     measure: {
       handlePointerDown,
       handlePointerMove,
@@ -1115,7 +1373,8 @@ export function MesurerClient({
       toolMode === "guides" ||
       toolMode === "arrows" ||
       toolMode === "pen" ||
-      toolMode === "text") &&
+      toolMode === "text" ||
+      toolMode === "comments") &&
     settingsLastToolMode !== toolMode
   ) {
     setSettingsLastToolMode(toolMode);
@@ -1128,7 +1387,7 @@ export function MesurerClient({
       screenshotOverlayRef={screenshot.overlayRef}
       rulers={{
         ownerWindow,
-        visible: enabled && rulersVisible,
+        visible: enabled && features.rulers && rulersVisible,
         settings: settingsRulerSettings,
         interactive: !settingsOpen && !minimized,
         forceVisible: settingsOpen,
@@ -1184,8 +1443,6 @@ export function MesurerClient({
           ...pointerHandlers,
         },
         selection: {
-          measurements: displayedMeasurements,
-          measurementEdges: measurementEdgeVisibility,
           activeRect,
           activeWidth,
           activeHeight,
@@ -1193,7 +1450,21 @@ export function MesurerClient({
           hoverEdges: hoverEdgeVisibility,
           selected: displayedSelectedMeasurements,
           selectedEdges: selectedEdgeVisibility,
-        },
+          selectorPreview:
+            settingsInfoCardMode === "hover" && hoverElement && hoverRect
+              ? {
+                  element: hoverElement,
+                  rect: hoverRect,
+                  copied: copiedSelector === getElementSelector(hoverElement),
+                }
+              : null,
+          ownerWindow,
+          highlightColor: settingsHighlightColor,
+           selectedSelectorCopied: Boolean(
+             selectedElement && copiedSelector === getElementSelector(selectedElement),
+           ),
+           selectedTypography,
+         },
         distances: {
           held: heldDistances,
           optionPair: optionPairOverlay,
@@ -1202,14 +1473,18 @@ export function MesurerClient({
           onRemoveHeld: removeHeldDistance,
         },
         guides: {
+          openMenu,
+          setOpenMenu,
           items: overlayGuides,
           selectedIds: selectedGuideIds,
           moveOffset: selectionDragOffset,
-          hover: hoverGuide,
-          draggingId: draggingGuideId,
-          style: settingsGuideStyle,
+           hover: hoverGuide,
+           draggingId: draggingGuideId,
+           highlightEnabled: settingsGuideHighlightEnabled,
+           selectEnabled: selectNewGuideEnabled,
+           style: settingsGuideStyle,
           pointerEvents:
-            overlayInteractive && (toolMode !== "none" || rulersVisible),
+            overlayInteractive && (toolMode !== "none" || (features.rulers && rulersVisible)),
           colors: {
             active: guideColorActive,
             hover: guideColorHover,
@@ -1219,9 +1494,10 @@ export function MesurerClient({
           },
           preview: guidePreview,
           onPointerDown: handleGuidePointerDown,
-          onPointerUp: handleGuidePointerUp,
-          onPointerCancel: handleGuidePointerUp,
-        },
+           onPointerUp: handleGuidePointerUp,
+           onPointerCancel: handleGuidePointerUp,
+           onRemoveGuides: removeGuides,
+         },
         arrows: {
           items: arrows,
           selectedIds: selectedArrowIds,
@@ -1236,6 +1512,7 @@ export function MesurerClient({
             ),
           onChangeStart: recordSnapshot,
           editingArrowId: arrowsPointer.editingArrowId,
+          interactive: overlayInteractive,
         },
         pen: {
           strokes: penStrokes,
@@ -1276,10 +1553,36 @@ export function MesurerClient({
           fontFamily: resolveTextFontFamily(settingsTextStyle),
           color: settingsTextStyle.color,
         },
+        comments: comments.length > 0 || toolMode === "comments" ? {
+          comments,
+          rects: commentRuntimeSnapshot.rects,
+          unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
+          hoverRect: commentRuntimeSnapshot.hoverRect,
+          hoverPoint: commentRuntimeSnapshot.hoverPoint,
+          draft: commentDraft,
+          selectedId: selectedCommentId,
+          draftText: commentPointer.draftText,
+          onDraftTextChange: commentPointer.onDraftTextChange,
+          onDraftKeyDown: commentPointer.onDraftKeyDown,
+           onSelect: setSelectedCommentId,
+           onClickComment: commentPointer.onClickComment,
+          onClose: () => setSelectedCommentId(null),
+          movingId: commentPointer.movingId,
+          onStartMove: commentPointer.onStartMove,
+          onMoveComment: commentPointer.onMoveComment,
+           onEndMove: commentPointer.onEndMove,
+           ownerDocument,
+           onAddMessage: addCommentMessage,
+            onDelete: deleteComment,
+           onDeleteMessage: deleteCommentMessage,
+           onEditMessage: updateCommentMessage,
+           onDraftSubmit: commentPointer.onDraftSubmit,
+           onDraftCancel: commentPointer.onDraftCancel,
+        } : undefined,
       }}
       screenshot={{
-        active: screenshot.active,
-        rect: screenshot.rect,
+        active: features.screenshot && screenshot.active,
+        rect: features.screenshot ? screenshot.rect : null,
         onPointerDown: screenshot.handlePointerDown,
         onPointerMove: screenshot.handlePointerMove,
         onPointerUp: screenshot.handlePointerUp,
@@ -1287,10 +1590,12 @@ export function MesurerClient({
       }}
       toolbar={{
         eventTarget: ownerWindow,
+        initialPosition: initialState?.toolbarPosition ?? { x: 16, y: 16 },
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
-        onCancelTransient: clearTransientState,
+        onCancelTransient: clearAllTransientState,
+        features,
         tools: {
           mode: toolMode,
           setMode: setToolModeWithHistory,
@@ -1328,6 +1633,23 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
+        comments: {
+          count: comments.length,
+          comments,
+          unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
+          selectedId: selectedCommentId,
+          onSelect: (id) => {
+            setEnabled(true)
+            setToolMode("comments")
+            setSelectedCommentId(id)
+            commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
+          },
+          onDelete: deleteComment,
+          onDeleteAll: deleteAllComments,
+          onCopy: async () => {
+            await copyCommentsForAgent(comments, ownerWindow)
+          },
+        },
         settings: {
           open: settingsOpen,
           setOpen: setSettingsOpen,
@@ -1347,6 +1669,8 @@ export function MesurerClient({
                 setSnapEnabled,
                 multiMeasureEnabled,
                 setMultiMeasureEnabled,
+                infoCardMode: settingsInfoCardMode,
+                setInfoCardMode: setSettingsInfoCardMode,
               }}
               guides={{
                 guideColor: settingsGuideColor,
@@ -1398,6 +1722,8 @@ export function MesurerClient({
             />
           ),
         },
+        openMenu,
+        setOpenMenu,
       }}
     />
   );

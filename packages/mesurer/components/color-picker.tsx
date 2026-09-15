@@ -1,10 +1,12 @@
 "use client"
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
 import { cn } from "../core/utils"
-import { Tooltip, useTooltip } from "./tooltip"
+import { clampOverlayPosition } from "../core/overlay-position"
+import { CopyableValue } from "./copyable-value"
+import { useTooltip } from "./tooltip"
 
 type ColorPickerProps = {
   active: boolean
@@ -14,56 +16,6 @@ type ColorPickerProps = {
   favoriteFormat: ColorPickerFormat
   ownerWindow: Window
   onClose: () => void
-}
-
-type CopyableColorValueProps = {
-  id: string
-  value: string
-  copiedId: string | null
-  onCopy: () => void
-  onTooltipEnter: (id: string) => void
-  tooltip: ReturnType<typeof useTooltip>
-  className?: string
-}
-
-function CopyableColorValue({
-  id,
-  value,
-  copiedId,
-  onCopy,
-  onTooltipEnter,
-  tooltip,
-  className,
-}: CopyableColorValueProps) {
-  const copied = copiedId === id
-  const showTooltip =
-    tooltip.visibleTooltipId === id ||
-    (copied && tooltip.visibleTooltipId === null)
-
-  return (
-    <span
-      className="msr:relative msr:inline-flex"
-      onMouseLeave={tooltip.onTooltipLeave}
-    >
-      <button
-        type="button"
-        className={className}
-        onMouseEnter={() => onTooltipEnter(id)}
-        onFocus={() => onTooltipEnter(id)}
-        onBlur={tooltip.onTooltipLeave}
-        onClick={onCopy}
-      >
-        {value}
-      </button>
-      <Tooltip
-        label={copied ? "Copied!" : "Click to copy"}
-        visible={showTooltip}
-        instant={copied || tooltip.tooltipInstant}
-        side="bottom"
-        className="msr:z-10"
-      />
-    </span>
-  )
 }
 
 export function ColorPicker({
@@ -76,41 +28,32 @@ export function ColorPicker({
   onClose,
 }: ColorPickerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const copyTimeoutRef = useRef<number | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [side, setSide] = useState<"top" | "bottom">("bottom")
   const tooltip = useTooltip()
 
   const copyValue = useCallback(
-    (id: string, value: string) => {
+    (value: string) => {
       const clipboardWrite = ownerWindow.navigator.clipboard?.writeText(value)
       void clipboardWrite?.catch(() => undefined)
       tooltip.onTooltipLeave()
-      setCopiedId(id)
-      if (copyTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(copyTimeoutRef.current)
-      }
-      copyTimeoutRef.current = ownerWindow.setTimeout(() => {
-        copyTimeoutRef.current = null
-        setCopiedId(null)
-      }, 1500)
     },
     [ownerWindow, tooltip],
   )
 
-  const handleTooltipEnter = useCallback(
-    (id: string) => {
-      if (copiedId !== null && copiedId !== id) {
-        if (copyTimeoutRef.current !== null) {
-          ownerWindow.clearTimeout(copyTimeoutRef.current)
-          copyTimeoutRef.current = null
-        }
-        setCopiedId(null)
-      }
-      tooltip.onTooltipEnter(id)
-    },
-    [copiedId, ownerWindow, tooltip],
-  )
+  useEffect(() => {
+    if (!active) return
+    let closeTimer: number | null = null
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const panel = panelRef.current
+      if (panel && event.composedPath().includes(panel)) return
+      closeTimer = ownerWindow.setTimeout(onClose, 0)
+    }
+    ownerWindow.addEventListener("pointerdown", closeOnOutsidePointerDown)
+    return () => {
+      if (closeTimer !== null) ownerWindow.clearTimeout(closeTimer)
+      ownerWindow.removeEventListener("pointerdown", closeOnOutsidePointerDown)
+    }
+  }, [active, onClose, ownerWindow])
 
   useLayoutEffect(() => {
     if (!active) return
@@ -130,11 +73,15 @@ export function ColorPicker({
       const buttonRect = button?.getBoundingClientRect() ?? originRect
       const panelWidth = panel.offsetWidth
       const panelHeight = panel.offsetHeight
-      const minLeft = 8 - originRect.left
-      const maxLeft = ownerWindow.innerWidth - 8 - panelWidth - originRect.left
-      let left = buttonRect.left - originRect.left
-      left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft))
-      panel.style.left = `${left}px`
+       const position = clampOverlayPosition({
+         left: buttonRect.left,
+         top: originRect.bottom + 8,
+         width: panelWidth,
+         height: panelHeight,
+         viewportWidth: ownerWindow.innerWidth,
+         viewportHeight: ownerWindow.innerHeight,
+       })
+       panel.style.left = `${position.left - originRect.left}px`
       const belowFits =
         originRect.bottom + 8 + panelHeight <= ownerWindow.innerHeight - 8
       setSide(belowFits ? "bottom" : "top")
@@ -153,10 +100,6 @@ export function ColorPicker({
     resizeObserver.observe(panel)
     return () => {
       if (scheduled) ownerWindow.cancelAnimationFrame(frame)
-      if (copyTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(copyTimeoutRef.current)
-        copyTimeoutRef.current = null
-      }
       resizeObserver.disconnect()
       ownerWindow.removeEventListener("resize", schedulePosition)
       ownerWindow.removeEventListener("scroll", schedulePosition, true)
@@ -176,7 +119,7 @@ export function ColorPicker({
     <div
       ref={panelRef}
       className={cn(
-        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
+        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
         side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
       )}
       role="dialog"
@@ -210,16 +153,14 @@ export function ColorPicker({
                 style={{ backgroundColor: colorToHex(sample) }}
                 aria-hidden="true"
               />
-              <CopyableColorValue
+              <CopyableValue
                 id={headerFormat}
                 value={formatColor(sample, headerFormat)}
-                copiedId={copiedId}
                 onCopy={() =>
-                  copyValue(headerFormat, formatColor(sample, headerFormat))
+                  copyValue(formatColor(sample, headerFormat))
                 }
-                onTooltipEnter={handleTooltipEnter}
                 tooltip={tooltip}
-                className="msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
+                className="msr:cursor-default msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
               />
             </div>
           ) : (
@@ -238,14 +179,12 @@ export function ColorPicker({
                 <span className="msr:w-9 msr:text-black/45">
                   {format}
                 </span>
-                <CopyableColorValue
+                <CopyableValue
                   id={format}
                   value={value}
-                  copiedId={copiedId}
-                  onCopy={() => copyValue(format, value)}
-                  onTooltipEnter={handleTooltipEnter}
+                  onCopy={() => copyValue(value)}
                   tooltip={tooltip}
-                  className="msr:tabular-nums msr:text-black msr:hover:underline"
+                  className="msr:cursor-default msr:tabular-nums msr:text-black msr:hover:underline"
                 />
               </div>
             )

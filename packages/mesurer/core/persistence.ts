@@ -1,4 +1,5 @@
 import type {
+  CommentThread,
   DistanceOverlay,
   Guide,
   Arrow,
@@ -16,6 +17,7 @@ export type { TextFont, TextStyleSettings } from "./text-style"
 export const MESURER_STORAGE_VERSION = 2
 
 export type GuidePattern = "solid" | "dashed" | "dotted"
+export type InfoCardMode = "hover" | "click"
 
 export type GuideStyle = {
   opacity: number
@@ -69,6 +71,7 @@ export type MesurerStoredSettings = {
   arrowClickToPlace?: boolean
   selectNewGuideEnabled?: boolean
   multiMeasureEnabled?: boolean
+  infoCardMode?: InfoCardMode
   persistOnReload?: boolean
   shortcutsEnabled?: boolean
   guideStyle?: Partial<GuideStyle>
@@ -94,6 +97,7 @@ export type MesurerStoredWorkspace = {
   measurements: Measurement[]
   activeMeasurement: Measurement | null
   heldDistances: DistanceOverlay[]
+  comments?: CommentThread[]
 }
 
 export type MesurerPersistenceSnapshot = {
@@ -141,6 +145,7 @@ type StoredRecord = {
   measurements?: Measurement[]
   activeMeasurement?: Measurement | null
   heldDistances?: DistanceOverlay[]
+  comments?: CommentThread[]
 }
 
 const isFormat = (value: unknown): value is ColorPickerFormat =>
@@ -259,6 +264,55 @@ const isTextAnnotation = (value: unknown): value is TextAnnotation => {
   )
 }
 
+const isCommentThread = (value: unknown): value is CommentThread => {
+  if (!value || typeof value !== "object") return false
+  const comment = value as Record<string, unknown>
+  const target = comment.target as Record<string, unknown> | undefined
+  const anchor = target?.anchor as Record<string, unknown> | undefined
+  const messages = comment.messages
+  return (
+    typeof comment.id === "string" &&
+    (comment.status === "open" || comment.status === "resolved") &&
+    typeof comment.createdAt === "number" &&
+    typeof comment.updatedAt === "number" &&
+    !!target &&
+    typeof target.selector === "string" &&
+    typeof target.tagName === "string" &&
+    typeof target.textSnippet === "string" &&
+    typeof target.htmlPreview === "string" &&
+    typeof target.styles === "string" &&
+    (target.framePath === undefined || (Array.isArray(target.framePath) && target.framePath.every((selector) => typeof selector === "string"))) &&
+    (target.frameShadowPaths === undefined || (Array.isArray(target.frameShadowPaths) && target.frameShadowPaths.every((path) => Array.isArray(path) && path.every((selector) => typeof selector === "string")))) &&
+    (target.shadowPath === undefined || (Array.isArray(target.shadowPath) && target.shadowPath.every((selector) => typeof selector === "string"))) &&
+    isRect(target.rect) &&
+    (anchor === undefined || (
+      isFiniteNumber(anchor.x) &&
+      isFiniteNumber(anchor.y) &&
+      anchor.x >= 0 &&
+      anchor.x <= 1 &&
+      anchor.y >= 0 &&
+      anchor.y <= 1
+    )) &&
+    !!target.documentPoint &&
+    isFiniteNumber((target.documentPoint as Record<string, unknown>).x) &&
+    isFiniteNumber((target.documentPoint as Record<string, unknown>).y) &&
+    !!target.attributes &&
+    typeof target.attributes === "object" &&
+    Array.isArray(messages) &&
+    messages.every((message) => {
+      if (!message || typeof message !== "object") return false
+      const item = message as Record<string, unknown>
+      return (
+        typeof item.id === "string" &&
+        item.role === "user" &&
+        typeof item.text === "string" &&
+        item.text.length > 0 &&
+        typeof item.createdAt === "number"
+      )
+    })
+  )
+}
+
 const isDistanceOverlay = (value: unknown): value is DistanceOverlay => {
   if (!value || typeof value !== "object") return false
   const distance = value as Record<string, unknown>
@@ -276,6 +330,10 @@ const isDistanceOverlay = (value: unknown): value is DistanceOverlay => {
   }
   return (
     typeof distance.id === "string" &&
+    (!("guideIds" in distance) ||
+      (Array.isArray(distance.guideIds) &&
+        distance.guideIds.length <= 2 &&
+        distance.guideIds.every((guideId) => guideId === null || typeof guideId === "string"))) &&
     isRect(distance.rectA) &&
     isRect(distance.rectB) &&
     isNormalizedRect(distance.normalizedRectA) &&
@@ -316,6 +374,11 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(typeof input.arrowClickToPlace === "boolean" ? { arrowClickToPlace: input.arrowClickToPlace } : {}),
     ...(typeof input.selectNewGuideEnabled === "boolean" ? { selectNewGuideEnabled: input.selectNewGuideEnabled } : {}),
     ...(typeof input.multiMeasureEnabled === "boolean" ? { multiMeasureEnabled: input.multiMeasureEnabled } : {}),
+    ...(input.infoCardMode === "hover" || input.infoCardMode === "click"
+      ? { infoCardMode: input.infoCardMode }
+      : input.copySelectorOnInspect === true
+        ? { infoCardMode: "click" as const }
+        : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
     ...(typeof input.shortcutsEnabled === "boolean" ? { shortcutsEnabled: input.shortcutsEnabled } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),
@@ -332,7 +395,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
   const input = value as Record<string, unknown>
   if (
     typeof input.enabled !== "boolean" ||
-    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows" && input.toolMode !== "pen" && input.toolMode !== "text") ||
+    (input.toolMode !== "none" && input.toolMode !== "select" && input.toolMode !== "selection" && input.toolMode !== "guides" && input.toolMode !== "text-inspector" && input.toolMode !== "xray" && input.toolMode !== "rulers" && input.toolMode !== "arrows" && input.toolMode !== "pen" && input.toolMode !== "text" && input.toolMode !== "comments") ||
     typeof input.rulersVisible !== "boolean" ||
     (input.guideOrientation !== "vertical" && input.guideOrientation !== "horizontal") ||
     !Array.isArray(input.guides) ||
@@ -340,10 +403,11 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     !Array.isArray(input.measurements) ||
     !Array.isArray(input.heldDistances)
   ) return null
+  const toolMode = input.toolMode === "text-inspector" ? "select" : input.toolMode
   return {
     enabled: input.enabled,
     xrayVisible: typeof input.xrayVisible === "boolean" ? input.xrayVisible : input.toolMode === "xray",
-    toolMode: input.toolMode,
+    toolMode,
     rulersVisible: input.rulersVisible,
     guideOrientation: input.guideOrientation,
     guides: input.guides.filter(isGuide),
@@ -365,6 +429,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     measurements: input.measurements.filter(isMeasurement),
     activeMeasurement: isMeasurement(input.activeMeasurement) ? input.activeMeasurement : null,
     heldDistances: input.heldDistances.filter(isDistanceOverlay),
+    comments: Array.isArray(input.comments) ? input.comments.filter(isCommentThread) : [],
   }
 }
 

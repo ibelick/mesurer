@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import type { ComponentPropsWithoutRef, RefObject } from "react";
+import { useEffect, type ComponentPropsWithoutRef, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
 import { ScreenshotSelectOverlay } from "./screenshot-select-overlay";
 import { Toolbar } from "./toolbar";
@@ -38,10 +38,34 @@ export function MesurerPortal({
   screenshot,
   toolbar,
 }: MesurerPortalProps) {
+  useEffect(() => {
+    const ownerWindow = portalTarget.ownerDocument.defaultView;
+    if (!ownerWindow) return;
+    const root = rootRef.current;
+
+    const keepToolSwitchPressInsideMesurer = (event: PointerEvent) => {
+      const ElementConstructor = ownerWindow.Element;
+      if (!root || !event.composedPath().some((node) => node instanceof ElementConstructor && root.contains(node) && node.classList.contains("mesurer-toolbar-tool-switch"))) {
+        return;
+      }
+
+      // Base UI dismisses floating surfaces from document capture listeners.
+      // Stop the native press before it reaches those listeners; the button's
+      // later click event still changes the active Mesurer tool.
+      event.stopImmediatePropagation();
+    };
+
+    ownerWindow.addEventListener("pointerdown", keepToolSwitchPressInsideMesurer, true);
+    return () => {
+      ownerWindow.removeEventListener("pointerdown", keepToolSwitchPressInsideMesurer, true);
+    };
+  }, [portalTarget, rootRef]);
+
   return createPortal(
     <div
       ref={rootRef}
-      className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-50 msr:outline-none"
+      className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-[70] msr:outline-none"
+      data-mesurer-root
       tabIndex={-1}
     >
       {rulers.visible ? (

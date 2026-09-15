@@ -2,6 +2,7 @@ import type {
   MutableRefObject,
   PointerEventHandler,
   PointerEvent as ReactPointerEvent,
+  ComponentPropsWithoutRef,
 } from "react"
 import { memo } from "react"
 import type { EdgeVisibility } from "../core/edge-visibility"
@@ -10,7 +11,6 @@ import type {
   Arrow,
   Guide,
   InspectMeasurement,
-  Measurement,
   Rect,
   ToolMode,
   TextAnnotation,
@@ -21,11 +21,14 @@ import { DistancesLayer } from "./distances-layer"
 import { GuidesLayer } from "./guides-layer"
 import type { OptionContainerLines } from "./option-container-lines"
 import { SelectionLayer } from "./selection-layer"
+import type { TypographyInfo } from "../runtime/text-inspector-typography"
 import { ArrowsLayer } from "./arrows-layer"
 import { TextLayer } from "./text-layer"
 import { PenLayer } from "./pen-layer"
 import { MarqueeRect } from "./marquee-rect"
 import { GroupSelectionFrame } from "./group-selection-frame"
+import { CommentsLayer } from "../comments/comments-layer"
+import type { OpenMenu } from "../core/types"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -36,8 +39,6 @@ type OverlayPointers = {
 }
 
 type OverlaySelection = {
-  measurements: Measurement[]
-  measurementEdges: EdgeVisibility[]
   activeRect: Rect | null
   activeWidth: number
   activeHeight: number
@@ -45,6 +46,11 @@ type OverlaySelection = {
   hoverEdges: EdgeVisibility | null
   selected: InspectMeasurement[]
   selectedEdges: EdgeVisibility[]
+  selectorPreview: { element: Element; rect: Rect; copied: boolean } | null
+  ownerWindow: Window | null
+  highlightColor: string
+  selectedSelectorCopied: boolean
+  selectedTypography: TypographyInfo | null
 }
 
 type OverlayDistances = {
@@ -56,11 +62,15 @@ type OverlayDistances = {
 }
 
 type OverlayGuides = {
+  openMenu: OpenMenu
+  setOpenMenu: import("react").Dispatch<import("react").SetStateAction<OpenMenu>>
   items: Guide[]
   selectedIds: string[]
   moveOffset?: { x: number; y: number }
   hover: Guide | null
   draggingId: string | null
+  highlightEnabled: boolean
+  selectEnabled: boolean
   style: GuideStyle
   pointerEvents: boolean
   colors: {
@@ -74,6 +84,7 @@ type OverlayGuides = {
   onPointerDown: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerUp: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerCancel: (guide: Guide, event: ReactPointerEvent<HTMLDivElement>) => void
+  onRemoveGuides: (ids: string[]) => void
 }
 
 type MesurerOverlayProps = {
@@ -114,6 +125,7 @@ type MesurerOverlayProps = {
     onChange: (arrow: Arrow) => void
     onChangeStart: () => void
     editingArrowId: string | null
+    interactive: boolean
   }
   pen: {
     strokes: import("../core/types").PenStroke[]
@@ -154,6 +166,7 @@ type MesurerOverlayProps = {
     fontFamily: string
     color: string
   }
+  comments?: ComponentPropsWithoutRef<typeof CommentsLayer>
 }
 
 export const MesurerOverlay = memo(function MesurerOverlay({
@@ -186,15 +199,16 @@ export const MesurerOverlay = memo(function MesurerOverlay({
   arrows,
   text,
   pen,
+  comments,
 }: MesurerOverlayProps) {
   const overlayVisible = enabled
   const overlayInteractive =
     interactive &&
     overlayVisible &&
-    toolMode !== "none" &&
-    toolMode !== "text-inspector" &&
+    (toolMode !== "none" || Boolean(comments?.selectedId)) &&
     toolMode !== "xray" &&
     toolMode !== "rulers"
+  const overlayCapturesPointer = overlayInteractive && toolMode !== "selection"
   const selectionVisible = toolMode === "select"
   const showGuidePreview = interactive && guidesEnabled && Boolean(guides.preview)
 
@@ -203,7 +217,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       className={`msr:absolute msr:inset-0 msr:select-none msr:outline-none ${
         overlayVisible
           ? `msr:pointer-events-auto ${
-              guidesEnabled
+               toolMode === "comments"
+                 ? "msr:cursor-crosshair"
+                 : guidesEnabled
                 ? guides.hover || guides.draggingId
                   ? "msr:cursor-default"
                   : "msr:cursor-crosshair"
@@ -211,24 +227,46 @@ export const MesurerOverlay = memo(function MesurerOverlay({
             } msr:opacity-100`
           : "msr:pointer-events-none msr:opacity-0"
       }`}
-      style={{ pointerEvents: overlayInteractive ? "auto" : "none" }}
-      tabIndex={overlayInteractive ? -1 : undefined}
+      style={{ pointerEvents: overlayCapturesPointer ? "auto" : "none" }}
+      tabIndex={overlayCapturesPointer && toolMode === "comments" ? -1 : undefined}
+      data-mesurer-overlay
+      data-mesurer-inspect={toolMode === "select" ? "" : undefined}
+      onMouseDown={(event) => {
+        if (event.button !== 0) return
+        const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
+        if (origin?.closest("input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui], [data-mesurer-inspect-info-card]")) return
+        event.preventDefault()
+      }}
       onPointerDown={(event) => {
-        event.currentTarget.focus({ preventScroll: true })
+        const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
+        if (origin?.closest("[data-mesurer-inspect-info-card]")) return
+        const clickedCommentUi = origin?.closest("[data-mesurer-comment-ui]")
+        if (toolMode === "comments" && comments?.draft && !origin?.closest("[data-mesurer-comment-popover]")) {
+          comments.onDraftCancel?.()
+          return
+        }
+        if (toolMode === "comments" && comments?.selectedId && !clickedCommentUi) {
+          comments.onClose?.()
+          return
+        }
         pointers.onPointerDown(event)
       }}
       onPointerMove={pointers.onPointerMove}
       onPointerUp={pointers.onPointerUp}
       onPointerCancel={pointers.onPointerCancel}
       onPointerLeave={pointers.onPointerLeave}
+      onKeyDown={(event) => {
+        if (toolMode !== "comments" || event.key !== "Escape" || !comments?.selectedId) return
+        event.preventDefault()
+        event.stopPropagation()
+        comments.onClose?.()
+      }}
     >
       <SelectionLayer
         visible={selectionVisible}
-        dragging={isDragging}
+         dragging={isDragging || Boolean(guides.draggingId)}
         fillColor={fillColor}
         outlineColor={outlineColor}
-        measurements={selection.measurements}
-        measurementEdges={selection.measurementEdges}
         active={{
           rect: selection.activeRect,
           width: selection.activeWidth,
@@ -239,6 +277,11 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selected={selection.selected}
         selectedEdges={selection.selectedEdges}
         layoutDetailsEnabled={layoutDetailsEnabled}
+        selectorPreview={selection.selectorPreview}
+        ownerWindow={selection.ownerWindow}
+        highlightColor={selection.highlightColor}
+        selectedSelectorCopied={selection.selectedSelectorCopied}
+        selectedTypography={selection.selectedTypography}
       />
 
       {toolMode === "selection" && marqueeRect ? (
@@ -259,17 +302,24 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         onChangeStart={arrows.onChangeStart}
         editingArrowId={arrows.editingArrowId}
         selectionCount={selectionCount}
+        interactive={arrows.interactive}
       />
 
       <TextLayer {...text} selectionCount={selectionCount} />
 
+      {comments ? <CommentsLayer {...comments} /> : null}
+
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer
+          openMenu={guides.openMenu}
+          setOpenMenu={guides.setOpenMenu}
           guides={guides.items}
           selectedIds={guides.selectedIds}
           moveOffset={guides.moveOffset}
           hoverId={guides.hover?.id ?? null}
           draggingId={guides.draggingId}
+          highlightEnabled={guides.highlightEnabled}
+          selectEnabled={guides.selectEnabled}
           style={guides.style}
           pointerEvents={guides.pointerEvents}
           colors={guides.colors}
@@ -277,6 +327,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           onPointerDown={guides.onPointerDown}
           onPointerUp={guides.onPointerUp}
           onPointerCancel={guides.onPointerCancel}
+          onRemoveGuides={guides.onRemoveGuides}
         />
       ) : null}
 

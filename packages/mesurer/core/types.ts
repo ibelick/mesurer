@@ -31,6 +31,37 @@ export type TextAnnotation = {
   boxWidth?: number
 }
 
+export type CommentMessage = {
+  id: string
+  role: "user"
+  text: string
+  createdAt: number
+}
+
+export type CommentTarget = {
+  selector: string
+  framePath?: string[]
+  frameShadowPaths?: string[][]
+  shadowPath?: string[]
+  tagName: string
+  textSnippet: string
+  htmlPreview: string
+  attributes: Record<string, string>
+  styles: string
+  rect: Rect
+  documentPoint: Point
+  anchor?: Point
+}
+
+export type CommentThread = {
+  id: string
+  target: CommentTarget
+  messages: CommentMessage[]
+  status: "open" | "resolved"
+  createdAt: number
+  updatedAt: number
+}
+
 export type Rect = {
   left: number
   top: number
@@ -89,6 +120,7 @@ export type Guide = {
 
 export type DistanceOverlay = {
   id: string
+  guideIds?: Array<string | null>
   rectA: Rect
   rectB: Rect
   normalizedRectA: NormalizedRect
@@ -130,11 +162,18 @@ export type ToolMode =
   | "select"
   | "selection"
   | "guides"
-  | "text-inspector"
   | "xray"
   | "rulers"
   | "arrows"
   | "pen"
   | "text"
+  | "comments"
 
-export type PersistentToolMode = Exclude<ToolMode, "none" | "text-inspector" | "xray" | "rulers">
+export type OpenMenu =
+  | { type: "settings" }
+  | { type: "comments"; panel: boolean }
+  | { type: "guide-orientation" }
+  | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
+  | null
+
+export type PersistentToolMode = Exclude<ToolMode, "none" | "xray" | "rulers">

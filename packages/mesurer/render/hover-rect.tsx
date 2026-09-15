@@ -17,6 +17,7 @@ export function HoverRect({
   return (
     <div
       className="msr:pointer-events-none msr:absolute"
+      data-mesurer-hover="true"
       style={{
         left: rect.left,
         top: rect.top,

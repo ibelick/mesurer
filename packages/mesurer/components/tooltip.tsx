@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -9,6 +10,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "../core/utils"
+import { clampOverlayPosition } from "../core/overlay-position"
 
 const TOOLTIP_DELAY_MS = 800
 
@@ -64,6 +66,30 @@ export function Tooltip({
     }
   }, [anchorRef, label, layer, pinned, side])
 
+  useLayoutEffect(() => {
+    if (!pinned || !coords) return
+    const node = nodeRef.current
+    const owner = layer?.ownerDocument.defaultView
+    if (!node || !owner) return
+
+    const rect = node.getBoundingClientRect()
+    const next = clampOverlayPosition({
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: owner.innerWidth,
+      viewportHeight: owner.innerHeight,
+    })
+    const shiftX = next.left - rect.left
+    const shiftY = next.top - rect.top
+    if (Math.abs(shiftX) < 0.5 && Math.abs(shiftY) < 0.5) return
+
+    setCoords((current) =>
+      current ? { left: current.left + shiftX, top: current.top + shiftY } : current,
+    )
+  }, [coords, layer, pinned])
+
   const node = (
     <span
       ref={nodeRef}
@@ -94,7 +120,7 @@ export function Tooltip({
             : { top: "100%", marginTop: "0.5rem" }
       }
     >
-      {label}{shortcut ? <> <kbd className="msr:text-white/60">{shortcut}</kbd></> : null}
+      {label}{shortcut ? <> <span className="msr:font-normal msr:text-white/60">{shortcut}</span></> : null}
     </span>
   )
 
@@ -106,7 +132,9 @@ export function Tooltip({
 
 export function useTooltip() {
   const [visibleTooltipId, setVisibleTooltipId] = useState<string | null>(null)
+  const [copiedTooltipId, setCopiedTooltipId] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
+  const copiedTimerRef = useRef<number | null>(null)
   const instantRef = useRef(false)
   const [tooltipInstant, setTooltipInstant] = useState(false)
 
@@ -116,9 +144,27 @@ export function useTooltip() {
     timerRef.current = null
   }, [])
 
-  const onTooltipEnter = useCallback((id: string) => {
+  const clearCopiedTimer = useCallback(() => {
+    if (copiedTimerRef.current === null) return
+    window.clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = null
+  }, [])
+
+  const clearCopiedTooltip = useCallback(() => {
+    clearCopiedTimer()
+    setCopiedTooltipId(null)
+  }, [clearCopiedTimer])
+
+  useEffect(() => () => {
     clearTimer()
-    if (instantRef.current) {
+    clearCopiedTimer()
+  }, [clearCopiedTimer, clearTimer])
+
+  const onTooltipEnter = useCallback((id: string, instant = false) => {
+    clearTimer()
+    if (copiedTooltipId && copiedTooltipId !== id) clearCopiedTooltip()
+    if (copiedTooltipId === id) return
+    if (instant || instantRef.current) {
       setTooltipInstant(true)
       setVisibleTooltipId(id)
       return
@@ -130,7 +176,18 @@ export function useTooltip() {
       instantRef.current = true
       timerRef.current = null
     }, TOOLTIP_DELAY_MS)
-  }, [clearTimer])
+  }, [clearCopiedTooltip, clearTimer, copiedTooltipId])
+
+  const onTooltipCopied = useCallback((id: string) => {
+    clearTimer()
+    clearCopiedTimer()
+    setVisibleTooltipId(null)
+    setCopiedTooltipId(id)
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null
+      setCopiedTooltipId(null)
+    }, 1200)
+  }, [clearCopiedTimer, clearTimer])
 
   const onTooltipLeave = useCallback(() => {
     clearTimer()
@@ -146,8 +203,10 @@ export function useTooltip() {
 
   return {
     visibleTooltipId,
+    copiedTooltipId,
     tooltipInstant,
     onTooltipEnter,
+    onTooltipCopied,
     onTooltipLeave,
     onTooltipContainerLeave,
   }

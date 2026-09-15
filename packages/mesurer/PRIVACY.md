@@ -30,7 +30,7 @@ Used to inject the extension script into the active page to render measurement o
 ### storage
 
 Used to store Mesurer settings and page workspaces locally in Chrome. This data stays in the
-browser and is not sent to Mesurer servers.
+browser and is not sent to Mesurer servers. This includes comment threads and their replies.
 
 ### clipboardWrite
 
