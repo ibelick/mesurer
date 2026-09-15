@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { CommentThread, DistanceOverlay, Guide, Measurement, Rect, TextAnnotation, ToolMode } from "../core/types";
+import type { CommentThread, DistanceOverlay, Guide, Measurement, OpenMenu, Rect, TextAnnotation, ToolMode } from "../core/types";
 import type { MesurerStoredWorkspace } from "../core/persistence";
 import { useDragState } from "./use-drag-state";
 import { useGuideState } from "./use-guide-state";
@@ -110,6 +110,7 @@ export const useMesurerWorkspaceState = ({
   const comments = useCommentState(initialComments ?? persistedState?.comments ?? initialState?.comments ?? [], onCommentsChange);
   const [toolbarActive, setToolbarActive] = useState(true);
   const [minimized, setMinimized] = useState(initialState?.minimized ?? false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
   const [guideOrientation, setGuideOrientation] = useState<"vertical" | "horizontal">(
@@ -148,6 +149,8 @@ export const useMesurerWorkspaceState = ({
     setToolbarActive,
     minimized,
     setMinimized,
+    openMenu,
+    setOpenMenu,
     settingsOpen,
     setSettingsOpen,
     xrayVisible,

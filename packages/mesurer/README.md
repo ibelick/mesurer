@@ -104,7 +104,11 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 | `Cmd/Ctrl + ,`         | Open Settings.                                        |
 | `Cmd/Ctrl + K`         | Copy comments for an agent.                           |
 
-The initial workspace, toolbar state, and annotations can be configured with the `initialState` prop.
+`initialState` accepts `enabled`, `minimized`, `toolbarPosition`, `toolMode`, guides, arrows, pen strokes, text annotations, measurements, and comments. Saved workspace state overrides it.
+
+```tsx
+<Mesurer initialState={{ minimized: true, toolbarPosition: { x: 24, y: 24 } }} />
+```
 
 ## Features
 

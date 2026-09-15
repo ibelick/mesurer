@@ -447,12 +447,38 @@ function HostComposer() {
   )
 }
 
+const seededInitialState = {
+  enabled: true,
+  toolMode: "select" as const,
+  toolbarPosition: { x: 24, y: 24 },
+  guides: [{ id: "bench-initial-guide", orientation: "vertical" as const, position: 760 }],
+  arrows: [{
+    id: "bench-initial-arrow",
+    start: { x: 520, y: 180 },
+    end: { x: 700, y: 240 },
+    color: "#0d99ff",
+    width: 2,
+  }],
+  penStrokes: [{
+    id: "bench-initial-pen",
+    points: [{ x: 520, y: 300 }, { x: 580, y: 270 }, { x: 640, y: 300 }],
+    color: "#ef4444",
+    width: 3,
+  }],
+  textAnnotations: [{
+    id: "bench-initial-text",
+    x: 520,
+    y: 360,
+    text: "Seeded annotation",
+  }],
+}
+
 export function Bench() {
   const count = 120
 
   return (
     <>
-      <Mesurer />
+      <Mesurer persistKey="mesurer-bench-initial-state" persistOnReload={false} initialState={seededInitialState} />
       <main className="bench-page">
         <header className="bench-header">
           <div>
@@ -461,6 +487,13 @@ export function Bench() {
             <p className="bench-intro">Use the Mesurer toolbar above, then follow each card from top to bottom.</p>
           </div>
         </header>
+        <section className="bench-card" aria-labelledby="initial-state-title">
+          <div className="bench-card-heading">
+            <div><span className="bench-kicker">00 / initial state</span><h2 id="initial-state-title">Initial workspace</h2></div>
+            <span className="bench-coordinate">toolbar / guides / annotations</span>
+          </div>
+          <p className="bench-card-instruction">This page starts with a positioned toolbar, guide, arrow, pen stroke, and text annotation. Use it to verify `initialState` rendering before interacting.</p>
+        </section>
         <TestCanvas count={count} />
       </main>
     </>

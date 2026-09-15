@@ -1289,6 +1289,61 @@ test("guide context menu closes with Escape", async ({ page }) => {
   await expect(menu).toBeHidden();
 });
 
+test("comments and guide menus do not stay open together", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Initial comment");
+  await page.getByRole("button", { name: "Send comment" }).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+
+  const guide = page.locator("[data-mesurer-guide]").first();
+  await guide.click({ button: "right", position: { x: 7, y: 200 } });
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: "Show all comments" }).click();
+  await expect(page.getByRole("dialog", { name: "Comments" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Remove guide" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Comments" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("comment dropdown and guide menus do not stay open together", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("toolbar tools close Settings", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+});
+
 test("guide settings show a live preview when no guides are placed", async ({
   page,
 }) => {

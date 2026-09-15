@@ -372,7 +372,7 @@ function App() {
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong"><code className="code">initialState</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Set the initial workspace, toolbar state, and annotations</div>
+            <div className="max-w-[60%] text-right text-balance text-muted">Set initial workspace data and toolbar state; saved state wins</div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">

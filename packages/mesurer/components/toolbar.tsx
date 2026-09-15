@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import type { ToolMode } from "../core/types";
+import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
@@ -105,6 +105,8 @@ type ToolbarProps = {
   comments: ToolbarComments;
   settings: ToolbarSettings;
   features: ResolvedMesurerFeatures;
+  openMenu: OpenMenu;
+  setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
 };
 const GUIDE_MENU_WIDTH = 176;
 const VIEWPORT_PADDING = 8;
@@ -269,6 +271,8 @@ function ToolbarComponent(
     comments,
     settings,
     features,
+    openMenu,
+    setOpenMenu,
   }: ToolbarProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -327,9 +331,9 @@ function ToolbarComponent(
     onToolbarLeave,
   } =
     useToolbarTooltip();
-  const [guideMenuOpen, setGuideMenuOpen] = useState(false);
-  const [commentMenuOpen, setCommentMenuOpen] = useState(false);
-  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  const guideMenuOpen = openMenu?.type === "guide-orientation";
+  const commentMenuOpen = openMenu?.type === "comments";
+  const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
   const [commentsCopied, setCommentsCopied] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
@@ -400,7 +404,7 @@ function ToolbarComponent(
       setRulersVisible(false);
       setToolMode(group === "inspect" ? "select" : "selection");
       setToolGroup(group);
-      setGuideMenuOpen(false);
+      setOpenMenu(null);
     },
     [
       onCancelScreenshot,
@@ -561,8 +565,9 @@ function ToolbarComponent(
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "guides" ? "none" : "guides"));
+    setOpenMenu(null);
     onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setOpenMenu, setToolMode]);
 
   const arrowsMode = useCallback(() => {
     onCancelTransient()
@@ -597,10 +602,9 @@ function ToolbarComponent(
     setColorPickerActive(false)
     onCancelScreenshot()
     setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
-    setCommentMenuOpen(false)
-    setCommentsPanelOpen(false)
+    setOpenMenu(null)
     onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
+  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setOpenMenu, setToolMode])
 
   const openCommentsPanel = useCallback(() => {
     onCancelTransient()
@@ -611,9 +615,8 @@ function ToolbarComponent(
       preserveToolGroupRef.current = true
       setToolMode("comments")
     }
-    setCommentsPanelOpen(true)
-    onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode, toolMode])
+    setOpenMenu({ type: "comments", panel: true })
+  }, [onCancelScreenshot, onCancelTransient, setColorPickerActive, setEnabled, setOpenMenu, setToolMode, toolMode])
 
   const xrayMode = useCallback(() => {
     onCancelTransient();
@@ -693,17 +696,16 @@ function ToolbarComponent(
       setToolMode("guides");
       setGuideOrientation(orientation);
       onInteract();
-      setGuideMenuOpen(false);
+      setOpenMenu(null);
     },
-    [onCancelScreenshot, onCancelTransient, onInteract, setEnabled, setGuideOrientation, setToolMode],
+    [onCancelScreenshot, onCancelTransient, onInteract, setEnabled, setGuideOrientation, setOpenMenu, setToolMode],
   );
 
   useLayoutEffect(() => {
     if (minimized) {
-      setGuideMenuOpen(false);
-      setCommentMenuOpen(false);
+      setOpenMenu(null);
     }
-  }, [minimized]);
+  }, [minimized, setOpenMenu]);
 
   useLayoutEffect(() => {
     const stage = toolStageRef.current;
@@ -750,44 +752,33 @@ function ToolbarComponent(
   }, [markToolbarMotionReady]);
 
   useLayoutEffect(() => {
-    if (!guideMenuOpen && !commentMenuOpen && !settingsOpen) return;
+    if (!guideMenuOpen) return;
 
-    const frame = guideMenuOpen
-      ? eventTarget.requestAnimationFrame(() => {
-          guideMenuRef.current
-            ?.querySelector<HTMLElement>("[role='menu']")
-            ?.focus();
-        })
-      : 0;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const path = event.composedPath();
-      if (guideMenuOpen) {
-        const menu = guideMenuRef.current;
-        if (menu && !path.includes(menu)) setGuideMenuOpen(false);
-      }
-      if (settingsOpen) {
-        const settings = settingsRef.current;
-        if (settings && !path.includes(settings)) setSettingsOpen(false);
-      }
-      if (commentMenuOpen) {
-        const menu = commentMenuRef.current;
-        if (menu && !path.includes(menu) && !commentsPanelOpen) setCommentMenuOpen(false);
-      }
-    };
-
-    const handleResize = () => {
-      if (guideMenuOpen) updateMenuAlign();
-    };
-
-    eventTarget.addEventListener("pointerdown", handlePointerDown);
-    if (guideMenuOpen) eventTarget.addEventListener("resize", handleResize);
+    const frame = eventTarget.requestAnimationFrame(() => {
+      guideMenuRef.current
+        ?.querySelector<HTMLElement>("[role='menu']")
+        ?.focus();
+    });
+    const handleResize = () => updateMenuAlign();
+    eventTarget.addEventListener("resize", handleResize);
     return () => {
-      if (frame) eventTarget.cancelAnimationFrame(frame);
-      eventTarget.removeEventListener("pointerdown", handlePointerDown);
+      eventTarget.cancelAnimationFrame(frame);
       eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [commentMenuOpen, commentsPanelOpen, eventTarget, guideMenuOpen, guideOrientation, settingsOpen, updateMenuAlign]);
+  }, [eventTarget, guideMenuOpen, updateMenuAlign]);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const isMenuContent = event.composedPath().some(
+        (target) =>
+          target instanceof Element && target.closest("[role='menu'], [role='dialog']"),
+      );
+      if (!isMenuContent) setOpenMenu(null);
+    };
+    eventTarget.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    return () => eventTarget.removeEventListener("pointerdown", closeOnOutsidePointerDown, true);
+  }, [eventTarget, openMenu, setOpenMenu]);
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
   const toastAlignment =
@@ -819,7 +810,8 @@ function ToolbarComponent(
       className="mesurer-toolbar-motion msr:pointer-events-auto"
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
-        if (commentsPanelOpen) setCommentsPanelOpen(false);
+        const target = event.target;
+        if (target instanceof Element && target.closest("[role='menu'], [role='dialog']")) return;
         onInteract();
         onPointerDown(event);
       }}
@@ -941,13 +933,11 @@ function ToolbarComponent(
           )}
           onClick={() => {
             onInteract();
-            setGuideMenuOpen((prev) => {
-              if (!prev) {
-                setActiveMenuIndex(guideOrientation === "horizontal" ? 0 : 1);
-                updateMenuAlign();
-              }
-              return !prev;
-            });
+            if (!guideMenuOpen) {
+              setActiveMenuIndex(guideOrientation === "horizontal" ? 0 : 1);
+              updateMenuAlign();
+            }
+            setOpenMenu(guideMenuOpen ? null : { type: "guide-orientation" });
           }}
         >
           <CaretDownIcon size={8} />
@@ -997,7 +987,7 @@ function ToolbarComponent(
               if (event.key === "Escape") {
                 event.preventDefault();
                 event.stopPropagation();
-                setGuideMenuOpen(false);
+                setOpenMenu(null);
               }
             }}
           >
@@ -1130,7 +1120,7 @@ function ToolbarComponent(
               label="Screenshot"
               shortcut="C"
               onClick={() => {
-                setCommentMenuOpen(false)
+                setOpenMenu(null)
                 screenshotMode()
               }}
               tooltip={toolbarTooltip}
@@ -1181,10 +1171,10 @@ function ToolbarComponent(
             "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             commentMenuOpen ? "msr:bg-black/4 msr:text-black" : "msr:text-black",
          )}
-         onClick={() => {
-           onInteract()
-           setCommentMenuOpen((value) => !value)
-         }}
+          onClick={() => {
+            onInteract()
+            setOpenMenu(commentMenuOpen ? null : { type: "comments", panel: false })
+          }}
        >
          <CaretDownIcon size={8} />
          </button>
@@ -1224,8 +1214,8 @@ function ToolbarComponent(
                  <MenuItem
                    disabled={commentCount === 0}
                    onClick={() => {
-                     void onCopyComments()
-                     setCommentMenuOpen(false)
+                      void onCopyComments()
+                      setOpenMenu(null)
                    }}
                  >
                    <span className="msr:flex-1">Copy comments</span>
@@ -1244,9 +1234,9 @@ function ToolbarComponent(
           shortcut={settingsShortcut}
           onClick={() => {
             onCancelScreenshot();
-            setCommentMenuOpen(false);
             onInteract();
             onToggleSettings();
+            setOpenMenu(settingsOpen ? null : { type: "settings" });
           }}
           tooltip={toolbarTooltip}
           tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}

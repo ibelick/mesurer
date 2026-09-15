@@ -342,6 +342,8 @@ export function MesurerClient({
     setMinimized,
     settingsOpen,
     setSettingsOpen,
+    openMenu,
+    setOpenMenu,
     xrayVisible,
     setXrayVisible,
     guideOrientation,
@@ -360,6 +362,12 @@ export function MesurerClient({
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
+  useEffect(() => {
+    setOpenMenu((current) => {
+      if (settingsOpen) return { type: "settings" };
+      return current?.type === "settings" ? null : current;
+    });
+  }, [setOpenMenu, settingsOpen]);
   const commentRuntime = useMemo(
     () => new CommentRuntimeStore(ownerDocument, ownerWindow),
     [ownerDocument, ownerWindow],
@@ -735,9 +743,11 @@ export function MesurerClient({
   const toggleSettings = useCallback(() => {
     if (settingsOpen) {
       screenshot.closeUi();
+      setOpenMenu(null);
       setSettingsOpen(false);
       return;
     }
+    setOpenMenu({ type: "settings" });
     setSettingsFocus(
       settingsFocusSection(toolMode, {
         colorPicker: colorPicker.active,
@@ -1114,7 +1124,9 @@ export function MesurerClient({
   } = annotationCallbacks;
   const activateToolbar = useCallback(() => {
     setToolbarActive(true);
-  }, [setToolbarActive]);
+    setOpenMenu(null);
+    setSettingsOpen(false);
+  }, [setOpenMenu, setSettingsOpen, setToolbarActive]);
   const pinableOverlay = guidesEnabled
     ? (guideDistanceOverlay ?? optionPairOverlay)
     : (optionPairOverlay ?? guideDistanceOverlay);
@@ -1461,6 +1473,8 @@ export function MesurerClient({
           onRemoveHeld: removeHeldDistance,
         },
         guides: {
+          openMenu,
+          setOpenMenu,
           items: overlayGuides,
           selectedIds: selectedGuideIds,
           moveOffset: selectionDragOffset,
@@ -1708,6 +1722,8 @@ export function MesurerClient({
             />
           ),
         },
+        openMenu,
+        setOpenMenu,
       }}
     />
   );

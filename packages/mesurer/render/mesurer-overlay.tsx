@@ -28,6 +28,7 @@ import { PenLayer } from "./pen-layer"
 import { MarqueeRect } from "./marquee-rect"
 import { GroupSelectionFrame } from "./group-selection-frame"
 import { CommentsLayer } from "../comments/comments-layer"
+import type { OpenMenu } from "../core/types"
 
 type OverlayPointers = {
   onPointerDown: PointerEventHandler<HTMLDivElement>
@@ -61,6 +62,8 @@ type OverlayDistances = {
 }
 
 type OverlayGuides = {
+  openMenu: OpenMenu
+  setOpenMenu: import("react").Dispatch<import("react").SetStateAction<OpenMenu>>
   items: Guide[]
   selectedIds: string[]
   moveOffset?: { x: number; y: number }
@@ -308,6 +311,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
 
       {showGuidePreview || guides.items.length > 0 ? (
         <GuidesLayer
+          openMenu={guides.openMenu}
+          setOpenMenu={guides.setOpenMenu}
           guides={guides.items}
           selectedIds={guides.selectedIds}
           moveOffset={guides.moveOffset}

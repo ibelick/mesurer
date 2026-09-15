@@ -12,6 +12,16 @@ test("loads the stress bench at both slash variants", async ({ page }) => {
   }
 });
 
+test("renders the initial workspace state", async ({ page }) => {
+  await page.goto("/bench");
+
+  await expect(page.getByRole("heading", { name: "Initial workspace" })).toBeVisible();
+  await expect(page.locator('[data-mesurer-guide="true"]')).toBeVisible();
+  await expect(page.locator('[data-mesurer-arrow="true"][data-mesurer-arrow-id="bench-initial-arrow"]')).toBeVisible();
+  await expect(page.locator('[data-mesurer-pen="true"][data-mesurer-pen-id="bench-initial-pen"]')).toBeVisible();
+  await expect(page.locator('[data-mesurer-text="true"][data-mesurer-text-id="bench-initial-text"]')).toContainText("Seeded annotation");
+});
+
 test("renders functional dialog, popover, and menu examples", async ({ page }) => {
   await page.goto("/bench");
   await expect(page.getByRole("heading", { name: "Dialog, popover, and menu" })).toBeVisible();

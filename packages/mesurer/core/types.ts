@@ -169,4 +169,11 @@ export type ToolMode =
   | "text"
   | "comments"
 
+export type OpenMenu =
+  | { type: "settings" }
+  | { type: "comments"; panel: boolean }
+  | { type: "guide-orientation" }
+  | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
+  | null
+
 export type PersistentToolMode = Exclude<ToolMode, "none" | "xray" | "rulers">

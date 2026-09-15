@@ -1,10 +1,9 @@
 import {
   useEffect,
-  useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react"
-import type { Guide } from "../core/types"
+import type { Guide, OpenMenu } from "../core/types"
 import type { GuideStyle } from "../core/persistence"
 import { MenuItem, MenuSurface } from "../components/menu"
 import { GuideLine, GuidePreviewLine } from "./guide-line"
@@ -18,6 +17,8 @@ type GuideColors = {
 }
 
 type GuidesLayerProps = {
+  openMenu: OpenMenu
+  setOpenMenu: import("react").Dispatch<import("react").SetStateAction<OpenMenu>>
   guides: Guide[]
   selectedIds: string[]
   moveOffset?: { x: number; y: number }
@@ -35,9 +36,9 @@ type GuidesLayerProps = {
   onRemoveGuides: (ids: string[]) => void
 }
 
-type GuideMenu = { ids: string[]; x: number; y: number; ownerWindow: Window } | null
-
 export function GuidesLayer({
+  openMenu,
+  setOpenMenu,
   guides,
   selectedIds,
   moveOffset = { x: 0, y: 0 },
@@ -54,11 +55,11 @@ export function GuidesLayer({
   onPointerCancel,
   onRemoveGuides,
 }: GuidesLayerProps) {
-  const [menu, setMenu] = useState<GuideMenu>(null)
+  const menu = openMenu?.type === "guide-context" ? openMenu : null
 
   useEffect(() => {
-    if (!pointerEvents || draggingId) setMenu(null)
-  }, [draggingId, pointerEvents])
+    if (!pointerEvents || draggingId) setOpenMenu(null)
+  }, [draggingId, pointerEvents, setOpenMenu])
 
   useEffect(() => {
     if (!menu) return
@@ -69,13 +70,13 @@ export function GuidesLayer({
           target.hasAttribute("data-mesurer-guide-menu"),
       )
       if (clickedMenu) return
-      setMenu(null)
+      setOpenMenu(null)
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
       event.preventDefault()
       event.stopImmediatePropagation()
-      setMenu(null)
+      setOpenMenu(null)
     }
     menu.ownerWindow.addEventListener("pointerdown", close, true)
     menu.ownerWindow.addEventListener("keydown", handleKeyDown, true)
@@ -83,13 +84,14 @@ export function GuidesLayer({
       menu.ownerWindow.removeEventListener("pointerdown", close, true)
       menu.ownerWindow.removeEventListener("keydown", handleKeyDown, true)
     }
-  }, [menu])
+  }, [menu, setOpenMenu])
 
   const handleContextMenu = (guide: Guide, event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault()
     event.stopPropagation()
     const ownerWindow = event.currentTarget.ownerDocument.defaultView ?? window
-    setMenu({
+    setOpenMenu({
+      type: "guide-context",
       ids: selectedIds.includes(guide.id) ? selectedIds : [guide.id],
       x: Math.min(event.clientX, ownerWindow.innerWidth - 132),
       y: Math.min(event.clientY, ownerWindow.innerHeight - 42),
@@ -146,14 +148,14 @@ export function GuidesLayer({
           style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setMenu(null)
+            if (event.key === "Escape") setOpenMenu(null)
           }}
         >
           <MenuItem
             variant="neutral"
             onClick={() => {
               onRemoveGuides(menu.ids)
-              setMenu(null)
+              setOpenMenu(null)
             }}
           >
             {menu.ids.length === 1 ? "Remove guide" : "Remove guides"}
