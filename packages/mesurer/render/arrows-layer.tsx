@@ -18,6 +18,7 @@ type ArrowsLayerProps = {
   onChangeStart: () => void
   editingArrowId: string | null
   selectionCount: number
+  interactive: boolean
 }
 
 const ArrowNode = ({
@@ -26,18 +27,20 @@ const ArrowNode = ({
   color,
   id,
   handle,
+  interactive,
 }: {
   x: number
   y: number
   color: string
   id?: string
   handle: "start" | "control" | "end"
+  interactive: boolean
 }) => (
   <HandleNode
     x={x}
     y={y}
     color={color}
-    pointerEvents="all"
+    pointerEvents={interactive ? "all" : "none"}
     data-mesurer-arrow-node="true"
     data-mesurer-arrow-id={id}
     data-mesurer-arrow-handle={handle}
@@ -56,6 +59,7 @@ const ArrowLine = ({
   showNodes = true,
   preview = false,
   id,
+  interactive = true,
 }: {
   start: Point
   end: Point
@@ -66,6 +70,7 @@ const ArrowLine = ({
   showNodes?: boolean
   preview?: boolean
   id?: string
+  interactive?: boolean
 }) => {
   const control = providedControl ?? midpoint(start, end)
   const path = arrowPath(start, end, control)
@@ -83,7 +88,7 @@ const ArrowLine = ({
           cy={point.y}
           r="12"
           fill="transparent"
-          pointerEvents="all"
+          pointerEvents={interactive ? "all" : "none"}
           data-mesurer-arrow-id={id}
           data-mesurer-arrow-touch-zone="true"
         />
@@ -94,7 +99,7 @@ const ArrowLine = ({
         stroke={color}
         opacity="0"
         strokeWidth={Math.max(width, 24)}
-        pointerEvents={preview ? "none" : "all"}
+        pointerEvents={preview || !interactive ? "none" : "all"}
         data-mesurer-arrow-id={id}
         data-mesurer-arrow-hit="true"
       />
@@ -104,7 +109,7 @@ const ArrowLine = ({
         stroke={color}
         strokeWidth={width}
         strokeLinecap="round"
-        pointerEvents={preview ? "none" : "all"}
+        pointerEvents={preview || !interactive ? "none" : "all"}
         opacity={preview ? 0.65 : 1}
         data-mesurer-arrow={preview ? undefined : "true"}
         data-mesurer-arrow-id={id}
@@ -117,7 +122,7 @@ const ArrowLine = ({
         strokeWidth={width}
         strokeLinecap="round"
         strokeLinejoin="round"
-        pointerEvents={preview ? "none" : "all"}
+        pointerEvents={preview || !interactive ? "none" : "all"}
         opacity={preview ? 0.65 : 1}
         data-mesurer-arrow-id={id}
         data-mesurer-arrow-hit="true"
@@ -130,6 +135,7 @@ const ArrowLine = ({
             color={color}
             id={id}
             handle="start"
+            interactive={interactive}
           />
           <ArrowNode
             x={control.x}
@@ -137,6 +143,7 @@ const ArrowLine = ({
             color={color}
             id={id}
             handle="control"
+            interactive={interactive}
           />
           <ArrowNode
             x={end.x}
@@ -144,6 +151,7 @@ const ArrowLine = ({
             color={color}
             id={id}
             handle="end"
+            interactive={interactive}
           />
         </>
       ) : null}
@@ -154,7 +162,7 @@ const ArrowLine = ({
             cy={start.y}
             r="12"
             fill="transparent"
-            pointerEvents="all"
+            pointerEvents={interactive ? "all" : "none"}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="start"
             data-mesurer-arrow-hit="true"
@@ -166,7 +174,7 @@ const ArrowLine = ({
             cy={control.y}
             r="12"
             fill="transparent"
-            pointerEvents="all"
+            pointerEvents={interactive ? "all" : "none"}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="control"
             data-mesurer-arrow-hit="true"
@@ -178,7 +186,7 @@ const ArrowLine = ({
             cy={end.y}
             r="12"
             fill="transparent"
-            pointerEvents="all"
+            pointerEvents={interactive ? "all" : "none"}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="end"
             data-mesurer-arrow-hit="true"
@@ -203,6 +211,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
   onChangeStart,
   editingArrowId,
   selectionCount,
+  interactive,
 }: ArrowsLayerProps) {
   const dragRef = useRef<{
     type: "resize" | "rotate"
@@ -271,9 +280,10 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           control={{ x: transformedArrowPoints(arrow)[1]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[1]!.y - scrollOffset.y }}
           color={arrow.color}
           width={arrow.width}
-           selected={selectedIds.includes(arrow.id)}
-           showNodes={selectionCount === 1}
+          selected={selectedIds.includes(arrow.id)}
+          showNodes={selectionCount === 1}
           id={arrow.id}
+          interactive={interactive}
         />
         </g>
       ))}
@@ -285,6 +295,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           color="#0d99ff"
           width={1}
           preview
+          interactive={interactive}
         />
       ) : null}
       </svg>

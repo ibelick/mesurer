@@ -122,6 +122,7 @@ type MesurerOverlayProps = {
     onChange: (arrow: Arrow) => void
     onChangeStart: () => void
     editingArrowId: string | null
+    interactive: boolean
   }
   pen: {
     strokes: import("../core/types").PenStroke[]
@@ -298,6 +299,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         onChangeStart={arrows.onChangeStart}
         editingArrowId={arrows.editingArrowId}
         selectionCount={selectionCount}
+        interactive={arrows.interactive}
       />
 
       <TextLayer {...text} selectionCount={selectionCount} />

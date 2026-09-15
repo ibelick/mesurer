@@ -94,6 +94,7 @@ type ToolbarComments = {
 
 type ToolbarProps = {
   eventTarget: Window;
+  initialPosition: { x: number; y: number };
   minimized: boolean;
   onInteract: () => void;
   onRestore: () => void;
@@ -257,6 +258,7 @@ function ToolbarDivider() {
 function ToolbarComponent(
   {
     eventTarget,
+    initialPosition,
     minimized,
     onInteract,
     onRestore,
@@ -314,8 +316,8 @@ function ToolbarComponent(
   } = settings;
 
   const { position, onPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag({
-    x: 16,
-    y: 16,
+    x: initialPosition.x,
+    y: initialPosition.y,
   }, eventTarget);
   const {
     visibleTooltipId,

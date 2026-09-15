@@ -39,6 +39,7 @@ export default function Mesurer({
   onPersistenceError,
   captureVisibleTab,
   features,
+  initialState,
 }: MesurerProps) {
   if (typeof document !== "undefined") {
     ensureMesurerStyles(MESURER_STYLES, portalTarget);
@@ -73,6 +74,7 @@ export default function Mesurer({
       onPersistenceError={onPersistenceError}
       captureVisibleTab={captureVisibleTab}
       features={resolveMesurerFeatures(features)}
+      initialState={initialState}
       portalTarget={portalTarget ?? document.body}
     />
   );

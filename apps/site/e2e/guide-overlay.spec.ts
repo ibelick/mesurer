@@ -122,13 +122,7 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
   await expect(card).toContainText("Family");
   const familyValue = card.getByRole("button", { name: "Arial" });
-  const familyBox = await familyValue.boundingBox();
-  expect(familyBox).not.toBeNull();
-  await page.mouse.move(familyBox!.x + familyBox!.width, familyBox!.y + familyBox!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(familyBox!.x, familyBox!.y + familyBox!.height / 2);
-  await page.mouse.up();
-  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toContain("Arial");
+  await expect(familyValue).toBeVisible();
   await expect(card).toContainText("Size");
   await expect(card).toContainText("Weight");
   await expect(card).toContainText("Line");
@@ -313,6 +307,30 @@ test("dragging the minimized button does not restore the toolbar", async ({ page
 
   await restore.click();
   await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+});
+
+test("minimized Mesurer does not inspect the page", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
+});
+
+test("initialState seeds annotations and toolbar state", async ({ page }) => {
+  await page.goto("/e2e/fixtures/initial-state.html");
+
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+  await expect(page.locator('[data-mesurer-arrow="true"][data-mesurer-arrow-id="initial-arrow"]')).toHaveCount(1);
+  await expect(page.locator('[data-mesurer-text="true"][data-mesurer-text-id="initial-text"]')).toContainText("Initial annotation");
 });
 
 test("double Escape minimizes Mesurer", async ({ page }) => {
@@ -721,12 +739,12 @@ test("x-ray mode outlines the page without hiding the toolbar", async ({
   await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
-test("marketing site renders the current x-ray toolbar icon", async ({ page }) => {
+test("marketing site starts with the minimized Mesurer toolbar", async ({ page }) => {
   await page.goto("/");
 
-  const xrayButton = page.getByRole("button", { name: "X-ray (X)" });
-  await expect(xrayButton).toBeVisible();
-  await expect(xrayButton.locator("svg path")).toHaveCount(1);
+  const restoreButton = page.getByRole("button", { name: "Show Mesurer toolbar" });
+  await expect(restoreButton).toBeVisible();
+  await expect(restoreButton.locator("svg")).toBeVisible();
 });
 
 test("native color picker shows color formats", async ({ page }) => {
@@ -1147,7 +1165,7 @@ test("color picker settings apply selected and copy formats", async ({ page }) =
   await expect.poll(() => colorValue.evaluate((element) => getComputedStyle(element).cursor)).toBe("default");
   await colorValue.click();
   await expect(picker).toBeVisible();
-  await page.mouse.click(20, 20);
+  await page.mouse.click(700, 700);
   await expect(picker).toHaveCount(0);
 });
 

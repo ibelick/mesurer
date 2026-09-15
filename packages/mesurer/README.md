@@ -104,6 +104,8 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 | `Cmd/Ctrl + ,`         | Open Settings.                                        |
 | `Cmd/Ctrl + K`         | Copy comments for an agent.                           |
 
+The initial workspace, toolbar state, and annotations can be configured with the `initialState` prop.
+
 ## Features
 
 - **Inspect mode** - Click elements to measure their bounds

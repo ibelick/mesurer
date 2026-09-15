@@ -55,6 +55,7 @@ type UseMesurerPointerArgs = {
     setDraggingGuideId: (value: SetStateAction<string | null>) => void
   ) => void
   enabled: boolean
+  minimized: boolean
   settingsOpen: boolean
   toolMode: ToolMode
   guidesEnabled: boolean
@@ -115,6 +116,7 @@ export const useMesurerPointer = ({
   clearGuideDragHold,
   scheduleGuideDragHold,
   enabled,
+  minimized,
   settingsOpen,
   toolMode,
   guidesEnabled,
@@ -600,6 +602,7 @@ export const useMesurerPointer = ({
     }
 
     const handleDocumentPointer = (event: PointerEvent, sourceDocument: Document) => {
+      if (!enabled || minimized) return
       const overlayNode = overlayRef.current
       const path = event.composedPath()
       if (!overlayNode || path.includes(overlayNode)) return
@@ -631,6 +634,7 @@ export const useMesurerPointer = ({
     }
 
     const handlePortaledClick = (event: MouseEvent, sourceDocument: Document = document) => {
+      if (!enabled || minimized) return
       const overlayNode = overlayRef.current
       const path = event.composedPath()
       if (!overlayNode || path.includes(overlayNode)) return
@@ -820,7 +824,7 @@ export const useMesurerPointer = ({
       pointerDocumentsRef.current.clear()
       pointerTargetsRef.current.clear()
     }
-  }, [document, enabled, overlayRef, settingsOpen, toolbarRef, toolMode])
+  }, [document, enabled, minimized, overlayRef, settingsOpen, toolbarRef, toolMode])
 
   return {
     handlePointerDown,

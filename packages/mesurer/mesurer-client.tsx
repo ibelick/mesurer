@@ -43,10 +43,11 @@ import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
-import type { CommentThread } from "./core/types";
+import type { CommentThread, ToolMode } from "./core/types";
 import {
   createLocalStoragePersistence,
   type MesurerPersistence,
+  type MesurerStoredWorkspace,
   type GuideStyle,
   type RulerSettings,
 } from "./core/persistence";
@@ -87,6 +88,27 @@ export type MesurerProps = {
   onPersistenceError?: (error: unknown) => void;
   captureVisibleTab?: () => Promise<Blob>;
   features?: MesurerFeatures;
+  initialState?: {
+    enabled?: boolean;
+    minimized?: boolean;
+    toolMode?: ToolMode;
+    toolbarPosition?: { x: number; y: number };
+    xrayVisible?: boolean;
+    rulersVisible?: boolean;
+    guideOrientation?: "vertical" | "horizontal";
+    guides?: MesurerStoredWorkspace["guides"];
+    selectedGuideIds?: string[];
+    arrows?: MesurerStoredWorkspace["arrows"];
+    selectedArrowIds?: string[];
+    penStrokes?: MesurerStoredWorkspace["penStrokes"];
+    selectedPenStrokeIds?: string[];
+    textAnnotations?: MesurerStoredWorkspace["textAnnotations"];
+    selectedTextIds?: string[];
+    measurements?: MesurerStoredWorkspace["measurements"];
+    activeMeasurement?: MesurerStoredWorkspace["activeMeasurement"];
+    heldDistances?: MesurerStoredWorkspace["heldDistances"];
+    comments?: CommentThread[];
+  };
 };
 let mesurerInstanceCount = 0;
 export function MesurerClient({
@@ -115,6 +137,7 @@ export function MesurerClient({
   onPersistenceError,
   captureVisibleTab,
   features,
+  initialState,
 }: Required<
   Omit<
     MesurerProps,
@@ -126,11 +149,16 @@ export function MesurerClient({
     | "textStyle"
     | "captureVisibleTab"
     | "features"
+    | "initialState"
   >
 > &
   Pick<
     MesurerProps,
-    "persistKey" | "persistence" | "onPersistenceError" | "captureVisibleTab"
+    | "persistKey"
+    | "persistence"
+    | "onPersistenceError"
+    | "captureVisibleTab"
+    | "initialState"
   > & {
     guideStyle: GuideStyle;
     rulerSettings: RulerSettings;
@@ -206,8 +234,8 @@ export function MesurerClient({
       persistedSettings.selectNewGuideEnabled ?? selectNewGuideEnabledDefault,
     multiMeasureEnabledDefault:
       persistedSettings.multiMeasureEnabled ?? multiMeasureEnabledDefault,
-    initialTextAnnotations: persistedState?.textAnnotations,
-    initialComments: persistedState?.comments,
+    initialState,
+    initialComments: persistedState?.comments ?? initialState?.comments,
     onCommentsChange: (value) => persistCommentsRef.current(value),
   });
   const {
@@ -937,6 +965,7 @@ export function MesurerClient({
     clearGuideDragHold,
     scheduleGuideDragHold,
     enabled,
+    minimized,
     settingsOpen,
     toolMode,
     guidesEnabled,
@@ -1469,6 +1498,7 @@ export function MesurerClient({
             ),
           onChangeStart: recordSnapshot,
           editingArrowId: arrowsPointer.editingArrowId,
+          interactive: overlayInteractive,
         },
         pen: {
           strokes: penStrokes,
@@ -1546,6 +1576,7 @@ export function MesurerClient({
       }}
       toolbar={{
         eventTarget: ownerWindow,
+        initialPosition: initialState?.toolbarPosition ?? { x: 16, y: 16 },
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
