@@ -22,6 +22,8 @@ import InstallCommand from "../../components/install-command";
 import CodeBlock from "../../components/code-block";
 import { getPackageVersion } from "../../utils/get-package-version";
 import Hero from "./hero";
+import ProductCarousel from "./product-carousel";
+import MarketingFooter from "./footer";
 
 const version = getPackageVersion();
 function Header({
@@ -194,6 +196,7 @@ function HomeContent() {
   return (
     <>
       <Hero />
+      <ProductCarousel />
 
       <div id="features" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Features</p>
@@ -582,9 +585,9 @@ function App() {
 
 export default function MarketingPage() {
   return (
-    <main className="min-h-screen px-5 py-20">
+    <main id="overview" className="min-h-screen py-20">
       <Mesurer initialState={{ minimized: true }} />
-      <div className="mx-auto flex max-w-2xl flex-col gap-14">
+      <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5">
         <HomeContent />
         <div className="flex gap-4 pt-6 text-muted">
             <a
@@ -616,6 +619,7 @@ export default function MarketingPage() {
             </a>
         </div>
       </div>
+      <MarketingFooter />
     </main>
   );
 }
