@@ -24,6 +24,8 @@ import Hero from "./hero";
 import ProductCarousel from "./product-carousel";
 import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
+import PlatformSection from "./platform-section";
+import Pricing from "./pricing";
 
 const version = getPackageVersion();
 export function Header({
@@ -588,6 +590,8 @@ export default function MarketingPage() {
         <Hero />
         <ProductCarousel />
         <AgentWorkflow />
+        <PlatformSection />
+        <Pricing />
       </div>
       <MarketingFooter />
     </main>
