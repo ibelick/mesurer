@@ -21,17 +21,9 @@ import {
 import InstallCommand from "../../components/install-command";
 import CodeBlock from "../../components/code-block";
 import { getPackageVersion } from "../../utils/get-package-version";
-import Changelog from "../../components/changelog";
-import Privacy from "../../components/privacy";
 import Hero from "./hero";
 
 const version = getPackageVersion();
-const isChangelogPage =
-  typeof window !== "undefined" && window.location.pathname === "/changelog";
-const isPrivacyPage =
-  typeof window !== "undefined" && window.location.pathname === "/privacy";
-const isDocsPage = isChangelogPage || isPrivacyPage;
-
 function Header({
   showDescription,
   linkToHome,
@@ -588,45 +580,13 @@ function App() {
   );
 }
 
-function ChangelogContent() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="font-[450] text-strong">Changelog</p>
-        <p className="text-muted">Release notes for the package.</p>
-      </div>
-      <Changelog />
-    </div>
-  );
-}
-
-function PrivacyContent() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="font-[450] text-strong">Privacy Policy</p>
-        <p className="text-muted">Data handling and extension permissions.</p>
-      </div>
-      <Privacy />
-    </div>
-  );
-}
-
-export function App() {
+export default function MarketingPage() {
   return (
     <main className="min-h-screen px-5 py-20">
       <Mesurer initialState={{ minimized: true }} />
       <div className="mx-auto flex max-w-2xl flex-col gap-14">
-        {isDocsPage && <Header showDescription={false} linkToHome />}
-        {isChangelogPage ? (
-          <ChangelogContent />
-        ) : isPrivacyPage ? (
-          <PrivacyContent />
-        ) : (
-          <HomeContent />
-        )}
-        {!isDocsPage && (
-          <div className="flex gap-4 pt-6 text-muted">
+        <HomeContent />
+        <div className="flex gap-4 pt-6 text-muted">
             <a
               href="/changelog"
               className="transition-colors hover:text-strong"
@@ -654,8 +614,7 @@ export function App() {
             <a href="/privacy" className="transition-colors hover:text-strong">
               Privacy
             </a>
-          </div>
-        )}
+        </div>
       </div>
     </main>
   );
