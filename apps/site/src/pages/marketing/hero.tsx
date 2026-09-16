@@ -85,7 +85,7 @@ function DownloadCount() {
 
 export default function Hero() {
   return (
-    <section className="mx-auto mt-[38px] w-full max-w-2xl text-left" aria-labelledby="landing-title">
+    <section className="mx-auto mt-24 w-full max-w-2xl text-left" aria-labelledby="landing-title">
       <div className="flex max-w-[460px] flex-col">
         <h1 id="landing-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
           Build precise software with your coding agent.

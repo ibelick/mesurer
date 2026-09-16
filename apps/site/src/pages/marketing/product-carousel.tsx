@@ -46,7 +46,7 @@ export default function ProductCarousel() {
       aria-label="Product videos"
       aria-roledescription="carousel"
     >
-      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-none overscroll-y-none scroll-smooth pb-1">
+      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-clip [touch-action:pan-x_pan-y] overscroll-x-none scroll-smooth pb-1">
         <div aria-hidden="true" className="w-[calc(6%-1rem)] shrink-0 sm:w-[calc(12%-1rem)] lg:w-[calc(18%-1rem)]" />
         {slides.map((slide, index) => (
           <figure

@@ -589,7 +589,7 @@ export default function MarketingPage() {
   return (
     <main id="overview" className="min-h-screen py-20">
       <Mesurer initialState={{ minimized: true }} />
-      <div className="mx-auto flex flex-col gap-14 px-5">
+      <div className="mx-auto flex flex-col gap-20 px-5">
         <Hero />
         <ProductCarousel />
         <AgentWorkflow />

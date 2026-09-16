@@ -26,16 +26,13 @@ export default function MarketingFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5 pb-10 pt-7" aria-label="Site footer">
+    <footer className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5 pb-0 pt-20" aria-label="Site footer">
       <div className="mx-auto max-w-6xl">
         <nav className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-6" aria-label="Footer navigation">
           <div className="flex flex-col items-start gap-3">
             <a href="#overview" className="inline-flex items-center gap-2 text-base font-medium text-strong transition-opacity hover:opacity-70">
               <img src="/logo.svg" alt="" className="size-6" />
-              <span className="text-base tracking-tight">Mesurer</span>
             </a>
-            <p className="max-w-[180px] text-sm leading-[1.35] text-muted">Build precise software with your coding agent.</p>
-            <p className="text-sm text-muted">© {currentYear}</p>
           </div>
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-2 text-sm font-medium text-strong">Product</h2>
@@ -67,6 +64,7 @@ export default function MarketingFooter() {
             <FooterLink href="/terms">Terms</FooterLink>
           </div>
         </nav>
+        <div className="mt-24 text-sm text-muted">© {currentYear}</div>
       </div>
     </footer>
   );
