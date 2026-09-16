@@ -85,31 +85,33 @@ function DownloadCount() {
 
 export default function Hero() {
   return (
-    <section className="mt-[38px] flex w-full max-w-[460px] flex-col text-left" aria-labelledby="landing-title">
-      <h1 id="landing-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
-        Build precise software with your coding agent.
-      </h1>
-      <p className="mt-2 text-pretty text-[22px] leading-[1.23] text-muted">
-        Inspect, annotate, and direct changes directly on your live interface.
-      </p>
-      <div className="mt-[38px] flex flex-wrap items-center justify-start gap-[18px]" aria-label="Get Mesurer">
-        <Button
-          href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <img src="/chrome.svg" alt="" className="size-4 brightness-0 invert" />
-          Add to Chrome
-        </Button>
-        <AgentPromptButton />
+    <section className="mx-auto mt-[38px] w-full max-w-2xl text-left" aria-labelledby="landing-title">
+      <div className="flex max-w-[460px] flex-col">
+        <h1 id="landing-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
+          Build precise software with your coding agent.
+        </h1>
+        <p className="mt-2 text-pretty text-[22px] leading-[1.23] text-muted">
+          Inspect, annotate, and direct changes directly on your live interface.
+        </p>
+        <div className="mt-[38px] flex flex-wrap items-center justify-start gap-[18px]" aria-label="Get Mesurer">
+          <Button
+            href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <img src="/chrome.svg" alt="" className="size-4 brightness-0 invert" />
+            Add to Chrome
+          </Button>
+          <AgentPromptButton />
+        </div>
+        <p className="mt-4 text-pretty text-xs leading-[1.35] text-muted">
+          <a href="#features" className="font-medium text-strong underline decoration-border underline-offset-2 transition-opacity duration-150 ease-out hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
+            See how it works
+          </a>
+          <span aria-hidden="true"> · </span>
+          <DownloadCount /> downloads
+        </p>
       </div>
-      <p className="mt-4 text-pretty text-xs leading-[1.35] text-muted">
-        <a href="#features" className="font-medium text-strong underline decoration-border underline-offset-2 transition-opacity duration-150 ease-out hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
-          See how it works
-        </a>
-        <span aria-hidden="true"> · </span>
-        <DownloadCount /> downloads
-      </p>
     </section>
   );
 }

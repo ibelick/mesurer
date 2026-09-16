@@ -16,7 +16,6 @@ import {
   TextAaIcon,
   TextTIcon,
   ToggleLeftIcon,
-  XLogoIcon,
 } from "@phosphor-icons/react";
 import InstallCommand from "../../components/install-command";
 import CodeBlock from "../../components/code-block";
@@ -24,9 +23,10 @@ import { getPackageVersion } from "../../utils/get-package-version";
 import Hero from "./hero";
 import ProductCarousel from "./product-carousel";
 import MarketingFooter from "./footer";
+import AgentWorkflow from "./agent-workflow";
 
 const version = getPackageVersion();
-function Header({
+export function Header({
   showDescription,
   linkToHome,
 }: {
@@ -104,7 +104,7 @@ function Header({
   );
 }
 
-function HomeContent() {
+export function HomeContent() {
   const features = [
     {
       icon: <ToggleLeftIcon size={16} weight="light" />,
@@ -195,9 +195,6 @@ function HomeContent() {
 
   return (
     <>
-      <Hero />
-      <ProductCarousel />
-
       <div id="features" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Features</p>
         <div className="flex flex-col gap-2">
@@ -587,37 +584,10 @@ export default function MarketingPage() {
   return (
     <main id="overview" className="min-h-screen py-20">
       <Mesurer initialState={{ minimized: true }} />
-      <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5">
-        <HomeContent />
-        <div className="flex gap-4 pt-6 text-muted">
-            <a
-              href="/changelog"
-              className="transition-colors hover:text-strong"
-            >
-              Changelog
-            </a>
-            <a
-              href="https://github.com/ibelick/mesurer/issues/new?title=Feedback&body=**What%20happened%3F**%0A%0A%0A**What%20would%20help%3F**%0A%0A%0A**Context**%20%28browser%2C%20URL%29%0A"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-strong"
-            >
-              Feedback
-            </a>
-            <a
-              href="https://x.com/mesurerdev"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Follow Mesurer on X"
-              className="inline-flex items-center gap-1 transition-colors hover:text-strong"
-            >
-              <XLogoIcon size={14} weight="regular" aria-hidden="true" />
-              <span>Follow</span>
-            </a>
-            <a href="/privacy" className="transition-colors hover:text-strong">
-              Privacy
-            </a>
-        </div>
+      <div className="mx-auto flex flex-col gap-14 px-5">
+        <Hero />
+        <ProductCarousel />
+        <AgentWorkflow />
       </div>
       <MarketingFooter />
     </main>
