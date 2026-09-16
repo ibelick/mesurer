@@ -28,12 +28,12 @@ export default function AgentWorkflow() {
 
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {cards.map((card) => (
-            <article key={card.title} className="flex min-w-0 flex-col rounded-2xl bg-subtle p-2">
+            <article key={card.title} className="flex min-w-0 flex-col rounded-[var(--radius)] bg-subtle p-2">
               <div className="flex flex-col px-4 pb-5 pt-4">
                 <h3 className="text-base font-medium text-strong">{card.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p>
               </div>
-              <div className="flex aspect-[4/3] items-center justify-center rounded-xl border border-border bg-bg text-xs text-muted">
+              <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius)] border border-border bg-bg text-xs text-muted">
                 Visual placeholder
               </div>
             </article>

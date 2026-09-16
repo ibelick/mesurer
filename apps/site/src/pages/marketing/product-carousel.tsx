@@ -46,7 +46,7 @@ export default function ProductCarousel() {
       aria-label="Product videos"
       aria-roledescription="carousel"
     >
-      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-none scroll-smooth pb-1">
+      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-none overscroll-y-none scroll-smooth pb-1">
         <div aria-hidden="true" className="w-[calc(6%-1rem)] shrink-0 sm:w-[calc(12%-1rem)] lg:w-[calc(18%-1rem)]" />
         {slides.map((slide, index) => (
           <figure
@@ -57,7 +57,7 @@ export default function ProductCarousel() {
             className="w-[88%] shrink-0 snap-center sm:w-[76%] lg:w-[64%]"
             aria-label={`${slide.title} video`}
           >
-            <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-2xl border border-border bg-subtle">
+            <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border bg-subtle">
               <span className="text-sm font-medium text-muted">{slide.title}</span>
             </div>
             <figcaption className="mt-3 text-center text-sm">
@@ -75,7 +75,7 @@ export default function ProductCarousel() {
           aria-label="Previous product video"
           disabled={activeIndex === 0}
           onClick={() => showSlide(activeIndex - 1)}
-          className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+          className="inline-flex size-9 items-center justify-center rounded-[var(--radius)] border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
         >
           <span aria-hidden="true">←</span>
         </button>
@@ -84,7 +84,7 @@ export default function ProductCarousel() {
           aria-label="Next product video"
           disabled={activeIndex === slides.length - 1}
           onClick={() => showSlide(activeIndex + 1)}
-          className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+          className="inline-flex size-9 items-center justify-center rounded-[var(--radius)] border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
         >
           <span aria-hidden="true">→</span>
         </button>

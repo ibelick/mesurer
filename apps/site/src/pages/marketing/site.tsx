@@ -26,6 +26,9 @@ import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
 import PlatformSection from "./platform-section";
 import Pricing from "./pricing";
+import FAQ from "./faq";
+import FinalCta from "./final-cta";
+import SocialProof from "./social-proof";
 
 const version = getPackageVersion();
 export function Header({
@@ -215,8 +218,8 @@ export function HomeContent() {
       <div className="flex flex-col gap-4">
         <p className="font-[450] text-strong">How to use</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[2px] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[2px] text-strong">
+          <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
               <img src="/chrome.svg" alt="" className="h-6 w-6" />
             </div>
             <p className="mt-3 text-[15px] font-medium text-strong">
@@ -234,8 +237,8 @@ export function HomeContent() {
               Add to Chrome
             </a>
           </div>
-          <div className="rounded-[2px] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[2px] text-strong">
+          <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
               <img src="/npm.svg" alt="" className="h-5 w-5" />
             </div>
             <p className="mt-3 text-[15px] font-medium text-strong">
@@ -591,7 +594,10 @@ export default function MarketingPage() {
         <ProductCarousel />
         <AgentWorkflow />
         <PlatformSection />
+        <SocialProof />
         <Pricing />
+        <FAQ />
+        <FinalCta />
       </div>
       <MarketingFooter />
     </main>

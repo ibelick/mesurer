@@ -7,7 +7,7 @@ type CodeBlockProps = {
 
 export default function CodeBlock({ children, as = "code" }: CodeBlockProps) {
   const className =
-    "rounded-[2px] bg-subtle font-mono text-[13px] text-strong w-full py-2 px-3";
+    "bg-subtle font-mono text-[13px] text-strong w-full py-2 px-3";
 
   if (as === "pre") {
     return (

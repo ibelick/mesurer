@@ -93,7 +93,7 @@ export default function Pricing() {
             return (
               <article
                 key={plan.id}
-                className="flex flex-col rounded-2xl border border-border p-6"
+                className="flex flex-col rounded-[var(--radius)] border border-border p-6"
                 aria-labelledby={`${plan.id}-plan-title`}
               >
                 <div className="flex-1">

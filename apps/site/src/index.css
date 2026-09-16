@@ -18,6 +18,7 @@
   --color-muted: #888888;
   --color-subtle: #f0f0f0;
   --color-border: #ededed;
+  --radius: 4px;
 }
 
 html {
@@ -43,7 +44,7 @@ html::selection {
   font-family: var(--font-mono);
   background: var(--color-subtle);
   color: var(--color-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 1px 4px;
   font-size: 13px;
 }

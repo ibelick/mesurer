@@ -10,7 +10,7 @@ export default function PlatformSection() {
             Connect every interface, deployment, and agent to Mesurer.
           </p>
         </div>
-        <div className="mt-10 flex aspect-[16/9] items-center justify-center overflow-hidden rounded-2xl border border-border bg-subtle text-sm text-muted">
+        <div className="mt-10 flex aspect-[16/9] items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border bg-subtle text-sm text-muted">
           Platform image placeholder
         </div>
       </div>
