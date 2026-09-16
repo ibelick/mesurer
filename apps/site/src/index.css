@@ -48,6 +48,26 @@ html::selection {
   font-size: 13px;
 }
 
+@keyframes mesurer-digit-reel {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, var(--mesurer-digit-offset), 0);
+  }
+}
+
+.mesurer-digit-reel {
+  animation: mesurer-digit-reel 1s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesurer-digit-reel {
+    animation: none;
+    transform: translate3d(0, var(--mesurer-digit-offset), 0);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
