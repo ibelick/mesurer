@@ -144,6 +144,18 @@ export function CommentsPanel({
             onChange={(event) => setSearchQuery(event.currentTarget.value)}
             containerClassName="msr:min-w-0 msr:flex-1"
             leftIcon={<svg aria-hidden="true" viewBox="0 0 16 16" className="msr:size-3 msr:text-ink-500" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" strokeLinecap="round" /></svg>}
+            rightIcon={searchQuery ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:text-ink-400 msr:outline-none msr:hover:text-ink-700 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400"
+                onClick={() => setSearchQuery("")}
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" className="msr:size-3" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+                  <path d="m4.5 4.5 7 7M11.5 4.5l-7 7" />
+                </svg>
+              </button>
+            ) : undefined}
           />
           <button
             type="button"

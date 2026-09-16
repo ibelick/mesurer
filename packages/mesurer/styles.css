@@ -21,14 +21,23 @@
     line-height: 1.5;
   }
 
-  .mesurer-root button,
-  .mesurer-root input,
-  .mesurer-root select,
-  .mesurer-root textarea {
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-  }
+.mesurer-root button,
+.mesurer-root input,
+.mesurer-root select,
+.mesurer-root textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.mesurer-root input[type="search"]::-webkit-search-cancel-button,
+.mesurer-root input[type="search"]::-webkit-search-decoration,
+.mesurer-root input[type="search"]::-moz-search-clear,
+.mesurer-root input[type="search"]::-ms-clear {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
 }
 
 @layer utilities {
