@@ -292,6 +292,8 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
 
   expect(copied).not.toContain("Mesurer Comments");
   expect(copied).toContain("URL: ");
+  const viewport = await page.evaluate(() => `Viewport: ${window.innerWidth} × ${window.innerHeight} CSS px`);
+  expect(copied).toContain(viewport);
   expect(copied).toContain("Inspect this element.");
   expect(copied).toContain("[<button>Nested inner button</button> selector:");
   expect(copied).not.toContain("### Computed Styles");
