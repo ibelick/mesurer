@@ -143,7 +143,7 @@ export function CommentsLayer({
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
   const hoverTimeoutRef = useRef<number | null>(null)
   const visibleComments = comments.filter((comment) =>
-    comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
+    commentFilter === "all" || comment.status === commentFilter,
   )
   const selected = visibleComments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null

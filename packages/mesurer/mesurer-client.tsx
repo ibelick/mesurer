@@ -365,6 +365,13 @@ export function MesurerClient({
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
+  const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
+    setCommentFilter(filter);
+    const selectedComment = comments.find((comment) => comment.id === selectedCommentId);
+    if (selectedComment && filter !== "all" && selectedComment.status !== filter) {
+      setSelectedCommentId(null);
+    }
+  }, [comments, selectedCommentId]);
   useEffect(() => {
     setOpenMenu((current) => {
       if (settingsOpen) return { type: "settings" };
@@ -1656,7 +1663,7 @@ export function MesurerClient({
           onDelete: deleteComment,
            onDeleteAll: deleteAllComments,
            statusFilter: commentFilter,
-           onStatusFilterChange: setCommentFilter,
+           onStatusFilterChange: setCommentFilterAndSelection,
           onCopy: async () => {
             await copyCommentsForAgent(comments, ownerWindow)
           },

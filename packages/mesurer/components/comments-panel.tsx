@@ -277,7 +277,7 @@ export function CommentsPanel({
               </MenuItem>
             ))}
             <div className="msr:my-1 msr:border-t msr:border-ink-100" />
-            <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+            <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
         </div>, portalTarget)
       ) : null}
       {deleteId && deletePosition ? (

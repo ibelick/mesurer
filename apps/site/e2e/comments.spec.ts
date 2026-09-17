@@ -184,8 +184,17 @@ test("resolves a comment and reopens it from the resolved filter", async ({ page
   await expect(card).toBeVisible();
   await expect(pin).toHaveCSS("opacity", "0.45");
   await card.getByRole("button", { name: "Reopen comment" }).click();
+  await expect(card).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "All comments" }).click();
+  await expect(card).toBeVisible();
   await expect(pin).toHaveCount(1);
-  await expect(card.getByRole("button", { name: "Mark comment as resolved" })).toBeVisible();
+  await expect(pin).toHaveCSS("opacity", "1");
+  await page.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Open" }).click();
+  await expect(card).toBeVisible();
+  await expect(pin).toHaveCSS("opacity", "1");
 });
 
 test("shows every comment and opens a thread from the list", async ({ page }) => {
