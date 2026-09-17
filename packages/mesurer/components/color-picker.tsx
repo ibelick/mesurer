@@ -119,7 +119,7 @@ export function ColorPicker({
     <div
       ref={panelRef}
       className={cn(
-        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-lg",
+        "mesurer-color-picker msr:pointer-events-auto msr:absolute msr:left-0 msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-floating",
         side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
       )}
       role="dialog"

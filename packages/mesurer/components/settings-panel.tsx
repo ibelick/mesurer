@@ -154,7 +154,7 @@ function SettingsSwitch({ label, checked, onChange }: {
         )}
       >
         <span
-          className="msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:shadow-sm msr:transition-transform"
+             className="msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:transition-transform"
           style={{ transform: `translateX(${checked ? 12 : 0}px)` }}
         />
       </span>
@@ -251,7 +251,7 @@ function SliderControl({
             aria-hidden="true"
           />
           <div
-            className="msr:absolute msr:rounded-control msr:bg-white msr:shadow-sm msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+             className="msr:absolute msr:rounded-control msr:bg-white msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -611,7 +611,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-          className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-md ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
+           className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)

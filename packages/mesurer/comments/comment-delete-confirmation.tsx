@@ -20,7 +20,7 @@ export function CommentDeleteConfirmation({
     <div
       data-mesurer-comment-delete-confirmation
       data-mesurer-comment-ui
-      className={`${floating ? "msr:relative" : "msr:absolute msr:right-2 msr:top-9"} msr:z-10 msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-lg msr:outline-none`}
+      className={`${floating ? "msr:relative" : "msr:absolute msr:right-2 msr:top-9"} msr:z-10 msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-floating msr:outline-none`}
       role="dialog"
       aria-label="Delete comment"
       tabIndex={-1}

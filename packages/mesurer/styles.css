@@ -5,6 +5,11 @@
 
 @theme {
   --radius-control: 5px;
+  --shadow-toolbar:
+    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.1))
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+  --shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.12);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
@@ -134,10 +139,7 @@
   display: block;
   width: max-content;
   max-width: 100%;
-  filter:
-    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
-    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.1))
-    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+  filter: var(--msr-shadow-toolbar);
 }
 
 .mesurer-toolbar-chrome {
@@ -426,10 +428,7 @@
 }
 
 .mesurer-toast-surface {
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--msr-shadow-floating);
 }
 
 .mesurer-root {
