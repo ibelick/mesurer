@@ -1660,8 +1660,9 @@ export function MesurerClient({
             setSelectedCommentId(id)
             commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
           },
-          onDelete: deleteComment,
+           onDelete: deleteComment,
            onDeleteAll: deleteAllComments,
+           onToggleResolved: toggleResolvedComment,
            statusFilter: commentFilter,
            onStatusFilterChange: setCommentFilterAndSelection,
           onCopy: async () => {

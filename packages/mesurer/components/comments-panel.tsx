@@ -34,6 +34,7 @@ export function CommentsPanel({
   ownerWindow,
   copyShortcut,
   onDelete,
+  onToggleResolved,
   panelRef,
   placement,
   fixed = false,
@@ -49,6 +50,7 @@ export function CommentsPanel({
   ownerWindow: Window
   copyShortcut: string
   onDelete: (id: string) => void
+  onToggleResolved: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
   placement: { side: "top" | "bottom"; height: number; right: number; top?: number; bottom?: number }
   fixed?: boolean
@@ -212,23 +214,40 @@ export function CommentsPanel({
                       <span className="msr:line-clamp-2 msr:w-full msr:text-[11px] msr:leading-4 msr:text-ink-700">{message?.text ?? "Empty comment"}</span>
                       <span className="msr:text-[10px] msr:text-ink-500">{replyCount} {replyCount === 1 ? "reply" : "replies"}{unresolved ? " · target not found" : ""}</span>
                     </button>
-                    <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
-                      if (openMenuId === comment.id) {
-                        setOpenMenuId(null)
-                        return
-                      }
-                      const panel = panelRef.current
-                      if (panel) {
-                        const buttonRect = event.currentTarget.getBoundingClientRect()
-                        setCommentMenuPosition({
-                          top: buttonRect.top - 4,
-                          right: ownerWindow.innerWidth - buttonRect.right,
-                        })
-                      }
-                      setOpenMenuId(comment.id)
-                    }}>
-                      <MoreIcon size={12} />
-                    </button>
+                    <div className="msr:flex msr:shrink-0 msr:items-center msr:gap-0.5">
+                      <button
+                        type="button"
+                        aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
+                        aria-pressed={comment.status === "resolved"}
+                        className={`msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onToggleResolved(comment.id)
+                        }}
+                      >
+                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
+                          <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "white" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
+                        if (openMenuId === comment.id) {
+                          setOpenMenuId(null)
+                          return
+                        }
+                        const panel = panelRef.current
+                        if (panel) {
+                          const buttonRect = event.currentTarget.getBoundingClientRect()
+                          setCommentMenuPosition({
+                            top: buttonRect.top - 4,
+                            right: ownerWindow.innerWidth - buttonRect.right,
+                          })
+                        }
+                        setOpenMenuId(comment.id)
+                      }}>
+                        <MoreIcon size={12} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </li>

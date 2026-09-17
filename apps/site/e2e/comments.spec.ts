@@ -197,6 +197,26 @@ test("resolves a comment and reopens it from the resolved filter", async ({ page
   await expect(pin).toHaveCSS("opacity", "1");
 });
 
+test("resolves a comment from the comments list", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve from the list.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await panel.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(0);
+
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
+  await expect(panel.getByRole("button", { name: "Reopen comment" })).toBeVisible();
+});
+
 test("shows every comment and opens a thread from the list", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
