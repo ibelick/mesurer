@@ -400,7 +400,8 @@
 }
 
 .mesurer-thin-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .mesurer-thin-scrollbar::-webkit-scrollbar-track {
@@ -409,7 +410,19 @@
 
 .mesurer-thin-scrollbar::-webkit-scrollbar-thumb {
   background: var(--msr-color-ink-200);
-  border-radius: 999px;
+  border-radius: var(--msr-radius-control);
+}
+
+.mesurer-thin-scrollbar:hover {
+  scrollbar-color: var(--msr-color-ink-300) transparent;
+}
+
+.mesurer-thin-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--msr-color-ink-300);
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .mesurer-toast-surface {

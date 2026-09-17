@@ -184,6 +184,7 @@ type ToolbarButtonProps = {
   tooltipVisible: boolean;
   tooltip: ToolbarTooltipProps;
   children: ReactNode;
+  className?: string;
 };
 
 function ToolbarButton({
@@ -195,6 +196,7 @@ function ToolbarButton({
   tooltipVisible,
   tooltip,
   children,
+  className,
 }: ToolbarButtonProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -214,6 +216,7 @@ function ToolbarButton({
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
             : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
+          className,
         )}
         onClick={onClick}
       >
@@ -650,6 +653,7 @@ function ToolbarComponent(
 
   const colorPickerMode = useCallback(() => {
     onCancelTransient();
+    onInteract();
     setEnabled(true);
     setToolMode("none");
     onCancelScreenshot();
@@ -659,15 +663,14 @@ function ToolbarComponent(
       setColorPickerActive(true);
       onColorPickerClick();
     }
-    onInteract();
   }, [colorPickerActive, onCancelScreenshot, onCancelTransient, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const screenshotMode = useCallback(() => {
     onCancelTransient();
+    onInteract();
     setEnabled(true);
     setColorPickerActive(false);
     onScreenshotClick();
-    onInteract();
   }, [onCancelTransient, onInteract, onScreenshotClick, setColorPickerActive, setEnabled]);
 
   const rulersMode = useCallback(() => {
@@ -817,7 +820,12 @@ function ToolbarComponent(
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         const target = event.target;
-        if (target instanceof Element && target.closest("[role='menu'], [role='dialog']")) return;
+        if (
+          target instanceof Element &&
+          target.closest("[role='menu'], [role='dialog'], [data-tool-id='settings']")
+        ) {
+          return;
+        }
         onInteract();
         onPointerDown(event);
       }}
@@ -1235,21 +1243,20 @@ function ToolbarComponent(
            )
          ) : null}
       </div>
-       {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
-        <ToolbarButton
-          id="settings"
-          active={settingsOpen}
-          label="Settings"
-          shortcut={settingsShortcut}
-          onClick={() => {
-            onCancelScreenshot();
-            onInteract();
-            onToggleSettings();
-            setOpenMenu(settingsOpen ? null : { type: "settings" });
-          }}
-          tooltip={toolbarTooltip}
-          tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
-        >
+        {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
+          <ToolbarButton
+            id="settings"
+            className="msr:relative msr:z-[71]"
+            active={settingsOpen}
+            label="Settings"
+            shortcut={settingsShortcut}
+            onClick={() => {
+              onCancelScreenshot();
+              onToggleSettings();
+            }}
+            tooltip={toolbarTooltip}
+            tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
+          >
           <GearIcon size={20} aria-hidden="true" />
         </ToolbarButton>
         {settingsOpen ? (

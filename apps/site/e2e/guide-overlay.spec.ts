@@ -137,12 +137,16 @@ test("Option+S pins the current distance overlay", async ({ page }) => {
   const selectedBox = await selectedTarget.boundingBox();
   expect(selectedBox).not.toBeNull();
   await page.mouse.click(selectedBox!.x + selectedBox!.width / 2, selectedBox!.y + selectedBox!.height / 2);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
 
   const hoverTarget = page.getByRole("button", { name: "Secondary app button" });
   const hoverBox = await hoverTarget.boundingBox();
   expect(hoverBox).not.toBeNull();
   await page.keyboard.down("Alt");
   await page.mouse.move(hoverBox!.x + hoverBox!.width / 2, hoverBox!.y + hoverBox!.height / 2);
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await page.keyboard.press("s");
   await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
   await page.keyboard.up("Alt");
@@ -766,6 +770,29 @@ test("native color picker shows color formats", async ({ page }) => {
   await expect(picker).toContainText("rgb");
   await expect(picker).toContainText("oklch");
   await expect(picker).not.toContainText("Copied!");
+
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
+  await expect(picker).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+});
+
+test("opening a toolbar menu closes the color picker card", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#ff0000" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
+  await expect(page.locator(".mesurer-color-picker")).toBeVisible();
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+
+  await expect(page.locator(".mesurer-color-picker")).toHaveCount(0);
+  await expect(page.getByRole("menu")).toBeVisible();
 });
 
 test("falls back to default color formats when persisted formats are invalid", async ({ page }) => {
@@ -1041,7 +1068,14 @@ test("disabling Mesurer closes screenshot selection", async ({ page }) => {
 
 test("settings button opens and dismisses its popover", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  const settings = page.getByRole("button", { name: "Settings" });
+  const settings = page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ });
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(settings).toHaveAttribute("aria-pressed", "true");
+  await settings.click();
+  await expect(settings).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+
   await settings.click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await page.keyboard.press("Escape");

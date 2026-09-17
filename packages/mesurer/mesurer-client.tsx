@@ -769,6 +769,7 @@ export function MesurerClient({
         rulersVisible,
       }),
     );
+    colorPicker.setActive(false);
     screenshot.closeUi();
     setSettingsOpen(true);
   }, [
@@ -1140,7 +1141,9 @@ export function MesurerClient({
     setToolbarActive(true);
     setOpenMenu(null);
     setSettingsOpen(false);
-  }, [setOpenMenu, setSettingsOpen, setToolbarActive]);
+    colorPicker.setActive(false);
+    closeScreenshotRef.current?.();
+  }, [colorPicker.setActive, setOpenMenu, setSettingsOpen, setToolbarActive]);
   const pinableOverlay = guidesEnabled
     ? (guideDistanceOverlay ?? optionPairOverlay)
     : (optionPairOverlay ?? guideDistanceOverlay);
