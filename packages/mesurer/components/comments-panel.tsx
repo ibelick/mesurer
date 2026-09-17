@@ -1,4 +1,4 @@
-import type { CommentThread } from "../comments/types"
+import type { CommentFilter, CommentThread } from "../comments/types"
 import type { RefObject } from "react"
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
@@ -8,6 +8,7 @@ import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { CheckIcon, MoreIcon } from "./icons"
+import { MenuItem } from "./menu"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -36,6 +37,8 @@ export function CommentsPanel({
   panelRef,
   placement,
   fixed = false,
+  statusFilter,
+  onStatusFilterChange,
 }: {
   comments: CommentThread[]
   unresolvedIds: ReadonlySet<string>
@@ -49,6 +52,8 @@ export function CommentsPanel({
   panelRef: RefObject<HTMLDivElement | null>
   placement: { side: "top" | "bottom"; height: number; right: number; top?: number; bottom?: number }
   fixed?: boolean
+  statusFilter: CommentFilter
+  onStatusFilterChange: (filter: CommentFilter) => void
 }) {
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -61,11 +66,14 @@ export function CommentsPanel({
   const [copied, setCopied] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const normalizedQuery = searchQuery.trim().toLowerCase()
+  const statusFilteredComments = statusFilter === "all"
+    ? orderedComments
+    : orderedComments.filter((comment) => comment.status === statusFilter)
   const filteredComments = normalizedQuery
-    ? orderedComments.filter((comment) =>
+    ? statusFilteredComments.filter((comment) =>
         comment.messages.some((message) => message.text.toLowerCase().includes(normalizedQuery)),
       )
-    : orderedComments
+    : statusFilteredComments
   const portalTarget = panelRef.current ?? ownerWindow.document.body
 
   useEffect(() => {
@@ -196,7 +204,7 @@ export function CommentsPanel({
             const selected = selectedId === comment.id
             return (
               <li key={comment.id} className="msr:relative">
-                <div className={`msr:px-3 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-50"}`}>
+                 <div className={`msr:px-3 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-50"}`}>
                   <div className="msr:flex msr:items-start msr:justify-between msr:gap-2">
                     <button type="button" className="msr:flex msr:min-w-0 msr:flex-1 msr:flex-col msr:items-start msr:gap-1 msr:text-left msr:outline-none msr:focus-visible:ring-2 msr:focus-visible:ring-inset msr:focus-visible:ring-ink-400" aria-current={selected ? "true" : undefined} onClick={() => onSelect(comment.id)}>
                       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">You</span>
@@ -227,7 +235,7 @@ export function CommentsPanel({
             )
           })}
         </ul>
-      ) : <p className="msr:px-3 msr:py-6 msr:text-center msr:text-[12px] msr:text-ink-500">{normalizedQuery ? "No matching comments." : "No comments yet."}</p>}
+      ) : <p className="msr:px-3 msr:py-6 msr:text-center msr:text-[12px] msr:text-ink-500">{normalizedQuery ? "No matching comments." : statusFilter === "resolved" ? "No resolved comments." : statusFilter === "open" ? "No open comments." : "No comments yet."}</p>}
       {openMenuId && openMenuId !== "all" && commentMenuPosition ? (
         createPortal(<div
           role="menu"
@@ -251,7 +259,25 @@ export function CommentsPanel({
            style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+            {(["open", "resolved", "all"] as const).map((filter) => (
+              <MenuItem
+                key={filter}
+                role="menuitemradio"
+                aria-checked={statusFilter === filter}
+                variant="neutral"
+                className="msr:justify-between"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onStatusFilterChange(filter)
+                  setOpenMenuId(null)
+                }}
+              >
+                {filter === "open" ? "Open" : filter === "resolved" ? "Resolved" : "All comments"}
+                {statusFilter === filter ? <CheckIcon size={11} /> : null}
+              </MenuItem>
+            ))}
+            <div className="msr:my-1 msr:border-t msr:border-ink-100" />
+            <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
         </div>, portalTarget)
       ) : null}
       {deleteId && deletePosition ? (

@@ -4,3 +4,5 @@ export type {
   CommentThread,
   Rect,
 } from "../core/types"
+
+export type CommentFilter = "open" | "resolved" | "all"

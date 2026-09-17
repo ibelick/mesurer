@@ -155,6 +155,39 @@ test("closes an open comment card and reopens it from the pin", async ({ page })
   await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
 });
 
+test("resolves a comment and reopens it from the resolved filter", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve this review.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  const pin = page.locator("[data-mesurer-comment-pin]");
+  await expect(pin).toHaveCount(1);
+  await pin.click();
+  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
+  await expect(pin).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await expect(panel).toContainText("No open comments.");
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
+  await expect(panel).toContainText("Resolve this review.");
+  await expect(panel).toContainText("Resolve this review.");
+  await panel.getByText("Resolve this review.", { exact: true }).click();
+
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await expect(card).toBeVisible();
+  await expect(pin).toHaveCSS("opacity", "0.45");
+  await card.getByRole("button", { name: "Reopen comment" }).click();
+  await expect(pin).toHaveCount(1);
+  await expect(card.getByRole("button", { name: "Mark comment as resolved" })).toBeVisible();
+});
+
 test("shows every comment and opens a thread from the list", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -232,7 +265,7 @@ test("deletes all comments from the comments list menu", async ({ page }) => {
   const confirmation = page.getByRole("dialog", { name: "Delete comment" });
   await expect(confirmation).toContainText("delete all comments");
    await confirmation.getByRole("button", { name: "Yes" }).click();
-  await expect(panel).toContainText("No comments yet.");
+   await expect(panel).toContainText("No open comments.");
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {

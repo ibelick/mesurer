@@ -44,6 +44,7 @@ import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
 import type { CommentThread, ToolMode } from "./core/types";
+import type { CommentFilter } from "./comments/types";
 import {
   createLocalStoragePersistence,
   type MesurerPersistence,
@@ -238,6 +239,7 @@ export function MesurerClient({
     initialComments: persistedState?.comments ?? initialState?.comments,
     onCommentsChange: (value) => persistCommentsRef.current(value),
   });
+  const [commentFilter, setCommentFilter] = useState<CommentFilter>("open");
   const {
     selectionRectRef,
     enabledRef,
@@ -359,6 +361,7 @@ export function MesurerClient({
     deleteComment,
     deleteAllComments,
     deleteMessage: deleteCommentMessage,
+    toggleResolved: toggleCommentResolved,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
@@ -658,6 +661,10 @@ export function MesurerClient({
   const redo = useCallback(() => {
     redoHistory();
   }, [redoHistory]);
+  const toggleResolvedComment = useCallback((id: string) => {
+    recordSnapshot();
+    toggleCommentResolved(id);
+  }, [recordSnapshot, toggleCommentResolved]);
   const annotationSelection = useAnnotationSelection({
     enabled,
     toolMode,
@@ -1555,6 +1562,7 @@ export function MesurerClient({
         },
         comments: comments.length > 0 || toolMode === "comments" ? {
           comments,
+          commentFilter,
           rects: commentRuntimeSnapshot.rects,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
           hoverRect: commentRuntimeSnapshot.hoverRect,
@@ -1573,6 +1581,7 @@ export function MesurerClient({
            onEndMove: commentPointer.onEndMove,
            ownerDocument,
            onAddMessage: addCommentMessage,
+            onToggleResolved: toggleResolvedComment,
             onDelete: deleteComment,
            onDeleteMessage: deleteCommentMessage,
            onEditMessage: updateCommentMessage,
@@ -1633,7 +1642,7 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-        comments: {
+         comments: {
           count: comments.length,
           comments,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
@@ -1645,7 +1654,9 @@ export function MesurerClient({
             commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
           },
           onDelete: deleteComment,
-          onDeleteAll: deleteAllComments,
+           onDeleteAll: deleteAllComments,
+           statusFilter: commentFilter,
+           onStatusFilterChange: setCommentFilter,
           onCopy: async () => {
             await copyCommentsForAgent(comments, ownerWindow)
           },

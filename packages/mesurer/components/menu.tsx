@@ -29,13 +29,14 @@ export function MenuItem({
   className,
   children,
   variant = "accent",
+  role,
   ...props
 }: MenuItemProps) {
   return (
     <button
       {...props}
       type="button"
-      role="menuitem"
+      role={role ?? "menuitem"}
       className={cn(
         "msr:flex msr:w-full msr:items-center msr:rounded-control msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700",
         variant === "accent"

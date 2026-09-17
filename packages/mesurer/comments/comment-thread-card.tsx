@@ -22,6 +22,7 @@ type CommentThreadCardProps = {
   replyText: string
   onReplyTextChange: (text: string) => void
   onAddMessage: (text: string) => void
+  onToggleResolved: (commentId: string) => void
   onClose?: () => void
   ownerWindow: Window | null
   formatTime: (timestamp: number) => string
@@ -43,6 +44,7 @@ export function CommentThreadCard({
   replyText,
   onReplyTextChange,
   onAddMessage,
+  onToggleResolved,
   onClose,
   ownerWindow,
   formatTime,
@@ -136,6 +138,18 @@ export function CommentThreadCard({
             />
           ) : null}
         </div>
+        <button
+          type="button"
+          aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
+          aria-pressed={comment.status === "resolved"}
+          className={`msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+          onClick={() => onToggleResolved(comment.id)}
+        >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.25" />
+            <path d="m5.2 8 1.8 1.8 3.8-4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <button
           type="button"
           aria-label="Close comment"

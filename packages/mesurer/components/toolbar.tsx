@@ -12,7 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
-import type { CommentThread } from "../comments/types";
+import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
@@ -90,6 +90,8 @@ type ToolbarComments = {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
+  statusFilter: CommentFilter;
+  onStatusFilterChange: (filter: CommentFilter) => void;
 };
 
 type ToolbarProps = {
@@ -311,6 +313,8 @@ function ToolbarComponent(
     onSelect: onSelectComment,
     onDelete: onDeleteComment,
     onDeleteAll: onDeleteAllComments,
+    statusFilter,
+    onStatusFilterChange,
   } = comments;
   const {
     open: settingsOpen,
@@ -1187,8 +1191,10 @@ function ToolbarComponent(
                panelRef={commentsPanelRef}
                placement={commentsPlacement}
                onDelete={onDeleteComment}
-               onDeleteAll={onDeleteAllComments}
-               onCopy={onCopyComments}
+                onDeleteAll={onDeleteAllComments}
+                onCopy={onCopyComments}
+                statusFilter={statusFilter}
+                onStatusFilterChange={onStatusFilterChange}
                ownerWindow={eventTarget}
                copyShortcut={copyCommentsShortcut}
                 onSelect={(id) => {
