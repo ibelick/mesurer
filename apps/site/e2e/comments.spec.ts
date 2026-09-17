@@ -190,6 +190,28 @@ test("resolves a comment and reopens it from the resolved filter", async ({ page
   await expect(pin).toHaveCount(0);
 });
 
+test("keeps the thread open when using card actions", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Keep this thread open.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toBeVisible();
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(card).toBeVisible();
+  await card.getByRole("textbox", { name: "Reply to comment" }).fill("Still here.");
+  await card.getByRole("button", { name: "Send reply" }).click();
+  await expect(card).toContainText("Still here.");
+  await card.getByRole("button", { name: "Close comment" }).click();
+  await expect(card).toHaveCount(0);
+});
+
 test("resolves a comment from the comments list", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);

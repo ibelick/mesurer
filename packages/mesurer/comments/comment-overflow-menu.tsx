@@ -9,6 +9,7 @@ export function CommentOverflowMenu({ commentId, onEdit, onCopySelector, onDelet
   return (
     <div
       data-mesurer-comment-overflow-menu
+      data-mesurer-comment-ui
       className="msr:absolute msr:right-0 msr:top-7 msr:z-10 msr:w-52 msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating"
       role="menu"
       onPointerDown={(event) => event.stopPropagation()}

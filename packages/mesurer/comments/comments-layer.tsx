@@ -6,7 +6,7 @@ import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { getRectFromDom } from "../core/dom"
-import { isRectEqual } from "./dom"
+import { COMMENT_CHROME_SELECTOR, eventPathHits, isRectEqual } from "./dom"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
 type CommentsLayerProps = {
@@ -95,15 +95,7 @@ const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
 
-const isCommentChromeEvent = (event: Event) =>
-  event.composedPath().some((node) => {
-    if (!(node instanceof Element)) return false
-    return (
-      node.hasAttribute("data-mesurer-comment-pin") ||
-      node.hasAttribute("data-mesurer-comment-popover") ||
-      (node.hasAttribute("data-mesurer-comment-ui") && !node.hasAttribute("data-mesurer-comments-layer"))
-    )
-  })
+const isCommentChromeEvent = (event: Event) => eventPathHits(event, COMMENT_CHROME_SELECTOR)
 
 export function CommentsLayer({
   comments,

@@ -781,15 +781,26 @@ function ToolbarComponent(
 
   useEffect(() => {
     if (!openMenu || openMenu.type === "settings") return;
+    const menu = openMenu
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
       const path = event.composedPath()
-      const ElementConstructor = eventTarget.Element
       const pathHas = (selector: string) =>
-        path.some(
-          (target) => target instanceof ElementConstructor && target.closest(selector),
-        )
+        path.some((target) => {
+          const candidate = target as { closest?: (value: string) => Element | null }
+          return Boolean(candidate.closest?.(selector))
+        })
       if (pathHas("[data-mesurer-comment-delete-confirmation]")) return
       if (findDeleteConfirmation(eventTarget)) return
+      if (menu.type === "comments" && menu.panel) {
+        if (pathHas("[data-mesurer-comment-ui]")) return
+        const roots: ParentNode[] = [eventTarget.document]
+        const host = eventTarget.document.getElementById("mesurer-extension-host")
+        if (host?.shadowRoot) roots.push(host.shadowRoot)
+        const nestedCommentMenu = roots.some((root) =>
+          root.querySelector("[data-mesurer-comment-actions][role='menu']"),
+        )
+        if (nestedCommentMenu) return
+      }
       if (
         (commentButtonRef.current && path.includes(commentButtonRef.current)) ||
         (guideMenuButtonRef.current && path.includes(guideMenuButtonRef.current)) ||

@@ -106,7 +106,7 @@ export function CommentsPanel({
         return Boolean((target as Element).closest?.("[data-mesurer-comment-delete-confirmation]"))
       })
       if (!clickedMenu) setOpenMenuId(null)
-      if (!clickedConfirm) {
+      if (!clickedConfirm && !clickedMenu) {
         setDeleteId(null)
         setDeleteAnchor(null)
         setDeleteAllOpen(false)
