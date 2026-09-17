@@ -38,6 +38,7 @@ import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getElementSelector } from "./core/selector";
+import { addMesurerCaptureListener } from "./core/keyboard-gate";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
@@ -378,6 +379,22 @@ export function MesurerClient({
       return current?.type === "settings" ? null : current;
     });
   }, [setOpenMenu, settingsOpen]);
+  useEffect(() => {
+    if (!settingsOpen) return
+    const ElementConstructor = ownerWindow.Element
+    const closeIfOutside = (event: Event) => {
+      const inside = event.composedPath().some((node) => {
+        if (!(node instanceof ElementConstructor)) return false
+        return Boolean(
+          node.closest("[data-mesurer-settings-panel], [data-tool-id='settings']"),
+        )
+      })
+      if (inside) return
+      setOpenMenu(null)
+      setSettingsOpen(false)
+    }
+    return addMesurerCaptureListener(ownerWindow, ownerWindow, "pointerdown", closeIfOutside)
+  }, [ownerWindow, setOpenMenu, setSettingsOpen, settingsOpen]);
   const commentRuntime = useMemo(
     () => new CommentRuntimeStore(ownerDocument, ownerWindow),
     [ownerDocument, ownerWindow],

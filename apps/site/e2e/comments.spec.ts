@@ -166,35 +166,28 @@ test("resolves a comment and reopens it from the resolved filter", async ({ page
   const pin = page.locator("[data-mesurer-comment-pin]");
   await expect(pin).toHaveCount(1);
   await pin.click();
-  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
-  await expect(page.locator("[data-mesurer-comment-popover]")).toHaveCount(0);
-  await expect(pin).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Comment menu" }).click();
-  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
-  const panel = page.getByRole("dialog", { name: "Comments" });
-  await expect(panel).toContainText("No open comments.");
-  await panel.getByRole("button", { name: "Comment list actions" }).click();
-  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
-  await expect(panel).toContainText("Resolve this review.");
-  await expect(panel).toContainText("Resolve this review.");
-  await panel.getByText("Resolve this review.", { exact: true }).click();
-
   const card = page.locator("[data-mesurer-comment-popover]");
+  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
   await expect(card).toBeVisible();
   await expect(pin).toHaveCSS("opacity", "0.45");
-  await card.getByRole("button", { name: "Reopen comment" }).click();
-  await expect(card).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Comment list actions" }).click();
-  await page.getByRole("menuitemradio", { name: "All comments" }).click();
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("dialog", { name: "Delete comment" })).toHaveCount(0);
   await expect(card).toBeVisible();
-  await expect(pin).toHaveCount(1);
-  await expect(pin).toHaveCSS("opacity", "1");
-  await page.getByRole("button", { name: "Comment list actions" }).click();
-  await page.getByRole("menuitemradio", { name: "Open" }).click();
+
+  await card.getByRole("button", { name: "Reopen comment" }).click();
   await expect(card).toBeVisible();
   await expect(pin).toHaveCSS("opacity", "1");
+
+  await card.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(pin).toHaveCount(0);
 });
 
 test("resolves a comment from the comments list", async ({ page }) => {

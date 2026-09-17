@@ -1078,6 +1078,17 @@ test("settings button opens and dismisses its popover", async ({ page }) => {
 
   await settings.click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.mouse.click(16, 400);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(settings).toHaveAttribute("aria-pressed", "false");
+
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.locator("[data-testid='host-border-control']").click({ force: true });
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
@@ -1367,6 +1378,33 @@ test("comment dropdown and guide menus do not stay open together", async ({ page
   await page.getByRole("button", { name: "Comment menu" }).click();
   await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("guide and comment submenus close on outside click and trigger reclick", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const commentMenu = page.getByRole("button", { name: "Comment menu" });
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  const guideMenu = page.getByRole("button", { name: "Guide orientation menu" });
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
+
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
 });
 
 test("toolbar tools close Settings", async ({ page }) => {

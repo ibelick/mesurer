@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
+import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
@@ -23,6 +24,7 @@ import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
+import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
 import { MenuItem, MenuSurface } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import {
@@ -351,6 +353,7 @@ function ToolbarComponent(
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
+  const guideMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const commentPanelPortalTarget =
     commentMenuRef.current?.closest("[data-mesurer-root]") ?? eventTarget.document.body;
   const toolStageRef = useRef<HTMLDivElement | null>(null);
@@ -777,16 +780,32 @@ function ToolbarComponent(
   }, [eventTarget, guideMenuOpen, updateMenuAlign]);
 
   useEffect(() => {
-    if (!openMenu) return;
+    if (!openMenu || openMenu.type === "settings") return;
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
-      const isMenuContent = event.composedPath().some(
-        (target) =>
-          target instanceof Element && target.closest("[role='menu'], [role='dialog']"),
-      );
-      if (!isMenuContent) setOpenMenu(null);
+      const path = event.composedPath()
+      const ElementConstructor = eventTarget.Element
+      const pathHas = (selector: string) =>
+        path.some(
+          (target) => target instanceof ElementConstructor && target.closest(selector),
+        )
+      if (pathHas("[data-mesurer-comment-delete-confirmation]")) return
+      if (findDeleteConfirmation(eventTarget)) return
+      if (
+        (commentButtonRef.current && path.includes(commentButtonRef.current)) ||
+        (guideMenuButtonRef.current && path.includes(guideMenuButtonRef.current)) ||
+        pathHas("[data-mesurer-menu-trigger]") ||
+        pathHas("[role='menu']")
+      ) {
+        return
+      }
+      setOpenMenu(null)
     };
-    eventTarget.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
-    return () => eventTarget.removeEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    return addMesurerCaptureListener(
+      eventTarget,
+      eventTarget,
+      "pointerdown",
+      closeOnOutsidePointerDown as EventListener,
+    );
   }, [eventTarget, openMenu, setOpenMenu]);
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
@@ -822,7 +841,7 @@ function ToolbarComponent(
         const target = event.target;
         if (
           target instanceof Element &&
-          target.closest("[role='menu'], [role='dialog'], [data-tool-id='settings']")
+          target.closest("[role='menu'], [role='dialog'], [data-tool-id='settings'], [data-mesurer-menu-trigger]")
         ) {
           return;
         }
@@ -938,9 +957,11 @@ function ToolbarComponent(
       >
         <button
           type="button"
+          ref={guideMenuButtonRef}
           aria-label="Guide orientation menu"
+          data-mesurer-menu-trigger
           className={cn(
-            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             guideMenuOpen
               ? "msr:bg-black/4 msr:text-black"
               : "msr:text-black",
@@ -1181,8 +1202,9 @@ function ToolbarComponent(
           aria-label="Comment menu"
          aria-haspopup="menu"
          aria-expanded={commentMenuOpen}
+         data-mesurer-menu-trigger
          className={cn(
-            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             commentMenuOpen ? "msr:bg-black/4 msr:text-black" : "msr:text-black",
          )}
           onClick={() => {
@@ -1274,6 +1296,7 @@ function ToolbarComponent(
               maxHeight: settingsPlacement.height,
             }}
             data-mesurer-inspector-ui="true"
+            data-mesurer-settings-panel
             role="dialog"
             aria-label="Settings"
             onPointerDown={(event) => event.stopPropagation()}

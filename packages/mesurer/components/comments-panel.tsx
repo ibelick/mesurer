@@ -2,7 +2,7 @@ import type { CommentFilter, CommentThread } from "../comments/types"
 import type { RefObject } from "react"
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
-import { CommentDeleteConfirmation } from "../comments/comment-delete-confirmation"
+import { CommentDeleteConfirmation, readDeleteAnchor, type DeleteAnchorRect } from "../comments/comment-delete-confirmation"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
@@ -60,8 +60,9 @@ export function CommentsPanel({
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [commentMenuPosition, setCommentMenuPosition] = useState<{ top: number; right: number } | null>(null)
-  const [deletePosition, setDeletePosition] = useState<{ top: number; right: number } | null>(null)
-  const [deleteAllPosition, setDeleteAllPosition] = useState<{ top: number; right: number } | null>(null)
+  const [commentMenuAnchor, setCommentMenuAnchor] = useState<DeleteAnchorRect | null>(null)
+  const [deleteAnchor, setDeleteAnchor] = useState<DeleteAnchorRect | null>(null)
+  const [deleteAllAnchor, setDeleteAllAnchor] = useState<DeleteAnchorRect | null>(null)
   const [listMenuPosition, setListMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
@@ -76,7 +77,8 @@ export function CommentsPanel({
         comment.messages.some((message) => message.text.toLowerCase().includes(normalizedQuery)),
       )
     : statusFilteredComments
-  const portalTarget = panelRef.current ?? ownerWindow.document.body
+  const overlayPortalTarget =
+    panelRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body
 
   useEffect(() => {
     const handleCopied = () => {
@@ -88,20 +90,31 @@ export function CommentsPanel({
   }, [ownerWindow])
 
   useEffect(() => {
-    if (!openMenuId) return
+    if (!openMenuId && !deleteId && !deleteAllOpen) return
     const ownerDocument = panelRef.current?.ownerDocument
     const ownerView = ownerDocument?.defaultView
     if (!ownerDocument || !ownerView) return
     const handlePointerDown = (event: Event) => {
       const pointerEvent = event as PointerEvent
-      const clickedMenu = pointerEvent.composedPath().some((target) => {
+      const path = pointerEvent.composedPath()
+      const clickedMenu = path.some((target) => {
         if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
         return (target as Element).getAttribute("data-mesurer-comment-actions") !== null
       })
+      const clickedConfirm = path.some((target) => {
+        if (!target || typeof target !== "object" || !("closest" in target)) return false
+        return Boolean((target as Element).closest?.("[data-mesurer-comment-delete-confirmation]"))
+      })
       if (!clickedMenu) setOpenMenuId(null)
+      if (!clickedConfirm) {
+        setDeleteId(null)
+        setDeleteAnchor(null)
+        setDeleteAllOpen(false)
+        setDeleteAllAnchor(null)
+      }
     }
     return addMesurerCaptureListener(ownerView, ownerDocument, "pointerdown", handlePointerDown)
-  }, [openMenuId, panelRef])
+  }, [deleteAllOpen, deleteId, openMenuId, panelRef])
 
   return (
     <div
@@ -181,10 +194,7 @@ export function CommentsPanel({
               const panel = panelRef.current
               const buttonRect = event.currentTarget.getBoundingClientRect()
               if (panel) {
-                setDeleteAllPosition({
-                  top: buttonRect.bottom + 4,
-                  right: ownerWindow.innerWidth - buttonRect.right,
-                })
+                setDeleteAllAnchor(readDeleteAnchor(event.currentTarget))
                 setListMenuPosition({
                   top: buttonRect.bottom + 4,
                   right: ownerWindow.innerWidth - buttonRect.right,
@@ -238,6 +248,7 @@ export function CommentsPanel({
                         const panel = panelRef.current
                         if (panel) {
                           const buttonRect = event.currentTarget.getBoundingClientRect()
+                          setCommentMenuAnchor(readDeleteAnchor(event.currentTarget))
                           setCommentMenuPosition({
                             top: buttonRect.top - 4,
                             right: ownerWindow.innerWidth - buttonRect.right,
@@ -265,8 +276,8 @@ export function CommentsPanel({
            style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeletePosition(commentMenuPosition); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
-        </div>, portalTarget)
+           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeleteAnchor(commentMenuAnchor); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
+        </div>, overlayPortalTarget)
       ) : null}
       {openMenuId === "all" && listMenuPosition ? (
         createPortal(<div
@@ -297,36 +308,28 @@ export function CommentsPanel({
             ))}
             <div className="msr:my-1 msr:border-t msr:border-ink-100" />
             <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
-        </div>, portalTarget)
+        </div>, overlayPortalTarget)
       ) : null}
-      {deleteId && deletePosition ? (
-        createPortal(<div
-          data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:-translate-y-full"
-          style={{ top: deletePosition.top, right: deletePosition.right }}
-        >
-          <CommentDeleteConfirmation
-            commentId={deleteId}
-            floating
-            onConfirm={(id) => { onDelete(id); setDeleteId(null); setDeletePosition(null) }}
-            onCancel={() => { setDeleteId(null); setDeletePosition(null) }}
-          />
-        </div>, portalTarget)
+      {deleteId && deleteAnchor ? (
+        <CommentDeleteConfirmation
+          commentId={deleteId}
+          ownerWindow={ownerWindow}
+          anchor={deleteAnchor}
+          portalTarget={overlayPortalTarget}
+          onConfirm={(id) => { onDelete(id); setDeleteId(null); setDeleteAnchor(null) }}
+          onCancel={() => { setDeleteId(null); setDeleteAnchor(null) }}
+        />
       ) : null}
-      {deleteAllOpen && deleteAllPosition ? (
-        createPortal(<div
-          data-mesurer-comment-ui
-          className="msr:pointer-events-auto msr:fixed msr:z-[100]"
-          style={{ top: deleteAllPosition.top, right: deleteAllPosition.right }}
-        >
-          <CommentDeleteConfirmation
-            commentId="all"
-            message="Do you want to delete all comments?"
-            floating
-            onConfirm={() => { onDeleteAll(); setDeleteAllOpen(false); setDeleteAllPosition(null) }}
-            onCancel={() => { setDeleteAllOpen(false); setDeleteAllPosition(null) }}
-          />
-        </div>, portalTarget)
+      {deleteAllOpen && deleteAllAnchor ? (
+        <CommentDeleteConfirmation
+          commentId="all"
+          message="Do you want to delete all comments?"
+          ownerWindow={ownerWindow}
+          anchor={deleteAllAnchor}
+          portalTarget={overlayPortalTarget}
+          onConfirm={() => { onDeleteAll(); setDeleteAllOpen(false); setDeleteAllAnchor(null) }}
+          onCancel={() => { setDeleteAllOpen(false); setDeleteAllAnchor(null) }}
+        />
       ) : null}
     </div>
   )

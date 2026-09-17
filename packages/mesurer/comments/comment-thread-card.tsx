@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
 import type { CommentThread } from "./types"
 import { CloseIcon, MoreIcon, SendIcon } from "../components/icons"
-import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
+import { CommentDeleteConfirmation, readDeleteAnchor } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
@@ -91,6 +91,14 @@ export function CommentThreadCard({
     avoidAxis: "horizontal",
     gap: 4,
   })
+  const overlayRoot =
+    overlay.overlayRef.current?.closest("[data-mesurer-root]") ?? ownerWindow?.document.body ?? null
+  const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  useLayoutEffect(() => {
+    const node = overlay.overlayRef.current
+    if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
+    setCardAnchor(readDeleteAnchor(node))
+  }, [deleteConfirmationOpen, messageDeleteConfirmationId, overlay.overlayRef])
 
   return (
     <div
@@ -224,9 +232,12 @@ export function CommentThreadCard({
                     }}
                   />
                 ) : null}
-                {messageDeleteConfirmationId === item.id ? (
+                {messageDeleteConfirmationId === item.id && ownerWindow && cardAnchor ? (
                   <CommentDeleteConfirmation
                     commentId={item.id}
+                    ownerWindow={ownerWindow}
+                    anchor={cardAnchor}
+                    portalTarget={overlayRoot}
                     onConfirm={onConfirmDeleteMessage}
                     onCancel={onCancelDeleteMessage}
                   />
@@ -260,8 +271,15 @@ export function CommentThreadCard({
         />
       </div>
 
-      {deleteConfirmationOpen ? (
-        <CommentDeleteConfirmation commentId={comment.id} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+      {deleteConfirmationOpen && ownerWindow && cardAnchor ? (
+        <CommentDeleteConfirmation
+          commentId={comment.id}
+          ownerWindow={ownerWindow}
+          anchor={cardAnchor}
+          portalTarget={overlayRoot}
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+        />
       ) : null}
     </div>
   )

@@ -143,7 +143,7 @@ export function CommentsLayer({
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
   const hoverTimeoutRef = useRef<number | null>(null)
   const visibleComments = comments.filter((comment) =>
-    commentFilter === "all" || comment.status === commentFilter,
+    comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
   )
   const selected = visibleComments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null
@@ -233,6 +233,7 @@ export function CommentsLayer({
         return
       }
       if (isCommentChromeEvent(event)) return
+      if (deleteConfirmationId || messageDeleteConfirmationId) return
       if (selectedId && selectedOutsidePointerDownRef.current()) {
         event.preventDefault()
         event.stopPropagation()
@@ -248,7 +249,16 @@ export function CommentsLayer({
     const view = ownerDocument.defaultView
     if (!view) return
     return addMesurerCaptureListener(view, view, "pointerdown", handlePointerDown)
-  }, [draft, draftText, onClose, onDraftCancel, ownerDocument, selectedId])
+  }, [
+    deleteConfirmationId,
+    draft,
+    draftText,
+    messageDeleteConfirmationId,
+    onClose,
+    onDraftCancel,
+    ownerDocument,
+    selectedId,
+  ])
 
   return (
     <div
@@ -359,10 +369,7 @@ export function CommentsLayer({
           replyText={replyText}
           onReplyTextChange={setReplyText}
           onAddMessage={(text) => { onAddMessage(selected.id, text); setReplyText("") }}
-          onToggleResolved={(id) => {
-            onToggleResolved(id)
-            if (selected.status === "open") onClose?.()
-          }}
+          onToggleResolved={onToggleResolved}
           onClose={onClose}
           ownerWindow={ownerDocument.defaultView}
           formatTime={formatRelativeTime}
