@@ -97,7 +97,7 @@ export function CommentThreadCard({
       data-mesurer-comment-popover
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
+      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
       style={{ paddingTop: 40 }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         outsideAttemptRef.current = false

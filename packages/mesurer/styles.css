@@ -7,9 +7,10 @@
   --radius-control: 5px;
   --shadow-toolbar:
     drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
-    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.1))
-    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
-  --shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.12);
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
+    drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
+  --shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
@@ -100,13 +101,15 @@
 }
 
 @layer base {
-  /* Scoped Tailwind preflight: `msr:border` sets width + `border-style: var(--tw-border-style)`.
-     Without a solid 0-width reset inside the root, those utilities render as `none`. */
-  .mesurer-root,
-  .mesurer-root *,
-  .mesurer-root *::before,
-  .mesurer-root *::after,
-  .mesurer-root::backdrop {
+  /* Scoped Tailwind preflight. `:where()` keeps this at zero specificity so
+     utilities like `msr:shadow-floating` can override `--tw-shadow`. */
+  :where(
+    .mesurer-root,
+    .mesurer-root *,
+    .mesurer-root *::before,
+    .mesurer-root *::after,
+    .mesurer-root::backdrop
+  ) {
     border: 0 solid;
     --tw-border-style: solid;
     --tw-outline-style: solid;
@@ -136,10 +139,11 @@
 .mesurer-toolbar-motion {
   --msr-toolbar-motion: 200ms ease;
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   display: block;
   width: max-content;
   max-width: 100%;
-  filter: var(--msr-shadow-toolbar);
 }
 
 .mesurer-toolbar-chrome {
@@ -149,6 +153,7 @@
   overflow: visible;
   border-radius: 9px;
   background: #fff;
+  filter: var(--msr-shadow-toolbar);
   outline: 1px solid transparent;
   transform-origin: 0 50%;
   pointer-events: none;
@@ -157,6 +162,7 @@
 .mesurer-toolbar-clip {
   position: relative;
   z-index: 1;
+  isolation: isolate;
   overflow: visible;
   transform-origin: 0 50%;
 }

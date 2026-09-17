@@ -611,7 +611,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-           className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
+           className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)

@@ -383,7 +383,7 @@ export function CommentsLayer({
             ref={draftOverlay.overlayRef}
             data-mesurer-comment-popover
             data-mesurer-comment-ui
-             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
+             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-white msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <CommentComposer

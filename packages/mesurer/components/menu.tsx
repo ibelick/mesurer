@@ -10,7 +10,7 @@ export function MenuSurface({ className, children, ...props }: MenuSurfaceProps)
     <div
       {...props}
       className={cn(
-        "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
+        "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
         className,
       )}
       role="menu"
