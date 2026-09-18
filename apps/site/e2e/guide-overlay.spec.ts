@@ -290,6 +290,30 @@ test("minimizes to one button and restores the workspace", async ({ page }) => {
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 });
 
+test("dragging a toolbar tool moves the toolbar without selecting the tool", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+  const guides = page.getByRole("button", { name: "Guides (G)" });
+  await expect(guides).toHaveAttribute("aria-pressed", "false");
+  const before = await toolbar.boundingBox();
+  expect(before).not.toBeNull();
+  const box = await guides.boundingBox();
+  expect(box).not.toBeNull();
+  const startX = box!.x + box!.width / 2;
+  const startY = box!.y + box!.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 48, startY + 36, { steps: 8 });
+  await page.mouse.up();
+  const after = await toolbar.boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.x).toBeGreaterThan(before!.x + 20);
+  expect(after!.y).toBeGreaterThan(before!.y + 20);
+  await expect(guides).toHaveAttribute("aria-pressed", "false");
+  await guides.click();
+  await expect(guides).toHaveAttribute("aria-pressed", "true");
+});
+
 test("dragging the minimized button does not restore the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();

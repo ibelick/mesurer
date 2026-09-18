@@ -5,11 +5,6 @@
 
 @theme {
   --radius-control: 5px;
-  --shadow-toolbar:
-    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
-    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
-    drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
-    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
   --shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
@@ -153,7 +148,7 @@
   overflow: visible;
   border-radius: 9px;
   background: #fff;
-  filter: var(--msr-shadow-toolbar);
+  box-shadow: var(--msr-shadow-floating);
   outline: 1px solid transparent;
   transform-origin: 0 50%;
   pointer-events: none;
