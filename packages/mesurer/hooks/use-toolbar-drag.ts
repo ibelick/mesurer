@@ -7,7 +7,10 @@ type Point = {
 
 const TOOLBAR_DRAG_SLOP = 6
 
-export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
+export const useToolbarDrag = (
+  initialPosition: Point,
+  eventTarget: Window,
+) => {
   const [position, setPosition] = useState(initialPosition)
   const suppressClickRef = useRef(false)
   const previousUserSelectRef = useRef<string | null>(null)
@@ -42,12 +45,9 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
   useLayoutEffect(() => {
     return () => {
       detachListenersRef.current?.()
-      const previous = previousUserSelectRef.current
-      if (previous === null) return
-      eventTarget.document.documentElement.style.userSelect = previous
-      previousUserSelectRef.current = null
+      restoreTextSelection()
     }
-  }, [eventTarget])
+  }, [restoreTextSelection])
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -63,7 +63,6 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
       const state = dragRef.current
       state.active = false
       state.didDrag = false
-      state.pointerId = event.pointerId
       state.startX = event.clientX
       state.startY = event.clientY
       state.originX = position.x
@@ -78,13 +77,11 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
 
         const dx = moveEvent.clientX - current.startX
         const dy = moveEvent.clientY - current.startY
-
         if (!current.active) {
           current.active =
             Math.abs(dx) > TOOLBAR_DRAG_SLOP ||
             Math.abs(dy) > TOOLBAR_DRAG_SLOP
         }
-
         if (!current.active) return
 
         current.didDrag = true
@@ -101,8 +98,9 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
         if (
           current.pointerId !== endEvent.pointerId &&
           current.pointerId !== -1
-        )
+        ) {
           return
+        }
         suppressClickRef.current = current.didDrag
         restoreTextSelection()
         current.active = false
@@ -115,6 +113,7 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
         detachListenersRef.current = null
       }
 
+      dragRef.current.pointerId = event.pointerId
       eventTarget.addEventListener("pointermove", handlePointerMove)
       eventTarget.addEventListener("pointerup", handlePointerEnd)
       eventTarget.addEventListener("pointercancel", handlePointerEnd)
@@ -142,5 +141,10 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
     [consumeDragClick],
   )
 
-  return { position, onPointerDown, onClickCapture, consumeDragClick }
+  return {
+    position,
+    onPointerDown,
+    onClickCapture,
+    consumeDragClick,
+  }
 }

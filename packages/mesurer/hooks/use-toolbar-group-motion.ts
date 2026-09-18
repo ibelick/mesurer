@@ -8,7 +8,6 @@ import {
   TOOLBAR_RADIUS,
   toolbarMotionTiming,
   toolbarRadius,
-  transformScaleX,
   transformTranslateX,
 } from "../core/toolbar-motion"
 
@@ -34,6 +33,7 @@ type Pose = {
   stageW: number
   expandedW: number
   collapse: boolean
+  chromeWidth: number
 }
 
 type Nodes = {
@@ -95,6 +95,7 @@ const clearMotionStyles = (
   collapseStage.style.width = ""
   stage.style.width = ""
   nodes.chrome.style.borderRadius = ""
+  nodes.chrome.style.width = ""
   nodes.clip.style.borderRadius = ""
   for (const node of Object.values(nodes)) {
     node.style.transition = ""
@@ -112,12 +113,22 @@ const applyPose = (
   nodes: Nodes,
   pose: Pick<Pose, "scaleX" | "clipScale" | "radius" | "trailX" | "trackX" | "collapseX">,
   collapse: boolean,
+  layoutWidth = 0,
 ) => {
-  nodes.chrome.style.transform = `scaleX(${pose.scaleX})`
+  if (collapse && layoutWidth > 0) {
+    nodes.chrome.style.transform = ""
+    nodes.chrome.style.width = `${layoutWidth * pose.scaleX}px`
+    nodes.chrome.style.borderRadius = `${pose.radius}px`
+  } else {
+    nodes.chrome.style.width = ""
+    nodes.chrome.style.transform = nearlyEqual(pose.scaleX, 1, 0.002)
+      ? ""
+      : `scaleX(${pose.scaleX})`
+    nodes.chrome.style.borderRadius = toolbarRadius(pose.radius, pose.scaleX)
+  }
   nodes.trailing.style.transform = `translateX(${pose.trailX}px)`
   nodes.track.style.transform = `translateX(${pose.trackX}px)`
   nodes.collapse.style.transform = `translateX(${pose.collapseX}px)`
-  nodes.chrome.style.borderRadius = toolbarRadius(pose.radius, pose.scaleX)
   if (!collapse) {
     nodes.clip.style.transform = ""
     nodes.surface.style.transform = ""
@@ -139,14 +150,14 @@ const captureInterrupt = (
   const view = motion.ownerDocument.defaultView
   const computed = view?.getComputedStyle.bind(view) ?? getComputedStyle
   const nextWidth = motion.offsetWidth
-  const scaleX = transformScaleX(computed(nodes.chrome).transform)
+  const chromeWidth = nodes.chrome.getBoundingClientRect().width
+  const scaleX = play.layoutWidth > 0 ? chromeWidth / play.layoutWidth : 1
   const trailX = transformTranslateX(computed(nodes.trailing).transform)
   const trackX = transformTranslateX(computed(nodes.track).transform)
   const collapseX = transformTranslateX(computed(nodes.collapse).transform)
-  const nextScale = nextWidth > 0 ? (play.layoutWidth * scaleX) / nextWidth : 1
   return {
-    scaleX: play.group ? 1 : nextScale,
-    clipScale: play.collapse ? nextScale : 1,
+    scaleX: play.group ? 1 : scaleX,
+    clipScale: play.collapse ? scaleX : 1,
     radius: lerp(
       play.radiusFrom,
       play.radiusTo,
@@ -158,6 +169,7 @@ const captureInterrupt = (
     stageW: stage.getBoundingClientRect().width,
     expandedW: collapseStage.getBoundingClientRect().width,
     collapse: play.collapse,
+    chromeWidth,
   }
 }
 
@@ -264,6 +276,8 @@ export const useToolbarGroupMotion = ({
 
     const fromMinimized = minimizedRef.current
     const fromGroup = groupRef.current
+    minimizedRef.current = minimized
+    groupRef.current = toolGroup
     const closing = !fromMinimized && minimized
     const opening = fromMinimized && !minimized
     const interrupt = interruptRef.current
@@ -325,12 +339,20 @@ export const useToolbarGroupMotion = ({
     const closeScale =
       toWidth > 0 && visualIconWidth > 0 ? visualIconWidth / toWidth : 1
     const fromScale = interrupt
-      ? interrupt.scaleX
+      ? toWidth > 0
+        ? interrupt.chromeWidth / toWidth
+        : interrupt.scaleX
       : groupSwitch || !(fromWidth > 0 && toWidth > 0)
         ? 1
         : fromWidth / toWidth
     const toScale = minimized ? closeScale : 1
-    const fromClip = interrupt ? interrupt.clipScale : collapseMotion ? fromScale : 1
+    const fromClip = interrupt
+      ? interrupt.collapse && toWidth > 0
+        ? interrupt.chromeWidth / toWidth
+        : interrupt.clipScale
+      : collapseMotion
+        ? fromScale
+        : 1
     const toClip = collapseMotion ? toScale : 1
     const fromTrail = interrupt
       ? interrupt.trailX
@@ -410,7 +432,7 @@ export const useToolbarGroupMotion = ({
       trackX: toTrack,
       collapseX: toCollapse,
     }
-    applyPose(nodes, fromPose, collapseMotion)
+    applyPose(nodes, fromPose, collapseMotion, toWidth)
     if (groupSwitch) {
       stage.style.width = `${fromStageW}px`
       collapseStage.style.width = `${fromExpandedW}px`
@@ -419,13 +441,22 @@ export const useToolbarGroupMotion = ({
     void collapseStage.offsetWidth
     void motion.offsetWidth
 
-    animateTransform(
-      nodes.chrome,
-      `scaleX(${fromScale})`,
-      `scaleX(${toScale})`,
-      duration,
-      timing.easing,
-    )
+    if (collapseMotion) nodes.chrome.style.willChange = "width"
+    const chromeMotion = collapseMotion
+      ? animateWidth(
+          nodes.chrome,
+          toWidth * fromScale,
+          toWidth * toScale,
+          duration,
+          timing.easing,
+        )
+      : animateTransform(
+          nodes.chrome,
+          `scaleX(${fromScale})`,
+          `scaleX(${toScale})`,
+          duration,
+          timing.easing,
+        )
     animateTransform(
       nodes.track,
       `translateX(${fromTrack}px)`,
@@ -465,19 +496,19 @@ export const useToolbarGroupMotion = ({
       collapseMotion ||
       (!groupSwitch && !nearlyEqual(fromScale, toScale, 0.002))
     const followClip = () => {
-      const view = motion.ownerDocument.defaultView
-      const computed = view?.getComputedStyle.bind(view) ?? getComputedStyle
-      const chromeScale = transformScaleX(computed(nodes.chrome).transform)
+      const t = chromeMotion.effect?.getComputedTiming().progress ?? 0
+      const chromeScale = lerp(fromScale, toScale, t)
       const visual = lerp(
         fromRadius,
         toRadius,
         progress(chromeScale, fromScale, toScale),
       )
-      nodes.chrome.style.borderRadius = toolbarRadius(visual, chromeScale)
       if (!collapseMotion) {
+        nodes.chrome.style.borderRadius = toolbarRadius(visual, chromeScale)
         nodes.trailing.style.transform = `translateX(${toWidth * chromeScale - toWidth}px)`
         return
       }
+      nodes.chrome.style.borderRadius = `${visual}px`
       nodes.clip.style.transform = `scaleX(${chromeScale})`
       nodes.surface.style.transform = `scaleX(${contentScaleFor(chromeScale)})`
       nodes.clip.style.borderRadius = toolbarRadius(visual, chromeScale)
@@ -500,7 +531,7 @@ export const useToolbarGroupMotion = ({
       if (finished || gen !== genRef.current) return
       finished = true
       stopFollow()
-      applyPose(nodes, toPose, collapseMotion)
+      applyPose(nodes, toPose, collapseMotion, toWidth)
       rest()
     }
     const timeout = eventTarget.setTimeout(finish, duration + 32)
@@ -522,7 +553,20 @@ export const useToolbarGroupMotion = ({
       stage.style.width = `${pose.stageW}px`
       collapseStage.style.width = `${pose.expandedW}px`
       interruptRef.current = pose
-      applyPose(nodes, pose, pose.collapse)
+      const layoutWidth = motion.offsetWidth || play.layoutWidth
+      applyPose(
+        nodes,
+        {
+          ...pose,
+          scaleX: layoutWidth > 0 ? pose.chromeWidth / layoutWidth : pose.scaleX,
+          clipScale:
+            pose.collapse && layoutWidth > 0
+              ? pose.chromeWidth / layoutWidth
+              : pose.clipScale,
+        },
+        pose.collapse,
+        layoutWidth,
+      )
       playRef.current = null
     }
   }, [

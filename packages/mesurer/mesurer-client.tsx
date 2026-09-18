@@ -38,12 +38,14 @@ import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getElementSelector } from "./core/selector";
+import { addMesurerCaptureListener } from "./core/keyboard-gate";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
 import { useAnnotationSelection } from "./hooks/use-annotation-selection";
 import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
 import type { CommentThread, ToolMode } from "./core/types";
+import type { CommentFilter } from "./comments/types";
 import {
   createLocalStoragePersistence,
   type MesurerPersistence,
@@ -238,6 +240,7 @@ export function MesurerClient({
     initialComments: persistedState?.comments ?? initialState?.comments,
     onCommentsChange: (value) => persistCommentsRef.current(value),
   });
+  const [commentFilter, setCommentFilter] = useState<CommentFilter>("open");
   const {
     selectionRectRef,
     enabledRef,
@@ -359,15 +362,39 @@ export function MesurerClient({
     deleteComment,
     deleteAllComments,
     deleteMessage: deleteCommentMessage,
+    toggleResolved: toggleCommentResolved,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
   } = workspace;
+  const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
+    setCommentFilter(filter);
+    const selectedComment = comments.find((comment) => comment.id === selectedCommentId);
+    if (selectedComment && filter !== "all" && selectedComment.status !== filter) {
+      setSelectedCommentId(null);
+    }
+  }, [comments, selectedCommentId]);
   useEffect(() => {
     setOpenMenu((current) => {
       if (settingsOpen) return { type: "settings" };
       return current?.type === "settings" ? null : current;
     });
   }, [setOpenMenu, settingsOpen]);
+  useEffect(() => {
+    if (!settingsOpen) return
+    const ElementConstructor = ownerWindow.Element
+    const closeIfOutside = (event: Event) => {
+      const inside = event.composedPath().some((node) => {
+        if (!(node instanceof ElementConstructor)) return false
+        return Boolean(
+          node.closest("[data-mesurer-settings-panel], [data-tool-id='settings']"),
+        )
+      })
+      if (inside) return
+      setOpenMenu(null)
+      setSettingsOpen(false)
+    }
+    return addMesurerCaptureListener(ownerWindow, ownerWindow, "pointerdown", closeIfOutside)
+  }, [ownerWindow, setOpenMenu, setSettingsOpen, settingsOpen]);
   const commentRuntime = useMemo(
     () => new CommentRuntimeStore(ownerDocument, ownerWindow),
     [ownerDocument, ownerWindow],
@@ -658,6 +685,10 @@ export function MesurerClient({
   const redo = useCallback(() => {
     redoHistory();
   }, [redoHistory]);
+  const toggleResolvedComment = useCallback((id: string) => {
+    recordSnapshot();
+    toggleCommentResolved(id);
+  }, [recordSnapshot, toggleCommentResolved]);
   const annotationSelection = useAnnotationSelection({
     enabled,
     toolMode,
@@ -755,6 +786,7 @@ export function MesurerClient({
         rulersVisible,
       }),
     );
+    colorPicker.setActive(false);
     screenshot.closeUi();
     setSettingsOpen(true);
   }, [
@@ -1126,7 +1158,9 @@ export function MesurerClient({
     setToolbarActive(true);
     setOpenMenu(null);
     setSettingsOpen(false);
-  }, [setOpenMenu, setSettingsOpen, setToolbarActive]);
+    colorPicker.setActive(false);
+    closeScreenshotRef.current?.();
+  }, [colorPicker.setActive, setOpenMenu, setSettingsOpen, setToolbarActive]);
   const pinableOverlay = guidesEnabled
     ? (guideDistanceOverlay ?? optionPairOverlay)
     : (optionPairOverlay ?? guideDistanceOverlay);
@@ -1555,6 +1589,7 @@ export function MesurerClient({
         },
         comments: comments.length > 0 || toolMode === "comments" ? {
           comments,
+          commentFilter,
           rects: commentRuntimeSnapshot.rects,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
           hoverRect: commentRuntimeSnapshot.hoverRect,
@@ -1573,6 +1608,7 @@ export function MesurerClient({
            onEndMove: commentPointer.onEndMove,
            ownerDocument,
            onAddMessage: addCommentMessage,
+            onToggleResolved: toggleResolvedComment,
             onDelete: deleteComment,
            onDeleteMessage: deleteCommentMessage,
            onEditMessage: updateCommentMessage,
@@ -1633,7 +1669,7 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-        comments: {
+         comments: {
           count: comments.length,
           comments,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
@@ -1644,8 +1680,11 @@ export function MesurerClient({
             setSelectedCommentId(id)
             commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
           },
-          onDelete: deleteComment,
-          onDeleteAll: deleteAllComments,
+           onDelete: deleteComment,
+           onDeleteAll: deleteAllComments,
+           onToggleResolved: toggleResolvedComment,
+           statusFilter: commentFilter,
+           onStatusFilterChange: setCommentFilterAndSelection,
           onCopy: async () => {
             await copyCommentsForAgent(comments, ownerWindow)
           },

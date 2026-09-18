@@ -35,7 +35,7 @@ export function CommentHoverCard({
       data-mesurer-comment-hover-card
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:text-[12px] msr:text-ink-900 msr:shadow-lg"
+      className="msr:pointer-events-auto msr:absolute msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:text-[12px] msr:text-ink-900 msr:shadow-floating"
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       onPointerDown={(event) => event.stopPropagation()}

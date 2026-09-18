@@ -5,6 +5,12 @@
 
 @theme {
   --radius-control: 5px;
+  --shadow-toolbar:
+    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
+    drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
+  --shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
@@ -21,14 +27,23 @@
     line-height: 1.5;
   }
 
-  .mesurer-root button,
-  .mesurer-root input,
-  .mesurer-root select,
-  .mesurer-root textarea {
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-  }
+.mesurer-root button,
+.mesurer-root input,
+.mesurer-root select,
+.mesurer-root textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.mesurer-root input[type="search"]::-webkit-search-cancel-button,
+.mesurer-root input[type="search"]::-webkit-search-decoration,
+.mesurer-root input[type="search"]::-moz-search-clear,
+.mesurer-root input[type="search"]::-ms-clear {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
 }
 
 @layer utilities {
@@ -86,13 +101,15 @@
 }
 
 @layer base {
-  /* Scoped Tailwind preflight: `msr:border` sets width + `border-style: var(--tw-border-style)`.
-     Without a solid 0-width reset inside the root, those utilities render as `none`. */
-  .mesurer-root,
-  .mesurer-root *,
-  .mesurer-root *::before,
-  .mesurer-root *::after,
-  .mesurer-root::backdrop {
+  /* Scoped Tailwind preflight. `:where()` keeps this at zero specificity so
+     utilities like `msr:shadow-floating` can override `--tw-shadow`. */
+  :where(
+    .mesurer-root,
+    .mesurer-root *,
+    .mesurer-root *::before,
+    .mesurer-root *::after,
+    .mesurer-root::backdrop
+  ) {
     border: 0 solid;
     --tw-border-style: solid;
     --tw-outline-style: solid;
@@ -122,23 +139,25 @@
 .mesurer-toolbar-motion {
   --msr-toolbar-motion: 200ms ease;
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   display: block;
   width: max-content;
   max-width: 100%;
-  filter:
-    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
-    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.1))
-    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
 }
 
 .mesurer-toolbar-chrome {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: auto;
+  bottom: 0;
+  left: 0;
   z-index: 0;
   overflow: visible;
+  width: 100%;
   border-radius: 9px;
   background: #fff;
-  outline: 1px solid transparent;
+  filter: var(--msr-shadow-toolbar);
   transform-origin: 0 50%;
   pointer-events: none;
 }
@@ -146,12 +165,17 @@
 .mesurer-toolbar-clip {
   position: relative;
   z-index: 1;
+  isolation: isolate;
   overflow: visible;
   transform-origin: 0 50%;
 }
 
 .mesurer-toolbar-motion[data-resizing="collapse"] .mesurer-toolbar-clip {
   overflow: hidden;
+}
+
+.mesurer-toolbar-motion[data-resizing] .mesurer-toolbar-tooltips {
+  visibility: hidden !important;
 }
 
 .mesurer-toolbar-surface {
@@ -391,7 +415,8 @@
 }
 
 .mesurer-thin-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .mesurer-thin-scrollbar::-webkit-scrollbar-track {
@@ -400,14 +425,23 @@
 
 .mesurer-thin-scrollbar::-webkit-scrollbar-thumb {
   background: var(--msr-color-ink-200);
-  border-radius: 999px;
+  border-radius: var(--msr-radius-control);
+}
+
+.mesurer-thin-scrollbar:hover {
+  scrollbar-color: var(--msr-color-ink-300) transparent;
+}
+
+.mesurer-thin-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--msr-color-ink-300);
+}
+
+.mesurer-thin-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .mesurer-toast-surface {
-  box-shadow:
-    0 0 0.5px rgba(0, 0, 0, 0.18),
-    0 3px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--msr-shadow-floating);
 }
 
 .mesurer-root {

@@ -6,9 +6,15 @@ const formatTarget = (comment: CommentThread) => {
   return `[<${target.tagName}>${text}</${target.tagName}> selector: \`${target.selector}\`]`
 }
 
-export const formatCommentsForAgent = (comments: CommentThread[], url = "") => {
+type Viewport = {
+  width: number
+  height: number
+}
+
+export const formatCommentsForAgent = (comments: CommentThread[], url = "", viewport?: Viewport) => {
   return [
     url ? `URL: ${url}` : "",
+    viewport ? `Viewport: ${viewport.width} × ${viewport.height} CSS px` : "",
     ...comments.map((comment, index) => {
       const messages = comment.messages.map((message) => message.text)
       const feedback = messages.length === 1
@@ -25,7 +31,10 @@ export const copyCommentsForAgent = async (
 ) => {
   if (comments.length === 0) return false
   await ownerWindow.navigator.clipboard.writeText(
-    formatCommentsForAgent(comments, ownerWindow.location.href),
+    formatCommentsForAgent(comments, ownerWindow.location.href, {
+      width: ownerWindow.innerWidth,
+      height: ownerWindow.innerHeight,
+    }),
   )
   return true
 }

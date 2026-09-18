@@ -60,7 +60,7 @@ export function InspectInfoCard({
     <div
       ref={overlay.overlayRef}
       data-mesurer-inspect-info-card
-      className="msr:pointer-events-auto msr:absolute msr:z-50 msr:w-60 msr:rounded-lg msr:border msr:border-black/10 msr:bg-white msr:px-2 msr:py-2 msr:text-[10px] msr:text-ink-900 msr:shadow-lg msr:select-text"
+      className="msr:pointer-events-auto msr:absolute msr:z-50 msr:w-60 msr:rounded-lg msr:bg-white msr:px-2 msr:py-2 msr:text-[10px] msr:text-ink-900 msr:shadow-floating msr:select-text"
       style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: 50 }}
       title={selector ?? undefined}
       onPointerDown={(event) => event.stopPropagation()}

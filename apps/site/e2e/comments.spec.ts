@@ -155,6 +155,83 @@ test("closes an open comment card and reopens it from the pin", async ({ page })
   await expect(page.locator("[data-mesurer-comment-popover]")).toBeVisible();
 });
 
+test("resolves a comment and reopens it from the resolved filter", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve this review.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  const pin = page.locator("[data-mesurer-comment-pin]");
+  await expect(pin).toHaveCount(1);
+  await pin.click();
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(card).toBeVisible();
+  await expect(pin).toHaveCSS("opacity", "0.45");
+
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("dialog", { name: "Delete comment" })).toHaveCount(0);
+  await expect(card).toBeVisible();
+
+  await card.getByRole("button", { name: "Reopen comment" }).click();
+  await expect(card).toBeVisible();
+  await expect(pin).toHaveCSS("opacity", "1");
+
+  await card.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(pin).toHaveCount(0);
+});
+
+test("keeps the thread open when using card actions", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Keep this thread open.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+
+  const card = page.locator("[data-mesurer-comment-popover]");
+  await card.getByRole("button", { name: "Comment actions" }).first().click();
+  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toBeVisible();
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(card).toBeVisible();
+  await card.getByRole("textbox", { name: "Reply to comment" }).fill("Still here.");
+  await card.getByRole("button", { name: "Send reply" }).click();
+  await expect(card).toContainText("Still here.");
+  await card.getByRole("button", { name: "Close comment" }).click();
+  await expect(card).toHaveCount(0);
+});
+
+test("resolves a comment from the comments list", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve from the list.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await panel.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(0);
+
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
+  await expect(panel.getByRole("button", { name: "Reopen comment" })).toBeVisible();
+});
+
 test("shows every comment and opens a thread from the list", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateComments(page);
@@ -232,7 +309,7 @@ test("deletes all comments from the comments list menu", async ({ page }) => {
   const confirmation = page.getByRole("dialog", { name: "Delete comment" });
   await expect(confirmation).toContainText("delete all comments");
    await confirmation.getByRole("button", { name: "Yes" }).click();
-  await expect(panel).toContainText("No comments yet.");
+   await expect(panel).toContainText("No open comments.");
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {
@@ -250,6 +327,8 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
 
   expect(copied).not.toContain("Mesurer Comments");
   expect(copied).toContain("URL: ");
+  const viewport = await page.evaluate(() => `Viewport: ${window.innerWidth} × ${window.innerHeight} CSS px`);
+  expect(copied).toContain(viewport);
   expect(copied).toContain("Inspect this element.");
   expect(copied).toContain("[<button>Nested inner button</button> selector:");
   expect(copied).not.toContain("### Computed Styles");

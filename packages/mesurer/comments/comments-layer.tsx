@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
 import type { CommentDraft } from "./state"
-import type { CommentThread, Rect } from "./types"
+import type { CommentFilter, CommentThread, Rect } from "./types"
 import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { getRectFromDom } from "../core/dom"
-import { isRectEqual } from "./dom"
+import { COMMENT_CHROME_SELECTOR, eventPathHits, isRectEqual } from "./dom"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
 type CommentsLayerProps = {
   comments: CommentThread[]
+  commentFilter: CommentFilter
   rects: ReadonlyMap<string, Rect>
   unresolvedIds: ReadonlySet<string>
   hoverRect: Rect | null
@@ -25,6 +26,7 @@ type CommentsLayerProps = {
   onSelect: (id: string) => void
   onClickComment: (id: string) => string | undefined
   onAddMessage: (id: string, text: string) => void
+  onToggleResolved: (id: string) => void
   onDelete: (id: string) => void
   onDeleteMessage: (commentId: string, messageId: string) => void
   onEditMessage: (commentId: string, messageId: string, text: string) => void
@@ -93,18 +95,11 @@ const formatRelativeTime = (timestamp: number, now = Date.now()) => {
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
 
-const isCommentChromeEvent = (event: Event) =>
-  event.composedPath().some((node) => {
-    if (!(node instanceof Element)) return false
-    return (
-      node.hasAttribute("data-mesurer-comment-pin") ||
-      node.hasAttribute("data-mesurer-comment-popover") ||
-      (node.hasAttribute("data-mesurer-comment-ui") && !node.hasAttribute("data-mesurer-comments-layer"))
-    )
-  })
+const isCommentChromeEvent = (event: Event) => eventPathHits(event, COMMENT_CHROME_SELECTOR)
 
 export function CommentsLayer({
   comments,
+  commentFilter,
   rects,
   unresolvedIds,
   hoverRect,
@@ -119,6 +114,7 @@ export function CommentsLayer({
   onSelect,
   onClickComment,
   onAddMessage,
+  onToggleResolved,
   onDelete,
   onDeleteMessage,
   onEditMessage,
@@ -138,15 +134,18 @@ export function CommentsLayer({
   const draftOutsideAttemptRef = useRef(false)
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
   const hoverTimeoutRef = useRef<number | null>(null)
-  const selected = comments.find((comment) => comment.id === selectedId) ?? null
+  const visibleComments = comments.filter((comment) =>
+    comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
+  )
+  const selected = visibleComments.find((comment) => comment.id === selectedId) ?? null
   const selectedRect = selected ? rects.get(selected.id) ?? selected.target.rect : null
   const selectedPoint = selected && selectedRect
     ? markerPoint(selectedRect, selected.target.anchor, movingId === selected.id ? hoverPoint : null)
     : null
-  const hovered = comments.find((comment) => comment.id === hoveredId) ?? null
+  const hovered = visibleComments.find((comment) => comment.id === hoveredId) ?? null
   const hoveredRect = hovered ? rects.get(hovered.id) ?? hovered.target.rect : null
   const hoveredPoint = hovered && hoveredRect ? markerPoint(hoveredRect, hovered.target.anchor) : null
-  const movingComment = movingId ? comments.find((comment) => comment.id === movingId) ?? null : null
+  const movingComment = movingId ? visibleComments.find((comment) => comment.id === movingId) ?? null : null
   const movingRect = movingComment ? rects.get(movingComment.id) ?? movingComment.target.rect : null
   const movingPoint = movingComment && movingRect && hoverPoint
     ? markerPoint(movingRect, movingComment.target.anchor, hoverPoint)
@@ -226,6 +225,7 @@ export function CommentsLayer({
         return
       }
       if (isCommentChromeEvent(event)) return
+      if (deleteConfirmationId || messageDeleteConfirmationId) return
       if (selectedId && selectedOutsidePointerDownRef.current()) {
         event.preventDefault()
         event.stopPropagation()
@@ -241,7 +241,16 @@ export function CommentsLayer({
     const view = ownerDocument.defaultView
     if (!view) return
     return addMesurerCaptureListener(view, view, "pointerdown", handlePointerDown)
-  }, [draft, draftText, onClose, onDraftCancel, ownerDocument, selectedId])
+  }, [
+    deleteConfirmationId,
+    draft,
+    draftText,
+    messageDeleteConfirmationId,
+    onClose,
+    onDraftCancel,
+    ownerDocument,
+    selectedId,
+  ])
 
   return (
     <div
@@ -270,11 +279,11 @@ export function CommentsLayer({
         <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
       ) : null}
 
-      {comments.map((comment, index) => {
+      {visibleComments.map((comment, index) => {
         const rect = rects.get(comment.id) ?? comment.target.rect
         const point = markerPoint(rect, comment.target.anchor, movingId === comment.id ? hoverPoint : null)
-        const duplicateIndex = comments
-          .slice(0, index)
+            const duplicateIndex = visibleComments
+              .slice(0, index)
           .filter((candidate) => {
             if (targetKey(candidate) !== targetKey(comment)) return false
             const candidateRect = rects.get(candidate.id) ?? candidate.target.rect
@@ -296,12 +305,15 @@ export function CommentsLayer({
             data-mesurer-comment-pin
             data-mesurer-comment-ui
             aria-label={`Comment ${index + 1}`}
-            className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:shadow-md msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
-            style={markerStyleWithOffset(
-              point,
-              movingId === comment.id ? 0 : duplicateIndex,
-              ownerDocument.defaultView,
-            )}
+             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
+            style={{
+              ...markerStyleWithOffset(
+                point,
+                movingId === comment.id ? 0 : duplicateIndex,
+                ownerDocument.defaultView,
+              ),
+              opacity: comment.status === "resolved" ? 0.45 : 1,
+            }}
             onPointerDown={(event) => {
               event.stopPropagation()
               onStartMove(comment.id, event)
@@ -349,6 +361,7 @@ export function CommentsLayer({
           replyText={replyText}
           onReplyTextChange={setReplyText}
           onAddMessage={(text) => { onAddMessage(selected.id, text); setReplyText("") }}
+          onToggleResolved={onToggleResolved}
           onClose={onClose}
           ownerWindow={ownerDocument.defaultView}
           formatTime={formatRelativeTime}
@@ -369,7 +382,7 @@ export function CommentsLayer({
             ref={draftOverlay.overlayRef}
             data-mesurer-comment-popover
             data-mesurer-comment-ui
-            className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-2 msr:shadow-lg ${draftNudge ? "mesurer-comment-nudge" : ""}`}
+             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-white msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <CommentComposer

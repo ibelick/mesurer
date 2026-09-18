@@ -38,7 +38,7 @@ test("does not reset host-page border styles", async ({ page }) => {
     .toBe("3px dashed rgb(17, 24, 39)");
 });
 
-test("Mesurer controls keep 1px solid borders", async ({ page }) => {
+test("Mesurer surfaces and controls use their intended borders", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: /Settings/ }).click();
   const dialog = page.getByRole("dialog", { name: "Settings" });
@@ -46,7 +46,7 @@ test("Mesurer controls keep 1px solid borders", async ({ page }) => {
   await expect.poll(() => dialog.evaluate((element) => {
     const style = getComputedStyle(element);
     return `${style.borderTopWidth} ${style.borderTopStyle}`;
-  })).toBe("1px solid");
+  })).toBe("0px solid");
   const select = dialog.locator("select").first();
   await expect.poll(() => select.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -108,7 +108,7 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect.poll(() => card.evaluate((element) => {
     const style = getComputedStyle(element);
     return `${style.borderTopWidth} ${style.borderTopStyle}`;
-  })).toBe("1px solid");
+  })).toBe("0px solid");
   const cardBox = await card.boundingBox();
   expect(cardBox).not.toBeNull();
   const hitTarget = await card.evaluate((node, point) => {
@@ -137,12 +137,16 @@ test("Option+S pins the current distance overlay", async ({ page }) => {
   const selectedBox = await selectedTarget.boundingBox();
   expect(selectedBox).not.toBeNull();
   await page.mouse.click(selectedBox!.x + selectedBox!.width / 2, selectedBox!.y + selectedBox!.height / 2);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
 
   const hoverTarget = page.getByRole("button", { name: "Secondary app button" });
   const hoverBox = await hoverTarget.boundingBox();
   expect(hoverBox).not.toBeNull();
   await page.keyboard.down("Alt");
   await page.mouse.move(hoverBox!.x + hoverBox!.width / 2, hoverBox!.y + hoverBox!.height / 2);
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await page.keyboard.press("s");
   await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
   await page.keyboard.up("Alt");
@@ -284,6 +288,54 @@ test("minimizes to one button and restores the workspace", async ({ page }) => {
     "true",
   );
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("dragging a toolbar tool moves the toolbar without selecting the tool", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+  const guides = page.getByRole("button", { name: "Guides (G)" });
+  await expect(guides).toHaveAttribute("aria-pressed", "false");
+  const before = await toolbar.boundingBox();
+  expect(before).not.toBeNull();
+  const box = await guides.boundingBox();
+  expect(box).not.toBeNull();
+  const startX = box!.x + box!.width / 2;
+  const startY = box!.y + box!.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 48, startY + 36, { steps: 8 });
+  await page.mouse.up();
+  const after = await toolbar.boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.x).toBeGreaterThan(before!.x + 20);
+  expect(after!.y).toBeGreaterThan(before!.y + 20);
+  await expect(guides).toHaveAttribute("aria-pressed", "false");
+  await guides.click();
+  await expect(guides).toHaveAttribute("aria-pressed", "true");
+});
+
+test("interrupting minimize restore does not stretch the toolbar", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await page.getByRole("button", { name: "Inspect (I)" }).focus();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  const restore = page.getByRole("button", { name: "Show Mesurer toolbar" });
+  await expect(restore).toBeVisible();
+
+  await restore.click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(restore).toBeVisible();
+  await expect.poll(async () => (await toolbar.boundingBox())?.width ?? 0).toBeLessThan(80);
+
+  await restore.click();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await restore.click();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  await expect.poll(async () => (await toolbar.boundingBox())?.width ?? 0).toBeGreaterThan(200);
 });
 
 test("dragging the minimized button does not restore the toolbar", async ({ page }) => {
@@ -766,6 +818,29 @@ test("native color picker shows color formats", async ({ page }) => {
   await expect(picker).toContainText("rgb");
   await expect(picker).toContainText("oklch");
   await expect(picker).not.toContainText("Copied!");
+
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
+  await expect(picker).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+});
+
+test("opening a toolbar menu closes the color picker card", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#ff0000" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
+  await expect(page.locator(".mesurer-color-picker")).toBeVisible();
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+
+  await expect(page.locator(".mesurer-color-picker")).toHaveCount(0);
+  await expect(page.getByRole("menu")).toBeVisible();
 });
 
 test("falls back to default color formats when persisted formats are invalid", async ({ page }) => {
@@ -1041,7 +1116,25 @@ test("disabling Mesurer closes screenshot selection", async ({ page }) => {
 
 test("settings button opens and dismisses its popover", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  const settings = page.getByRole("button", { name: "Settings" });
+  const settings = page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ });
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(settings).toHaveAttribute("aria-pressed", "true");
+  await settings.click();
+  await expect(settings).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.mouse.click(16, 400);
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await expect(settings).toHaveAttribute("aria-pressed", "false");
+
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await page.locator("[data-testid='host-border-control']").click({ force: true });
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+
   await settings.click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -1333,6 +1426,33 @@ test("comment dropdown and guide menus do not stay open together", async ({ page
   await page.getByRole("button", { name: "Comment menu" }).click();
   await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+});
+
+test("guide and comment submenus close on outside click and trigger reclick", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+
+  const commentMenu = page.getByRole("button", { name: "Comment menu" });
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+
+  await commentMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("menuitem", { name: "Show all comments" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  const guideMenu = page.getByRole("button", { name: "Guide orientation menu" });
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
+
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+  await page.mouse.click(240, 240);
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
 });
 
 test("toolbar tools close Settings", async ({ page }) => {

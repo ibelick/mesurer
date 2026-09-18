@@ -12,8 +12,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
-import type { CommentThread } from "../comments/types";
+import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
+import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
@@ -23,6 +24,7 @@ import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
+import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
 import { MenuItem, MenuSurface } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import {
@@ -90,6 +92,9 @@ type ToolbarComments = {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
+  onToggleResolved: (id: string) => void;
+  statusFilter: CommentFilter;
+  onStatusFilterChange: (filter: CommentFilter) => void;
 };
 
 type ToolbarProps = {
@@ -181,6 +186,7 @@ type ToolbarButtonProps = {
   tooltipVisible: boolean;
   tooltip: ToolbarTooltipProps;
   children: ReactNode;
+  className?: string;
 };
 
 function ToolbarButton({
@@ -192,6 +198,7 @@ function ToolbarButton({
   tooltipVisible,
   tooltip,
   children,
+  className,
 }: ToolbarButtonProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -211,6 +218,7 @@ function ToolbarButton({
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
             : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
+          className,
         )}
         onClick={onClick}
       >
@@ -311,6 +319,9 @@ function ToolbarComponent(
     onSelect: onSelectComment,
     onDelete: onDeleteComment,
     onDeleteAll: onDeleteAllComments,
+    onToggleResolved,
+    statusFilter,
+    onStatusFilterChange,
   } = comments;
   const {
     open: settingsOpen,
@@ -342,6 +353,7 @@ function ToolbarComponent(
   const guideMenuRef = useRef<HTMLDivElement | null>(null);
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
+  const guideMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const commentPanelPortalTarget =
     commentMenuRef.current?.closest("[data-mesurer-root]") ?? eventTarget.document.body;
   const toolStageRef = useRef<HTMLDivElement | null>(null);
@@ -644,6 +656,7 @@ function ToolbarComponent(
 
   const colorPickerMode = useCallback(() => {
     onCancelTransient();
+    onInteract();
     setEnabled(true);
     setToolMode("none");
     onCancelScreenshot();
@@ -653,15 +666,14 @@ function ToolbarComponent(
       setColorPickerActive(true);
       onColorPickerClick();
     }
-    onInteract();
   }, [colorPickerActive, onCancelScreenshot, onCancelTransient, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const screenshotMode = useCallback(() => {
     onCancelTransient();
+    onInteract();
     setEnabled(true);
     setColorPickerActive(false);
     onScreenshotClick();
-    onInteract();
   }, [onCancelTransient, onInteract, onScreenshotClick, setColorPickerActive, setEnabled]);
 
   const rulersMode = useCallback(() => {
@@ -768,16 +780,43 @@ function ToolbarComponent(
   }, [eventTarget, guideMenuOpen, updateMenuAlign]);
 
   useEffect(() => {
-    if (!openMenu) return;
+    if (!openMenu || openMenu.type === "settings") return;
+    const menu = openMenu
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
-      const isMenuContent = event.composedPath().some(
-        (target) =>
-          target instanceof Element && target.closest("[role='menu'], [role='dialog']"),
-      );
-      if (!isMenuContent) setOpenMenu(null);
+      const path = event.composedPath()
+      const pathHas = (selector: string) =>
+        path.some((target) => {
+          const candidate = target as { closest?: (value: string) => Element | null }
+          return Boolean(candidate.closest?.(selector))
+        })
+      if (pathHas("[data-mesurer-comment-delete-confirmation]")) return
+      if (findDeleteConfirmation(eventTarget)) return
+      if (menu.type === "comments" && menu.panel) {
+        if (pathHas("[data-mesurer-comment-ui]")) return
+        const roots: ParentNode[] = [eventTarget.document]
+        const host = eventTarget.document.getElementById("mesurer-extension-host")
+        if (host?.shadowRoot) roots.push(host.shadowRoot)
+        const nestedCommentMenu = roots.some((root) =>
+          root.querySelector("[data-mesurer-comment-actions][role='menu']"),
+        )
+        if (nestedCommentMenu) return
+      }
+      if (
+        (commentButtonRef.current && path.includes(commentButtonRef.current)) ||
+        (guideMenuButtonRef.current && path.includes(guideMenuButtonRef.current)) ||
+        pathHas("[data-mesurer-menu-trigger]") ||
+        pathHas("[role='menu']")
+      ) {
+        return
+      }
+      setOpenMenu(null)
     };
-    eventTarget.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
-    return () => eventTarget.removeEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    return addMesurerCaptureListener(
+      eventTarget,
+      eventTarget,
+      "pointerdown",
+      closeOnOutsidePointerDown as EventListener,
+    );
   }, [eventTarget, openMenu, setOpenMenu]);
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
@@ -811,7 +850,12 @@ function ToolbarComponent(
       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
         const target = event.target;
-        if (target instanceof Element && target.closest("[role='menu'], [role='dialog']")) return;
+        if (
+          target instanceof Element &&
+          target.closest("[role='menu'], [role='dialog'], [data-tool-id='settings'], [data-mesurer-menu-trigger]")
+        ) {
+          return;
+        }
         onInteract();
         onPointerDown(event);
       }}
@@ -924,9 +968,11 @@ function ToolbarComponent(
       >
         <button
           type="button"
+          ref={guideMenuButtonRef}
           aria-label="Guide orientation menu"
+          data-mesurer-menu-trigger
           className={cn(
-            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             guideMenuOpen
               ? "msr:bg-black/4 msr:text-black"
               : "msr:text-black",
@@ -1167,8 +1213,9 @@ function ToolbarComponent(
           aria-label="Comment menu"
          aria-haspopup="menu"
          aria-expanded={commentMenuOpen}
+         data-mesurer-menu-trigger
          className={cn(
-            "msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             commentMenuOpen ? "msr:bg-black/4 msr:text-black" : "msr:text-black",
          )}
           onClick={() => {
@@ -1186,9 +1233,12 @@ function ToolbarComponent(
                selectedId={selectedId}
                panelRef={commentsPanelRef}
                placement={commentsPlacement}
-               onDelete={onDeleteComment}
-               onDeleteAll={onDeleteAllComments}
-               onCopy={onCopyComments}
+                onDelete={onDeleteComment}
+                onToggleResolved={onToggleResolved}
+                onDeleteAll={onDeleteAllComments}
+                onCopy={onCopyComments}
+                statusFilter={statusFilter}
+                onStatusFilterChange={onStatusFilterChange}
                ownerWindow={eventTarget}
                copyShortcut={copyCommentsShortcut}
                 onSelect={(id) => {
@@ -1226,28 +1276,27 @@ function ToolbarComponent(
            )
          ) : null}
       </div>
-       {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
-        <ToolbarButton
-          id="settings"
-          active={settingsOpen}
-          label="Settings"
-          shortcut={settingsShortcut}
-          onClick={() => {
-            onCancelScreenshot();
-            onInteract();
-            onToggleSettings();
-            setOpenMenu(settingsOpen ? null : { type: "settings" });
-          }}
-          tooltip={toolbarTooltip}
-          tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
-        >
+        {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
+          <ToolbarButton
+            id="settings"
+            className="msr:relative msr:z-[71]"
+            active={settingsOpen}
+            label="Settings"
+            shortcut={settingsShortcut}
+            onClick={() => {
+              onCancelScreenshot();
+              onToggleSettings();
+            }}
+            tooltip={toolbarTooltip}
+            tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
+          >
           <GearIcon size={20} aria-hidden="true" />
         </ToolbarButton>
         {settingsOpen ? (
           <div
             ref={settingsMenuRef}
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:z-[70] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-0 msr:shadow-lg",
+              "mesurer-menu-surface msr:absolute msr:z-[70] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
               settingsPlacement.side === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
@@ -1258,6 +1307,7 @@ function ToolbarComponent(
               maxHeight: settingsPlacement.height,
             }}
             data-mesurer-inspector-ui="true"
+            data-mesurer-settings-panel
             role="dialog"
             aria-label="Settings"
             onPointerDown={(event) => event.stopPropagation()}

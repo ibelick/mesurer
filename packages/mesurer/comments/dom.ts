@@ -146,3 +146,17 @@ export const resolveCommentTarget = (
 
 export const isRectEqual = (a: Rect, b: Rect) =>
   a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height
+
+export const COMMENT_CHROME_SELECTOR = [
+  "[data-mesurer-comment-pin]",
+  "[data-mesurer-comment-popover]",
+  "[data-mesurer-comment-overflow-menu]",
+  "[data-mesurer-comment-delete-confirmation]",
+  "[data-mesurer-comment-hover-card]",
+].join(", ")
+
+export const eventPathHits = (event: Event, selector: string) =>
+  event.composedPath().some((node) => {
+    const candidate = node as { closest?: (value: string) => Element | null }
+    return Boolean(candidate.closest?.(selector))
+  })

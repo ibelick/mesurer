@@ -49,7 +49,11 @@ export const useCommentPointer = ({
       setDraftText("")
       return
     }
-    if (event.target instanceof Element && event.target.closest("[data-mesurer-comment-ui]")) return
+    const origin = event.nativeEvent.composedPath().find((node) => {
+      const candidate = node as { closest?: (value: string) => Element | null }
+      return typeof candidate.closest === "function"
+    }) as { closest: (value: string) => Element | null } | undefined
+    if (origin?.closest("[data-mesurer-comment-ui]")) return
     const point = { x: event.clientX, y: event.clientY }
     const element = getCommentTargetAtPoint(point, overlayRef.current, ownerDocument)
     if (!element) return

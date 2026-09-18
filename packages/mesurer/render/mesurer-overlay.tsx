@@ -28,6 +28,7 @@ import { PenLayer } from "./pen-layer"
 import { MarqueeRect } from "./marquee-rect"
 import { GroupSelectionFrame } from "./group-selection-frame"
 import { CommentsLayer } from "../comments/comments-layer"
+import { COMMENT_CHROME_SELECTOR, eventPathHits } from "../comments/dom"
 import type { OpenMenu } from "../core/types"
 
 type OverlayPointers = {
@@ -233,19 +234,31 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       data-mesurer-inspect={toolMode === "select" ? "" : undefined}
       onMouseDown={(event) => {
         if (event.button !== 0) return
-        const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
-        if (origin?.closest("input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui], [data-mesurer-inspect-info-card]")) return
+        if (
+          eventPathHits(
+            event.nativeEvent,
+            "input, textarea, select, [contenteditable], [data-mesurer-text], [data-mesurer-comment-ui], [data-mesurer-inspect-info-card]",
+          )
+        ) {
+          return
+        }
         event.preventDefault()
       }}
       onPointerDown={(event) => {
-        const origin = event.nativeEvent.composedPath().find((node): node is Element => node instanceof Element)
-        if (origin?.closest("[data-mesurer-inspect-info-card]")) return
-        const clickedCommentUi = origin?.closest("[data-mesurer-comment-ui]")
-        if (toolMode === "comments" && comments?.draft && !origin?.closest("[data-mesurer-comment-popover]")) {
+        if (eventPathHits(event.nativeEvent, "[data-mesurer-inspect-info-card]")) return
+        if (
+          toolMode === "comments" &&
+          comments?.draft &&
+          !eventPathHits(event.nativeEvent, "[data-mesurer-comment-popover]")
+        ) {
           comments.onDraftCancel?.()
           return
         }
-        if (toolMode === "comments" && comments?.selectedId && !clickedCommentUi) {
+        if (
+          toolMode === "comments" &&
+          comments?.selectedId &&
+          !eventPathHits(event.nativeEvent, COMMENT_CHROME_SELECTOR)
+        ) {
           comments.onClose?.()
           return
         }

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
 import type { CommentThread } from "./types"
 import { CloseIcon, MoreIcon, SendIcon } from "../components/icons"
-import { CommentDeleteConfirmation } from "./comment-delete-confirmation"
+import { CommentDeleteConfirmation, readDeleteAnchor } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
@@ -22,6 +22,7 @@ type CommentThreadCardProps = {
   replyText: string
   onReplyTextChange: (text: string) => void
   onAddMessage: (text: string) => void
+  onToggleResolved: (commentId: string) => void
   onClose?: () => void
   ownerWindow: Window | null
   formatTime: (timestamp: number) => string
@@ -43,6 +44,7 @@ export function CommentThreadCard({
   replyText,
   onReplyTextChange,
   onAddMessage,
+  onToggleResolved,
   onClose,
   ownerWindow,
   formatTime,
@@ -89,13 +91,21 @@ export function CommentThreadCard({
     avoidAxis: "horizontal",
     gap: 4,
   })
+  const overlayRoot =
+    overlay.overlayRef.current?.closest("[data-mesurer-root]") ?? ownerWindow?.document.body ?? null
+  const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  useLayoutEffect(() => {
+    const node = overlay.overlayRef.current
+    if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
+    setCardAnchor(readDeleteAnchor(node))
+  }, [deleteConfirmationOpen, messageDeleteConfirmationId, overlay.overlayRef])
 
   return (
     <div
       data-mesurer-comment-popover
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-lg ${nudge ? "mesurer-comment-nudge" : ""}`}
+      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
       style={{ paddingTop: 40 }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         outsideAttemptRef.current = false
@@ -136,6 +146,18 @@ export function CommentThreadCard({
             />
           ) : null}
         </div>
+        <button
+          type="button"
+          aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
+          aria-pressed={comment.status === "resolved"}
+          className={`msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+          onClick={() => onToggleResolved(comment.id)}
+        >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
+            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "white" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <button
           type="button"
           aria-label="Close comment"
@@ -210,9 +232,12 @@ export function CommentThreadCard({
                     }}
                   />
                 ) : null}
-                {messageDeleteConfirmationId === item.id ? (
+                {messageDeleteConfirmationId === item.id && ownerWindow && cardAnchor ? (
                   <CommentDeleteConfirmation
                     commentId={item.id}
+                    ownerWindow={ownerWindow}
+                    anchor={cardAnchor}
+                    portalTarget={overlayRoot}
                     onConfirm={onConfirmDeleteMessage}
                     onCancel={onCancelDeleteMessage}
                   />
@@ -246,8 +271,15 @@ export function CommentThreadCard({
         />
       </div>
 
-      {deleteConfirmationOpen ? (
-        <CommentDeleteConfirmation commentId={comment.id} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+      {deleteConfirmationOpen && ownerWindow && cardAnchor ? (
+        <CommentDeleteConfirmation
+          commentId={comment.id}
+          ownerWindow={ownerWindow}
+          anchor={cardAnchor}
+          portalTarget={overlayRoot}
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+        />
       ) : null}
     </div>
   )
