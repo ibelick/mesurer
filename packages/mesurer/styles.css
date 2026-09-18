@@ -5,6 +5,11 @@
 
 @theme {
   --radius-control: 5px;
+  --shadow-toolbar:
+    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
+    drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
   --shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
@@ -143,13 +148,16 @@
 
 .mesurer-toolbar-chrome {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: auto;
+  bottom: 0;
+  left: 0;
   z-index: 0;
   overflow: visible;
+  width: 100%;
   border-radius: 9px;
   background: #fff;
-  box-shadow: var(--msr-shadow-floating);
-  outline: 1px solid transparent;
+  filter: var(--msr-shadow-toolbar);
   transform-origin: 0 50%;
   pointer-events: none;
 }

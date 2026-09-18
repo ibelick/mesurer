@@ -33,6 +33,7 @@ type Pose = {
   stageW: number
   expandedW: number
   collapse: boolean
+  chromeWidth: number
 }
 
 type Nodes = {
@@ -95,7 +96,6 @@ const clearMotionStyles = (
   stage.style.width = ""
   nodes.chrome.style.borderRadius = ""
   nodes.chrome.style.width = ""
-  nodes.chrome.style.right = ""
   nodes.clip.style.borderRadius = ""
   for (const node of Object.values(nodes)) {
     node.style.transition = ""
@@ -117,12 +117,10 @@ const applyPose = (
 ) => {
   if (collapse && layoutWidth > 0) {
     nodes.chrome.style.transform = ""
-    nodes.chrome.style.right = "auto"
     nodes.chrome.style.width = `${layoutWidth * pose.scaleX}px`
     nodes.chrome.style.borderRadius = `${pose.radius}px`
   } else {
     nodes.chrome.style.width = ""
-    nodes.chrome.style.right = ""
     nodes.chrome.style.transform = nearlyEqual(pose.scaleX, 1, 0.002)
       ? ""
       : `scaleX(${pose.scaleX})`
@@ -153,14 +151,13 @@ const captureInterrupt = (
   const computed = view?.getComputedStyle.bind(view) ?? getComputedStyle
   const nextWidth = motion.offsetWidth
   const chromeWidth = nodes.chrome.getBoundingClientRect().width
-  const scaleX = nextWidth > 0 ? chromeWidth / nextWidth : 1
+  const scaleX = play.layoutWidth > 0 ? chromeWidth / play.layoutWidth : 1
   const trailX = transformTranslateX(computed(nodes.trailing).transform)
   const trackX = transformTranslateX(computed(nodes.track).transform)
   const collapseX = transformTranslateX(computed(nodes.collapse).transform)
-  const nextScale = nextWidth > 0 ? (play.layoutWidth * scaleX) / nextWidth : 1
   return {
-    scaleX: play.group ? 1 : nextScale,
-    clipScale: play.collapse ? nextScale : 1,
+    scaleX: play.group ? 1 : scaleX,
+    clipScale: play.collapse ? scaleX : 1,
     radius: lerp(
       play.radiusFrom,
       play.radiusTo,
@@ -172,6 +169,7 @@ const captureInterrupt = (
     stageW: stage.getBoundingClientRect().width,
     expandedW: collapseStage.getBoundingClientRect().width,
     collapse: play.collapse,
+    chromeWidth,
   }
 }
 
@@ -278,6 +276,8 @@ export const useToolbarGroupMotion = ({
 
     const fromMinimized = minimizedRef.current
     const fromGroup = groupRef.current
+    minimizedRef.current = minimized
+    groupRef.current = toolGroup
     const closing = !fromMinimized && minimized
     const opening = fromMinimized && !minimized
     const interrupt = interruptRef.current
@@ -339,12 +339,20 @@ export const useToolbarGroupMotion = ({
     const closeScale =
       toWidth > 0 && visualIconWidth > 0 ? visualIconWidth / toWidth : 1
     const fromScale = interrupt
-      ? interrupt.scaleX
+      ? toWidth > 0
+        ? interrupt.chromeWidth / toWidth
+        : interrupt.scaleX
       : groupSwitch || !(fromWidth > 0 && toWidth > 0)
         ? 1
         : fromWidth / toWidth
     const toScale = minimized ? closeScale : 1
-    const fromClip = interrupt ? interrupt.clipScale : collapseMotion ? fromScale : 1
+    const fromClip = interrupt
+      ? interrupt.collapse && toWidth > 0
+        ? interrupt.chromeWidth / toWidth
+        : interrupt.clipScale
+      : collapseMotion
+        ? fromScale
+        : 1
     const toClip = collapseMotion ? toScale : 1
     const fromTrail = interrupt
       ? interrupt.trailX
@@ -488,7 +496,7 @@ export const useToolbarGroupMotion = ({
       collapseMotion ||
       (!groupSwitch && !nearlyEqual(fromScale, toScale, 0.002))
     const followClip = () => {
-      const t = chromeMotion.effect?.getComputedTiming().progress ?? 1
+      const t = chromeMotion.effect?.getComputedTiming().progress ?? 0
       const chromeScale = lerp(fromScale, toScale, t)
       const visual = lerp(
         fromRadius,
@@ -545,7 +553,20 @@ export const useToolbarGroupMotion = ({
       stage.style.width = `${pose.stageW}px`
       collapseStage.style.width = `${pose.expandedW}px`
       interruptRef.current = pose
-      applyPose(nodes, pose, pose.collapse, play.layoutWidth)
+      const layoutWidth = motion.offsetWidth || play.layoutWidth
+      applyPose(
+        nodes,
+        {
+          ...pose,
+          scaleX: layoutWidth > 0 ? pose.chromeWidth / layoutWidth : pose.scaleX,
+          clipScale:
+            pose.collapse && layoutWidth > 0
+              ? pose.chromeWidth / layoutWidth
+              : pose.clipScale,
+        },
+        pose.collapse,
+        layoutWidth,
+      )
       playRef.current = null
     }
   }, [

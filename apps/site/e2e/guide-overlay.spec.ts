@@ -314,6 +314,30 @@ test("dragging a toolbar tool moves the toolbar without selecting the tool", asy
   await expect(guides).toHaveAttribute("aria-pressed", "true");
 });
 
+test("interrupting minimize restore does not stretch the toolbar", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await page.getByRole("button", { name: "Inspect (I)" }).focus();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  const restore = page.getByRole("button", { name: "Show Mesurer toolbar" });
+  await expect(restore).toBeVisible();
+
+  await restore.click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(restore).toBeVisible();
+  await expect.poll(async () => (await toolbar.boundingBox())?.width ?? 0).toBeLessThan(80);
+
+  await restore.click();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await restore.click();
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  await expect.poll(async () => (await toolbar.boundingBox())?.width ?? 0).toBeGreaterThan(200);
+});
+
 test("dragging the minimized button does not restore the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();
