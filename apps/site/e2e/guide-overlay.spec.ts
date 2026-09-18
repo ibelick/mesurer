@@ -38,7 +38,7 @@ test("does not reset host-page border styles", async ({ page }) => {
     .toBe("3px dashed rgb(17, 24, 39)");
 });
 
-test("Mesurer controls keep 1px solid borders", async ({ page }) => {
+test("Mesurer surfaces and controls use their intended borders", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: /Settings/ }).click();
   const dialog = page.getByRole("dialog", { name: "Settings" });
@@ -46,7 +46,7 @@ test("Mesurer controls keep 1px solid borders", async ({ page }) => {
   await expect.poll(() => dialog.evaluate((element) => {
     const style = getComputedStyle(element);
     return `${style.borderTopWidth} ${style.borderTopStyle}`;
-  })).toBe("1px solid");
+  })).toBe("0px solid");
   const select = dialog.locator("select").first();
   await expect.poll(() => select.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -108,7 +108,7 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect.poll(() => card.evaluate((element) => {
     const style = getComputedStyle(element);
     return `${style.borderTopWidth} ${style.borderTopStyle}`;
-  })).toBe("1px solid");
+  })).toBe("0px solid");
   const cardBox = await card.boundingBox();
   expect(cardBox).not.toBeNull();
   const hitTarget = await card.evaluate((node, point) => {
