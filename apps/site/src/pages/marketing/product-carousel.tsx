@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react";
 
 const slides = [
   {
@@ -75,18 +76,18 @@ export default function ProductCarousel() {
           aria-label="Previous product video"
           disabled={activeIndex === 0}
           onClick={() => showSlide(activeIndex - 1)}
-          className="inline-flex size-9 items-center justify-center rounded-[var(--radius)] border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
-        >
-          <span aria-hidden="true">←</span>
+           className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+         >
+           <CaretLeftIcon aria-hidden="true" size={16} weight="bold" />
         </button>
         <button
           type="button"
           aria-label="Next product video"
           disabled={activeIndex === slides.length - 1}
           onClick={() => showSlide(activeIndex + 1)}
-          className="inline-flex size-9 items-center justify-center rounded-[var(--radius)] border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
-        >
-          <span aria-hidden="true">→</span>
+           className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-subtle hover:text-strong disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+         >
+           <CaretRightIcon aria-hidden="true" size={16} weight="bold" />
         </button>
       </div>
     </section>

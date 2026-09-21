@@ -33,9 +33,7 @@ export default function AgentWorkflow() {
                 <h3 className="text-base font-medium text-strong">{card.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p>
               </div>
-              <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius)] border border-border bg-bg text-xs text-muted">
-                Visual placeholder
-              </div>
+              <div aria-hidden="true" className="aspect-[4/3] bg-transparent" />
             </article>
           ))}
         </div>

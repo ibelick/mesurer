@@ -116,7 +116,11 @@ export default function Pricing() {
                     ))}
                   </ul>
                 </div>
-                <Button href={plan.href} variant="secondary" className="mt-8 w-full">
+                <Button
+                  href={plan.href}
+                  variant={plan.id === "pro" ? "primary" : "muted"}
+                  className="mt-8 w-full"
+                >
                   {plan.cta}
                 </Button>
               </article>

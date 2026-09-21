@@ -26,7 +26,6 @@ import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
 import PlatformSection from "./platform-section";
 import Pricing from "./pricing";
-import FAQ from "./faq";
 import FinalCta from "./final-cta";
 import SocialProof from "./social-proof";
 
@@ -587,7 +586,7 @@ function App() {
 
 export default function MarketingPage() {
   return (
-    <main id="overview" className="min-h-screen py-20">
+    <main id="overview" className="min-h-screen pb-0 pt-20">
       <Mesurer initialState={{ minimized: true }} />
       <div className="mx-auto flex flex-col gap-20 px-5">
         <Hero />
@@ -596,7 +595,6 @@ export default function MarketingPage() {
         <PlatformSection />
         <SocialProof />
         <Pricing />
-        <FAQ />
         <FinalCta />
       </div>
       <MarketingFooter />
