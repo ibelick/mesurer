@@ -86,6 +86,17 @@ export const useCommentState = (
     setSelectedId(null)
   }
 
+  const resolveAllComments = () => {
+    const now = Date.now()
+    updateComments((previous) =>
+      previous.map((comment) =>
+        comment.status === "open"
+          ? { ...comment, status: "resolved", updatedAt: now }
+          : comment,
+      ),
+    )
+  }
+
   const deleteMessage = (commentId: string, messageId: string) => {
     updateComments((previous) =>
       previous.flatMap((comment) => {
@@ -151,6 +162,7 @@ export const useCommentState = (
     addMessage,
     deleteComment,
     deleteAllComments,
+    resolveAllComments,
     deleteMessage,
     toggleResolved,
     updateTarget,

@@ -31,6 +31,7 @@ export function CommentsPanel({
   onSelect,
   onCopy,
   onDeleteAll,
+  onResolveAll,
   ownerWindow,
   copyShortcut,
   onDelete,
@@ -47,6 +48,7 @@ export function CommentsPanel({
   onSelect: (id: string) => void
   onCopy: () => void | Promise<void>
   onDeleteAll: () => void
+  onResolveAll: () => void
   ownerWindow: Window
   copyShortcut: string
   onDelete: (id: string) => void
@@ -307,7 +309,8 @@ export function CommentsPanel({
               </MenuItem>
             ))}
             <div className="msr:my-1 msr:border-t msr:border-ink-100" />
-            <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+             <button type="button" role="menuitem" disabled={!comments.some((comment) => comment.status === "open")} className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-50 disabled:msr:cursor-default disabled:msr:opacity-40" onClick={(event) => { event.stopPropagation(); onResolveAll(); setOpenMenuId(null) }}>Resolve all comments</button>
+             <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
         </div>, overlayPortalTarget)
       ) : null}
       {deleteId && deleteAnchor ? (

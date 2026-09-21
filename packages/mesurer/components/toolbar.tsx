@@ -92,6 +92,7 @@ type ToolbarComments = {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
+  onResolveAll: () => void;
   onToggleResolved: (id: string) => void;
   statusFilter: CommentFilter;
   onStatusFilterChange: (filter: CommentFilter) => void;
@@ -319,6 +320,7 @@ function ToolbarComponent(
     onSelect: onSelectComment,
     onDelete: onDeleteComment,
     onDeleteAll: onDeleteAllComments,
+    onResolveAll: onResolveAllComments,
     onToggleResolved,
     statusFilter,
     onStatusFilterChange,
@@ -1235,7 +1237,8 @@ function ToolbarComponent(
                placement={commentsPlacement}
                 onDelete={onDeleteComment}
                 onToggleResolved={onToggleResolved}
-                onDeleteAll={onDeleteAllComments}
+                 onDeleteAll={onDeleteAllComments}
+                 onResolveAll={onResolveAllComments}
                 onCopy={onCopyComments}
                 statusFilter={statusFilter}
                 onStatusFilterChange={onStatusFilterChange}

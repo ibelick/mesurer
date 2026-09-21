@@ -310,6 +310,26 @@ test("deletes all comments from the comments list menu", async ({ page }) => {
   await expect(confirmation).toContainText("delete all comments");
    await confirmation.getByRole("button", { name: "Yes" }).click();
    await expect(panel).toContainText("No open comments.");
+ });
+
+test("resolves all comments from the comments list menu", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve every comment.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitem", { name: "Resolve all comments" }).click();
+
+  await expect(panel).toContainText("No open comments.");
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
+  await expect(panel.getByRole("button", { name: "Reopen comment" })).toBeVisible();
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {
