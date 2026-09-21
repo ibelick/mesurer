@@ -125,6 +125,10 @@
   background-color: var(--msr-control-thumb) !important;
 }
 
+.mesurer-root .mesurer-switch-thumb[data-checked="false"] {
+  background-color: var(--msr-color-ink-200) !important;
+}
+
 .mesurer-root [class~="msr:hover:bg-black\/4"]:hover,
 .mesurer-root [class~="msr:hover:bg-black\/5"]:hover {
   background-color: color-mix(in srgb, var(--msr-content) 6%, transparent) !important;
@@ -143,8 +147,24 @@
   background-color: var(--msr-color-ink-200) !important;
 }
 
+.mesurer-root[data-theme="dark"] .mesurer-settings-panel .mesurer-control-shell,
+.mesurer-root[data-theme="dark"] .mesurer-settings-panel select,
+.mesurer-root[data-theme="system"] .mesurer-settings-panel .mesurer-control-shell,
+.mesurer-root[data-theme="system"] .mesurer-settings-panel select {
+  border-color: var(--msr-color-ink-200) !important;
+}
+
+.mesurer-root .mesurer-settings-panel .mesurer-control-focus :is(input, select):focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .mesurer-root[data-theme="dark"] {
   --msr-accent: #0c8ce9;
+  --msr-color-red-50: #3f2020;
+  --msr-color-red-200: #7f3f46;
+  --msr-color-red-600: #f87171;
+  --msr-color-red-700: #fca5a5;
   --msr-color-ink-50: #3a3a3a;
   --msr-color-ink-100: #414141;
   --msr-color-ink-200: #4a4a4a;
@@ -171,6 +191,10 @@
 @media (prefers-color-scheme: dark) {
   .mesurer-root[data-theme="system"] {
     --msr-accent: #0c8ce9;
+    --msr-color-red-50: #3f2020;
+    --msr-color-red-200: #7f3f46;
+    --msr-color-red-600: #f87171;
+    --msr-color-red-700: #fca5a5;
     --msr-color-ink-50: #3a3a3a;
     --msr-color-ink-100: #414141;
     --msr-color-ink-200: #4a4a4a;

@@ -1170,6 +1170,10 @@ test("Appearance setting switches the Mesurer theme", async ({ page }) => {
   await expect.poll(() => page.locator("[data-mesurer-root]").evaluate((element) => getComputedStyle(element).getPropertyValue("--msr-accent").trim())).toBe("#0c8ce9");
   await expect(page.locator(".mesurer-toolbar-divider").first()).toHaveCSS("background-color", "rgb(74, 74, 74)");
   await expect(page.locator("[data-mesurer-settings-panel]")).toHaveCSS("background-color", "rgb(58, 58, 58)");
+  const dangerButton = page.getByRole("button", { name: "Clear workspace" });
+  await dangerButton.hover();
+  await expect(dangerButton).toHaveCSS("background-color", "rgb(63, 32, 32)");
+  await expect(dangerButton).toHaveCSS("color", "rgb(248, 113, 113)");
 
   await page.getByRole("button", { name: /Settings/ }).click();
   await page.getByRole("button", { name: "Comment menu" }).click();

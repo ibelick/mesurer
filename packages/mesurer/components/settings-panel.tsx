@@ -6,7 +6,6 @@ import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { CheckIcon } from "./icons"
-import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
 import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings, ThemeMode } from "../core/persistence"
@@ -156,8 +155,14 @@ function SettingsSwitch({ label, checked, onChange }: {
         )}
       >
         <span
-             className="mesurer-control-thumb msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:transition-transform"
-          style={{ transform: `translateX(${checked ? 12 : 0}px)` }}
+           className={cn(
+             "mesurer-control-thumb msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:transition-transform",
+             "mesurer-switch-thumb msr:bg-white",
+           )}
+           data-checked={checked ? "true" : "false"}
+           style={{
+             transform: `translateX(${checked ? 12 : 0}px)`,
+           }}
         />
       </span>
     </button>
@@ -253,7 +258,7 @@ function SliderControl({
             aria-hidden="true"
           />
           <div
-             className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-white msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+             className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-white msr:shadow-[0_1px_2px_rgb(0_0_0_/_0.06)] msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -433,15 +438,14 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
           </>
         }
         right={
-          <TextInput
+          <input
             ref={alphaInputRef}
-            containerClassName="msr:h-full msr:w-full"
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"
             value={alphaFocused ? (alphaDraft ? `${alphaDraft}%` : "") : `${alphaValue}%`}
             maxLength={4}
-             className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+            className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
             onFocus={() => {
               setAlphaDraft(String(alphaValue))
               setAlphaFocused(true)
