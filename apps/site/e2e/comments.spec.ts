@@ -339,6 +339,30 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
   await expect(copyMenuItem.locator("svg")).toHaveCount(1);
 });
 
+test("copies only unresolved comments to the agent clipboard", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolved feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await page.getByRole("button", { name: "Close comment" }).click();
+
+  await page.mouse.click(300, 560);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Open feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toBe("");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+
+  expect(copied).toContain("Open feedback.");
+  expect(copied).not.toContain("Resolved feedback.");
+});
+
 test("copies a comment target selector from the thread menu", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/e2e/fixtures/guide-overlay.html");
