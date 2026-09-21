@@ -52,6 +52,7 @@ import {
   type MesurerStoredWorkspace,
   type GuideStyle,
   type RulerSettings,
+  type ThemeMode,
 } from "./core/persistence";
 import {
   resolveTextFontFamily,
@@ -73,6 +74,7 @@ export type MesurerProps = {
   layoutDetailsEnabled?: boolean;
   persistOnReload?: boolean;
   shortcutsEnabled?: boolean;
+  theme?: ThemeMode;
   portalTarget?: HTMLElement | ShadowRoot;
   persistKey?: string;
   colorPickerFormats?: ColorPickerFormat[];
@@ -122,6 +124,7 @@ export function MesurerClient({
   layoutDetailsEnabled,
   persistOnReload,
   shortcutsEnabled: shortcutsEnabledDefault,
+  theme: themeDefault,
   portalTarget,
   persistKey,
   colorPickerFormats,
@@ -461,6 +464,8 @@ export function MesurerClient({
     setPersistOnReload: setSettingsPersistOnReload,
     shortcutsEnabled: settingsShortcutsEnabled,
     setShortcutsEnabled: setSettingsShortcutsEnabled,
+    theme: settingsTheme,
+    setTheme: setSettingsTheme,
     lastToolMode: settingsLastToolMode,
     setLastToolMode: setSettingsLastToolMode,
     colorPickerFormats: settingsColorFormats,
@@ -491,6 +496,7 @@ export function MesurerClient({
       infoCardMode: "click",
       persistOnReload,
       shortcutsEnabled: shortcutsEnabledDefault,
+      theme: themeDefault,
       colorPickerFormats,
       colorPickerClickFormat,
       guideStyle: guideStyleDefault,
@@ -1417,6 +1423,7 @@ export function MesurerClient({
   return (
     <MesurerPortal
       portalTarget={portalTarget}
+      theme={settingsTheme}
       rootRef={overlayRef}
       toolbarRef={toolbarRef}
       screenshotOverlayRef={screenshot.overlayRef}
@@ -1756,6 +1763,8 @@ export function MesurerClient({
                 setPersistOnReload: setSettingsPersistOnReload,
                 shortcutsEnabled: settingsShortcutsEnabled,
                 setShortcutsEnabled: setSettingsShortcutsEnabled,
+                theme: settingsTheme,
+                setTheme: setSettingsTheme,
                 onMinimize: minimizeMesurer,
                 onResetSettings: resetSettings,
                 onClearWorkspace: clearWorkspace,

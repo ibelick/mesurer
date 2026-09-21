@@ -9,7 +9,7 @@ import { CheckIcon } from "./icons"
 import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings } from "../core/persistence"
+import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings, ThemeMode } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
@@ -103,6 +103,8 @@ type SettingsPanelProps = {
     setPersistOnReload: Dispatch<SetStateAction<boolean>>
     shortcutsEnabled: boolean
     setShortcutsEnabled: Dispatch<SetStateAction<boolean>>
+    theme: ThemeMode
+    setTheme: Dispatch<SetStateAction<ThemeMode>>
     onMinimize: () => void
     onResetSettings: () => void
     onClearWorkspace: () => void
@@ -154,7 +156,7 @@ function SettingsSwitch({ label, checked, onChange }: {
         )}
       >
         <span
-             className="msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:transition-transform"
+             className="mesurer-control-thumb msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:transition-transform"
           style={{ transform: `translateX(${checked ? 12 : 0}px)` }}
         />
       </span>
@@ -242,16 +244,16 @@ function SliderControl({
         >
           <div
              className="msr:absolute msr:left-[8px] msr:right-[8px] msr:rounded-full"
-            style={{ top: 8, height: 4, backgroundColor: "rgba(15, 23, 42, 0.16)" }}
+             style={{ top: 8, height: 4, backgroundColor: "var(--msr-slider-track)" }}
             aria-hidden="true"
           />
           <div
              className="msr:absolute msr:left-[8px] msr:rounded-full"
-             style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbInset * 2 / 100}px)`, height: 4, backgroundColor: "#0d99ff" }}
+             style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbInset * 2 / 100}px)`, height: 4, backgroundColor: "var(--msr-accent)" }}
             aria-hidden="true"
           />
           <div
-             className="msr:absolute msr:rounded-control msr:bg-white msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+             className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-white msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -469,7 +471,7 @@ function SectionDivider() {
   return (
     <div
       aria-hidden="true"
-      className="msr:h-px msr:w-full msr:shrink-0 msr:bg-[#e6e6e6]"
+      className="mesurer-section-divider msr:h-px msr:w-full msr:shrink-0"
     />
   )
 }
@@ -684,6 +686,8 @@ export function SettingsPanel({
     setPersistOnReload,
     shortcutsEnabled,
     setShortcutsEnabled,
+    theme,
+    setTheme,
     onMinimize,
     onResetSettings,
     onClearWorkspace,
@@ -929,6 +933,14 @@ export function SettingsPanel({
       <SettingsSection id="general" title="General" ariaLabel="General settings">
         <div className="msr:col-span-2"><SettingsSwitch label="Persist" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Appearance</span>
+          <select aria-label="Appearance" value={theme} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setTheme(event.target.value as ThemeMode)}>
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
           <SettingsButton

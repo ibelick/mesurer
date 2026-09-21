@@ -1159,6 +1159,28 @@ test("settings opens with all sections visible", async ({ page }) => {
   await expectSettingsSectionPinned(page, "inspect");
 });
 
+test("Appearance setting switches the Mesurer theme", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: /Settings/ }).click();
+
+  const appearance = page.getByRole("combobox", { name: "Appearance" });
+  await appearance.selectOption("dark");
+  await expect(page.locator("[data-mesurer-root]")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".mesurer-toolbar-chrome")).toHaveCSS("background-color", "rgb(50, 50, 50)");
+  await expect.poll(() => page.locator("[data-mesurer-root]").evaluate((element) => getComputedStyle(element).getPropertyValue("--msr-accent").trim())).toBe("#0c8ce9");
+  await expect(page.locator(".mesurer-toolbar-divider").first()).toHaveCSS("background-color", "rgb(74, 74, 74)");
+  await expect(page.locator("[data-mesurer-settings-panel]")).toHaveCSS("background-color", "rgb(58, 58, 58)");
+
+  await page.getByRole("button", { name: /Settings/ }).click();
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await expect(page.getByRole("menu")).toHaveCSS("background-color", "rgb(58, 58, 58)");
+
+  await page.getByRole("button", { name: /Settings/ }).click();
+  await appearance.selectOption("light");
+  await expect(page.locator("[data-mesurer-root]")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".mesurer-toolbar-chrome")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+});
+
 test("opening settings with a tool active pins that tool section", async ({ page }) => {
   await page.addInitScript(() => {
     class MockEyeDropper {

@@ -84,7 +84,7 @@ export function CommentDeleteConfirmation({
       data-mesurer-comment-delete-confirmation
       data-mesurer-comment-ui
       className={cn(
-        "msr:w-48 msr:rounded-lg msr:bg-white msr:p-3 msr:shadow-floating msr:outline-none",
+        "mesurer-comment-delete-confirmation msr:w-48 msr:rounded-lg msr:bg-white msr:p-3 msr:shadow-floating msr:outline-none",
         anchored
           ? "msr:pointer-events-auto msr:fixed msr:z-100"
           : floating

@@ -128,10 +128,10 @@ export function ColorPicker({
     >
       {unsupported ? (
         <div className="msr:flex msr:items-start msr:gap-2">
-          <span className="msr:text-black/60">Screen color picker unavailable.</span>
+          <span className="msr:text-ink-500">Screen color picker unavailable.</span>
           <button
             type="button"
-            className="msr:text-black/45 msr:hover:text-black"
+            className="msr:text-ink-500 msr:hover:text-ink-900"
             aria-label="Close color picker message"
             onClick={onClose}
           >
@@ -144,12 +144,12 @@ export function ColorPicker({
             <div
               className={
                 secondaryFormats.length > 0
-                  ? "msr:mb-1 msr:flex msr:items-center msr:gap-1.5 msr:border-b msr:border-black/8 msr:pb-1"
+                  ? "msr:mb-1 msr:flex msr:items-center msr:gap-1.5 msr:border-b msr:border-ink-200 msr:pb-1"
                   : "msr:flex msr:items-center msr:gap-1.5"
               }
             >
               <span
-                className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-black/15"
+                className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-ink-300"
                 style={{ backgroundColor: colorToHex(sample) }}
                 aria-hidden="true"
               />
@@ -160,13 +160,13 @@ export function ColorPicker({
                   copyValue(formatColor(sample, headerFormat))
                 }
                 tooltip={tooltip}
-                className="msr:cursor-default msr:font-medium msr:tabular-nums msr:text-black msr:hover:underline"
+                className="msr:cursor-default msr:font-medium msr:tabular-nums msr:text-ink-900 msr:hover:underline"
               />
             </div>
           ) : (
             <div className="msr:flex msr:items-center">
               <span
-                className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-black/15"
+                  className="msr:size-3 msr:shrink-0 msr:rounded-full msr:border msr:border-ink-300"
                 style={{ backgroundColor: colorToHex(sample) }}
                 aria-hidden="true"
               />
@@ -176,7 +176,7 @@ export function ColorPicker({
             const value = formatColor(sample, format)
             return (
               <div key={format} className="msr:flex msr:items-center msr:gap-2">
-                <span className="msr:w-9 msr:text-black/45">
+                <span className="msr:w-9 msr:text-ink-500">
                   {format}
                 </span>
                 <CopyableValue
@@ -184,7 +184,7 @@ export function ColorPicker({
                   value={value}
                   onCopy={() => copyValue(value)}
                   tooltip={tooltip}
-                  className="msr:cursor-default msr:tabular-nums msr:text-black msr:hover:underline"
+                  className="msr:cursor-default msr:tabular-nums msr:text-ink-900 msr:hover:underline"
                 />
               </div>
             )

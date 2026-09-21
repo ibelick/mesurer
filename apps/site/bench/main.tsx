@@ -487,6 +487,27 @@ export function Bench() {
             <p className="bench-intro">Use the Mesurer toolbar above, then follow each card from top to bottom.</p>
           </div>
         </header>
+        <section className="bench-card bench-black-card" aria-labelledby="black-card-title">
+          <div className="bench-card-heading">
+            <div>
+              <span className="bench-kicker">00 / dark surface</span>
+              <h2 id="black-card-title">Black card contrast test</h2>
+            </div>
+            <span className="bench-coordinate">#000 / #323232</span>
+          </div>
+          <p className="bench-card-instruction">Use the toolbar and Settings on top of this card. Inspect the text, controls, separators, and inset surface.</p>
+          <div className="bench-black-card-grid">
+            <div>
+              <span className="bench-black-eyebrow">Interface review</span>
+              <strong>Dark surfaces should still feel precise.</strong>
+              <p>Try comments, measurements, guides, and the floating menus against this background.</p>
+            </div>
+            <div className="bench-black-inset">
+              <span>Inset panel</span>
+              <button type="button">Test control</button>
+            </div>
+          </div>
+        </section>
         <section className="bench-card" aria-labelledby="initial-state-title">
           <div className="bench-card-heading">
             <div><span className="bench-kicker">00 / initial state</span><h2 id="initial-state-title">Initial workspace</h2></div>

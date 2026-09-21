@@ -218,7 +218,7 @@ function ToolbarButton({
           "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:outline-none",
           active
             ? "msr:bg-[#0d99ff] msr:text-white"
-            : "msr:bg-transparent msr:text-black msr:hover:bg-black/4",
+            : "msr:bg-transparent msr:text-ink-900 msr:hover:bg-black/4",
           className,
         )}
         onClick={onClick}
@@ -483,13 +483,16 @@ function ToolbarComponent(
     const motion =
       getComputedStyle(stage).getPropertyValue("--msr-toolbar-motion").trim() ||
       "200ms ease";
+    const buttonStyles = getComputedStyle(button);
+    const activeText = buttonStyles.getPropertyValue("--msr-color-white").trim() || "#fff";
+    const inactiveText = buttonStyles.getPropertyValue("--msr-color-black").trim() || "#000";
     button.style.transition = "none";
-    button.style.backgroundColor = "#0d99ff";
-    button.style.color = "#fff";
+    button.style.backgroundColor = getComputedStyle(button).getPropertyValue("--msr-accent").trim() || "#0d99ff";
+    button.style.color = activeText;
     void button.offsetWidth;
     button.style.transition = `background-color ${motion}, color ${motion}`;
     button.style.backgroundColor = "transparent";
-    button.style.color = "#000";
+    button.style.color = inactiveText;
 
     const timeout = eventTarget.setTimeout(() => {
       button.style.transition = "";
@@ -976,8 +979,8 @@ function ToolbarComponent(
           className={cn(
             "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
             guideMenuOpen
-              ? "msr:bg-black/4 msr:text-black"
-              : "msr:text-black",
+               ? "msr:bg-black/4 msr:text-ink-900"
+               : "msr:text-ink-900",
           )}
           onClick={() => {
             onInteract();
@@ -1218,7 +1221,7 @@ function ToolbarComponent(
          data-mesurer-menu-trigger
          className={cn(
             "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-            commentMenuOpen ? "msr:bg-black/4 msr:text-black" : "msr:text-black",
+             commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
          )}
           onClick={() => {
             onInteract()
@@ -1338,7 +1341,7 @@ function ToolbarComponent(
       <button
         type="button"
         aria-label="Show Mesurer toolbar"
-        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:text-black msr:outline-none msr:hover:bg-black/4"
+         className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
         onClick={(event) => {
           if (event.defaultPrevented || consumeDragClick()) return;
           onRestore();
@@ -1363,7 +1366,7 @@ function ToolbarComponent(
         <div
           role="status"
           aria-live="polite"
-           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-black msr:whitespace-normal msr:text-pretty msr:line-clamp-2 ${toastAlignment}`}
+           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-ink-900 msr:whitespace-normal msr:text-pretty msr:line-clamp-2 ${toastAlignment}`}
         >
           Screenshot failed.
           <br />

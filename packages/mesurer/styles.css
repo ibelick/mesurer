@@ -66,7 +66,7 @@
 :host {
   all: initial;
   display: block;
-  color-scheme: light;
+  color-scheme: light dark;
   color: var(--msr-color-ink-900);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
@@ -75,6 +75,120 @@
   letter-spacing: normal;
   direction: ltr;
   --msr-spacing: 4px;
+}
+
+.mesurer-root {
+  --msr-accent: #0d99ff;
+  --msr-surface: #fff;
+  --msr-surface-raised: #fff;
+  --msr-surface-muted: var(--msr-color-ink-50);
+  --msr-content: var(--msr-color-ink-900);
+  --msr-color-white: #fff;
+  --msr-color-black: #000;
+  --msr-control-thumb: #fff;
+  --msr-slider-track: rgba(15, 23, 42, 0.16);
+  --msr-shadow-toolbar:
+    drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
+    drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
+  --msr-shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
+  color: var(--msr-content);
+  color-scheme: light;
+}
+
+.mesurer-root [class~="msr:bg-white"] {
+  background-color: var(--msr-surface) !important;
+}
+
+.mesurer-root [class~="msr:bg-[#0d99ff]"] {
+  background-color: var(--msr-accent) !important;
+}
+
+.mesurer-root [class~="msr:hover:bg-[#0d99ff]"]:hover {
+  background-color: var(--msr-accent) !important;
+}
+
+.mesurer-root [class~="msr:border-[#0d99ff]"] {
+  border-color: var(--msr-accent) !important;
+}
+
+.mesurer-root [class~="msr:bg-[#0d99ff]/8"] {
+  background-color: color-mix(in srgb, var(--msr-accent) 8%, transparent) !important;
+}
+
+.mesurer-root [class~="msr:text-black"] {
+  color: var(--msr-content) !important;
+}
+
+.mesurer-root .mesurer-control-thumb {
+  background-color: var(--msr-control-thumb) !important;
+}
+
+.mesurer-root [class~="msr:hover:bg-black\/4"]:hover,
+.mesurer-root [class~="msr:hover:bg-black\/5"]:hover {
+  background-color: color-mix(in srgb, var(--msr-content) 6%, transparent) !important;
+}
+
+.mesurer-root .mesurer-menu-surface,
+.mesurer-root .mesurer-color-picker,
+.mesurer-root .mesurer-comment-card,
+.mesurer-root .mesurer-comment-hover-card,
+.mesurer-root .mesurer-comment-delete-confirmation {
+  background-color: var(--msr-surface-raised) !important;
+  color: var(--msr-content);
+}
+
+.mesurer-root .mesurer-section-divider {
+  background-color: var(--msr-color-ink-200) !important;
+}
+
+.mesurer-root[data-theme="dark"] {
+  --msr-accent: #0c8ce9;
+  --msr-color-ink-50: #3a3a3a;
+  --msr-color-ink-100: #414141;
+  --msr-color-ink-200: #4a4a4a;
+  --msr-color-ink-300: #5a5a5a;
+  --msr-color-ink-500: #a0a0a0;
+  --msr-color-ink-700: #dedede;
+  --msr-color-ink-900: #f5f5f5;
+  --msr-surface: #323232;
+  --msr-surface-raised: #3a3a3a;
+  --msr-surface-muted: #3a3a3a;
+  --msr-color-white: #f5f5f5;
+  --msr-color-black: #171717;
+  --msr-control-thumb: #f4f4f5;
+  --msr-slider-track: rgba(245, 245, 245, 0.24);
+  --msr-shadow-toolbar:
+    drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10))
+    drop-shadow(0 3px 8px lch(0% 0 0 / 0.125))
+    drop-shadow(0 2px 5px lch(0% 0 0 / 0.125))
+    drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
+  --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mesurer-root[data-theme="system"] {
+    --msr-accent: #0c8ce9;
+    --msr-color-ink-50: #3a3a3a;
+    --msr-color-ink-100: #414141;
+    --msr-color-ink-200: #4a4a4a;
+    --msr-color-ink-300: #5a5a5a;
+    --msr-color-ink-500: #a0a0a0;
+    --msr-color-ink-700: #dedede;
+    --msr-color-ink-900: #f5f5f5;
+    --msr-surface: #323232;
+    --msr-surface-raised: #3a3a3a;
+    --msr-surface-muted: #3a3a3a;
+    --msr-color-white: #f5f5f5;
+    --msr-color-black: #171717;
+    --msr-control-thumb: #f4f4f5;
+    --msr-slider-track: rgba(245, 245, 245, 0.24);
+    --msr-shadow-toolbar: drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10)) drop-shadow(0 3px 8px lch(0% 0 0 / 0.125)) drop-shadow(0 2px 5px lch(0% 0 0 / 0.125)) drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
+    --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
+    color-scheme: dark;
+  }
 }
 
 /* The active eyedropper uses a crosshair; picker controls must always remain neutral. */
@@ -156,7 +270,7 @@
   overflow: visible;
   width: 100%;
   border-radius: 9px;
-  background: #fff;
+  background: var(--msr-surface);
   filter: var(--msr-shadow-toolbar);
   transform-origin: 0 50%;
   pointer-events: none;
@@ -189,7 +303,7 @@
   width: 1px;
   align-self: stretch;
   margin: 0;
-  background: var(--color-ink-200);
+  background: var(--msr-color-ink-200);
 }
 
 .mesurer-toolbar-minimize-stage {
@@ -326,14 +440,14 @@
   flex: none;
   isolation: isolate;
   border-radius: 0 9px 9px 0;
-  background: #fff;
+  background: var(--msr-surface);
 }
 
 .mesurer-toolbar-tool-switch {
   position: relative;
   z-index: 1;
   isolation: isolate;
-  background: #fff;
+  background: var(--msr-surface);
 }
 
 .mesurer-toolbar-tool-switch-pill {
@@ -344,7 +458,7 @@
   width: 28px;
   height: 28px;
   border-radius: 3px;
-  background: var(--color-ink-200);
+  background: var(--msr-color-ink-200);
   transform: translateX(0);
 }
 
