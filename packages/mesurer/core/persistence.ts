@@ -18,6 +18,7 @@ export const MESURER_STORAGE_VERSION = 2
 
 export type GuidePattern = "solid" | "dashed" | "dotted"
 export type InfoCardMode = "hover" | "click"
+export type ThemeMode = "system" | "light" | "dark"
 
 export type GuideStyle = {
   opacity: number
@@ -74,6 +75,7 @@ export type MesurerStoredSettings = {
   infoCardMode?: InfoCardMode
   persistOnReload?: boolean
   shortcutsEnabled?: boolean
+  theme?: ThemeMode
   guideStyle?: Partial<GuideStyle>
   rulerSettings?: Partial<RulerSettings>
   screenshotSettings?: Partial<ScreenshotSettings>
@@ -381,6 +383,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
         : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
     ...(typeof input.shortcutsEnabled === "boolean" ? { shortcutsEnabled: input.shortcutsEnabled } : {}),
+    ...(input.theme === "system" || input.theme === "light" || input.theme === "dark" ? { theme: input.theme } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),
     ...(normalizeRulerSettings(input.rulerSettings) ? { rulerSettings: normalizeRulerSettings(input.rulerSettings) } : {}),
     ...(normalizeScreenshotSettings(input.screenshotSettings)

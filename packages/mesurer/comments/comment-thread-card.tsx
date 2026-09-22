@@ -6,6 +6,7 @@ import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { copyCommentSelector } from "./export"
+import { SettingsButton } from "../components/settings-button"
 
 type CommentThreadCardProps = {
   comment: CommentThread
@@ -94,6 +95,24 @@ export function CommentThreadCard({
   const overlayRoot =
     overlay.overlayRef.current?.closest("[data-mesurer-root]") ?? ownerWindow?.document.body ?? null
   const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  const [threadMenuAnchor, setThreadMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  const [messageMenuAnchor, setMessageMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  useEffect(() => {
+    if (!ownerWindow || (!threadOverflowOpen && !overflowOpenId)) return
+    const handleOutsidePointerDown = (event: Event) => {
+      const isMenuEvent = event.composedPath().some((target) =>
+        typeof (target as Element).matches === "function" &&
+        (target as Element).matches("[data-mesurer-comment-overflow-menu], [data-mesurer-comment-actions]"),
+      )
+      if (isMenuEvent) return
+      setThreadOverflowOpen(false)
+      setOverflowOpenId(null)
+      setThreadMenuAnchor(null)
+      setMessageMenuAnchor(null)
+    }
+    ownerWindow.document.addEventListener("pointerdown", handleOutsidePointerDown, true)
+    return () => ownerWindow.document.removeEventListener("pointerdown", handleOutsidePointerDown, true)
+  }, [overflowOpenId, ownerWindow, overlay.overlayRef, threadOverflowOpen])
   useLayoutEffect(() => {
     const node = overlay.overlayRef.current
     if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
@@ -105,7 +124,7 @@ export function CommentThreadCard({
       data-mesurer-comment-popover
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className={`msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
+      className={`mesurer-comment-card msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
       style={{ paddingTop: 40 }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         outsideAttemptRef.current = false
@@ -121,15 +140,29 @@ export function CommentThreadCard({
     >
       <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:pl-3 msr:pr-1.5 msr:py-1">
         <div className="msr:relative">
-          <button
+          <SettingsButton
+            shape="icon"
+            variant="ghost"
             type="button"
+            data-mesurer-comment-actions="true"
             aria-label="Comment actions"
             aria-expanded={threadOverflowOpen}
-            className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
-            onClick={() => setThreadOverflowOpen((value) => !value)}
+            onClick={(event) => {
+              const anchor = readDeleteAnchor(event.currentTarget)
+              setThreadOverflowOpen((value) => {
+                if (value) {
+                  setThreadMenuAnchor(null)
+                  return false
+                }
+                setOverflowOpenId(null)
+                setMessageMenuAnchor(null)
+                setThreadMenuAnchor(anchor)
+                return true
+              })
+            }}
           >
             <MoreIcon />
-          </button>
+          </SettingsButton>
           {threadOverflowOpen ? (
             <CommentOverflowMenu
               commentId={comment.id}
@@ -146,26 +179,29 @@ export function CommentThreadCard({
             />
           ) : null}
         </div>
-        <button
+        <SettingsButton
+          shape="icon"
+          variant="ghost"
           type="button"
           aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
           aria-pressed={comment.status === "resolved"}
-          className={`msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+          className={comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}
           onClick={() => onToggleResolved(comment.id)}
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "white" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </button>
-        <button
+        </SettingsButton>
+        <SettingsButton
+          shape="icon"
+          variant="ghost"
           type="button"
           aria-label="Close comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
           onClick={onClose}
         >
           <CloseIcon />
-        </button>
+        </SettingsButton>
       </div>
 
       <div>
@@ -207,17 +243,30 @@ export function CommentThreadCard({
                     {item.text}
                   </p>
                 )}
-                {editingMessageId !== item.id ? <button
+                {editingMessageId !== item.id ? <SettingsButton
+                  shape="icon"
+                  variant="ghost"
                   type="button"
+                  data-mesurer-comment-actions="true"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
-                  className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-600 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
-                  onClick={() =>
-                    setOverflowOpenId((value) => (value === item.id ? null : item.id))
-                  }
+                  className="msr:absolute msr:right-0 msr:top-0 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100"
+                  onClick={(event) => {
+                    const anchor = readDeleteAnchor(event.currentTarget)
+                    setOverflowOpenId((value) => {
+                      if (value === item.id) {
+                        setMessageMenuAnchor(null)
+                        return null
+                      }
+                      setThreadOverflowOpen(false)
+                      setThreadMenuAnchor(null)
+                      setMessageMenuAnchor(anchor)
+                      return item.id
+                    })
+                  }}
                 >
                    <MoreIcon />
-                </button> : null}
+                </SettingsButton> : null}
                 {overflowOpenId === item.id ? (
                   <CommentOverflowMenu
                     commentId={comment.id}
@@ -232,11 +281,11 @@ export function CommentThreadCard({
                     }}
                   />
                 ) : null}
-                {messageDeleteConfirmationId === item.id && ownerWindow && cardAnchor ? (
+                {messageDeleteConfirmationId === item.id && ownerWindow && (messageMenuAnchor ?? cardAnchor) ? (
                   <CommentDeleteConfirmation
                     commentId={item.id}
                     ownerWindow={ownerWindow}
-                    anchor={cardAnchor}
+                    anchor={messageMenuAnchor ?? cardAnchor}
                     portalTarget={overlayRoot}
                     onConfirm={onConfirmDeleteMessage}
                     onCancel={onCancelDeleteMessage}
@@ -271,11 +320,11 @@ export function CommentThreadCard({
         />
       </div>
 
-      {deleteConfirmationOpen && ownerWindow && cardAnchor ? (
+      {deleteConfirmationOpen && ownerWindow && (threadMenuAnchor ?? cardAnchor) ? (
         <CommentDeleteConfirmation
           commentId={comment.id}
           ownerWindow={ownerWindow}
-          anchor={cardAnchor}
+          anchor={threadMenuAnchor ?? cardAnchor}
           portalTarget={overlayRoot}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

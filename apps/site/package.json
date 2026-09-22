@@ -7,7 +7,7 @@
     "build": "pnpm --dir ../../packages/mesurer build && vite build",
     "deploy:pages": "pnpm run build && npx wrangler pages deploy dist --project-name mesurer-site",
     "preview": "vite preview",
-    "test": "playwright test"
+    "test": "pnpm --dir ../../packages/mesurer generate:styles && playwright test"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

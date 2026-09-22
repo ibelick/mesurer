@@ -31,6 +31,7 @@ export function CommentsPanel({
   onSelect,
   onCopy,
   onDeleteAll,
+  onResolveAll,
   ownerWindow,
   copyShortcut,
   onDelete,
@@ -47,6 +48,7 @@ export function CommentsPanel({
   onSelect: (id: string) => void
   onCopy: () => void | Promise<void>
   onDeleteAll: () => void
+  onResolveAll: () => void
   ownerWindow: Window
   copyShortcut: string
   onDelete: (id: string) => void
@@ -185,7 +187,7 @@ export function CommentsPanel({
             data-mesurer-comment-actions
             aria-label="Comment list actions"
             aria-expanded={openMenuId === "all"}
-            className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:leading-none msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400"
+             className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:leading-none msr:text-ink-500 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400"
             onClick={(event) => {
               if (openMenuId === "all") {
                 setOpenMenuId(null)
@@ -216,7 +218,7 @@ export function CommentsPanel({
             const selected = selectedId === comment.id
             return (
               <li key={comment.id} className="msr:relative">
-                 <div className={`msr:px-3 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-50"}`}>
+                  <div className={`msr:px-3 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100"}`}>
                   <div className="msr:flex msr:items-start msr:justify-between msr:gap-2">
                     <button type="button" className="msr:flex msr:min-w-0 msr:flex-1 msr:flex-col msr:items-start msr:gap-1 msr:text-left msr:outline-none msr:focus-visible:ring-2 msr:focus-visible:ring-inset msr:focus-visible:ring-ink-400" aria-current={selected ? "true" : undefined} onClick={() => onSelect(comment.id)}>
                       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">You</span>
@@ -229,7 +231,7 @@ export function CommentsPanel({
                         type="button"
                         aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
                         aria-pressed={comment.status === "resolved"}
-                        className={`msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+                         className={`msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
                         onClick={(event) => {
                           event.stopPropagation()
                           onToggleResolved(comment.id)
@@ -237,10 +239,10 @@ export function CommentsPanel({
                       >
                         <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none">
                           <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-                          <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "white" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
-                      <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-black/5 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
+                       <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
                         if (openMenuId === comment.id) {
                           setOpenMenuId(null)
                           return
@@ -272,11 +274,11 @@ export function CommentsPanel({
           aria-label="Comment actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-            className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-           <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeleteAnchor(commentMenuAnchor); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
+           <button type="button" role="menuitem" className="mesurer-comment-menu-danger msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeleteAnchor(commentMenuAnchor); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
         </div>, overlayPortalTarget)
       ) : null}
       {openMenuId === "all" && listMenuPosition ? (
@@ -285,7 +287,7 @@ export function CommentsPanel({
           aria-label="Comment list actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-            className="msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+            className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -307,7 +309,8 @@ export function CommentsPanel({
               </MenuItem>
             ))}
             <div className="msr:my-1 msr:border-t msr:border-ink-100" />
-            <button type="button" role="menuitem" className="msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
+              <button type="button" role="menuitem" disabled={!comments.some((comment) => comment.status === "open")} className="mesurer-comment-menu-item msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-200 disabled:msr:cursor-default disabled:msr:opacity-40" onClick={(event) => { event.stopPropagation(); onResolveAll(); setOpenMenuId(null) }}>Resolve all comments</button>
+              <button type="button" role="menuitem" className="mesurer-comment-menu-danger msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:text-red-600 msr:outline-none msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setOpenMenuId(null); setDeleteAllOpen(true) }}>Delete all comments</button>
         </div>, overlayPortalTarget)
       ) : null}
       {deleteId && deleteAnchor ? (

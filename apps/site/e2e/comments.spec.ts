@@ -310,6 +310,26 @@ test("deletes all comments from the comments list menu", async ({ page }) => {
   await expect(confirmation).toContainText("delete all comments");
    await confirmation.getByRole("button", { name: "Yes" }).click();
    await expect(panel).toContainText("No open comments.");
+ });
+
+test("resolves all comments from the comments list menu", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolve every comment.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitem", { name: "Resolve all comments" }).click();
+
+  await expect(panel).toContainText("No open comments.");
+  await panel.getByRole("button", { name: "Comment list actions" }).click();
+  await page.getByRole("menuitemradio", { name: "Resolved" }).click();
+  await expect(panel.getByRole("button", { name: "Reopen comment" })).toBeVisible();
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {
@@ -337,6 +357,30 @@ test("copies concise comments with DOM context to the agent clipboard", async ({
   await page.getByRole("button", { name: "Comment menu" }).click();
   const copyMenuItem = page.getByRole("menuitem", { name: /Copy comments/ });
   await expect(copyMenuItem.locator("svg")).toHaveCount(1);
+});
+
+test("copies only unresolved comments to the agent clipboard", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Resolved feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.locator("[data-mesurer-comment-pin]").click();
+  await page.getByRole("button", { name: "Mark comment as resolved" }).click();
+  await page.getByRole("button", { name: "Close comment" }).click();
+
+  await page.mouse.click(300, 560);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Open feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toBe("");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+
+  expect(copied).toContain("Open feedback.");
+  expect(copied).not.toContain("Resolved feedback.");
 });
 
 test("copies a comment target selector from the thread menu", async ({ page, context }) => {
@@ -442,9 +486,16 @@ test("deletes a comment thread", async ({ page }) => {
   await page.getByRole("textbox", { name: "Comment" }).fill("Remove this feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
   await page.locator("[data-mesurer-comment-pin]").click();
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  const commentActions = page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first();
+  const commentActionsBox = await commentActions.boundingBox();
+  await commentActions.click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
-  await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
+  const deleteDialog = page.getByRole("dialog", { name: "Delete comment" });
+  await expect(deleteDialog).toBeVisible();
+  const deleteDialogBox = await deleteDialog.boundingBox();
+  expect(commentActionsBox).not.toBeNull();
+  expect(deleteDialogBox).not.toBeNull();
+  expect(deleteDialogBox!.y).toBeGreaterThan(commentActionsBox!.y);
   await page.getByRole("button", { name: "Yes" }).click();
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(0);
@@ -531,9 +582,20 @@ test("shows overflow actions for more than two replies on one thread", async ({ 
   const card = page.locator("[data-mesurer-comment-popover]");
   await expect(card).toContainText("Reply three.");
   await card.hover();
-  await card.getByRole("button", { name: "Comment actions" }).nth(1).click();
-  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
-  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
+  const messageActions = card.getByRole("button", { name: "Comment actions" }).nth(1);
+  const messageActionsBox = await messageActions.boundingBox();
+  await messageActions.click();
+  const overflowMenu = page.locator("[data-mesurer-comment-overflow-menu]");
+  await expect(overflowMenu).toContainText("Edit");
+  await expect(overflowMenu).toContainText("Delete");
+  await overflowMenu.getByRole("menuitem", { name: "Delete" }).click();
+  const messageDeleteDialog = page.getByRole("dialog", { name: "Delete comment" });
+  await expect(messageDeleteDialog).toBeVisible();
+  const messageDeleteDialogBox = await messageDeleteDialog.boundingBox();
+  expect(messageActionsBox).not.toBeNull();
+  expect(messageDeleteDialogBox).not.toBeNull();
+  expect(messageDeleteDialogBox!.y).toBeGreaterThan(messageActionsBox!.y);
+  await page.getByRole("button", { name: "No", exact: true }).click();
 });
 
 test("closes an open thread with Escape and keeps comment pins clickable when minimized", async ({ page }) => {

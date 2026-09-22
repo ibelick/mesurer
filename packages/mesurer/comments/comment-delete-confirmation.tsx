@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { SettingsButton } from "../components/settings-button"
 
 export type DeleteAnchorRect = {
   left: number
@@ -84,7 +85,7 @@ export function CommentDeleteConfirmation({
       data-mesurer-comment-delete-confirmation
       data-mesurer-comment-ui
       className={cn(
-        "msr:w-48 msr:rounded-lg msr:bg-white msr:p-3 msr:shadow-floating msr:outline-none",
+        "mesurer-comment-delete-confirmation msr:w-48 msr:rounded-lg msr:bg-white msr:p-3 msr:shadow-floating msr:outline-none",
         anchored
           ? "msr:pointer-events-auto msr:fixed msr:z-100"
           : floating
@@ -113,18 +114,19 @@ export function CommentDeleteConfirmation({
       <div className="msr:mt-3 msr:flex msr:justify-end msr:gap-2">
         <button
           type="button"
-          className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-100"
+          className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-200"
           onClick={onCancel}
         >
           No
         </button>
-        <button
+        <SettingsButton
+          variant="danger-solid"
           type="button"
-          className="msr:rounded-control msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
+          className="msr:h-auto msr:py-1"
           onClick={() => onConfirm(commentId)}
         >
           Yes
-        </button>
+        </SettingsButton>
       </div>
     </div>
   )

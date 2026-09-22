@@ -1,15 +1,14 @@
 "use client"
 
-import { useId, useLayoutEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import { useId, useLayoutEffect, useRef, useState, type Dispatch, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
 import { cn } from "../core/utils"
 import { CheckIcon } from "./icons"
-import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings } from "../core/persistence"
+import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings, ThemeMode } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
@@ -103,6 +102,8 @@ type SettingsPanelProps = {
     setPersistOnReload: Dispatch<SetStateAction<boolean>>
     shortcutsEnabled: boolean
     setShortcutsEnabled: Dispatch<SetStateAction<boolean>>
+    theme: ThemeMode
+    setTheme: Dispatch<SetStateAction<ThemeMode>>
     onMinimize: () => void
     onResetSettings: () => void
     onClearWorkspace: () => void
@@ -124,8 +125,8 @@ function ControlShell({ left, right }: { left: ReactNode; right: ReactNode }) {
     <div
       className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200"
     >
-      <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{left}</div>
-      <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[#0d99ff] msr:focus-within:outline-offset-[-1px]">{right}</div>
+      <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">{left}</div>
+      <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">{right}</div>
     </div>
   )
 }
@@ -147,15 +148,21 @@ function SettingsSwitch({ label, checked, onChange }: {
       <span
         aria-hidden="true"
         style={{ justifySelf: "end" }}
-        data-checked={checked ? "true" : undefined}
+         data-checked={checked ? "true" : "false"}
         className={cn(
           "mesurer-switch-track msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
           checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
         )}
       >
         <span
-             className="msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:bg-white msr:transition-transform"
-          style={{ transform: `translateX(${checked ? 12 : 0}px)` }}
+           className={cn(
+             "mesurer-control-thumb msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:transition-transform",
+             "mesurer-switch-thumb msr:bg-white",
+           )}
+           data-checked={checked ? "true" : "false"}
+           style={{
+             transform: `translateX(${checked ? 12 : 0}px)`,
+           }}
         />
       </span>
     </button>
@@ -242,16 +249,16 @@ function SliderControl({
         >
           <div
              className="msr:absolute msr:left-[8px] msr:right-[8px] msr:rounded-full"
-            style={{ top: 8, height: 4, backgroundColor: "rgba(15, 23, 42, 0.16)" }}
+             style={{ top: 8, height: 4, backgroundColor: "var(--msr-slider-track)" }}
             aria-hidden="true"
           />
           <div
              className="msr:absolute msr:left-[8px] msr:rounded-full"
-             style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbInset * 2 / 100}px)`, height: 4, backgroundColor: "#0d99ff" }}
+             style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbInset * 2 / 100}px)`, height: 4, backgroundColor: "var(--msr-accent)" }}
             aria-hidden="true"
           />
           <div
-             className="msr:absolute msr:rounded-control msr:bg-white msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[#0d99ff]/25"
+             className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-white msr:shadow-[0_1px_2px_rgb(0_0_0_/_0.06)] msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[var(--msr-accent)]/25"
             style={{
                left: `calc(8px + (100% - 16px) * ${percentage / 100})`,
                top: 4,
@@ -431,15 +438,14 @@ function ColorField({ label, value, fallback, ownerWindow, onChange }: {
           </>
         }
         right={
-          <TextInput
+          <input
             ref={alphaInputRef}
-            containerClassName="msr:h-full msr:w-full"
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"
             value={alphaFocused ? (alphaDraft ? `${alphaDraft}%` : "") : `${alphaValue}%`}
             maxLength={4}
-             className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
+            className="msr:h-full msr:w-full msr:rounded-none msr:border-0 msr:bg-transparent msr:px-1 msr:text-left msr:font-mono msr:text-[12px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
             onFocus={() => {
               setAlphaDraft(String(alphaValue))
               setAlphaFocused(true)
@@ -469,7 +475,7 @@ function SectionDivider() {
   return (
     <div
       aria-hidden="true"
-      className="msr:h-px msr:w-full msr:shrink-0 msr:bg-[#e6e6e6]"
+      className="mesurer-section-divider msr:h-px msr:w-full msr:shrink-0"
     />
   )
 }
@@ -507,11 +513,13 @@ function FormatMultiSelect({
   formats,
   selectedFormats,
   onChange,
+  closeRef,
 }: {
   ownerWindow: Window
   formats: ColorPickerFormat[]
   selectedFormats: ColorPickerFormat[]
   onChange: (formats: ColorPickerFormat[]) => void
+  closeRef: MutableRefObject<(() => void) | null>
 }) {
   const [open, setOpen] = useState(false)
   const [menuSide, setMenuSide] = useState<"top" | "bottom">("bottom")
@@ -523,11 +531,22 @@ function FormatMultiSelect({
   const listboxId = `${useId()}-color-formats`
 
   useLayoutEffect(() => {
+    closeRef.current = () => setOpen(false)
+    return () => {
+      closeRef.current = null
+    }
+  }, [closeRef])
+
+  useLayoutEffect(() => {
     const handlePointerDown = (event: Event) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    ownerWindow.document.addEventListener("pointerdown", handlePointerDown)
-    return () => ownerWindow.document.removeEventListener("pointerdown", handlePointerDown)
+    ownerWindow.document.addEventListener("pointerdown", handlePointerDown, true)
+    ownerWindow.document.addEventListener("click", handlePointerDown, true)
+    return () => {
+      ownerWindow.document.removeEventListener("pointerdown", handlePointerDown, true)
+      ownerWindow.document.removeEventListener("click", handlePointerDown, true)
+    }
   }, [ownerWindow])
 
   useLayoutEffect(() => {
@@ -575,16 +594,19 @@ function FormatMultiSelect({
   }
 
   return (
-    <div ref={containerRef} className="msr:relative msr:w-full">
+    <div ref={containerRef} data-mesurer-format-select="true" className="msr:relative msr:w-full">
       <button
         ref={triggerRef}
         type="button"
         role="combobox"
         aria-label="Color formats"
         aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={listboxId}
-        className="msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+         aria-haspopup="listbox"
+         aria-controls={listboxId}
+         onBlur={(event) => {
+           if (!containerRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false)
+         }}
+         className="mesurer-settings-select msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
@@ -611,7 +633,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-           className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
+            className={`mesurer-settings-select-menu msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)
@@ -624,7 +646,7 @@ function FormatMultiSelect({
                 aria-selected={selected}
                 tabIndex={formatIndex === activeIndex ? 0 : -1}
                 className={cn(
-                  "msr:flex msr:h-6 msr:w-full msr:items-center msr:justify-between msr:rounded-[3px] msr:px-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-50 msr:focus-visible:bg-ink-50",
+                   "msr:flex msr:h-6 msr:w-full msr:items-center msr:justify-between msr:rounded-[3px] msr:px-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:bg-ink-100",
                 )}
                 onClick={() => toggleFormat(format)}
                 onFocus={() => setActiveIndex(formatIndex)}
@@ -679,11 +701,14 @@ export function SettingsPanel({
   general,
 }: SettingsPanelProps) {
   const releaseChannel = getReleaseChannel()
+  const formatMenuCloseRef = useRef<(() => void) | null>(null)
   const {
     persistOnReload,
     setPersistOnReload,
     shortcutsEnabled,
     setShortcutsEnabled,
+    theme,
+    setTheme,
     onMinimize,
     onResetSettings,
     onClearWorkspace,
@@ -778,6 +803,12 @@ export function SettingsPanel({
     <div
       ref={panelRef}
       className="mesurer-settings-panel mesurer-thin-scrollbar msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
+      onPointerDownCapture={(event) => {
+        const target = event.target as Element | null
+        if (formatMenuCloseRef.current && !target?.closest("[data-mesurer-format-select]")) {
+          formatMenuCloseRef.current()
+        }
+      }}
       onPointerDown={(event) => event.stopPropagation()}
     >
       <SettingsSection id="guides" title="Guides" ariaLabel="Guide settings" focused={focusSection === "guides"}>
@@ -797,7 +828,7 @@ export function SettingsPanel({
                   aria-label={`${label} guide pattern`}
                   aria-checked={selected}
                   className={cn(
-                    "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-control msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+                     "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-control msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",
                     selected ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
                   )}
                   onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
@@ -839,7 +870,7 @@ export function SettingsPanel({
             <select
               aria-label="Font"
               value={textSettings.font}
-              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
               onChange={(event) =>
                 setTextSettings((style) => ({ ...style, font: event.target.value as TextFont }))
               }
@@ -865,7 +896,7 @@ export function SettingsPanel({
           <select
             aria-label="Info card mode"
             value={infoCardMode}
-            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]"
+            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
             onChange={(event) => setInfoCardMode(event.target.value as InfoCardMode)}
           >
             <option value="click">Click</option>
@@ -878,12 +909,12 @@ export function SettingsPanel({
       <SettingsSection id="color" title="Color picker" ariaLabel="Color settings" focused={focusSection === "color"}>
         <div className={`msr:col-span-2 msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-start msr:gap-0`}>
           <span className="msr:flex msr:h-8 msr:items-center msr:text-[12px] msr:text-ink-700">Format</span>
-          <FormatMultiSelect ownerWindow={ownerWindow} formats={COLOR_FORMATS} selectedFormats={colorFormats} onChange={setColorFormats} />
+           <FormatMultiSelect closeRef={formatMenuCloseRef} ownerWindow={ownerWindow} formats={COLOR_FORMATS} selectedFormats={colorFormats} onChange={setColorFormats} />
         </div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Copy</span>
           <span className="msr:relative msr:block msr:w-full">
-            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
+            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
               {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
             </select>
             <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
@@ -929,6 +960,14 @@ export function SettingsPanel({
       <SettingsSection id="general" title="General" ariaLabel="General settings">
         <div className="msr:col-span-2"><SettingsSwitch label="Persist" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Appearance</span>
+          <select aria-label="Appearance" value={theme} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setTheme(event.target.value as ThemeMode)}>
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
           <SettingsButton
@@ -945,7 +984,7 @@ export function SettingsPanel({
             {releaseChannel ? `${releaseChannel} ${packageManifest.version}` : packageManifest.version}
           </span>
         </div>
-        <div className="msr:col-span-2 msr:flex msr:h-8 msr:w-full msr:justify-end msr:gap-1">
+        <div className="msr:col-span-2 msr:flex msr:h-8 msr:w-full msr:items-center msr:justify-end msr:gap-1">
           <SettingsButton
             aria-label="Reset settings to defaults"
             onClick={onResetSettings}

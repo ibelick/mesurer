@@ -29,9 +29,10 @@ export const copyCommentsForAgent = async (
   comments: CommentThread[],
   ownerWindow: Window = window,
 ) => {
-  if (comments.length === 0) return false
+  const unresolvedComments = comments.filter((comment) => comment.status === "open")
+  if (unresolvedComments.length === 0) return false
   await ownerWindow.navigator.clipboard.writeText(
-    formatCommentsForAgent(comments, ownerWindow.location.href, {
+    formatCommentsForAgent(unresolvedComments, ownerWindow.location.href, {
       width: ownerWindow.innerWidth,
       height: ownerWindow.innerHeight,
     }),

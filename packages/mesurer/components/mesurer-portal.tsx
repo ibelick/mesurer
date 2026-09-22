@@ -26,6 +26,7 @@ type MesurerPortalProps = {
   overlay: ComponentPropsWithoutRef<typeof MesurerOverlay>;
   screenshot: ComponentPropsWithoutRef<typeof ScreenshotSelectOverlay>;
   toolbar: ComponentPropsWithoutRef<typeof Toolbar>;
+  theme: "system" | "light" | "dark";
 };
 
 export function MesurerPortal({
@@ -37,6 +38,7 @@ export function MesurerPortal({
   overlay,
   screenshot,
   toolbar,
+  theme,
 }: MesurerPortalProps) {
   useEffect(() => {
     const ownerWindow = portalTarget.ownerDocument.defaultView;
@@ -66,6 +68,7 @@ export function MesurerPortal({
       ref={rootRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-[70] msr:outline-none"
       data-mesurer-root
+      data-theme={theme}
       tabIndex={-1}
     >
       {rulers.visible ? (
