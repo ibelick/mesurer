@@ -5,6 +5,7 @@ test("loads the stress bench at both slash variants", async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: "Test every edge case." })).toBeVisible();
     await expect(page.getByRole("heading", { name: "UI Skills opening section" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Inspector edge-case lab" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "CLI card lookalike" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Test the four viewport corners" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Animated targets" })).toBeVisible();
@@ -103,6 +104,43 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
       return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
     }, { message: `${targetCase.name} selection bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
   }
+});
+
+test("inspect covers geometry and boundary edge cases", async ({ page }) => {
+  const selectTarget = async (selector: string, label: string, tolerance = 4) => {
+    const target = page.locator(selector).first();
+    await expect(target, label).toBeVisible();
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box, label).not.toBeNull();
+    if (!box) return;
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(point.x, point.y);
+    await expect(page.locator("[data-mesurer-hover='true']"), `${label} hover`).toBeVisible();
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected, `${label} selection`).toBeVisible();
+    await expect.poll(async () => {
+      const selectedBox = await selected.boundingBox();
+      if (!selectedBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
+    }, { message: `${label} bounds` }).toBeLessThan(tolerance);
+  };
+
+  await page.goto("/bench");
+  await selectTarget('[data-testid="rotated-target"]', "rotated target");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="scaled-target"]', "scaled target");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="svg-circle-target"]', "SVG circle");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="canvas-target"]', "canvas surface");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="closed-shadow-host"]', "closed shadow host");
+  await page.goto("/bench");
+  await selectTarget('iframe[title="Opaque sandbox boundary"]', "opaque iframe boundary");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="large-dom-grid"] button:last-child', "large DOM target");
 });
 
 test("renders the initial workspace state", async ({ page }) => {

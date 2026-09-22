@@ -63,6 +63,30 @@ button { cursor: pointer; }
 .bench-uiskills-agent-fade-left { left: 0; background: linear-gradient(to right, #fff, transparent); }
 .bench-uiskills-agent-fade-right { right: 0; background: linear-gradient(to left, #fff, transparent); }
 .hidden { display: none; }
+.bench-edge-lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.bench-edge-lab-panel { min-width: 0; border: 1px solid #d6dbe2; border-radius: 7px; padding: 12px; background: #fff; }
+.bench-edge-lab-label { display: block; margin-bottom: 10px; color: #657080; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; text-transform: uppercase; }
+.bench-edge-lab-panel small { display: block; margin-top: 8px; color: #657080; font-size: 10px; line-height: 1.4; }
+.bench-fragmented-text { max-width: 300px; margin: 0; color: #172033; font-size: 16px; line-height: 1.55; }
+.bench-fragmented-text span { color: #2563eb; }
+.bench-fragmented-text strong { color: #b45309; font-weight: 700; }
+.bench-pseudo-target { position: relative; border: 1px solid #64748b; border-radius: 6px; padding: 18px 12px; color: #172033; background: #f8fafc; font-size: 12px; }
+.bench-pseudo-target::before { position: absolute; top: -5px; left: 16px; width: 32px; height: 5px; background: #2563eb; content: ""; }
+.bench-pseudo-target::after { position: absolute; right: 10px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: #f97316; content: ""; }
+.bench-transform-lab { position: relative; min-height: 142px; overflow: hidden; border: 1px dashed #cbd5e1; background: #f8fafc; }
+.bench-transform-target { position: absolute; border: 1px solid #172033; border-radius: 5px; padding: 8px 10px; color: #172033; background: #fde68a; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-transform-rotate { top: 26px; left: 14%; transform: rotate(-12deg); }
+.bench-transform-scale { top: 66px; left: 42%; transform: scale(1.35); }
+.bench-transform-skew { top: 28px; right: 10%; transform: skewX(-16deg); }
+.bench-edge-svg, .bench-edge-canvas { display: block; width: 100%; height: auto; border: 1px solid #cbd5e1; background: #f8fafc; }
+.bench-closed-shadow { min-height: 38px; display: flex; align-items: center; }
+.bench-fixed-transform-panel { overflow: hidden; }
+.bench-fixed-transform-frame { position: relative; min-height: 100px; overflow: hidden; transform: translateZ(0) rotate(.5deg); border: 1px dashed #cbd5e1; background: #f8fafc; }
+.bench-fixed-transform-frame button { position: fixed; top: 16px; left: 16px; border: 1px solid #172033; border-radius: 5px; padding: 8px 10px; color: #fff; background: #172033; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-opaque-iframe { display: block; width: 100%; height: 74px; border: 1px solid #94a3b8; background: #f8fafc; }
+.bench-performance-panel { margin-top: 12px; }
+.bench-performance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; max-height: 180px; overflow: auto; }
+.bench-performance-grid button { min-width: 0; overflow: hidden; border: 1px solid #d6dbe2; border-radius: 3px; padding: 5px; color: #475569; background: #f8fafc; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .bench-cli-card { overflow: hidden; }
 .bench-cli-shell { overflow: hidden; border: 1px solid #30343b; border-radius: 10px; color: #d7dae0; background: #101216; box-shadow: 0 14px 32px rgb(15 23 42 / 18%); }
 .bench-cli-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 14px; border-bottom: 1px solid #292d34; background: #181a1f; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -175,4 +199,4 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-host-composer { max-width: 720px; }
 .bench-host-prompt { min-height: 72px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; color: #172033; background: #fff; font: 14px ui-sans-serif, system-ui, sans-serif; outline: none; }
 .bench-host-prompt:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgb(37 99 235 / 15%); }
-@media (max-width: 720px) { .bench-black-card-grid, .bench-cli-intro, .bench-uiskills-card-grid { grid-template-columns: 1fr; } .bench-cli-intro { display: grid; } .bench-cli-status { margin-left: 0; } .bench-cli-body { padding: 16px; } .bench-cli-output, .bench-cli-input-row { margin-left: 0; padding-left: 0; } }
+@media (max-width: 720px) { .bench-black-card-grid, .bench-cli-intro, .bench-uiskills-card-grid, .bench-edge-lab-grid { grid-template-columns: 1fr; } .bench-cli-intro { display: grid; } .bench-cli-status { margin-left: 0; } .bench-cli-body { padding: 16px; } .bench-cli-output, .bench-cli-input-row { margin-left: 0; padding-left: 0; } }

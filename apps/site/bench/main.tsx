@@ -610,6 +610,104 @@ function CheckIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
 }
 
+function InspectorEdgeCaseLab() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const closedShadowRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const context = canvas.getContext("2d")
+    if (!context) return
+    context.fillStyle = "#f8fafc"
+    context.fillRect(0, 0, 320, 120)
+    context.fillStyle = "#2563eb"
+    context.fillRect(24, 24, 96, 64)
+    context.fillStyle = "#f97316"
+    context.beginPath()
+    context.arc(220, 56, 30, 0, Math.PI * 2)
+    context.fill()
+    context.fillStyle = "#172033"
+    context.font = "12px monospace"
+    context.fillText("bitmap surface", 104, 108)
+  }, [])
+
+  useEffect(() => {
+    const host = closedShadowRef.current
+    if (!host || host.shadowRoot || host.dataset.closedShadowReady === "true") return
+    const shadow = host.attachShadow({ mode: "closed" })
+    host.dataset.closedShadowReady = "true"
+    const button = document.createElement("button")
+    button.type = "button"
+    button.textContent = "closed shadow target"
+    button.style.cssText = "border:1px solid #64748b;border-radius:6px;padding:10px 12px;color:#172033;background:#fff;font:11px ui-monospace,monospace"
+    shadow.append(button)
+  }, [])
+
+  return (
+    <section className="bench-card bench-edge-lab" aria-labelledby="edge-lab-title">
+      <div className="bench-card-heading">
+        <div><span className="bench-kicker">12 / production edge cases</span><h2 id="edge-lab-title">Inspector edge-case lab</h2></div>
+        <span className="bench-coordinate">geometry / boundaries / scale</span>
+      </div>
+      <p className="bench-card-instruction">Use Inspect on the smallest visible target in each fixture. This section documents what the inspector should select, measure, and identify.</p>
+
+      <div className="bench-edge-lab-grid">
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">01 / fragmented text</span>
+          <p className="bench-fragmented-text" data-testid="fragmented-text">This sentence wraps across several lines and contains <span>nested inline text</span> with a second <strong>styled fragment</strong> to inspect.</p>
+        </div>
+        <div className="bench-edge-lab-panel bench-pseudo-panel">
+          <span className="bench-edge-lab-label">02 / generated content</span>
+          <div className="bench-pseudo-target" data-testid="pseudo-target">Inspect the element and its generated edges</div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">03 / transforms</span>
+          <div className="bench-transform-lab">
+            <button className="bench-transform-target bench-transform-rotate" type="button" data-testid="rotated-target">rotated</button>
+            <button className="bench-transform-target bench-transform-scale" type="button" data-testid="scaled-target">scaled</button>
+            <button className="bench-transform-target bench-transform-skew" type="button" data-testid="skewed-target">skewed</button>
+          </div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">04 / SVG geometry</span>
+          <svg className="bench-edge-svg" viewBox="0 0 320 120" role="img" aria-label="Inspector SVG targets">
+            <path data-testid="svg-path-target" d="M18 96 C54 8 92 112 132 42 S220 16 302 88" fill="none" stroke="#2563eb" strokeWidth="12" strokeLinecap="round" />
+            <circle data-testid="svg-circle-target" cx="76" cy="58" r="17" fill="#f97316" />
+            <rect data-testid="svg-rect-target" x="192" y="28" width="70" height="48" fill="#86efac" transform="rotate(-10 227 52)" />
+          </svg>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">05 / bitmap</span>
+          <canvas ref={canvasRef} className="bench-edge-canvas" width="320" height="120" aria-label="Inspector canvas surface" data-testid="canvas-target" />
+          <small>Canvas is one inspectable surface; its pixels are not DOM targets.</small>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">06 / closed boundary</span>
+          <div ref={closedShadowRef} className="bench-closed-shadow" data-testid="closed-shadow-host" />
+          <small>Inspect should stop at the host when the shadow root is closed.</small>
+        </div>
+        <div className="bench-edge-lab-panel bench-fixed-transform-panel">
+          <span className="bench-edge-lab-label">07 / fixed in transform</span>
+          <div className="bench-fixed-transform-frame"><button type="button" data-testid="fixed-transform-target">fixed target</button></div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">08 / opaque iframe boundary</span>
+          <iframe className="bench-opaque-iframe" title="Opaque sandbox boundary" sandbox srcDoc="<button style='margin:16px;padding:10px'>opaque child target</button>" />
+          <small>Inspect should select the iframe boundary, not cross into its opaque document.</small>
+        </div>
+      </div>
+
+      <div className="bench-edge-lab-panel bench-performance-panel">
+        <span className="bench-edge-lab-label">09 / large DOM</span>
+        <div className="bench-performance-grid" data-testid="large-dom-grid">
+          {Array.from({ length: 1000 }, (_, index) => <button key={index} type="button">target {index + 1}</button>)}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const seededInitialState = {
   enabled: true,
   toolMode: "select" as const,
@@ -673,6 +771,7 @@ export function Bench() {
         </section>
         <UiSkillsOpeningFixture />
         <CliCardFixture />
+        <InspectorEdgeCaseLab />
         <section className="bench-card" aria-labelledby="initial-state-title">
           <div className="bench-card-heading">
             <div><span className="bench-kicker">00 / initial state</span><h2 id="initial-state-title">Initial workspace</h2></div>
