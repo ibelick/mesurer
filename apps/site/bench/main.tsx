@@ -693,7 +693,7 @@ function InspectorEdgeCaseLab() {
         </div>
         <div className="bench-edge-lab-panel">
           <span className="bench-edge-lab-label">08 / opaque iframe boundary</span>
-          <iframe className="bench-opaque-iframe" title="Opaque sandbox boundary" sandbox srcDoc="<button style='margin:16px;padding:10px'>opaque child target</button>" />
+          <iframe className="bench-opaque-iframe" title="Opaque sandbox boundary" sandbox="" srcDoc="<button style='margin:16px;padding:10px'>opaque child target</button>" />
           <small>Inspect should select the iframe boundary, not cross into its opaque document.</small>
         </div>
       </div>
