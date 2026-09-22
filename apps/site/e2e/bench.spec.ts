@@ -59,6 +59,52 @@ test("inspect resolves text inside a pointer-transparent card description", asyn
   await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /div:nth-of-type\(1\)/);
 });
 
+test("inspect resolves every UI Skills card target to its visual bounds", async ({ page }) => {
+  const targets: Array<{
+    name: string;
+    selector: string;
+    point?: (box: { x: number; y: number; width: number; height: number }) => { x: number; y: number };
+    tolerance?: number;
+  }> = [
+    { name: "CLI text", selector: '[data-card-href="/cli"] .bench-uiskills-card-description div:first-child' },
+    { name: "CLI card link", selector: 'a[aria-label="Open CLI installation guide"]' },
+    { name: "CLI command row", selector: '[data-command-row="npx ui-skills"]' },
+    { name: "CLI copy button", selector: '[data-card-href="/cli"] button[aria-label="Copy command"]', point: (box) => ({ x: box.x + 2, y: box.y + 2 }) },
+    { name: "CLI copy icon", selector: '[data-card-href="/cli"] button[aria-label="Copy command"] svg', point: (box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 }), tolerance: 6 },
+    { name: "MCP text", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-card-description div:first-child' },
+    { name: "MCP logo", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-agent-track-inner img' },
+  ]
+
+  for (const targetCase of targets) {
+    await page.goto("/bench");
+    const target = page.locator(targetCase.selector).first();
+    await expect(target, targetCase.name).toBeVisible();
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box, targetCase.name).not.toBeNull();
+    if (!box) continue;
+
+    const point = targetCase.point?.(box) ?? { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(point.x, point.y);
+    const hover = page.locator("[data-mesurer-hover='true']");
+    await expect(hover, `${targetCase.name} hover`).toBeVisible();
+    await expect.poll(async () => {
+      const hoverBox = await hover.boundingBox();
+      if (!hoverBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(hoverBox.x - box.x), Math.abs(hoverBox.y - box.y), Math.abs(hoverBox.width - box.width), Math.abs(hoverBox.height - box.height));
+    }, { message: `${targetCase.name} hover bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
+
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected, `${targetCase.name} selection`).toBeVisible();
+    await expect.poll(async () => {
+      const selectedBox = await selected.boundingBox();
+      if (!selectedBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
+    }, { message: `${targetCase.name} selection bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
+  }
+});
+
 test("renders the initial workspace state", async ({ page }) => {
   await page.goto("/bench");
 

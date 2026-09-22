@@ -1,4 +1,4 @@
-import { CLICK_CYCLE_THRESHOLD, MIN_MULTI_TARGET_SIZE } from "./constants"
+import { CLICK_CYCLE_THRESHOLD, MIN_MULTI_TARGET_SIZE, MIN_SINGLE_TARGET_SIZE } from "./constants"
 import {
   getAccessibleDocumentElements,
   getAccessibleFrameDocument,
@@ -204,9 +204,6 @@ const getTransparentVisualDescendants = (
     candidates.push({ element, area: rect.width * rect.height, depth, order })
   }
 
-  const rootStyle = elementWindow?.getComputedStyle(root)
-  if (rootStyle?.pointerEvents === "none") addCandidate(root, 0, 0)
-
   const walker = ownerDocument.createTreeWalker(root, 1)
   let current = walker.nextNode()
   let order = 1
@@ -293,6 +290,8 @@ export const getElementsAtPoint = (
         elements.push(descendant)
       }
     }
+    const pointerEvents = ownerDocument.defaultView?.getComputedStyle(element).pointerEvents
+    if (pointerEvents === "none") continue
     if (seen.has(element)) continue
     seen.add(element)
     elements.push(element)
@@ -310,15 +309,23 @@ export const getTargetElement = (
   return withOverlayHitTesting(overlayNode, () => {
     const raw = ownerDocument.elementFromPoint(point.x, point.y)
     if (!raw) return null
-    const element = getDeepestElementAt(raw, point)
-    if (!isSelectableElement(element, overlayNode, overlayHost)) return null
-    return getTransparentVisualDescendants(
-      element,
-      point,
-      overlayNode,
-      overlayHost,
-      ownerDocument,
-    )[0] ?? element
+    const nativeStack = readElementsFromPoint(point, overlayNode, ownerDocument)
+    const stack = nativeStack.length > 0 ? nativeStack : [raw]
+    for (const rawElement of stack) {
+      const element = getDeepestElementAt(rawElement, point)
+      if (!isSelectableElement(element, overlayNode, overlayHost)) continue
+      const style = ownerDocument.defaultView?.getComputedStyle(element)
+      const transparentDescendants = getTransparentVisualDescendants(
+        element,
+        point,
+        overlayNode,
+        overlayHost,
+        ownerDocument,
+      )
+      if (transparentDescendants.length > 0) return transparentDescendants[0]
+      if (style?.pointerEvents !== "none") return element
+    }
+    return null
   })
 }
 
@@ -364,6 +371,14 @@ const getSnappedTargetFromElements = (
     height: 40,
   }
   const entries = getSelectionEntries(probeRect, overlayNode, ownerDocument)
+  const directEntry = entries.find(({ element }) => element === directTarget)
+  if (
+    directEntry &&
+    directEntry.rect.width >= MIN_SINGLE_TARGET_SIZE &&
+    directEntry.rect.height >= MIN_SINGLE_TARGET_SIZE
+  ) {
+    return directTarget
+  }
   return pickPointTarget(point, entries) ?? directTarget
 }
 
