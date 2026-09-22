@@ -13,6 +13,7 @@ import type { Point, Rect } from "./types"
 
 const SELECTION_BUCKET_SIZE = 160
 const MAX_INDEXED_BUCKET_SPAN = 32
+const MAX_TRANSPARENT_DESCENDANTS = 600
 
 type SelectionEntry = { element: Element; rect: Rect }
 type SelectionIndex = {
@@ -144,6 +145,102 @@ const getDeepestElementAt = (
   return current
 }
 
+type VisualCandidate = {
+  element: Element
+  area: number
+  depth: number
+  order: number
+}
+
+const rectContainsPoint = (rect: DOMRect, point: Point) =>
+  point.x >= rect.left &&
+  point.x <= rect.right &&
+  point.y >= rect.top &&
+  point.y <= rect.bottom
+
+const elementContainsPoint = (element: Element, point: Point) =>
+  Array.from(element.getClientRects()).some((rect) => rectContainsPoint(rect, point))
+
+const getCaretElementAtPoint = (
+  point: Point,
+  ownerDocument: Document,
+  root: Element,
+) => {
+  const documentWithCaret = ownerDocument as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode?: Node } | null
+    caretRangeFromPoint?: (x: number, y: number) => Range | null
+  }
+  const node = documentWithCaret.caretRangeFromPoint?.(point.x, point.y)?.startContainer
+    ?? documentWithCaret.caretPositionFromPoint?.(point.x, point.y)?.offsetNode
+  if (!node) return null
+  let element = node.nodeType === 1 ? node as Element : node.parentElement
+  while (element && element !== root) {
+    if (root.contains(element)) return element
+    element = element.parentElement
+  }
+  return element === root ? root : null
+}
+
+// Pointer-transparent wrappers are absent from native hit testing, but remain
+// visually inspectable. Resolve only their bounded subtree during Inspect.
+const getTransparentVisualDescendants = (
+  root: Element,
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  overlayHost: Element | null,
+  ownerDocument: Document,
+) => {
+  const candidates: VisualCandidate[] = []
+  const visited = new Set<Element>()
+  const elementWindow = ownerDocument.defaultView
+  const elementConstructor = elementWindow?.Element ?? Element
+  const addCandidate = (element: Element, depth: number, order: number) => {
+    if (visited.has(element) || !isSelectableElement(element, overlayNode, overlayHost)) return
+    const style = elementWindow?.getComputedStyle(element)
+    if (!style || style.pointerEvents !== "none" || style.visibility === "hidden" || style.display === "none" || style.opacity === "0") return
+    const rect = element.getBoundingClientRect()
+    if (!elementContainsPoint(element, point)) return
+    visited.add(element)
+    candidates.push({ element, area: rect.width * rect.height, depth, order })
+  }
+
+  const rootStyle = elementWindow?.getComputedStyle(root)
+  if (rootStyle?.pointerEvents === "none") addCandidate(root, 0, 0)
+
+  const walker = ownerDocument.createTreeWalker(root, 1)
+  let current = walker.nextNode()
+  let order = 1
+  while (current && order <= MAX_TRANSPARENT_DESCENDANTS) {
+    if (!(current instanceof elementConstructor)) {
+      current = walker.nextNode()
+      continue
+    }
+    const element = current as Element
+    const style = elementWindow?.getComputedStyle(element)
+    if (style?.pointerEvents === "none") {
+      let elementDepth = 1
+      let parent = element.parentElement
+      while (parent && parent !== root) {
+        elementDepth += 1
+        parent = parent.parentElement
+      }
+      addCandidate(element, elementDepth, order)
+    }
+    order += 1
+    current = walker.nextNode()
+  }
+
+  const caretElement = getCaretElementAtPoint(point, ownerDocument, root)
+  if (caretElement) {
+    const style = elementWindow?.getComputedStyle(caretElement)
+    if (style?.pointerEvents === "none") addCandidate(caretElement, 10_000, order)
+  }
+
+  return candidates.sort((a, b) =>
+    b.depth - a.depth || a.area - b.area || b.order - a.order,
+  ).map(({ element }) => element)
+}
+
 const isSelectableElement = (
   element: Element,
   overlayNode: HTMLDivElement | null,
@@ -182,6 +279,20 @@ export const getElementsAtPoint = (
   for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
     const element = getDeepestElementAt(rawElement, point)
     if (!isSelectableElement(element, overlayNode, overlayHost)) continue
+    const transparentDescendants = getTransparentVisualDescendants(
+      element,
+      point,
+      overlayNode,
+      overlayHost,
+      ownerDocument,
+    )
+    if (transparentDescendants.length > 0) {
+      for (const descendant of transparentDescendants) {
+        if (seen.has(descendant)) continue
+        seen.add(descendant)
+        elements.push(descendant)
+      }
+    }
     if (seen.has(element)) continue
     seen.add(element)
     elements.push(element)
@@ -201,7 +312,13 @@ export const getTargetElement = (
     if (!raw) return null
     const element = getDeepestElementAt(raw, point)
     if (!isSelectableElement(element, overlayNode, overlayHost)) return null
-    return element
+    return getTransparentVisualDescendants(
+      element,
+      point,
+      overlayNode,
+      overlayHost,
+      ownerDocument,
+    )[0] ?? element
   })
 }
 

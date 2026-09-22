@@ -4,12 +4,59 @@ test("loads the stress bench at both slash variants", async ({ page }) => {
   for (const path of ["/bench", "/bench/"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: "Test every edge case." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "UI Skills opening section" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CLI card lookalike" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Test the four viewport corners" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Animated targets" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sticky header and overlapping cards" })).toBeVisible();
     await expect(page.getByTitle("Complex embedded application")).toBeVisible();
     await expect(page.getByRole("button", { name: "Comments (M)" })).toBeVisible();
   }
+});
+
+test("CLI card fixture keeps its dense controls functional", async ({ page }) => {
+  await page.goto("/bench");
+
+  await page.getByRole("button", { name: /skills init --preset interface/ }).dispatchEvent("click");
+  await expect(page.getByText("output / 02")).toBeVisible();
+  await page.getByRole("button", { name: "Copy selected command" }).dispatchEvent("click");
+  await expect(page.getByRole("button", { name: "Copy selected command" })).toHaveText("copied");
+
+  const input = page.getByRole("textbox", { name: "CLI command input" });
+  await input.evaluate((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    element.value = "skills check --target ./bench";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect(input).toHaveValue("skills check --target ./bench");
+});
+
+test("UI Skills opening fixture keeps both reference cards inspectable", async ({ page }) => {
+  await page.goto("/bench");
+
+  await expect(page.getByRole("heading", { name: "Curated skills for design engineering" })).toBeVisible();
+  await expect(page.getByText("Run the UI Skills CLI from your terminal.")).toBeVisible();
+  await expect(page.getByText("Connect your agent to the UI Skills catalog.")).toBeVisible();
+  await page.getByRole("button", { name: "Copy command" }).dispatchEvent("click");
+  await expect(page.locator('[data-card-href="/cli"] [data-copy-icon="check"]')).toBeVisible();
+  await expect(page.locator('a[aria-label="Open CLI installation guide"]')).toHaveAttribute("href", "/cli");
+  await expect(page.locator('a[aria-label="Open MCP installation guide"]')).toHaveAttribute("href", "/mcp/docs");
+});
+
+test("inspect resolves text inside a pointer-transparent card description", async ({ page }) => {
+  await page.goto("/bench");
+  const target = page.getByText("CLI", { exact: true });
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(point.x, point.y);
+  await expect(page.locator("[data-mesurer-hover='true']")).toBeVisible();
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /div:nth-of-type\(1\)/);
 });
 
 test("renders the initial workspace state", async ({ page }) => {
