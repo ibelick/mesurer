@@ -5,6 +5,23 @@ import "./styles.css"
 
 const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe", "#cffafe"]
 
+const cliCommands = [
+  { command: "npx skills add https://github.com/ui-skills/cli", note: "install the review skill" },
+  { command: "skills init --preset interface", note: "create a local workspace" },
+  { command: "skills check --target ./src", note: "scan the current project" },
+]
+
+const agentLogos = [
+  ["OpenAI", "https://assets.querrel.com/logo/muted/openai.webp"],
+  ["Claude", "https://assets.querrel.com/logo/muted/claude.webp"],
+  ["Cursor", "https://assets.querrel.com/logo/muted/cursor.webp"],
+  ["Copilot", "https://assets.querrel.com/logo/muted/copilot.webp"],
+  ["Anthropic", "https://assets.querrel.com/logo/muted/anthropic.webp"],
+  ["Gemini", "https://assets.querrel.com/logo/muted/gemini.webp"],
+  ["OpenClaw", "https://assets.querrel.com/logo/muted/openclaw.webp"],
+  ["DeepSeek", "https://assets.querrel.com/logo/muted/deepseek.webp"],
+] as const
+
 const iframeSrcDoc = `<!doctype html>
 <html>
   <head>
@@ -447,6 +464,250 @@ function HostComposer() {
   )
 }
 
+function CliCardFixture() {
+  const [activeCommand, setActiveCommand] = useState(0)
+  const [copied, setCopied] = useState(false)
+
+  const copyCommand = () => {
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1200)
+  }
+
+  return (
+    <section className="bench-card bench-cli-card" aria-labelledby="cli-card-title">
+      <div className="bench-card-heading">
+        <div>
+          <span className="bench-kicker">00 / reference fixture</span>
+          <h2 id="cli-card-title">CLI card lookalike</h2>
+        </div>
+        <span className="bench-coordinate">dense / dark / nested</span>
+      </div>
+      <p className="bench-card-instruction">A close, inspectable approximation of the UI-skills CLI card. Try the command rows, prompt, badges, copy action, and the clipped terminal edge.</p>
+      <div className="bench-cli-shell">
+        <div className="bench-cli-topbar">
+          <div className="bench-cli-window-controls" aria-label="Terminal window controls">
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </div>
+          <span className="bench-cli-title">ui-skills / terminal</span>
+          <button className="bench-cli-icon-button" type="button" aria-label="Open terminal actions">···</button>
+        </div>
+        <div className="bench-cli-body">
+          <div className="bench-cli-intro">
+            <span className="bench-cli-prompt">$</span>
+            <div>
+              <strong>Ship interfaces that hold up under inspection.</strong>
+              <p>Run a focused skill against the page, then review the exact element boundaries.</p>
+            </div>
+            <span className="bench-cli-status">ready</span>
+          </div>
+          <div className="bench-cli-command-list" role="list" aria-label="CLI commands">
+            {cliCommands.map((item, index) => (
+              <button
+                className={`bench-cli-command${activeCommand === index ? " is-active" : ""}`}
+                key={item.command}
+                type="button"
+                onClick={() => setActiveCommand(index)}
+              >
+                <span className="bench-cli-line-number">{String(index + 1).padStart(2, "0")}</span>
+                <span className="bench-cli-command-copy">
+                  <code><span className="bench-cli-prompt">$</span> {item.command}</code>
+                  <small>{item.note}</small>
+                </span>
+                <span className="bench-cli-command-arrow" aria-hidden="true">↗</span>
+              </button>
+            ))}
+          </div>
+          <div className="bench-cli-output" aria-live="polite">
+            <div className="bench-cli-output-heading">
+              <span>output / {String(activeCommand + 1).padStart(2, "0")}</span>
+              <button type="button" onClick={copyCommand} aria-label="Copy selected command">{copied ? "copied" : "copy"}</button>
+            </div>
+            <code><span className="bench-cli-success">✓</span> {cliCommands[activeCommand].command}</code>
+            <div className="bench-cli-tags">
+              <span>12 targets</span>
+              <span>0 warnings</span>
+              <span>local</span>
+            </div>
+          </div>
+          <label className="bench-cli-input-row">
+            <span className="bench-cli-prompt">$</span>
+            <input aria-label="CLI command input" defaultValue="skills check --target ./src" />
+            <span className="bench-cli-caret" aria-hidden="true">▌</span>
+          </label>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function UiSkillsOpeningFixture() {
+  const [copied, setCopied] = useState(false)
+
+  const copyCliCommand = () => {
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1200)
+  }
+
+  return (
+    <section className="bench-card bench-uiskills-opening" aria-labelledby="uiskills-opening-title">
+      <div className="bench-card-heading">
+        <div>
+          <span className="bench-kicker">00 / homepage reference</span>
+          <h2 id="uiskills-opening-title">UI Skills opening section</h2>
+        </div>
+        <span className="bench-coordinate">hero / two cards</span>
+      </div>
+      <p className="bench-card-instruction">Lookalike of the first UI Skills homepage section: a centered statement followed by CLI and MCP cards. Inspect the text hierarchy, card edges, code control, and links.</p>
+      <div className="bench-uiskills-hero">
+        <span className="bench-uiskills-mark">UI SKILLS / DESIGN ENGINEERING</span>
+        <h3>Curated skills for design engineering</h3>
+        <p>Practical tools and guidance for building interfaces that feel intentional.</p>
+      </div>
+      <div className="bench-uiskills-card-grid">
+        <div data-card-href="/cli" aria-label="Open CLI installation guide" role="link" tabIndex={0} className="bench-uiskills-card bench-uiskills-cli-card">
+          <a className="bench-uiskills-card-link" href="/cli" aria-label="Open CLI installation guide">↗</a>
+          <div className="bench-uiskills-card-description">
+            <div>CLI</div>
+            <div>Run the UI Skills CLI from your terminal.</div>
+          </div>
+          <div className="bench-uiskills-command-row" data-command-row="npx ui-skills">
+            <span>npx ui-skills</span>
+            <button type="button" aria-label="Copy command" onClick={copyCliCommand}>
+              <span data-copy-icon="copy" className={copied ? "hidden" : ""}><CopyIcon /></span>
+              <span data-copy-icon="check" className={copied ? "" : "hidden"}><CheckIcon /></span>
+            </button>
+          </div>
+        </div>
+        <div data-card-href="/mcp/docs" aria-label="Open MCP installation guide" role="link" tabIndex={0} className="bench-uiskills-card bench-uiskills-mcp-card">
+          <a className="bench-uiskills-card-link" href="/mcp/docs" aria-label="Open MCP installation guide">↗</a>
+          <div className="bench-uiskills-card-description">
+            <div>MCP</div>
+            <div>Connect your agent to the UI Skills catalog.</div>
+          </div>
+          <div className="bench-uiskills-agent-track" aria-label="Supported agents">
+            <div className="bench-uiskills-agent-track-inner">
+              {agentLogos.map(([name, src]) => <img key={name} src={src} alt={name} width="36" height="36" />)}
+            </div>
+            <div className="bench-uiskills-agent-track-inner" aria-hidden="true">
+              {agentLogos.map(([name, src]) => <img key={name} src={src} alt="" width="36" height="36" />)}
+            </div>
+            <div className="bench-uiskills-agent-fade bench-uiskills-agent-fade-left" aria-hidden="true" />
+            <div className="bench-uiskills-agent-fade bench-uiskills-agent-fade-right" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CopyIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" /></svg>
+}
+
+function CheckIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+}
+
+function InspectorEdgeCaseLab() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const closedShadowRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const context = canvas.getContext("2d")
+    if (!context) return
+    context.fillStyle = "#f8fafc"
+    context.fillRect(0, 0, 320, 120)
+    context.fillStyle = "#2563eb"
+    context.fillRect(24, 24, 96, 64)
+    context.fillStyle = "#f97316"
+    context.beginPath()
+    context.arc(220, 56, 30, 0, Math.PI * 2)
+    context.fill()
+    context.fillStyle = "#172033"
+    context.font = "12px monospace"
+    context.fillText("bitmap surface", 104, 108)
+  }, [])
+
+  useEffect(() => {
+    const host = closedShadowRef.current
+    if (!host || host.shadowRoot || host.dataset.closedShadowReady === "true") return
+    const shadow = host.attachShadow({ mode: "closed" })
+    host.dataset.closedShadowReady = "true"
+    const button = document.createElement("button")
+    button.type = "button"
+    button.textContent = "closed shadow target"
+    button.style.cssText = "border:1px solid #64748b;border-radius:6px;padding:10px 12px;color:#172033;background:#fff;font:11px ui-monospace,monospace"
+    shadow.append(button)
+  }, [])
+
+  return (
+    <section className="bench-card bench-edge-lab" aria-labelledby="edge-lab-title">
+      <div className="bench-card-heading">
+        <div><span className="bench-kicker">12 / production edge cases</span><h2 id="edge-lab-title">Inspector edge-case lab</h2></div>
+        <span className="bench-coordinate">geometry / boundaries / scale</span>
+      </div>
+      <p className="bench-card-instruction">Use Inspect on the smallest visible target in each fixture. This section documents what the inspector should select, measure, and identify.</p>
+
+      <div className="bench-edge-lab-grid">
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">01 / fragmented text</span>
+          <p className="bench-fragmented-text" data-testid="fragmented-text">This sentence wraps across several lines and contains <span>nested inline text</span> with a second <strong>styled fragment</strong> to inspect.</p>
+        </div>
+        <div className="bench-edge-lab-panel bench-pseudo-panel">
+          <span className="bench-edge-lab-label">02 / generated content</span>
+          <div className="bench-pseudo-target" data-testid="pseudo-target">Inspect the element and its generated edges</div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">03 / transforms</span>
+          <div className="bench-transform-lab">
+            <button className="bench-transform-target bench-transform-rotate" type="button" data-testid="rotated-target">rotated</button>
+            <button className="bench-transform-target bench-transform-scale" type="button" data-testid="scaled-target">scaled</button>
+            <button className="bench-transform-target bench-transform-skew" type="button" data-testid="skewed-target">skewed</button>
+          </div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">04 / SVG geometry</span>
+          <svg className="bench-edge-svg" viewBox="0 0 320 120" role="img" aria-label="Inspector SVG targets">
+            <path data-testid="svg-path-target" d="M18 96 C54 8 92 112 132 42 S220 16 302 88" fill="none" stroke="#2563eb" strokeWidth="12" strokeLinecap="round" />
+            <circle data-testid="svg-circle-target" cx="76" cy="58" r="17" fill="#f97316" />
+            <rect data-testid="svg-rect-target" x="192" y="28" width="70" height="48" fill="#86efac" transform="rotate(-10 227 52)" />
+          </svg>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">05 / bitmap</span>
+          <canvas ref={canvasRef} className="bench-edge-canvas" width="320" height="120" aria-label="Inspector canvas surface" data-testid="canvas-target" />
+          <small>Canvas is one inspectable surface; its pixels are not DOM targets.</small>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">06 / closed boundary</span>
+          <div ref={closedShadowRef} className="bench-closed-shadow" data-testid="closed-shadow-host" />
+          <small>Inspect should stop at the host when the shadow root is closed.</small>
+        </div>
+        <div className="bench-edge-lab-panel bench-fixed-transform-panel">
+          <span className="bench-edge-lab-label">07 / fixed in transform</span>
+          <div className="bench-fixed-transform-frame"><button type="button" data-testid="fixed-transform-target">fixed target</button></div>
+        </div>
+        <div className="bench-edge-lab-panel">
+          <span className="bench-edge-lab-label">08 / opaque iframe boundary</span>
+          <iframe className="bench-opaque-iframe" title="Opaque sandbox boundary" sandbox="" srcDoc="<button style='margin:16px;padding:10px'>opaque child target</button>" />
+          <small>Inspect should select the iframe boundary, not cross into its opaque document.</small>
+        </div>
+      </div>
+
+      <div className="bench-edge-lab-panel bench-performance-panel">
+        <span className="bench-edge-lab-label">09 / large DOM</span>
+        <div className="bench-performance-grid" data-testid="large-dom-grid">
+          {Array.from({ length: 1000 }, (_, index) => <button key={index} type="button">target {index + 1}</button>)}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const seededInitialState = {
   enabled: true,
   toolMode: "select" as const,
@@ -508,6 +769,9 @@ export function Bench() {
             </div>
           </div>
         </section>
+        <UiSkillsOpeningFixture />
+        <CliCardFixture />
+        <InspectorEdgeCaseLab />
         <section className="bench-card" aria-labelledby="initial-state-title">
           <div className="bench-card-heading">
             <div><span className="bench-kicker">00 / initial state</span><h2 id="initial-state-title">Initial workspace</h2></div>

@@ -4,12 +4,143 @@ test("loads the stress bench at both slash variants", async ({ page }) => {
   for (const path of ["/bench", "/bench/"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: "Test every edge case." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "UI Skills opening section" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Inspector edge-case lab" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CLI card lookalike" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Test the four viewport corners" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Animated targets" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sticky header and overlapping cards" })).toBeVisible();
     await expect(page.getByTitle("Complex embedded application")).toBeVisible();
     await expect(page.getByRole("button", { name: "Comments (M)" })).toBeVisible();
   }
+});
+
+test("CLI card fixture keeps its dense controls functional", async ({ page }) => {
+  await page.goto("/bench");
+
+  await page.getByRole("button", { name: /skills init --preset interface/ }).dispatchEvent("click");
+  await expect(page.getByText("output / 02")).toBeVisible();
+  await page.getByRole("button", { name: "Copy selected command" }).dispatchEvent("click");
+  await expect(page.getByRole("button", { name: "Copy selected command" })).toHaveText("copied");
+
+  const input = page.getByRole("textbox", { name: "CLI command input" });
+  await input.evaluate((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    element.value = "skills check --target ./bench";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect(input).toHaveValue("skills check --target ./bench");
+});
+
+test("UI Skills opening fixture keeps both reference cards inspectable", async ({ page }) => {
+  await page.goto("/bench");
+
+  await expect(page.getByRole("heading", { name: "Curated skills for design engineering" })).toBeVisible();
+  await expect(page.getByText("Run the UI Skills CLI from your terminal.")).toBeVisible();
+  await expect(page.getByText("Connect your agent to the UI Skills catalog.")).toBeVisible();
+  await page.getByRole("button", { name: "Copy command" }).dispatchEvent("click");
+  await expect(page.locator('[data-card-href="/cli"] [data-copy-icon="check"]')).toBeVisible();
+  await expect(page.locator('a[aria-label="Open CLI installation guide"]')).toHaveAttribute("href", "/cli");
+  await expect(page.locator('a[aria-label="Open MCP installation guide"]')).toHaveAttribute("href", "/mcp/docs");
+});
+
+test("inspect resolves text inside a pointer-transparent card description", async ({ page }) => {
+  await page.goto("/bench");
+  const target = page.getByText("CLI", { exact: true });
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(point.x, point.y);
+  await expect(page.locator("[data-mesurer-hover='true']")).toBeVisible();
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /div:nth-of-type\(1\)/);
+});
+
+test("inspect resolves every UI Skills card target to its visual bounds", async ({ page }) => {
+  const targets: Array<{
+    name: string;
+    selector: string;
+    point?: (box: { x: number; y: number; width: number; height: number }) => { x: number; y: number };
+    tolerance?: number;
+  }> = [
+    { name: "CLI text", selector: '[data-card-href="/cli"] .bench-uiskills-card-description div:first-child' },
+    { name: "CLI card link", selector: 'a[aria-label="Open CLI installation guide"]' },
+    { name: "CLI command row", selector: '[data-command-row="npx ui-skills"]' },
+    { name: "CLI copy button", selector: '[data-card-href="/cli"] button[aria-label="Copy command"]', point: (box) => ({ x: box.x + 2, y: box.y + 2 }) },
+    { name: "CLI copy icon", selector: '[data-card-href="/cli"] button[aria-label="Copy command"] svg', point: (box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 }), tolerance: 6 },
+    { name: "MCP text", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-card-description div:first-child' },
+    { name: "MCP logo", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-agent-track-inner img' },
+  ]
+
+  for (const targetCase of targets) {
+    await page.goto("/bench");
+    const target = page.locator(targetCase.selector).first();
+    await expect(target, targetCase.name).toBeVisible();
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box, targetCase.name).not.toBeNull();
+    if (!box) continue;
+
+    const point = targetCase.point?.(box) ?? { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(point.x, point.y);
+    const hover = page.locator("[data-mesurer-hover='true']");
+    await expect(hover, `${targetCase.name} hover`).toBeVisible();
+    await expect.poll(async () => {
+      const hoverBox = await hover.boundingBox();
+      if (!hoverBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(hoverBox.x - box.x), Math.abs(hoverBox.y - box.y), Math.abs(hoverBox.width - box.width), Math.abs(hoverBox.height - box.height));
+    }, { message: `${targetCase.name} hover bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
+
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected, `${targetCase.name} selection`).toBeVisible();
+    await expect.poll(async () => {
+      const selectedBox = await selected.boundingBox();
+      if (!selectedBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
+    }, { message: `${targetCase.name} selection bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
+  }
+});
+
+test("inspect covers geometry and boundary edge cases", async ({ page }) => {
+  const selectTarget = async (selector: string, label: string, tolerance = 4) => {
+    const target = page.locator(selector).first();
+    await expect(target, label).toBeVisible();
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box, label).not.toBeNull();
+    if (!box) return;
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(point.x, point.y);
+    await expect(page.locator("[data-mesurer-hover='true']"), `${label} hover`).toBeVisible();
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected, `${label} selection`).toBeVisible();
+    await expect.poll(async () => {
+      const selectedBox = await selected.boundingBox();
+      if (!selectedBox) return Number.POSITIVE_INFINITY;
+      return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
+    }, { message: `${label} bounds` }).toBeLessThan(tolerance);
+  };
+
+  await page.goto("/bench");
+  await selectTarget('[data-testid="rotated-target"]', "rotated target");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="scaled-target"]', "scaled target");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="svg-circle-target"]', "SVG circle");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="canvas-target"]', "canvas surface");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="closed-shadow-host"]', "closed shadow host");
+  await page.goto("/bench");
+  await selectTarget('iframe[title="Opaque sandbox boundary"]', "opaque iframe boundary");
+  await page.goto("/bench");
+  await selectTarget('[data-testid="large-dom-grid"] button:last-child', "large DOM target");
 });
 
 test("renders the initial workspace state", async ({ page }) => {
