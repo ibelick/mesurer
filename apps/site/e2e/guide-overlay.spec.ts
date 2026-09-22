@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const activateSelect = async (page: Page) => {
   const button = page.getByRole("button", { name: "Inspect (I)" });
@@ -312,6 +312,46 @@ test("dragging a toolbar tool moves the toolbar without selecting the tool", asy
   await expect(guides).toHaveAttribute("aria-pressed", "false");
   await guides.click();
   await expect(guides).toHaveAttribute("aria-pressed", "true");
+});
+
+test("dragging from tabs, Settings, and submenus moves the toolbar", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+
+  const dragFrom = async (target: Locator, label: string) => {
+    await target.scrollIntoViewIfNeeded();
+    const before = await toolbar.boundingBox();
+    const box = await target.boundingBox();
+    expect(before, `${label} before`).not.toBeNull();
+    expect(box, `${label} target`).not.toBeNull();
+    if (!before || !box) return;
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 48, startY + 36, { steps: 8 });
+    await page.mouse.up();
+    const after = await toolbar.boundingBox();
+    expect(after, `${label} after`).not.toBeNull();
+    if (after) {
+      expect(Math.max(Math.abs(after.x - before.x), Math.abs(after.y - before.y)), `${label} movement`).toBeGreaterThan(20);
+    }
+  };
+
+  await dragFrom(page.getByRole("button", { name: "Select and inspect tools (1)" }), "Inspect tab");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute("data-value", "inspect");
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute("data-value", "annotate");
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await dragFrom(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: "General" }), "Settings panel");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  const guideMenu = page.getByRole("menu").last();
+  await expect(guideMenu).toBeVisible();
+  await dragFrom(guideMenu.getByRole("menuitem").first(), "Guide submenu");
 });
 
 test("interrupting minimize restore does not stretch the toolbar", async ({ page }) => {

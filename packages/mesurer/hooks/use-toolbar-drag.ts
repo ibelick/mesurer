@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react"
 
 type Point = {
   x: number
@@ -6,19 +6,14 @@ type Point = {
 }
 
 const TOOLBAR_DRAG_SLOP = 6
+const IGNORE_DRAG = "input, textarea, select, [contenteditable], [data-slider-container], [role='menu'], [role='dialog']"
 
-export const useToolbarDrag = (
-  initialPosition: Point,
-  eventTarget: Window,
-) => {
+export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
   const [position, setPosition] = useState(initialPosition)
   const suppressClickRef = useRef(false)
-  const previousUserSelectRef = useRef<string | null>(null)
-  const detachListenersRef = useRef<(() => void) | null>(null)
   const dragRef = useRef({
-    active: false,
-    didDrag: false,
     pointerId: -1,
+    dragging: false,
     startX: 0,
     startY: 0,
     originX: 0,
@@ -27,42 +22,15 @@ export const useToolbarDrag = (
     height: 0,
   })
 
-  const disableTextSelection = useCallback(() => {
-    if (previousUserSelectRef.current !== null) return
-    const root = eventTarget.document.documentElement
-    previousUserSelectRef.current = root.style.userSelect
-    root.style.setProperty("user-select", "none", "important")
-  }, [eventTarget])
-
-  const restoreTextSelection = useCallback(() => {
-    const previous = previousUserSelectRef.current
-    if (previous === null) return
-    const root = eventTarget.document.documentElement
-    root.style.userSelect = previous
-    previousUserSelectRef.current = null
-  }, [eventTarget])
-
-  useLayoutEffect(() => {
-    return () => {
-      detachListenersRef.current?.()
-      restoreTextSelection()
-    }
-  }, [restoreTextSelection])
-
   const onPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return
-      disableTextSelection()
-
-      if (detachListenersRef.current) {
-        detachListenersRef.current()
-        detachListenersRef.current = null
-        restoreTextSelection()
-      }
-
+      const target = event.target as { closest?: (value: string) => Element | null }
+      if (target.closest?.(IGNORE_DRAG)) return
+      suppressClickRef.current = false
       const state = dragRef.current
-      state.active = false
-      state.didDrag = false
+      state.pointerId = event.pointerId
+      state.dragging = false
       state.startX = event.clientX
       state.startY = event.clientY
       state.originX = position.x
@@ -70,61 +38,41 @@ export const useToolbarDrag = (
       const rect = event.currentTarget.getBoundingClientRect()
       state.width = rect.width
       state.height = rect.height
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        const current = dragRef.current
-        if (current.pointerId !== moveEvent.pointerId) return
-
-        const dx = moveEvent.clientX - current.startX
-        const dy = moveEvent.clientY - current.startY
-        if (!current.active) {
-          current.active =
-            Math.abs(dx) > TOOLBAR_DRAG_SLOP ||
-            Math.abs(dy) > TOOLBAR_DRAG_SLOP
-        }
-        if (!current.active) return
-
-        current.didDrag = true
-        const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8)
-        const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8)
-        setPosition({
-          x: Math.min(maxX, Math.max(8, current.originX + dx)),
-          y: Math.min(maxY, Math.max(8, current.originY + dy)),
-        })
-      }
-
-      const handlePointerEnd = (endEvent: PointerEvent) => {
-        const current = dragRef.current
-        if (
-          current.pointerId !== endEvent.pointerId &&
-          current.pointerId !== -1
-        ) {
-          return
-        }
-        suppressClickRef.current = current.didDrag
-        restoreTextSelection()
-        current.active = false
-        current.didDrag = false
-        current.pointerId = -1
-
-        eventTarget.removeEventListener("pointermove", handlePointerMove)
-        eventTarget.removeEventListener("pointerup", handlePointerEnd)
-        eventTarget.removeEventListener("pointercancel", handlePointerEnd)
-        detachListenersRef.current = null
-      }
-
-      dragRef.current.pointerId = event.pointerId
-      eventTarget.addEventListener("pointermove", handlePointerMove)
-      eventTarget.addEventListener("pointerup", handlePointerEnd)
-      eventTarget.addEventListener("pointercancel", handlePointerEnd)
-      detachListenersRef.current = () => {
-        eventTarget.removeEventListener("pointermove", handlePointerMove)
-        eventTarget.removeEventListener("pointerup", handlePointerEnd)
-        eventTarget.removeEventListener("pointercancel", handlePointerEnd)
-      }
     },
-    [disableTextSelection, eventTarget, position.x, position.y, restoreTextSelection],
+    [position.x, position.y],
   )
+
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const current = dragRef.current
+      if (current.pointerId !== event.pointerId) return
+      const dx = event.clientX - current.startX
+      const dy = event.clientY - current.startY
+      if (!current.dragging) {
+        if (Math.abs(dx) <= TOOLBAR_DRAG_SLOP && Math.abs(dy) <= TOOLBAR_DRAG_SLOP) return
+        current.dragging = true
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }
+      const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8)
+      const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8)
+      setPosition({
+        x: Math.min(maxX, Math.max(8, current.originX + dx)),
+        y: Math.min(maxY, Math.max(8, current.originY + dy)),
+      })
+    },
+    [eventTarget],
+  )
+
+  const onPointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const current = dragRef.current
+    if (current.pointerId !== event.pointerId) return
+    suppressClickRef.current = current.dragging
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    current.pointerId = -1
+    current.dragging = false
+  }, [])
 
   const consumeDragClick = useCallback(() => {
     if (!suppressClickRef.current) return false
@@ -133,7 +81,7 @@ export const useToolbarDrag = (
   }, [])
 
   const onClickCapture = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
+    (event: ReactMouseEvent<HTMLDivElement>) => {
       if (!consumeDragClick()) return
       event.preventDefault()
       event.stopPropagation()
@@ -144,6 +92,8 @@ export const useToolbarDrag = (
   return {
     position,
     onPointerDown,
+    onPointerMove,
+    onPointerEnd,
     onClickCapture,
     consumeDragClick,
   }

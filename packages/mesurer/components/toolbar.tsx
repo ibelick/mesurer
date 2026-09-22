@@ -332,7 +332,8 @@ function ToolbarComponent(
     panel: settingsPanel,
   } = settings;
 
-  const { position, onPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag({
+  const motionRef = useRef<HTMLDivElement | null>(null);
+  const { position, onPointerDown: onDragPointerDown, onPointerMove: onDragPointerMove, onPointerEnd: onDragPointerEnd, onClickCapture, consumeDragClick } = useToolbarDrag({
     x: initialPosition.x,
     y: initialPosition.y,
   }, eventTarget);
@@ -361,7 +362,6 @@ function ToolbarComponent(
   const toolStageRef = useRef<HTMLDivElement | null>(null);
   const inspectPanelRef = useRef<HTMLDivElement | null>(null);
   const annotatePanelRef = useRef<HTMLDivElement | null>(null);
-  const motionRef = useRef<HTMLDivElement | null>(null);
   const trailingRef = useRef<HTMLDivElement | null>(null);
   const collapseStageRef = useRef<HTMLDivElement | null>(null);
   const expandedPanelRef = useRef<HTMLDivElement | null>(null);
@@ -852,18 +852,14 @@ function ToolbarComponent(
         }
       }}
       className="mesurer-toolbar-motion msr:pointer-events-auto"
-      style={{ visibility: screenshotActive ? "hidden" : undefined }}
+       style={{ visibility: screenshotActive ? "hidden" : undefined }}
       onPointerDown={(event) => {
-        const target = event.target;
-        if (
-          target instanceof Element &&
-          target.closest("[role='menu'], [role='dialog'], [data-tool-id='settings'], [data-mesurer-menu-trigger]")
-        ) {
-          return;
-        }
         onInteract();
-        onPointerDown(event);
+        onDragPointerDown(event);
       }}
+      onPointerMove={onDragPointerMove}
+      onPointerUp={onDragPointerEnd}
+      onPointerCancel={onDragPointerEnd}
       onMouseDown={(event) => {
         if (event.button !== 0) return
         const target = event.target

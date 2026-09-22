@@ -171,10 +171,10 @@ export const RulersOverlay = memo(function RulersOverlay({
               x2="100%"
               gradientUnits="objectBoundingBox"
             >
-              <stop offset="0" stopColor="white" stopOpacity="0" />
-              <stop offset="0.2" stopColor="white" />
-              <stop offset="0.8" stopColor="white" />
-              <stop offset="1" stopColor="white" stopOpacity="0" />
+              <stop offset="0" stopColor="var(--msr-surface)" stopOpacity="0" />
+              <stop offset="0.2" stopColor="var(--msr-surface)" />
+              <stop offset="0.8" stopColor="var(--msr-surface)" />
+              <stop offset="1" stopColor="var(--msr-surface)" stopOpacity="0" />
             </linearGradient>
           </defs>
           {ticks.map((x) => {
@@ -267,10 +267,10 @@ export const RulersOverlay = memo(function RulersOverlay({
               y2="100%"
               gradientUnits="objectBoundingBox"
             >
-              <stop offset="0" stopColor="white" stopOpacity="0" />
-              <stop offset="0.2" stopColor="white" />
-              <stop offset="0.8" stopColor="white" />
-              <stop offset="1" stopColor="white" stopOpacity="0" />
+              <stop offset="0" stopColor="var(--msr-surface)" stopOpacity="0" />
+              <stop offset="0.2" stopColor="var(--msr-surface)" />
+              <stop offset="0.8" stopColor="var(--msr-surface)" />
+              <stop offset="1" stopColor="var(--msr-surface)" stopOpacity="0" />
             </linearGradient>
           </defs>
           {ticks.map((y) => {
