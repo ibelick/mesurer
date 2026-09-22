@@ -1170,6 +1170,9 @@ test("Appearance setting switches the Mesurer theme", async ({ page }) => {
   await expect.poll(() => page.locator("[data-mesurer-root]").evaluate((element) => getComputedStyle(element).getPropertyValue("--msr-accent").trim())).toBe("#0c8ce9");
   await expect(page.locator(".mesurer-toolbar-divider").first()).toHaveCSS("background-color", "rgb(74, 74, 74)");
   await expect(page.locator("[data-mesurer-settings-panel]")).toHaveCSS("background-color", "rgb(58, 58, 58)");
+  const firstSwitch = page.getByRole("switch").first();
+  if (await firstSwitch.getAttribute("aria-checked") === "true") await firstSwitch.click();
+  await expect(page.locator('.mesurer-switch-track[data-checked="false"]').first()).toHaveCSS("background-color", "rgb(65, 65, 65)");
   const dangerButton = page.getByRole("button", { name: "Clear workspace" });
   await dangerButton.hover();
   await expect(dangerButton).toHaveCSS("background-color", "rgb(63, 32, 32)");
@@ -1248,6 +1251,11 @@ test("color format multi-select supports keyboard navigation", async ({ page }) 
 
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
+
+  await trigger.click();
+  await expect(listbox).toBeVisible();
+  await page.getByRole("heading", { name: "Color picker" }).click({ position: { x: 5, y: 5 } });
+  await expect(listbox).toBeHidden();
 });
 
 test("color picker settings apply selected and copy formats", async ({ page }) => {

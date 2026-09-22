@@ -6,6 +6,7 @@ import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { copyCommentSelector } from "./export"
+import { SettingsButton } from "../components/settings-button"
 
 type CommentThreadCardProps = {
   comment: CommentThread
@@ -121,15 +122,16 @@ export function CommentThreadCard({
     >
       <div className="msr:absolute msr:inset-x-0 msr:top-0 msr:flex msr:h-7 msr:items-center msr:justify-end msr:gap-1 msr:border-b msr:border-ink-100 msr:pl-3 msr:pr-1.5 msr:py-1">
         <div className="msr:relative">
-          <button
+          <SettingsButton
+            shape="icon"
+            variant="ghost"
             type="button"
             aria-label="Comment actions"
             aria-expanded={threadOverflowOpen}
-            className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
             onClick={() => setThreadOverflowOpen((value) => !value)}
           >
             <MoreIcon />
-          </button>
+          </SettingsButton>
           {threadOverflowOpen ? (
             <CommentOverflowMenu
               commentId={comment.id}
@@ -146,26 +148,29 @@ export function CommentThreadCard({
             />
           ) : null}
         </div>
-        <button
+        <SettingsButton
+          shape="icon"
+          variant="ghost"
           type="button"
           aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
           aria-pressed={comment.status === "resolved"}
-          className={`msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+          className={comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}
           onClick={() => onToggleResolved(comment.id)}
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "white" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </button>
-        <button
+        </SettingsButton>
+        <SettingsButton
+          shape="icon"
+          variant="ghost"
           type="button"
           aria-label="Close comment"
-          className="msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:p-0 msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
           onClick={onClose}
         >
           <CloseIcon />
-        </button>
+        </SettingsButton>
       </div>
 
       <div>
@@ -207,17 +212,19 @@ export function CommentThreadCard({
                     {item.text}
                   </p>
                 )}
-                {editingMessageId !== item.id ? <button
+                {editingMessageId !== item.id ? <SettingsButton
+                  shape="icon"
+                  variant="ghost"
                   type="button"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
-                  className="msr:absolute msr:right-0 msr:top-0 msr:flex msr:size-5 msr:items-center msr:justify-center msr:rounded-control msr:bg-white msr:text-ink-600 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100 msr:hover:bg-ink-100"
+                  className="msr:absolute msr:right-0 msr:top-0 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100"
                   onClick={() =>
                     setOverflowOpenId((value) => (value === item.id ? null : item.id))
                   }
                 >
                    <MoreIcon />
-                </button> : null}
+                </SettingsButton> : null}
                 {overflowOpenId === item.id ? (
                   <CommentOverflowMenu
                     commentId={comment.id}

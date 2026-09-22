@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { SettingsButton } from "../components/settings-button"
 
 export type DeleteAnchorRect = {
   left: number
@@ -118,13 +119,14 @@ export function CommentDeleteConfirmation({
         >
           No
         </button>
-        <button
+        <SettingsButton
+          variant="danger-solid"
           type="button"
-          className="msr:rounded-control msr:bg-red-600 msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:hover:bg-red-700"
+          className="msr:h-auto msr:py-1"
           onClick={() => onConfirm(commentId)}
         >
           Yes
-        </button>
+        </SettingsButton>
       </div>
     </div>
   )

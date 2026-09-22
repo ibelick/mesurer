@@ -85,6 +85,13 @@
   --msr-content: var(--msr-color-ink-900);
   --msr-color-white: #fff;
   --msr-color-black: #000;
+  /* Destructive actions: outlined for secondary actions, solid for confirmation. */
+  --msr-danger-bg: #fef2f2;
+  --msr-danger-border: #fecaca;
+  --msr-danger-text: #dc2626;
+  --msr-danger-solid-bg: #dc2626;
+  --msr-danger-solid-hover: #b91c1c;
+  --msr-danger-solid-text: #fff;
   --msr-control-thumb: #fff;
   --msr-slider-track: rgba(15, 23, 42, 0.16);
   --msr-shadow-toolbar:
@@ -93,6 +100,7 @@
     drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
   --msr-shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
+  --msr-shadow-select-menu: var(--msr-shadow-floating);
   color: var(--msr-content);
   color-scheme: light;
 }
@@ -125,6 +133,12 @@
   background-color: var(--msr-control-thumb) !important;
 }
 
+.mesurer-root button {
+  cursor: default !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .mesurer-root .mesurer-switch-thumb[data-checked="false"] {
   background-color: var(--msr-color-ink-200) !important;
 }
@@ -147,11 +161,66 @@
   background-color: var(--msr-color-ink-200) !important;
 }
 
-.mesurer-root[data-theme="dark"] .mesurer-settings-panel .mesurer-control-shell,
-.mesurer-root[data-theme="dark"] .mesurer-settings-panel select,
-.mesurer-root[data-theme="system"] .mesurer-settings-panel .mesurer-control-shell,
-.mesurer-root[data-theme="system"] .mesurer-settings-panel select {
+.mesurer-root .mesurer-settings-select-menu {
+  box-shadow: var(--msr-shadow-select-menu);
+}
+
+.mesurer-root .mesurer-settings-button-default {
+  background-color: transparent;
+}
+
+.mesurer-root .mesurer-settings-button-default:hover {
+  background-color: var(--msr-color-ink-50);
+}
+
+.mesurer-root[data-theme="dark"] .mesurer-settings-panel .mesurer-control-shell {
+  background-color: var(--msr-color-ink-100);
+}
+
+.mesurer-root[data-theme="dark"] .mesurer-settings-panel select {
+  background-color: var(--msr-surface-raised) !important;
   border-color: var(--msr-color-ink-200) !important;
+}
+
+.mesurer-root[data-theme="dark"] .mesurer-settings-select,
+.mesurer-root[data-theme="dark"] .mesurer-settings-select-menu {
+  background-color: var(--msr-surface-raised) !important;
+  border-color: var(--msr-color-ink-200) !important;
+}
+
+.mesurer-root[data-theme="dark"] .mesurer-settings-button-default:hover {
+  background-color: var(--msr-surface) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mesurer-root[data-theme="system"] .mesurer-settings-panel .mesurer-control-shell {
+    background-color: var(--msr-color-ink-100);
+  }
+
+  .mesurer-root[data-theme="system"] .mesurer-settings-panel select {
+    background-color: var(--msr-surface-raised) !important;
+    border-color: var(--msr-color-ink-200) !important;
+  }
+
+  .mesurer-root[data-theme="system"] .mesurer-settings-select,
+  .mesurer-root[data-theme="system"] .mesurer-settings-select-menu {
+    background-color: var(--msr-surface-raised) !important;
+    border-color: var(--msr-color-ink-200) !important;
+  }
+
+  .mesurer-root[data-theme="system"] .mesurer-settings-button-default:hover {
+    background-color: var(--msr-surface) !important;
+  }
+}
+
+.mesurer-root[data-theme="dark"] .mesurer-switch-track[data-checked="false"] {
+  background-color: var(--msr-color-ink-100) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mesurer-root[data-theme="system"] .mesurer-switch-track[data-checked="false"] {
+    background-color: var(--msr-color-ink-100) !important;
+  }
 }
 
 .mesurer-root .mesurer-settings-panel .mesurer-control-focus :is(input, select):focus {
@@ -165,6 +234,12 @@
   --msr-color-red-200: #7f3f46;
   --msr-color-red-600: #f87171;
   --msr-color-red-700: #fca5a5;
+  --msr-danger-bg: #3f2020;
+  --msr-danger-border: #7f3f46;
+  --msr-danger-text: #f87171;
+  --msr-danger-solid-bg: #c95058;
+  --msr-danger-solid-hover: #b7424b;
+  --msr-danger-solid-text: #f5f5f5;
   --msr-color-ink-50: #3a3a3a;
   --msr-color-ink-100: #414141;
   --msr-color-ink-200: #4a4a4a;
@@ -184,7 +259,8 @@
     drop-shadow(0 3px 8px lch(0% 0 0 / 0.125))
     drop-shadow(0 2px 5px lch(0% 0 0 / 0.125))
     drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
-  --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
+  --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
+  --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
   color-scheme: dark;
 }
 
@@ -195,6 +271,12 @@
     --msr-color-red-200: #7f3f46;
     --msr-color-red-600: #f87171;
     --msr-color-red-700: #fca5a5;
+    --msr-danger-bg: #3f2020;
+    --msr-danger-border: #7f3f46;
+    --msr-danger-text: #f87171;
+    --msr-danger-solid-bg: #c95058;
+    --msr-danger-solid-hover: #b7424b;
+    --msr-danger-solid-text: #f5f5f5;
     --msr-color-ink-50: #3a3a3a;
     --msr-color-ink-100: #414141;
     --msr-color-ink-200: #4a4a4a;
@@ -210,7 +292,8 @@
     --msr-control-thumb: #f4f4f5;
     --msr-slider-track: rgba(245, 245, 245, 0.24);
     --msr-shadow-toolbar: drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10)) drop-shadow(0 3px 8px lch(0% 0 0 / 0.125)) drop-shadow(0 2px 5px lch(0% 0 0 / 0.125)) drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
-    --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
+    --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
+    --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
     color-scheme: dark;
   }
 }

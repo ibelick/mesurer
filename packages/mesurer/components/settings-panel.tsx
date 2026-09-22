@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useLayoutEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
+import { useId, useLayoutEffect, useRef, useState, type Dispatch, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
 import type { ColorPickerFormat } from "../core/colors"
 import { colorToHex, parseCssColor } from "../core/colors"
@@ -148,7 +148,7 @@ function SettingsSwitch({ label, checked, onChange }: {
       <span
         aria-hidden="true"
         style={{ justifySelf: "end" }}
-        data-checked={checked ? "true" : undefined}
+         data-checked={checked ? "true" : "false"}
         className={cn(
           "mesurer-switch-track msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
           checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
@@ -513,11 +513,13 @@ function FormatMultiSelect({
   formats,
   selectedFormats,
   onChange,
+  closeRef,
 }: {
   ownerWindow: Window
   formats: ColorPickerFormat[]
   selectedFormats: ColorPickerFormat[]
   onChange: (formats: ColorPickerFormat[]) => void
+  closeRef: MutableRefObject<(() => void) | null>
 }) {
   const [open, setOpen] = useState(false)
   const [menuSide, setMenuSide] = useState<"top" | "bottom">("bottom")
@@ -529,11 +531,22 @@ function FormatMultiSelect({
   const listboxId = `${useId()}-color-formats`
 
   useLayoutEffect(() => {
+    closeRef.current = () => setOpen(false)
+    return () => {
+      closeRef.current = null
+    }
+  }, [closeRef])
+
+  useLayoutEffect(() => {
     const handlePointerDown = (event: Event) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    ownerWindow.document.addEventListener("pointerdown", handlePointerDown)
-    return () => ownerWindow.document.removeEventListener("pointerdown", handlePointerDown)
+    ownerWindow.document.addEventListener("pointerdown", handlePointerDown, true)
+    ownerWindow.document.addEventListener("click", handlePointerDown, true)
+    return () => {
+      ownerWindow.document.removeEventListener("pointerdown", handlePointerDown, true)
+      ownerWindow.document.removeEventListener("click", handlePointerDown, true)
+    }
   }, [ownerWindow])
 
   useLayoutEffect(() => {
@@ -581,16 +594,19 @@ function FormatMultiSelect({
   }
 
   return (
-    <div ref={containerRef} className="msr:relative msr:w-full">
+    <div ref={containerRef} data-mesurer-format-select="true" className="msr:relative msr:w-full">
       <button
         ref={triggerRef}
         type="button"
         role="combobox"
         aria-label="Color formats"
         aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={listboxId}
-        className="msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
+         aria-haspopup="listbox"
+         aria-controls={listboxId}
+         onBlur={(event) => {
+           if (!containerRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false)
+         }}
+         className="mesurer-settings-select msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]"
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
@@ -617,7 +633,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-           className={`msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
+            className={`mesurer-settings-select-menu msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)
@@ -630,7 +646,7 @@ function FormatMultiSelect({
                 aria-selected={selected}
                 tabIndex={formatIndex === activeIndex ? 0 : -1}
                 className={cn(
-                  "msr:flex msr:h-6 msr:w-full msr:items-center msr:justify-between msr:rounded-[3px] msr:px-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-50 msr:focus-visible:bg-ink-50",
+                   "msr:flex msr:h-6 msr:w-full msr:items-center msr:justify-between msr:rounded-[3px] msr:px-1.5 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:bg-ink-100",
                 )}
                 onClick={() => toggleFormat(format)}
                 onFocus={() => setActiveIndex(formatIndex)}
@@ -685,6 +701,7 @@ export function SettingsPanel({
   general,
 }: SettingsPanelProps) {
   const releaseChannel = getReleaseChannel()
+  const formatMenuCloseRef = useRef<(() => void) | null>(null)
   const {
     persistOnReload,
     setPersistOnReload,
@@ -786,6 +803,12 @@ export function SettingsPanel({
     <div
       ref={panelRef}
       className="mesurer-settings-panel mesurer-thin-scrollbar msr:relative msr:flex msr:h-full msr:w-full msr:min-w-0 msr:flex-col msr:gap-0 msr:overflow-y-auto"
+      onPointerDownCapture={(event) => {
+        const target = event.target as Element | null
+        if (formatMenuCloseRef.current && !target?.closest("[data-mesurer-format-select]")) {
+          formatMenuCloseRef.current()
+        }
+      }}
       onPointerDown={(event) => event.stopPropagation()}
     >
       <SettingsSection id="guides" title="Guides" ariaLabel="Guide settings" focused={focusSection === "guides"}>
@@ -886,7 +909,7 @@ export function SettingsPanel({
       <SettingsSection id="color" title="Color picker" ariaLabel="Color settings" focused={focusSection === "color"}>
         <div className={`msr:col-span-2 msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-start msr:gap-0`}>
           <span className="msr:flex msr:h-8 msr:items-center msr:text-[12px] msr:text-ink-700">Format</span>
-          <FormatMultiSelect ownerWindow={ownerWindow} formats={COLOR_FORMATS} selectedFormats={colorFormats} onChange={setColorFormats} />
+           <FormatMultiSelect closeRef={formatMenuCloseRef} ownerWindow={ownerWindow} formats={COLOR_FORMATS} selectedFormats={colorFormats} onChange={setColorFormats} />
         </div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Copy</span>
