@@ -8,9 +8,15 @@ type Point = {
 const TOOLBAR_DRAG_SLOP = 6
 const IGNORE_DRAG = "input, textarea, select, [contenteditable], [data-slider-container], [role='menu'], [role='dialog']"
 
-export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
+export const useToolbarDrag = (
+  initialPosition: Point,
+  eventTarget: Window,
+  onDragStart?: () => void,
+) => {
   const [position, setPosition] = useState(initialPosition)
   const suppressClickRef = useRef(false)
+  const onDragStartRef = useRef(onDragStart)
+  onDragStartRef.current = onDragStart
   const dragRef = useRef({
     pointerId: -1,
     dragging: false,
@@ -52,6 +58,7 @@ export const useToolbarDrag = (initialPosition: Point, eventTarget: Window) => {
         if (Math.abs(dx) <= TOOLBAR_DRAG_SLOP && Math.abs(dy) <= TOOLBAR_DRAG_SLOP) return
         current.dragging = true
         event.currentTarget.setPointerCapture(event.pointerId)
+        onDragStartRef.current?.()
       }
       const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8)
       const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8)

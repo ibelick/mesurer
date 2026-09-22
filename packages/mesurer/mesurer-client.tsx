@@ -378,12 +378,6 @@ export function MesurerClient({
     }
   }, [comments, selectedCommentId]);
   useEffect(() => {
-    setOpenMenu((current) => {
-      if (settingsOpen) return { type: "settings" };
-      return current?.type === "settings" ? null : current;
-    });
-  }, [setOpenMenu, settingsOpen]);
-  useEffect(() => {
     if (!settingsOpen) return
     const ElementConstructor = ownerWindow.Element
     const closeIfOutside = (event: Event) => {
@@ -1163,11 +1157,7 @@ export function MesurerClient({
   } = annotationCallbacks;
   const activateToolbar = useCallback(() => {
     setToolbarActive(true);
-    setOpenMenu(null);
-    setSettingsOpen(false);
-    colorPicker.setActive(false);
-    closeScreenshotRef.current?.();
-  }, [colorPicker.setActive, setOpenMenu, setSettingsOpen, setToolbarActive]);
+  }, [setToolbarActive]);
   const pinableOverlay = guidesEnabled
     ? (guideDistanceOverlay ?? optionPairOverlay)
     : (optionPairOverlay ?? guideDistanceOverlay);

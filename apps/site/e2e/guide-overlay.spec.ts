@@ -343,15 +343,18 @@ test("dragging from tabs, Settings, and submenus moves the toolbar", async ({ pa
   await page.getByRole("button", { name: "Annotate tools (2)" }).click();
   await expect(page.locator(".mesurer-toolbar-tool-switch")).toHaveAttribute("data-value", "annotate");
 
-  await page.getByRole("button", { name: "Settings" }).click();
-  await dragFrom(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: "General" }), "Settings panel");
-  await page.keyboard.press("Escape");
+  const settings = page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ });
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await dragFrom(settings, "Settings button");
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
-  await page.getByRole("button", { name: "Guide orientation menu" }).click();
-  const guideMenu = page.getByRole("menu").last();
-  await expect(guideMenu).toBeVisible();
-  await dragFrom(guideMenu.getByRole("menuitem").first(), "Guide submenu");
+  const guideMenu = page.getByRole("button", { name: "Guide orientation menu" });
+  await guideMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
+  await dragFrom(guideMenu, "Guide menu trigger");
+  await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
 });
 
 test("interrupting minimize restore does not stretch the toolbar", async ({ page }) => {
@@ -1527,6 +1530,12 @@ test("guide and comment submenus close on outside click and trigger reclick", as
   await expect(page.getByRole("menuitem", { name: "Horizontal" })).toBeVisible();
   await page.mouse.click(240, 240);
   await expect(page.getByRole("menuitem", { name: "Horizontal" })).toHaveCount(0);
+
+  const settings = page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ });
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await settings.click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
 
 test("toolbar tools close Settings", async ({ page }) => {

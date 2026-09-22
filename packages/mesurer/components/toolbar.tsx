@@ -333,10 +333,17 @@ function ToolbarComponent(
   } = settings;
 
   const motionRef = useRef<HTMLDivElement | null>(null);
-  const { position, onPointerDown: onDragPointerDown, onPointerMove: onDragPointerMove, onPointerEnd: onDragPointerEnd, onClickCapture, consumeDragClick } = useToolbarDrag({
-    x: initialPosition.x,
-    y: initialPosition.y,
-  }, eventTarget);
+  const { position, onPointerDown: onDragPointerDown, onPointerMove: onDragPointerMove, onPointerEnd: onDragPointerEnd, onClickCapture, consumeDragClick } = useToolbarDrag(
+    {
+      x: initialPosition.x,
+      y: initialPosition.y,
+    },
+    eventTarget,
+    () => {
+      setOpenMenu(null);
+      setSettingsOpen(false);
+    },
+  );
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -348,6 +355,19 @@ function ToolbarComponent(
   const guideMenuOpen = openMenu?.type === "guide-orientation";
   const commentMenuOpen = openMenu?.type === "comments";
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
+  const toggleToolbarMenu = useCallback(
+    (menu: Exclude<OpenMenu, null>) => {
+      if (openMenu?.type === menu.type) {
+        setOpenMenu(null);
+        return;
+      }
+      setSettingsOpen(false);
+      setColorPickerActive(false);
+      onCancelScreenshot();
+      setOpenMenu(menu);
+    },
+    [onCancelScreenshot, openMenu, setColorPickerActive, setOpenMenu, setSettingsOpen],
+  );
   const [commentsCopied, setCommentsCopied] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
@@ -853,10 +873,7 @@ function ToolbarComponent(
       }}
       className="mesurer-toolbar-motion msr:pointer-events-auto"
        style={{ visibility: screenshotActive ? "hidden" : undefined }}
-      onPointerDown={(event) => {
-        onInteract();
-        onDragPointerDown(event);
-      }}
+      onPointerDown={onDragPointerDown}
       onPointerMove={onDragPointerMove}
       onPointerUp={onDragPointerEnd}
       onPointerCancel={onDragPointerEnd}
@@ -971,6 +988,8 @@ function ToolbarComponent(
           type="button"
           ref={guideMenuButtonRef}
           aria-label="Guide orientation menu"
+          aria-haspopup="menu"
+          aria-expanded={guideMenuOpen}
           data-mesurer-menu-trigger
           className={cn(
             "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
@@ -979,12 +998,11 @@ function ToolbarComponent(
                : "msr:text-ink-900",
           )}
           onClick={() => {
-            onInteract();
             if (!guideMenuOpen) {
               setActiveMenuIndex(guideOrientation === "horizontal" ? 0 : 1);
               updateMenuAlign();
             }
-            setOpenMenu(guideMenuOpen ? null : { type: "guide-orientation" });
+            toggleToolbarMenu({ type: "guide-orientation" });
           }}
         >
           <CaretDownIcon size={8} />
@@ -1220,8 +1238,7 @@ function ToolbarComponent(
              commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
          )}
           onClick={() => {
-            onInteract()
-            setOpenMenu(commentMenuOpen ? null : { type: "comments", panel: false })
+            toggleToolbarMenu({ type: "comments", panel: false })
           }}
        >
          <CaretDownIcon size={8} />
