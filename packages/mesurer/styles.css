@@ -101,6 +101,8 @@
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
   --msr-shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --msr-shadow-select-menu: var(--msr-shadow-floating);
+  --msr-comment-menu-surface: var(--msr-surface-raised);
+  --msr-shadow-comment-menu: var(--msr-shadow-select-menu);
   color: var(--msr-content);
   color-scheme: light;
 }
@@ -163,6 +165,23 @@
 
 .mesurer-root .mesurer-settings-select-menu {
   box-shadow: var(--msr-shadow-select-menu);
+}
+
+.mesurer-root .mesurer-comment-overflow-menu {
+  background-color: var(--msr-comment-menu-surface) !important;
+  box-shadow: var(--msr-shadow-comment-menu);
+}
+
+.mesurer-root .mesurer-comment-menu-item:hover {
+  background-color: var(--msr-color-ink-200) !important;
+}
+
+.mesurer-root .mesurer-comment-menu-danger {
+  color: var(--msr-danger-text) !important;
+}
+
+.mesurer-root .mesurer-comment-menu-danger:hover {
+  background-color: var(--msr-danger-bg) !important;
 }
 
 .mesurer-root .mesurer-settings-button-default {
@@ -261,6 +280,8 @@
     drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
   --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
   --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
+  --msr-comment-menu-surface: #323232;
+  --msr-shadow-comment-menu: 0 0 0 0.5px lch(100% 0 0 / 0.16), 0 5px 14px lch(0% 0 0 / 0.26), 0 1px 3px lch(0% 0 0 / 0.18);
   color-scheme: dark;
 }
 
@@ -294,6 +315,8 @@
     --msr-shadow-toolbar: drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10)) drop-shadow(0 3px 8px lch(0% 0 0 / 0.125)) drop-shadow(0 2px 5px lch(0% 0 0 / 0.125)) drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
     --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
     --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
+    --msr-comment-menu-surface: #323232;
+    --msr-shadow-comment-menu: 0 0 0 0.5px lch(100% 0 0 / 0.16), 0 5px 14px lch(0% 0 0 / 0.26), 0 1px 3px lch(0% 0 0 / 0.18);
     color-scheme: dark;
   }
 }

@@ -486,9 +486,16 @@ test("deletes a comment thread", async ({ page }) => {
   await page.getByRole("textbox", { name: "Comment" }).fill("Remove this feedback.");
   await page.getByRole("textbox", { name: "Comment" }).press("Enter");
   await page.locator("[data-mesurer-comment-pin]").click();
-  await page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first().click();
+  const commentActions = page.locator("[data-mesurer-comment-popover]").getByRole("button", { name: "Comment actions" }).first();
+  const commentActionsBox = await commentActions.boundingBox();
+  await commentActions.click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
-  await expect(page.getByRole("dialog", { name: "Delete comment" })).toBeVisible();
+  const deleteDialog = page.getByRole("dialog", { name: "Delete comment" });
+  await expect(deleteDialog).toBeVisible();
+  const deleteDialogBox = await deleteDialog.boundingBox();
+  expect(commentActionsBox).not.toBeNull();
+  expect(deleteDialogBox).not.toBeNull();
+  expect(deleteDialogBox!.y).toBeGreaterThan(commentActionsBox!.y);
   await page.getByRole("button", { name: "Yes" }).click();
 
   await expect(page.locator("[data-mesurer-comment-pin]")).toHaveCount(0);
@@ -575,9 +582,20 @@ test("shows overflow actions for more than two replies on one thread", async ({ 
   const card = page.locator("[data-mesurer-comment-popover]");
   await expect(card).toContainText("Reply three.");
   await card.hover();
-  await card.getByRole("button", { name: "Comment actions" }).nth(1).click();
-  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Edit");
-  await expect(page.locator("[data-mesurer-comment-overflow-menu]")).toContainText("Delete");
+  const messageActions = card.getByRole("button", { name: "Comment actions" }).nth(1);
+  const messageActionsBox = await messageActions.boundingBox();
+  await messageActions.click();
+  const overflowMenu = page.locator("[data-mesurer-comment-overflow-menu]");
+  await expect(overflowMenu).toContainText("Edit");
+  await expect(overflowMenu).toContainText("Delete");
+  await overflowMenu.getByRole("menuitem", { name: "Delete" }).click();
+  const messageDeleteDialog = page.getByRole("dialog", { name: "Delete comment" });
+  await expect(messageDeleteDialog).toBeVisible();
+  const messageDeleteDialogBox = await messageDeleteDialog.boundingBox();
+  expect(messageActionsBox).not.toBeNull();
+  expect(messageDeleteDialogBox).not.toBeNull();
+  expect(messageDeleteDialogBox!.y).toBeGreaterThan(messageActionsBox!.y);
+  await page.getByRole("button", { name: "No", exact: true }).click();
 });
 
 test("closes an open thread with Escape and keeps comment pins clickable when minimized", async ({ page }) => {

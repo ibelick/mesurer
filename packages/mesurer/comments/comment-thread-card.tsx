@@ -95,6 +95,24 @@ export function CommentThreadCard({
   const overlayRoot =
     overlay.overlayRef.current?.closest("[data-mesurer-root]") ?? ownerWindow?.document.body ?? null
   const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  const [threadMenuAnchor, setThreadMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  const [messageMenuAnchor, setMessageMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
+  useEffect(() => {
+    if (!ownerWindow || (!threadOverflowOpen && !overflowOpenId)) return
+    const handleOutsidePointerDown = (event: Event) => {
+      const isMenuEvent = event.composedPath().some((target) =>
+        typeof (target as Element).matches === "function" &&
+        (target as Element).matches("[data-mesurer-comment-overflow-menu], [data-mesurer-comment-actions]"),
+      )
+      if (isMenuEvent) return
+      setThreadOverflowOpen(false)
+      setOverflowOpenId(null)
+      setThreadMenuAnchor(null)
+      setMessageMenuAnchor(null)
+    }
+    ownerWindow.document.addEventListener("pointerdown", handleOutsidePointerDown, true)
+    return () => ownerWindow.document.removeEventListener("pointerdown", handleOutsidePointerDown, true)
+  }, [overflowOpenId, ownerWindow, overlay.overlayRef, threadOverflowOpen])
   useLayoutEffect(() => {
     const node = overlay.overlayRef.current
     if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
@@ -126,9 +144,22 @@ export function CommentThreadCard({
             shape="icon"
             variant="ghost"
             type="button"
+            data-mesurer-comment-actions="true"
             aria-label="Comment actions"
             aria-expanded={threadOverflowOpen}
-            onClick={() => setThreadOverflowOpen((value) => !value)}
+            onClick={(event) => {
+              const anchor = readDeleteAnchor(event.currentTarget)
+              setThreadOverflowOpen((value) => {
+                if (value) {
+                  setThreadMenuAnchor(null)
+                  return false
+                }
+                setOverflowOpenId(null)
+                setMessageMenuAnchor(null)
+                setThreadMenuAnchor(anchor)
+                return true
+              })
+            }}
           >
             <MoreIcon />
           </SettingsButton>
@@ -216,12 +247,23 @@ export function CommentThreadCard({
                   shape="icon"
                   variant="ghost"
                   type="button"
+                  data-mesurer-comment-actions="true"
                   aria-label="Comment actions"
                   aria-expanded={overflowOpenId === item.id}
                   className="msr:absolute msr:right-0 msr:top-0 msr:leading-none msr:opacity-0 msr:group-hover:opacity-100 msr:focus-visible:opacity-100"
-                  onClick={() =>
-                    setOverflowOpenId((value) => (value === item.id ? null : item.id))
-                  }
+                  onClick={(event) => {
+                    const anchor = readDeleteAnchor(event.currentTarget)
+                    setOverflowOpenId((value) => {
+                      if (value === item.id) {
+                        setMessageMenuAnchor(null)
+                        return null
+                      }
+                      setThreadOverflowOpen(false)
+                      setThreadMenuAnchor(null)
+                      setMessageMenuAnchor(anchor)
+                      return item.id
+                    })
+                  }}
                 >
                    <MoreIcon />
                 </SettingsButton> : null}
@@ -239,11 +281,11 @@ export function CommentThreadCard({
                     }}
                   />
                 ) : null}
-                {messageDeleteConfirmationId === item.id && ownerWindow && cardAnchor ? (
+                {messageDeleteConfirmationId === item.id && ownerWindow && (messageMenuAnchor ?? cardAnchor) ? (
                   <CommentDeleteConfirmation
                     commentId={item.id}
                     ownerWindow={ownerWindow}
-                    anchor={cardAnchor}
+                    anchor={messageMenuAnchor ?? cardAnchor}
                     portalTarget={overlayRoot}
                     onConfirm={onConfirmDeleteMessage}
                     onCancel={onCancelDeleteMessage}
@@ -278,11 +320,11 @@ export function CommentThreadCard({
         />
       </div>
 
-      {deleteConfirmationOpen && ownerWindow && cardAnchor ? (
+      {deleteConfirmationOpen && ownerWindow && (threadMenuAnchor ?? cardAnchor) ? (
         <CommentDeleteConfirmation
           commentId={comment.id}
           ownerWindow={ownerWindow}
-          anchor={cardAnchor}
+          anchor={threadMenuAnchor ?? cardAnchor}
           portalTarget={overlayRoot}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

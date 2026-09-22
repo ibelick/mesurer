@@ -24,7 +24,7 @@ export function SettingsButton({ className, variant = "default", shape = "defaul
             ? "msr:border-transparent msr:bg-[var(--msr-danger-solid-bg)] msr:text-[var(--msr-danger-solid-text)] msr:hover:bg-[var(--msr-danger-solid-hover)]"
           : variant === "ghost"
             ? "msr:border-transparent msr:bg-transparent msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900"
-            : "mesurer-settings-button-default msr:border-ink-200 msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:shadow-[inset_0_0_0_1px_#0d99ff]",
+            : "mesurer-settings-button-default msr:border-ink-200 msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",
         className,
       )}
     >
