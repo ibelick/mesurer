@@ -172,6 +172,11 @@
   box-shadow: var(--msr-shadow-comment-menu);
 }
 
+.mesurer-root .mesurer-comment-delete-confirmation {
+  background-color: var(--msr-comment-menu-surface) !important;
+  box-shadow: var(--msr-shadow-comment-menu);
+}
+
 .mesurer-root .mesurer-comment-menu-item:hover {
   background-color: var(--msr-color-ink-200) !important;
 }

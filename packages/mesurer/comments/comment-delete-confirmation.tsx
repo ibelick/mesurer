@@ -114,7 +114,7 @@ export function CommentDeleteConfirmation({
       <div className="msr:mt-3 msr:flex msr:justify-end msr:gap-2">
         <button
           type="button"
-          className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-100"
+          className="msr:rounded-control msr:px-2 msr:py-1 msr:text-[11px] msr:text-ink-600 msr:hover:bg-ink-200"
           onClick={onCancel}
         >
           No
