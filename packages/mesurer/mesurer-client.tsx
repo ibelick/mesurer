@@ -1220,10 +1220,31 @@ export function MesurerClient({
   }, [setMinimized, setToolbarActive]);
   const minimizeMesurer = useCallback(() => {
     setSettingsOpen(false);
+    setOpenMenu(null);
+    setSelectedCommentId(null);
+    cancelCommentDraft();
+    commentRuntime.setHoverElement(null);
     colorPicker.setActive(false);
     screenshot.closeUi();
+    clearSelection();
+    setHoverRect(null);
+    setHoverPointer(null);
+    setHoverElement(null);
     setMinimized(true);
-  }, [colorPicker, screenshot, setMinimized, setSettingsOpen]);
+  }, [
+    cancelCommentDraft,
+    clearSelection,
+    colorPicker,
+    commentRuntime,
+    screenshot,
+    setHoverElement,
+    setHoverPointer,
+    setHoverRect,
+    setMinimized,
+    setOpenMenu,
+    setSelectedCommentId,
+    setSettingsOpen,
+  ]);
   useEffect(() => {
     if (!features.screenshot) screenshot.closeUi();
     if (!features.rulers) setRulersVisible(false);
@@ -1467,9 +1488,11 @@ export function MesurerClient({
         selectedGuideIds,
       }}
       layoutGuides={layoutGuides}
+      layoutGuidesVisible={openMenu?.type === "layout-guides"}
       overlay={{
         enabled,
         interactive: overlayInteractive,
+        minimized,
         toolMode,
         guidesEnabled,
         altPressed,

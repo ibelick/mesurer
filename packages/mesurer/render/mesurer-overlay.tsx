@@ -92,6 +92,7 @@ type OverlayGuides = {
 type MesurerOverlayProps = {
   enabled: boolean
   interactive?: boolean
+  minimized?: boolean
   toolMode: ToolMode
   guidesEnabled: boolean
   altPressed: boolean
@@ -174,6 +175,7 @@ type MesurerOverlayProps = {
 export const MesurerOverlay = memo(function MesurerOverlay({
   enabled,
   interactive = true,
+  minimized = false,
   toolMode,
   guidesEnabled,
   altPressed,
@@ -211,7 +213,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     toolMode !== "xray" &&
     toolMode !== "rulers"
   const overlayCapturesPointer = overlayInteractive
-  const selectionVisible = toolMode === "select"
+  const selectionVisible = toolMode === "select" && !minimized
   const showGuidePreview = interactive && guidesEnabled && Boolean(guides.preview)
 
   return (

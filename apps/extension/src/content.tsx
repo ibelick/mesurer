@@ -173,8 +173,8 @@ const boot = readBoot();
 const state = getState();
 if (!state.booted) {
   state.booted = true;
-  if (boot === "toggle") toggle();
-  else if (boot === "restore" || shouldStayOpen()) void mount();
+  if (boot === "restore") void mount();
+  else toggle();
 } else if (boot === "toggle") {
   toggle();
 } else if (state.mounted) {

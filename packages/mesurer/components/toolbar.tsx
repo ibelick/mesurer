@@ -367,6 +367,9 @@ function ToolbarComponent(
     useToolbarTooltip();
   const guideMenuOpen = openMenu?.type === "guide-orientation";
   const commentMenuOpen = openMenu?.type === "comments";
+  const [guideControl, setGuideControl] = useState<"guides" | "rulers">(
+    rulersVisible ? "rulers" : "guides",
+  );
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
   const toggleToolbarMenu = useCallback(
     (menu: Exclude<OpenMenu, null>) => {
@@ -734,6 +737,7 @@ function ToolbarComponent(
     onCancelScreenshot();
     setRulersVisible((prev) => {
       const next = !prev;
+      if (next) setGuideControl("rulers");
       if (next && isAnnotateToolMode(toolMode)) {
         setToolMode("select");
       }
@@ -756,6 +760,7 @@ function ToolbarComponent(
       onCancelTransient();
       setEnabled(true);
       onCancelScreenshot();
+      setGuideControl("guides");
       setToolMode("guides");
       setGuideOrientation(orientation);
       onInteract();
@@ -763,6 +768,28 @@ function ToolbarComponent(
     },
     [onCancelScreenshot, onCancelTransient, onInteract, setEnabled, setGuideOrientation, setOpenMenu, setToolMode],
   );
+
+  const selectRulers = useCallback(() => {
+    onCancelTransient();
+    setEnabled(true);
+    setColorPickerActive(false);
+    onCancelScreenshot();
+    setGuideControl("rulers");
+    setRulersVisible(true);
+    if (isAnnotateToolMode(toolMode)) setToolMode("select");
+    onInteract();
+    setOpenMenu(null);
+  }, [
+    onCancelScreenshot,
+    onCancelTransient,
+    onInteract,
+    setColorPickerActive,
+    setEnabled,
+    setOpenMenu,
+    setRulersVisible,
+    setToolMode,
+    toolMode,
+  ]);
 
   useLayoutEffect(() => {
     if (minimized) {
@@ -979,7 +1006,7 @@ function ToolbarComponent(
       >
         <BoxSelectIcon size={20} />
       </ToolbarButton>
-      <ToolbarButton
+       <ToolbarButton
         id="xray"
         active={xrayVisible}
         label="X-ray"
@@ -990,29 +1017,23 @@ function ToolbarComponent(
       >
         <XrayIcon size={20} />
       </ToolbarButton>
-       {features.rulers ? (
-         <ToolbarButton
-           id="rulers"
-           active={rulersVisible}
-           label="Rulers"
-           shortcut="R"
-           onClick={rulersMode}
-           tooltip={toolbarTooltip}
-           tooltipVisible={tooltipsEnabled && visibleTooltipId === "rulers"}
-         >
-           <RulersIcon size={20} />
-         </ToolbarButton>
-       ) : null}
        <ToolbarButton
         id="guides"
-        active={toolMode === "guides"}
-        label="Guides"
-        shortcut="G"
-        onClick={guidesMode}
+        active={guideControl === "rulers" ? rulersVisible : toolMode === "guides"}
+        label={guideControl === "rulers" ? "Rulers" : "Guides"}
+        shortcut={guideControl === "rulers" ? "R" : "G"}
+        onClick={guideControl === "rulers" ? rulersMode : guidesMode}
         tooltip={toolbarTooltip}
         tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
       >
-        <RulerIcon size={20} />
+        {guideControl === "rulers" ? (
+          <RulersIcon size={20} />
+        ) : (
+          <RulerIcon
+            size={20}
+            className={guideOrientation === "vertical" ? "msr:rotate-90" : undefined}
+          />
+        )}
       </ToolbarButton>
       <div
         className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
@@ -1035,7 +1056,13 @@ function ToolbarComponent(
           )}
           onClick={() => {
             if (!guideMenuOpen) {
-              setActiveMenuIndex(guideOrientation === "horizontal" ? 0 : 1);
+              setActiveMenuIndex(
+                features.rulers && guideControl === "rulers"
+                  ? 0
+                  : guideOrientation === "horizontal"
+                    ? features.rulers ? 1 : 0
+                    : features.rulers ? 2 : 1,
+              );
               updateMenuAlign();
             }
             toggleToolbarMenu({ type: "guide-orientation" });
@@ -1063,19 +1090,26 @@ function ToolbarComponent(
             tabIndex={0}
             onKeyDown={(event) => {
               const key = event.key.toLowerCase();
+              const itemCount = features.rulers ? 3 : 2;
+              const horizontalIndex = features.rulers ? 1 : 0;
+              const verticalIndex = features.rulers ? 2 : 1;
               if (event.key === "ArrowDown") {
                 event.preventDefault();
-                setActiveMenuIndex((prev) => (prev + 1) % 2);
+                setActiveMenuIndex((prev) => (prev + 1) % itemCount);
               }
               if (event.key === "ArrowUp") {
                 event.preventDefault();
-                setActiveMenuIndex((prev) => (prev - 1 + 2) % 2);
+                setActiveMenuIndex((prev) => (prev - 1 + itemCount) % itemCount);
               }
               if (event.key === "Enter") {
                 event.preventDefault();
-                selectGuideOrientation(
-                  activeMenuIndex === 0 ? "horizontal" : "vertical",
-                );
+                if (features.rulers && activeMenuIndex === 0) selectRulers();
+                else if (activeMenuIndex === horizontalIndex) selectGuideOrientation("horizontal");
+                else if (activeMenuIndex === verticalIndex) selectGuideOrientation("vertical");
+              }
+              if (features.rulers && key === "r") {
+                event.preventDefault();
+                selectRulers();
               }
               if (key === "h") {
                 event.preventDefault();
@@ -1092,10 +1126,29 @@ function ToolbarComponent(
               }
             }}
           >
+            {features.rulers ? (
+              <MenuItem
+                className={cn(
+                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
+                  activeMenuIndex === 0 || guideControl === "rulers"
+                    ? "msr:bg-[#0d99ff] msr:text-white"
+                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+                )}
+                onClick={() => selectRulers()}
+              >
+                <CheckIcon
+                  size={12}
+                  className={cn(guideControl === "rulers" ? "msr:opacity-100" : "msr:opacity-0")}
+                />
+                <RulersIcon size={12} />
+                <span className="msr:flex-1">Rulers</span>
+                <span>R</span>
+              </MenuItem>
+            ) : null}
             <MenuItem
               className={cn(
                 "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                activeMenuIndex === 0 || guideOrientation === "horizontal"
+                activeMenuIndex === (features.rulers ? 1 : 0) || (guideControl === "guides" && guideOrientation === "horizontal")
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
               )}
@@ -1104,7 +1157,7 @@ function ToolbarComponent(
               <CheckIcon
                 size={12}
                 className={cn(
-                  guideOrientation === "horizontal"
+                  guideControl === "guides" && guideOrientation === "horizontal"
                     ? "msr:opacity-100"
                     : "msr:opacity-0",
                 )}
@@ -1116,7 +1169,7 @@ function ToolbarComponent(
             <MenuItem
               className={cn(
                 "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                activeMenuIndex === 1 || guideOrientation === "vertical"
+                activeMenuIndex === (features.rulers ? 2 : 1) || (guideControl === "guides" && guideOrientation === "vertical")
                   ? "msr:bg-[#0d99ff] msr:text-white"
                   : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
               )}
@@ -1125,7 +1178,7 @@ function ToolbarComponent(
               <CheckIcon
                 size={12}
                 className={cn(
-                  guideOrientation === "vertical"
+                  guideControl === "guides" && guideOrientation === "vertical"
                     ? "msr:opacity-100"
                     : "msr:opacity-0",
                 )}

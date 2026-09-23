@@ -31,6 +31,7 @@ type MesurerPortalProps = {
   theme: "system" | "light" | "dark";
   enabled: boolean;
   layoutGuides: LayoutGuide[];
+  layoutGuidesVisible?: boolean;
 };
 
 export function MesurerPortal({
@@ -45,6 +46,7 @@ export function MesurerPortal({
   theme,
   enabled,
   layoutGuides,
+  layoutGuidesVisible = false,
 }: MesurerPortalProps) {
   useEffect(() => {
     const ownerWindow = portalTarget.ownerDocument.defaultView;
@@ -77,7 +79,7 @@ export function MesurerPortal({
       data-theme={theme}
       tabIndex={-1}
     >
-      <LayoutGuidesOverlay enabled={enabled} guides={layoutGuides} />
+      <LayoutGuidesOverlay enabled={enabled && layoutGuidesVisible} guides={layoutGuides} />
       {rulers.visible ? (
         <RulersOverlay
           ownerWindow={rulers.ownerWindow}

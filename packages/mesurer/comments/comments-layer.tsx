@@ -64,21 +64,14 @@ const MARKER_OFFSETS = [
 const markerStyleWithOffset = (
   point: { x: number; y: number },
   offsetIndex: number,
-  viewport: { innerWidth: number; innerHeight: number } | null,
 ) => {
   const offset = MARKER_OFFSETS[offsetIndex] ?? {
     x: 0,
     y: MARKER_OFFSET_DISTANCE * Math.ceil(offsetIndex / 2),
   }
   return {
-    left: Math.min(
-      Math.max(4, point.x - 12 + offset.x),
-      Math.max(4, (viewport?.innerWidth ?? Number.POSITIVE_INFINITY) - 28),
-    ),
-    top: Math.min(
-      Math.max(4, point.y - 12 + offset.y),
-      Math.max(4, (viewport?.innerHeight ?? Number.POSITIVE_INFINITY) - 28),
-    ),
+    left: point.x - 12 + offset.x,
+    top: point.y - 12 + offset.y,
   }
 }
 
@@ -310,7 +303,6 @@ export function CommentsLayer({
               ...markerStyleWithOffset(
                 point,
                 movingId === comment.id ? 0 : duplicateIndex,
-                ownerDocument.defaultView,
               ),
               opacity: comment.status === "resolved" ? 0.45 : 1,
             }}

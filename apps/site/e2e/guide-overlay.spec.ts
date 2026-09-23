@@ -5,6 +5,11 @@ const activateSelect = async (page: Page) => {
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 
+const enableRulers = async (page: Page) => {
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  await page.getByRole("menuitem", { name: "Rulers" }).click();
+};
+
 test("starts with the Select tool active", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await expect(page.getByRole("button", { name: "Inspect (I)" })).toHaveAttribute(
@@ -441,6 +446,23 @@ test("minimized Mesurer does not inspect the page", async ({ page }) => {
   await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
 });
 
+test("minimizing the toolbar closes inspect cards", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateSelect(page);
+  const target = page.getByRole("button", { name: "Underlying app button" });
+  const targetBox = await target.boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.click(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(0);
+});
+
 test("initialState seeds annotations and toolbar state", async ({ page }) => {
   await page.goto("/e2e/fixtures/initial-state.html");
 
@@ -473,7 +495,7 @@ test("Escape minimizes after the tool has already been dismissed", async ({ page
 
 test("Escape minimizes when idle even if rulers were left on", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Rulers (R)" }).click({ force: true });
+  await enableRulers(page);
   await expect(page.getByRole("button", { name: "Rulers (R)" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -550,7 +572,7 @@ test("Escape turns off X-ray and rulers with the active inspect tool", async ({
 }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "X-ray (X)" }).click();
-  await page.getByRole("button", { name: "Rulers (R)" }).click();
+  await enableRulers(page);
   await expect(page.getByRole("button", { name: "X-ray (X)" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -1586,11 +1608,16 @@ test("layout guides overlay the page from the toolbar menu", async ({ page }) =>
 
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
 
+  await page.getByRole("button", { name: "Layout guides (L)" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
   await page.getByRole("button", { name: "Minimize toolbar" }).click();
   await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
-  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
   await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
 
   await page.getByRole("button", { name: "Layout guides (L)" }).click();
@@ -1603,7 +1630,7 @@ test("layout guides overlay the page from the toolbar menu", async ({ page }) =>
   await dialog.getByRole("button", { name: "Back to layout guides" }).click();
   await page.getByRole("button", { name: "Layout guides (L)" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
 });
 
 test("toolbar tools close Settings", async ({ page }) => {
@@ -1650,7 +1677,7 @@ test("selection stays visible while settings is open", async ({ page }) => {
 
 test("rulers stay visible while settings is open", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await page.getByRole("button", { name: "Rulers (R)" }).click();
+  await enableRulers(page);
   await expect(page.locator("[data-mesurer-rulers]")).toBeVisible();
 
   await page.getByRole("button", { name: "Settings" }).click();
@@ -1728,7 +1755,7 @@ test("near-edge rulers reveal when the pointer approaches the edge", async ({ pa
   await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
   await page.getByRole("switch", { name: "Edge reveal" }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Rulers (R)" }).click();
+  await enableRulers(page);
 
   const rulers = page.locator("[data-mesurer-rulers]");
   await expect(rulers).toHaveCSS("opacity", "0");
@@ -1821,7 +1848,7 @@ test("ruler-created guides snap to regular guides", async ({ page }) => {
   await page.mouse.click(300, 200);
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 
-  await page.getByRole("button", { name: "Rulers" }).click();
+  await enableRulers(page);
   const verticalRuler = page.locator('[data-mesurer-rulers="true"] > div').nth(1);
   await expect(verticalRuler).toBeVisible();
   const rulerBox = await verticalRuler.boundingBox();
