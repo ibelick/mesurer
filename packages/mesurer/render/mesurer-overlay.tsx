@@ -249,10 +249,14 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       }}
       onPointerDown={(event) => {
         if (eventPathHits(event.nativeEvent, "[data-mesurer-inspect-info-card]")) return
+        const activeCommentInput = event.currentTarget.querySelector<HTMLTextAreaElement>(
+          "[data-mesurer-comment-popover] textarea",
+        )
         if (
           toolMode === "comments" &&
           comments?.draft &&
-          !eventPathHits(event.nativeEvent, "[data-mesurer-comment-popover]")
+          !eventPathHits(event.nativeEvent, "[data-mesurer-comment-popover]") &&
+          !activeCommentInput?.value.trim()
         ) {
           comments.onDraftCancel?.()
           return
@@ -260,7 +264,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         if (
           toolMode === "comments" &&
           comments?.selectedId &&
-          !eventPathHits(event.nativeEvent, COMMENT_CHROME_SELECTOR)
+          !eventPathHits(event.nativeEvent, COMMENT_CHROME_SELECTOR) &&
+          !activeCommentInput?.value.trim()
         ) {
           comments.onClose?.()
           return

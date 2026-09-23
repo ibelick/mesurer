@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type MutableRefObject } from "react"
 import type {
   MesurerPersistence,
   MesurerPersistenceSnapshot,
@@ -17,6 +17,7 @@ type PersistenceLifecycleOptions = {
     source?: PersistenceChangeSource,
   ) => void
   storedState: MesurerPersistenceSnapshot | null | undefined
+  persistenceErrorHandlerRef: MutableRefObject<((error: unknown) => void) | undefined>
   applyingExternalPersistenceRef: { current: boolean }
   workspacePersistTimeoutRef: { current: number | null }
 }
@@ -30,6 +31,7 @@ export const usePersistenceLifecycle = ({
   saveWorkspace,
   applyPersistenceSnapshot,
   storedState,
+  persistenceErrorHandlerRef,
   applyingExternalPersistenceRef,
   workspacePersistTimeoutRef,
 }: PersistenceLifecycleOptions) => {
@@ -59,6 +61,7 @@ export const usePersistenceLifecycle = ({
   ])
 
   useEffect(() => {
+    activePersistence.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error))
     const unsubscribe = activePersistence.subscribe?.(applyPersistenceSnapshot)
     if (!settingsPersistOnReload) {
       return () => {
@@ -83,6 +86,7 @@ export const usePersistenceLifecycle = ({
     activePersistence,
     applyPersistenceSnapshot,
     ownerWindow,
+    persistenceErrorHandlerRef,
     saveWorkspace,
     settingsPersistOnReload,
     workspacePersistTimeoutRef,

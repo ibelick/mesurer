@@ -84,27 +84,7 @@ export function CommentComposer({
           overflowWrap: "anywhere",
           wordBreak: "break-word",
         }}
-        onChange={(event) => {
-          onChange(event)
-          const textarea = event.currentTarget
-          textarea.style.height = "auto"
-          textarea.style.overflowY = "hidden"
-          textarea.style.paddingRight = `${COMPOSER_COMPACT_RIGHT_PADDING}px`
-          textarea.style.paddingBottom = `${COMPOSER_COMPACT_BOTTOM_PADDING}px`
-          const singleRowHeight = textarea.scrollHeight
-          const nextExpanded = singleRowHeight > COMPOSER_SINGLE_ROW_HEIGHT
-          setExpanded(nextExpanded)
-          if (nextExpanded) {
-            textarea.style.paddingRight = `${COMPOSER_EXPANDED_RIGHT_PADDING}px`
-            textarea.style.paddingBottom = `${COMPOSER_EXPANDED_BOTTOM_PADDING}px`
-          }
-          const contentHeight = nextExpanded ? textarea.scrollHeight : COMPOSER_SINGLE_ROW_HEIGHT
-          const nextHeight = nextExpanded
-            ? `${Math.min(COMPOSER_MAX_HEIGHT, contentHeight)}px`
-            : `${COMPOSER_SINGLE_ROW_HEIGHT}px`
-          textarea.style.height = nextHeight
-          setHeight(Number.parseInt(nextHeight, 10))
-        }}
+        onChange={onChange}
         onKeyDown={(event) => {
           onKeyDown(event)
           if (event.key === "Enter" && !event.shiftKey) resetHeight()

@@ -453,5 +453,5 @@ export const useHotkeys = (options: HotkeyOptions) => {
       detachPointerDown()
       target.removeEventListener("message", handleKeyboardBridge)
     }
-  }, [options.enabled, options.eventTarget, options.overlayRef])
+  }, [options.eventTarget, options.overlayRef])
 }

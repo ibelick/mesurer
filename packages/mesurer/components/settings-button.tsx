@@ -14,7 +14,7 @@ export function SettingsButton({ className, variant = "default", shape = "defaul
       {...props}
       className={cn(
         shape === "icon"
-          ? "msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:border msr:p-0 msr:text-[14px] msr:focus-visible:outline-none"
+          ? "msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center msr:overflow-hidden msr:rounded-control msr:border msr:p-0 msr:leading-none msr:focus-visible:outline-none"
           : "msr:flex msr:h-6 msr:items-center msr:gap-1.5 msr:rounded-control msr:border msr:px-2 msr:text-[11px] msr:focus-visible:outline-none",
         Boolean(leftIcon) && "msr:pl-1.5",
         Boolean(rightIcon) && "msr:pr-1.5",
@@ -28,9 +28,17 @@ export function SettingsButton({ className, variant = "default", shape = "defaul
         className,
       )}
     >
-      {leftIcon ? <span aria-hidden="true" className="msr:inline-flex msr:shrink-0 msr:items-center msr:justify-center">{leftIcon}</span> : null}
-      <span>{children}</span>
-      {rightIcon ? <span aria-hidden="true" className="msr:inline-flex msr:w-6 msr:justify-center">{rightIcon}</span> : null}
+      {shape === "icon" ? (
+        <span className="msr:flex msr:size-full msr:min-h-0 msr:min-w-0 msr:items-center msr:justify-center msr:leading-none [&>svg]:msr:block">
+          {children}
+        </span>
+      ) : (
+        <>
+          {leftIcon ? <span aria-hidden="true" className="msr:inline-flex msr:shrink-0 msr:items-center msr:justify-center">{leftIcon}</span> : null}
+          <span>{children}</span>
+          {rightIcon ? <span aria-hidden="true" className="msr:inline-flex msr:w-6 msr:justify-center">{rightIcon}</span> : null}
+        </>
+      )}
     </button>
   )
 }

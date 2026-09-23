@@ -9,6 +9,7 @@ import { TextInput } from "./text-input"
 import { SettingsButton } from "./settings-button"
 import { CheckIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
+import { CommentIconButton } from "../comments/comment-icon-button"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -83,12 +84,17 @@ export function CommentsPanel({
     panelRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body
 
   useEffect(() => {
+    let copiedTimeout: number | null = null
     const handleCopied = () => {
       setCopied(true)
-      ownerWindow.setTimeout(() => setCopied(false), 1800)
+      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
+      copiedTimeout = ownerWindow.setTimeout(() => setCopied(false), 1800)
     }
     ownerWindow.addEventListener("mesurer:comments-copied", handleCopied)
-    return () => ownerWindow.removeEventListener("mesurer:comments-copied", handleCopied)
+    return () => {
+      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
+      ownerWindow.removeEventListener("mesurer:comments-copied", handleCopied)
+    }
   }, [ownerWindow])
 
   useEffect(() => {
@@ -182,12 +188,13 @@ export function CommentsPanel({
               </button>
             ) : undefined}
           />
-          <button
-            type="button"
+          <CommentIconButton
             data-mesurer-comment-actions
-            aria-label="Comment list actions"
+            label="Comment list actions"
+            tooltip="More"
             aria-expanded={openMenuId === "all"}
-             className="msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:leading-none msr:text-ink-500 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400"
+            className="msr:size-6"
+            wrapperClassName="msr:h-6 msr:w-6"
             onClick={(event) => {
               if (openMenuId === "all") {
                 setOpenMenuId(null)
@@ -206,7 +213,7 @@ export function CommentsPanel({
             }}
           >
             <MoreIcon size={12} />
-          </button>
+          </CommentIconButton>
         </div>
       </div>
       {filteredComments.length > 0 ? (
@@ -227,22 +234,30 @@ export function CommentsPanel({
                       <span className="msr:text-[10px] msr:text-ink-500">{replyCount} {replyCount === 1 ? "reply" : "replies"}{unresolved ? " · target not found" : ""}</span>
                     </button>
                     <div className="msr:flex msr:shrink-0 msr:items-center msr:gap-0.5">
-                      <button
-                        type="button"
-                        aria-label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
+                      <CommentIconButton
+                        label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
+                        tooltip={comment.status === "resolved" ? "Reopen" : "Mark as resolved"}
                         aria-pressed={comment.status === "resolved"}
-                         className={`msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+                        className={`msr:size-6 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
+                        wrapperClassName="msr:h-6 msr:w-6 msr:overflow-visible"
                         onClick={(event) => {
                           event.stopPropagation()
                           onToggleResolved(comment.id)
                         }}
                       >
-                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" className="msr:block">
                           <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
                           <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </button>
-                       <button type="button" data-mesurer-comment-actions aria-label={`Actions for comment: ${message?.text ?? "Empty comment"}`} aria-expanded={openMenuId === comment.id} className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-control msr:text-[14px] msr:text-ink-500 msr:outline-none msr:hover:bg-ink-100 msr:focus-visible:ring-2 msr:focus-visible:ring-ink-400" onClick={(event) => {
+                      </CommentIconButton>
+                      <CommentIconButton
+                        data-mesurer-comment-actions
+                        label={`Actions for comment: ${message?.text ?? "Empty comment"}`}
+                        tooltip="More"
+                        aria-expanded={openMenuId === comment.id}
+                        className="msr:size-6"
+                        wrapperClassName="msr:h-6 msr:w-6 msr:overflow-visible"
+                        onClick={(event) => {
                         if (openMenuId === comment.id) {
                           setOpenMenuId(null)
                           return
@@ -257,9 +272,10 @@ export function CommentsPanel({
                           })
                         }
                         setOpenMenuId(comment.id)
-                      }}>
+                      }}
+                      >
                         <MoreIcon size={12} />
-                      </button>
+                      </CommentIconButton>
                     </div>
                   </div>
                 </div>

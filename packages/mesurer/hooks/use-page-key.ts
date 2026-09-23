@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 import { getPageKey } from "../core/workspace"
 
 const LOCATION_EVENT = "mesurer:locationchange"
@@ -31,9 +31,11 @@ const subscribeToLocation = (ownerWindow: Window, onStoreChange: () => void) => 
   }
 }
 
-export const usePageKey = (ownerWindow: Window) =>
-  useSyncExternalStore(
-    (onStoreChange) => subscribeToLocation(ownerWindow, onStoreChange),
-    () => getPageKey(ownerWindow),
-    () => getPageKey(ownerWindow),
+export const usePageKey = (ownerWindow: Window) => {
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => subscribeToLocation(ownerWindow, onStoreChange),
+    [ownerWindow],
   )
+  const getSnapshot = useCallback(() => getPageKey(ownerWindow), [ownerWindow])
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}

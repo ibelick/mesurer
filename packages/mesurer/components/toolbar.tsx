@@ -794,12 +794,6 @@ function ToolbarComponent(
     toolMode,
   ]);
 
-  useLayoutEffect(() => {
-    if (minimized) {
-      setOpenMenu(null);
-    }
-  }, [minimized, setOpenMenu]);
-
   const openMenuRef = useRef(openMenu);
   openMenuRef.current = openMenu;
   useEffect(() => {

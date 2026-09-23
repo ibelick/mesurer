@@ -79,29 +79,10 @@ const restoreTab = (tabId: number, url?: string) => {
 
 chrome.action.onClicked.addListener((tab) => {
   if (typeof tab.id !== "number") return;
-  const tabId: number = tab.id;
   if (!isInjectableUrl(tab.url)) return;
-
-  const start = () => {
-    inject(tabId, "toggle").catch((error) => {
-      console.error("Mesurer failed to inject", error);
-    });
-  };
-
-  if (!tab.url) {
-    start();
-    return;
-  }
-
-  try {
-    const originPattern = `${new URL(tab.url).origin}/*`;
-    chrome.permissions.request({ origins: [originPattern] }, () => {
-      void chrome.runtime.lastError;
-      start();
-    });
-  } catch {
-    start();
-  }
+  inject(tab.id, "toggle").catch((error) => {
+    console.error("Mesurer failed to inject", error);
+  });
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

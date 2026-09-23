@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { colorToHex, parseCssColor } from "../core/colors"
 
 export const SETTINGS_COLUMNS = "msr:grid-cols-[78px_150px]"
@@ -59,9 +59,6 @@ export function ColorField({
   const [alphaDraft, setAlphaDraft] = useState(String(alphaValue))
   const [hexFocused, setHexFocused] = useState(false)
   const [alphaFocused, setAlphaFocused] = useState(false)
-  const nativeColorRef = useRef<HTMLInputElement>(null)
-  const hexInputRef = useRef<HTMLInputElement>(null)
-  const alphaInputRef = useRef<HTMLInputElement>(null)
   const updateColor = (nextHex: string, nextAlpha: number) => {
     if (!/^[\da-f]{6}$/i.test(nextHex)) return
     const nextSample = parseCssColor(`#${nextHex}`)
@@ -82,23 +79,6 @@ export function ColorField({
     updateColor(hexFocused ? hexDraft : hexValue, Number(next))
   }
 
-  useLayoutEffect(() => {
-    const nativeColor = nativeColorRef.current
-    const hexInput = hexInputRef.current
-    const alphaInput = alphaInputRef.current
-    if (!nativeColor || !hexInput || !alphaInput) return
-
-    nativeColor.oninput = () => handleNativeColorInput(nativeColor)
-    nativeColor.onchange = () => handleNativeColorInput(nativeColor)
-    hexInput.oninput = () => handleHexInput(hexInput)
-    alphaInput.oninput = () => handleAlphaInput(alphaInput)
-    return () => {
-      nativeColor.oninput = null
-      nativeColor.onchange = null
-      hexInput.oninput = null
-      alphaInput.oninput = null
-    }
-  })
   const swatchColor =
     (ownerWindow as Window & { CSS?: { supports: (property: string, value: string) => boolean } }).CSS?.supports("color", value)
       ? value
@@ -114,7 +94,11 @@ export function ColorField({
               style={{ backgroundColor: swatchColor }}
             >
               <input
-                ref={nativeColorRef}
+                ref={(input) => {
+                  if (!input) return
+                  input.oninput = () => handleNativeColorInput(input)
+                  input.onchange = () => handleNativeColorInput(input)
+                }}
                 type="color"
                 aria-label={`${label} color picker`}
                 value={inputValue}
@@ -122,7 +106,9 @@ export function ColorField({
               />
             </span>
             <input
-              ref={hexInputRef}
+              ref={(input) => {
+                if (input) input.oninput = () => handleHexInput(input)
+              }}
               aria-label={`${label} hex value`}
               type="text"
               value={hexFocused ? hexDraft : hexValue}
@@ -141,7 +127,9 @@ export function ColorField({
         }
         right={
           <input
-            ref={alphaInputRef}
+            ref={(input) => {
+              if (input) input.oninput = () => handleAlphaInput(input)
+            }}
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"

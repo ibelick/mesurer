@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type SetStateAction,
 } from "react";
 import {
@@ -208,12 +209,6 @@ export function MesurerClient({
       );
     return createPageScopedPersistence(next, () => appliedPageKeyRef.current);
   }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
-  useEffect(() => {
-    activePersistence.setErrorHandler?.((error) =>
-      persistenceErrorHandlerRef.current?.(error),
-    );
-    return () => activePersistence.setErrorHandler?.(undefined);
-  }, [activePersistence]);
   const storedState = useMemo(
     () => activePersistence.load(),
     [activePersistence],
@@ -618,6 +613,7 @@ export function MesurerClient({
     saveWorkspace,
     applyPersistenceSnapshot,
     storedState,
+    persistenceErrorHandlerRef,
     applyingExternalPersistenceRef,
     workspacePersistTimeoutRef,
   });
@@ -627,22 +623,32 @@ export function MesurerClient({
     orientation: "vertical" | "horizontal";
     position: number;
   } | null>(null);
-  const [scrollOffset, setScrollOffset] = useState({
-    x: ownerWindow.scrollX,
-    y: ownerWindow.scrollY,
-  });
-  useLayoutEffect(() => {
-    const updateScrollOffset = () => {
-      setScrollOffset({ x: ownerWindow.scrollX, y: ownerWindow.scrollY });
-    };
-    updateScrollOffset();
-    ownerWindow.addEventListener("scroll", updateScrollOffset, true);
-    ownerWindow.addEventListener("resize", updateScrollOffset);
+  const subscribeToScrollOffset = useCallback((onStoreChange: () => void) => {
+    ownerWindow.addEventListener("scroll", onStoreChange, true);
+    ownerWindow.addEventListener("resize", onStoreChange);
     return () => {
-      ownerWindow.removeEventListener("scroll", updateScrollOffset, true);
-      ownerWindow.removeEventListener("resize", updateScrollOffset);
+      ownerWindow.removeEventListener("scroll", onStoreChange, true);
+      ownerWindow.removeEventListener("resize", onStoreChange);
     };
   }, [ownerWindow]);
+  const scrollSnapshotRef = useRef({
+    ownerWindow,
+    value: { x: ownerWindow.scrollX, y: ownerWindow.scrollY },
+  });
+  const getScrollOffset = useCallback(() => {
+    const previous = scrollSnapshotRef.current;
+    const x = ownerWindow.scrollX;
+    const y = ownerWindow.scrollY;
+    if (previous.ownerWindow !== ownerWindow || previous.value.x !== x || previous.value.y !== y) {
+      scrollSnapshotRef.current = { ownerWindow, value: { x, y } };
+    }
+    return scrollSnapshotRef.current.value;
+  }, [ownerWindow]);
+  const scrollOffset = useSyncExternalStore(
+    subscribeToScrollOffset,
+    getScrollOffset,
+    getScrollOffset,
+  );
   enabledRef.current = enabled;
   xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
@@ -812,6 +818,7 @@ export function MesurerClient({
     setEnabled: (value) => setEnabledWithHistory(value),
     setToolModeNone: () => setToolModeWithHistory("none"),
   });
+  const closeColorPicker = useCallback(() => colorPicker.setActive(false), [colorPicker.setActive]);
   const screenshot = useScreenshot({
     ownerDocument,
     ownerWindow,
@@ -1291,11 +1298,12 @@ export function MesurerClient({
     setSelectedCommentId,
     setSettingsOpen,
   ]);
+  const closeScreenshotUi = screenshot.closeUi;
   useEffect(() => {
-    if (!features.screenshot) screenshot.closeUi();
+    if (!features.screenshot) closeScreenshotUi();
     if (!features.rulers) setRulersVisible(false);
     if (!features.settings) setSettingsOpen(false);
-  }, [features.rulers, features.screenshot, features.settings, screenshot, setRulersVisible, setSettingsOpen]);
+  }, [closeScreenshotUi, features.rulers, features.screenshot, features.settings, setRulersVisible, setSettingsOpen]);
   const { clearTransientState } = useInteractionLifecycle({
     enabled,
     toolMode,
@@ -1767,7 +1775,7 @@ export function MesurerClient({
               ownerWindow={ownerWindow}
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
-              onClose={() => colorPicker.setActive(false)}
+              onClose={closeColorPicker}
             />
           ),
         },

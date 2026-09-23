@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { colorToHex, parseCssColor } from "../core/colors"
 import {
   createLayoutGuide,
@@ -95,9 +95,6 @@ const NumberField = ({
 }) => {
   const [focused, setFocused] = useState(false)
   const [draft, setDraft] = useState(String(value))
-  useEffect(() => {
-    if (!focused) setDraft(String(value))
-  }, [focused, value])
   const commit = (input: string) => {
     const next = Number(input.replace(/[^\d.-]/g, ""))
     if (!Number.isFinite(next)) {
