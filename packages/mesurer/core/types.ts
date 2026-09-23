@@ -137,12 +137,24 @@ export type DistanceOverlay = {
     y: number
     value: number
   } | null
+  extraHorizontals?: Array<{
+    x1: number
+    x2: number
+    y: number
+    value: number
+  }>
   vertical: {
     y1: number
     y2: number
     x: number
     value: number
   } | null
+  extraVerticals?: Array<{
+    y1: number
+    y2: number
+    x: number
+    value: number
+  }>
   connectors: Array<{
     x1: number
     y1: number

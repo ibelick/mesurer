@@ -351,6 +351,7 @@ export const useMesurerPointerSelection = ({
     if (target) {
       const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window)
       clearTransientMeasurements()
+      if (!additive) setSelectedGuideIds([])
       if (additive) {
         const alreadySelected = selectedMeasurements.some(
           (measurement) => measurement.elementRef === target
@@ -382,6 +383,7 @@ export const useMesurerPointerSelection = ({
         return
       }
       commit()
+      if (!additive) setSelectedGuideIds([])
       if (selectionMode) {
         selectOverlayAnnotations({
           left: point.x,
@@ -417,6 +419,7 @@ export const useMesurerPointerSelection = ({
     setSelectionOriginRect,
     snapEnabled,
     window,
+    setSelectedGuideIds,
   ])
 
   return {

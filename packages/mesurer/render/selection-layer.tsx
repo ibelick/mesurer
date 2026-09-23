@@ -23,6 +23,7 @@ type SelectionLayerProps = {
   highlightColor: string
   selectedSelectorCopied: boolean
   selectedTypography: TypographyInfo | null
+  selectedMeasurementCount: number
   hideInfoCard: boolean
 }
 
@@ -42,6 +43,7 @@ export function SelectionLayer({
   highlightColor,
   selectedSelectorCopied,
   selectedTypography,
+  selectedMeasurementCount,
   hideInfoCard,
 }: SelectionLayerProps) {
   if (!visible) return null
@@ -113,7 +115,7 @@ export function SelectionLayer({
           measurement={selectedMeasurement}
           layoutDetailsEnabled={layoutDetailsEnabled}
           copied={selectedSelectorCopied}
-          typography={selectedTypography}
+          typography={selectedMeasurementCount === 1 ? selectedTypography : null}
         />
       ) : !hideInfoCard && selectorPreview ? (
         <InspectInfoCard ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />

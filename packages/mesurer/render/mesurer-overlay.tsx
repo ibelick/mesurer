@@ -52,6 +52,7 @@ type OverlaySelection = {
   highlightColor: string
   selectedSelectorCopied: boolean
   selectedTypography: TypographyInfo | null
+  selectedMeasurementCount: number
 }
 
 type OverlayDistances = {
@@ -295,6 +296,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         highlightColor={selection.highlightColor}
         selectedSelectorCopied={selection.selectedSelectorCopied}
          selectedTypography={selection.selectedTypography}
+         selectedMeasurementCount={selection.selectedMeasurementCount}
          hideInfoCard={selectionVisible && altPressed}
        />
 
@@ -368,7 +370,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         optionPair={distances.optionPair}
         guideDistance={distances.guideDistance}
         containerLines={distances.containerLines}
-        showOption={selectionVisible && altPressed}
+        showOption={(selectionVisible || guides.selectedIds.length > 0) && altPressed}
         showGuideDistance={interactive && guidesEnabled && altPressed}
         showContainer={selectionVisible && altPressed}
       />

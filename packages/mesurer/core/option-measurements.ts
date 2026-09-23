@@ -62,8 +62,13 @@ export const getOptionPairOverlay = (params: {
         }
       : null
 
-  const hoverTarget: OptionTarget | null = params.hoverGuide
-    ? { rect: getGuideRect(params.hoverGuide, ownerWindow), guideId: params.hoverGuide.id }
+  const hoverGuide =
+    params.hoverGuide && params.hoverGuide.id !== params.selectedGuide?.id
+      ? params.hoverGuide
+      : null
+
+  const hoverTarget: OptionTarget | null = hoverGuide
+    ? { rect: getGuideRect(hoverGuide, ownerWindow), guideId: hoverGuide.id }
     : params.hoverElement
       ? {
           rect: getRectFromDom(params.hoverElement),

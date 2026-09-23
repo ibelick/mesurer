@@ -266,6 +266,12 @@ export const useMesurerPointer = ({
         return
       }
 
+      const onGuide = event.nativeEvent.composedPath().some((node) => {
+        if (!node || typeof node !== "object" || !("getAttribute" in node)) return false
+        return (node as Element).getAttribute("data-mesurer-guide") !== null
+      })
+      if (!onGuide && !event.shiftKey) setSelectedGuideIds([])
+
       setStart(point)
       setEnd(point)
       setIsDragging(false)
@@ -355,8 +361,12 @@ export const useMesurerPointer = ({
       if (!hover.hoverFrameRef.current) {
         hover.hoverFrameRef.current = window.requestAnimationFrame(() => {
           const latest = hover.hoverPointRef.current
-          if (latest && !draggingGuideId && !guidesEnabled) {
-            if (hoverHighlightEnabled) {
+          if (
+            latest &&
+            !draggingGuideId &&
+            (!guidesEnabled || event.altKey || altPressed)
+          ) {
+            if (hoverHighlightEnabled && !guidesEnabled) {
               hover.updateHoverTarget(latest)
             } else {
               hover.updateHoverElement(latest)

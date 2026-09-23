@@ -40,6 +40,7 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
   return (
     <div
       data-mesurer-held-distance={onRemove ? distance.id : undefined}
+      data-mesurer-live-distance={onRemove ? undefined : ""}
       className="msr:pointer-events-none"
     >
       {showRectA ? (
@@ -87,58 +88,62 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
           />
         ),
       )}
-      {distance.horizontal && distance.horizontal.value > 0 ? (
-        <>
-          <div
-            className="msr:absolute msr:h-px msr:bg-[#2563eb]"
-            style={{
-              left: Math.min(distance.horizontal.x1, distance.horizontal.x2),
-              width: Math.abs(distance.horizontal.x2 - distance.horizontal.x1),
-              top: distance.horizontal.y,
-            }}
-          />
-          <MeasureTag
-            className="msr:-translate-x-1/2 msr:bg-ink-900/90"
-            interactive={Boolean(onRemove)}
-            style={{
-              left:
-                pinPoint?.x ??
-                (distance.horizontal.x1 + distance.horizontal.x2) / 2,
-              top: distance.horizontal.y + labelOffset,
-            }}
-            onPointerEnter={arm}
-            onPointerDown={handleRemove}
-          >
-            {formatValue(distance.horizontal.value)}
-          </MeasureTag>
-        </>
-      ) : null}
-      {distance.vertical && distance.vertical.value > 0 ? (
-        <>
-          <div
-            className="msr:absolute msr:w-px msr:bg-[#2563eb]"
-            style={{
-              top: Math.min(distance.vertical.y1, distance.vertical.y2),
-              height: Math.abs(distance.vertical.y2 - distance.vertical.y1),
-              left: distance.vertical.x,
-            }}
-          />
-          <MeasureTag
-            className="msr:-translate-y-1/2 msr:bg-ink-900/90"
-            interactive={Boolean(onRemove)}
-            style={{
-              left: distance.vertical.x + labelOffset,
-              top:
-                pinPoint?.y ??
-                (distance.vertical.y1 + distance.vertical.y2) / 2,
-            }}
-            onPointerEnter={arm}
-            onPointerDown={handleRemove}
-          >
-            {formatValue(distance.vertical.value)}
-          </MeasureTag>
-        </>
-      ) : null}
+      {([distance.horizontal, ...(distance.extraHorizontals ?? [])]).map(
+        (segment, index) =>
+          segment && segment.value > 0 ? (
+            <div key={`${distance.id}-h-${index}`}>
+              <div
+                className="msr:absolute msr:h-px msr:bg-[#2563eb]"
+                style={{
+                  left: Math.min(segment.x1, segment.x2),
+                  width: Math.abs(segment.x2 - segment.x1),
+                  top: segment.y,
+                }}
+              />
+              <MeasureTag
+                className="msr:-translate-x-1/2 msr:bg-ink-900/90"
+                interactive={Boolean(onRemove)}
+                style={{
+                  left:
+                    pinPoint?.x ?? (segment.x1 + segment.x2) / 2,
+                  top: segment.y + labelOffset,
+                }}
+                onPointerEnter={arm}
+                onPointerDown={handleRemove}
+              >
+                {formatValue(segment.value)}
+              </MeasureTag>
+            </div>
+          ) : null,
+      )}
+      {([distance.vertical, ...(distance.extraVerticals ?? [])]).map(
+        (segment, index) =>
+          segment && segment.value > 0 ? (
+            <div key={`${distance.id}-v-${index}`}>
+              <div
+                className="msr:absolute msr:w-px msr:bg-[#2563eb]"
+                style={{
+                  top: Math.min(segment.y1, segment.y2),
+                  height: Math.abs(segment.y2 - segment.y1),
+                  left: segment.x,
+                }}
+              />
+              <MeasureTag
+                className="msr:-translate-y-1/2 msr:bg-ink-900/90"
+                interactive={Boolean(onRemove)}
+                style={{
+                  left: segment.x + labelOffset,
+                  top:
+                    pinPoint?.y ?? (segment.y1 + segment.y2) / 2,
+                }}
+                onPointerEnter={arm}
+                onPointerDown={handleRemove}
+              >
+                {formatValue(segment.value)}
+              </MeasureTag>
+            </div>
+          ) : null,
+      )}
     </div>
   );
 });

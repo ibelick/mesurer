@@ -153,6 +153,27 @@ test("Option+S pins the current distance overlay", async ({ page }) => {
   await expect(page.locator("[data-mesurer-held-distance]")).toHaveCount(1);
 });
 
+test("Alt measures from a selected guide to a hovered element", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(234, 290);
+
+  await activateSelect(page);
+  await page.mouse.click(234, 290);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  const hoverTarget = page.getByRole("button", { name: "Underlying app button" });
+  const hoverBox = await hoverTarget.boundingBox();
+  expect(hoverBox).not.toBeNull();
+  await page.keyboard.down("Alt");
+  await page.mouse.move(hoverBox!.x + 4, hoverBox!.y + hoverBox!.height / 2);
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await expect(page.locator("[data-mesurer-live-distance]")).toHaveCount(1);
+  await page.keyboard.up("Alt");
+});
+
 test("Inspect value tooltip appears on hover", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);

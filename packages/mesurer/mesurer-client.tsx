@@ -32,7 +32,7 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { TypographyInspector, hasRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
+import { TypographyInspector, hasDirectRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
@@ -1020,7 +1020,7 @@ export function MesurerClient({
     if (!selectedElement) return null;
     const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
     if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
-    if (!hasRenderableText(selectedElement)) return null;
+    if (!hasDirectRenderableText(selectedElement)) return null;
     return typographyInspector.getFast(selectedElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
   useEffect(() => () => {
@@ -1529,11 +1529,12 @@ export function MesurerClient({
               : null,
           ownerWindow,
           highlightColor: settingsHighlightColor,
-           selectedSelectorCopied: Boolean(
-             selectedElement && copiedSelector === getElementSelector(selectedElement),
-           ),
-           selectedTypography,
-         },
+            selectedSelectorCopied: Boolean(
+              selectedElement && copiedSelector === getElementSelector(selectedElement),
+            ),
+            selectedTypography,
+            selectedMeasurementCount: selectedMeasurements.length,
+          },
         distances: {
           held: heldDistances,
           optionPair: optionPairOverlay,
@@ -1677,6 +1678,7 @@ export function MesurerClient({
           setRulersVisible: setRulersVisiblePersisted,
           guideOrientation,
           setGuideOrientation: setGuideOrientationWithHistory,
+          clearSelectedGuides: () => setSelectedGuideIdsPersisted([]),
         },
         layoutGuides: {
           items: layoutGuides,

@@ -59,6 +59,7 @@ type ToolbarTools = {
   setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
+  clearSelectedGuides: () => void;
 };
 
 type ToolbarColorPicker = {
@@ -306,6 +307,7 @@ function ToolbarComponent(
     setRulersVisible,
     guideOrientation,
     setGuideOrientation,
+    clearSelectedGuides,
   } = tools;
   const {
     active: colorPickerActive,
@@ -601,12 +603,13 @@ function ToolbarComponent(
 
   const selectMode = useCallback(() => {
     onCancelTransient();
+    clearSelectedGuides();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "select" ? "none" : "select"));
     onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [clearSelectedGuides, onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const selectionMode = useCallback(() => {
     onCancelTransient()
@@ -764,6 +767,14 @@ function ToolbarComponent(
       setOpenMenu(null);
     }
   }, [minimized, setOpenMenu]);
+
+  const openMenuRef = useRef(openMenu);
+  openMenuRef.current = openMenu;
+  useEffect(() => {
+    if (openMenuRef.current?.type === "layout-guides") {
+      setOpenMenu(null);
+    }
+  }, [toolMode, colorPickerActive, xrayVisible, rulersVisible, screenshotActive, setOpenMenu]);
 
   useLayoutEffect(() => {
     const stage = toolStageRef.current;
@@ -1127,7 +1138,7 @@ function ToolbarComponent(
       <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="layout-guides"
-          active={layoutGuidesOpen || layoutGuides.items.some((guide) => guide.visible)}
+          active={layoutGuidesOpen}
           label="Layout guides"
           shortcut="L"
           onClick={() => {

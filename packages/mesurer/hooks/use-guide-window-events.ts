@@ -139,7 +139,10 @@ export const useGuideWindowEvents = ({
       }
       if (!current.enabled) return
       if (current.settingsOpen) return
-      if (current.toolbarRef.current?.contains(event.target as Node)) return
+      if (current.toolbarRef.current?.contains(event.target as Node)) {
+        if (event.button === 0) current.setSelectedGuideIds([])
+        return
+      }
       if (isPointerDragActive()) return
       const OwnerElement = (ownerWindow as Window & { Element: typeof Element })
         .Element
@@ -160,6 +163,7 @@ export const useGuideWindowEvents = ({
           )
         })
       ) {
+        if (event.button === 0) current.setSelectedGuideIds([])
         return
       }
       if (event.button !== 0) return
@@ -168,6 +172,10 @@ export const useGuideWindowEvents = ({
           target instanceof OwnerElement &&
           target.hasAttribute("data-mesurer-guide"),
       )
+      if (event.button === 0 && !guideTarget) {
+        current.setSelectedGuideIds([])
+        if (current.toolMode === "select" || current.toolMode === "selection") return
+      }
       if (guideTarget && current.toolMode !== "none" && event.shiftKey) return
 
       const point = { x: event.clientX, y: event.clientY }

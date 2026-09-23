@@ -132,8 +132,14 @@ export const useMesurerDerived = ({
   )
 
   const hoverGuide = useMemo(
-    () => getHoveredGuide(hoverPointer, guides),
-    [guides, hoverPointer]
+    () =>
+      getHoveredGuide(
+        hoverPointer,
+        selectedGuide
+          ? guides.filter((guide) => guide.id !== selectedGuide.id)
+          : guides,
+      ),
+    [guides, hoverPointer, selectedGuide]
   )
 
   const primarySelectedMeasurement = useMemo(
