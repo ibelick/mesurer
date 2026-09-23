@@ -23,6 +23,7 @@ type SelectionLayerProps = {
   highlightColor: string
   selectedSelectorCopied: boolean
   selectedTypography: TypographyInfo | null
+  hideInfoCard: boolean
 }
 
 export function SelectionLayer({
@@ -41,6 +42,7 @@ export function SelectionLayer({
   highlightColor,
   selectedSelectorCopied,
   selectedTypography,
+  hideInfoCard,
 }: SelectionLayerProps) {
   if (!visible) return null
   const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
@@ -103,7 +105,7 @@ export function SelectionLayer({
           fillColor={fullPageSelection ? fullPageFillColor : fillColor}
         />
       ))}
-      {selectedMeasurement ? (
+      {!hideInfoCard && selectedMeasurement ? (
         <InspectInfoCard
           ownerWindow={ownerWindow}
           rect={selectedMeasurement.rect}
@@ -113,7 +115,7 @@ export function SelectionLayer({
           copied={selectedSelectorCopied}
           typography={selectedTypography}
         />
-      ) : selectorPreview ? (
+      ) : !hideInfoCard && selectorPreview ? (
         <InspectInfoCard ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />
       ) : null}
     </>

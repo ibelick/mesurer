@@ -294,8 +294,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         ownerWindow={selection.ownerWindow}
         highlightColor={selection.highlightColor}
         selectedSelectorCopied={selection.selectedSelectorCopied}
-        selectedTypography={selection.selectedTypography}
-      />
+         selectedTypography={selection.selectedTypography}
+         hideInfoCard={selectionVisible && altPressed}
+       />
 
       {toolMode === "selection" && marqueeRect ? (
         <MarqueeRect rect={marqueeRect} color={outlineColor} />
