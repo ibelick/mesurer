@@ -354,6 +354,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.onCloseScreenshot()
         current.setXrayVisible(false)
         current.setRulersVisible(false)
+        if (toolGroupShortcut === "1") current.clearSelection()
         current.setToolMode(toolGroupShortcut === "1" ? "select" : "selection")
         return
       }
@@ -366,6 +367,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
           current.clearTransientState()
           current.onCloseScreenshot()
+          if (requestedToolMode === "select") current.clearSelection()
           current.setToolMode((prev) =>
             prev === requestedToolMode ? "none" : requestedToolMode,
           )

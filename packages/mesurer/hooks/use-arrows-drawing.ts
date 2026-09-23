@@ -36,6 +36,7 @@ type UseArrowsDrawingOptions = {
   setToolMode: Dispatch<SetStateAction<ToolMode>>
   setArrows: Dispatch<SetStateAction<Arrow[]>>
   setSelectedArrowIds: Dispatch<SetStateAction<string[]>>
+  clearOtherSelections?: () => void
   arrowStart: Point | null
   arrowMiddle: Point | null
   setArrowStart: Dispatch<SetStateAction<Point | null>>
@@ -59,6 +60,7 @@ export const useArrowsDrawing = ({
   setToolMode,
   setArrows,
   setSelectedArrowIds,
+  clearOtherSelections,
   arrowStart,
   arrowMiddle,
   setArrowStart,
@@ -105,9 +107,10 @@ export const useArrowsDrawing = ({
         { id: createId(), start, control, end, color, width },
       ])
       setSelectedArrowIds([])
+      clearOtherSelections?.()
       setToolMode("selection")
     },
-    [color, createActionCommit, setArrows, setSelectedArrowIds, setToolMode, width],
+    [clearOtherSelections, color, createActionCommit, setArrows, setSelectedArrowIds, setToolMode, width],
   )
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!enabled || settingsOpen || event.button !== 0) {

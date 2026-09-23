@@ -1,8 +1,10 @@
 import type { SVGProps } from "react"
 
 export const HANDLE_NODE_SIZE = 6
-export const HANDLE_NODE_STROKE = 1.5
+export const HANDLE_NODE_STROKE = 1
 export const HANDLE_NODE_FILL = "white"
+export const HANDLE_HIT_SIZE = 16
+export const EDGE_HIT_SIZE = 12
 
 type HandleNodeProps = {
   color: string

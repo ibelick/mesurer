@@ -125,6 +125,11 @@ test("Cmd+A selects every overlay annotation in Selection mode", async ({ page }
   await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(1);
   await expect(page.locator('[data-mesurer-text-frame="true"]')).toHaveCount(1);
   await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(2);
+
+  await page.mouse.click(250, 280);
+  await expect(page.locator('[data-mesurer-group-frame="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-text-frame="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-pen-frame="true"]')).toHaveCount(0);
 });
 
 test("uses plain click for one item and Shift-click for multiple items", async ({ page }) => {

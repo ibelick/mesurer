@@ -288,6 +288,26 @@ export const useMesurerPointerSelection = ({
       return
     }
 
+    if (selectionMode) {
+      if (!additive) {
+        commit()
+        selectOverlayAnnotations({
+          left: point.x,
+          top: point.y,
+          width: 0,
+          height: 0,
+        })
+        clearDomSelection()
+        setSelectedElement(null)
+        setSelectedMeasurement(null)
+        setSelectedMeasurements([])
+        clearSelectionRect()
+        clickCycleRef.current = null
+      }
+      resetDragState()
+      return
+    }
+
     const selectedHit = shiftToggleElementRef.current
       ? (selectedMeasurements.find(
           (measurement) =>

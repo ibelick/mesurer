@@ -351,6 +351,21 @@ test("does not duplicate text when reclicking the active editor", async ({ page 
   await expect(textItems(page)).toHaveText("Once");
 });
 
+test("uses ew-resize and ns-resize cursors on selected text edges", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateText(page);
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Cursor edges");
+  await page.keyboard.press("Escape");
+
+  const east = page.locator('[data-mesurer-text-handle="e"]');
+  const north = page.locator('[data-mesurer-text-handle="n"]');
+  await expect(east).toBeVisible();
+  await expect(north).toBeVisible();
+  await expect(east).toHaveCSS("cursor", "ew-resize");
+  await expect(north).toHaveCSS("cursor", "ns-resize");
+});
+
 test("resizes a selected text annotation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateText(page);

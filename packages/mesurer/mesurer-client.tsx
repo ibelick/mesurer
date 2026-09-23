@@ -1582,7 +1582,7 @@ export function MesurerClient({
             ),
           onChangeStart: recordSnapshot,
           editingArrowId: arrowsPointer.editingArrowId,
-          interactive: overlayInteractive,
+          interactive: overlayInteractive && toolMode === "selection",
         },
         pen: {
           strokes: penStrokes,
@@ -1678,7 +1678,7 @@ export function MesurerClient({
           setRulersVisible: setRulersVisiblePersisted,
           guideOrientation,
           setGuideOrientation: setGuideOrientationWithHistory,
-          clearSelectedGuides: () => setSelectedGuideIdsPersisted([]),
+          clearSelection,
         },
         layoutGuides: {
           items: layoutGuides,

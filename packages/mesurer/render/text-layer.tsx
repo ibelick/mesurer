@@ -481,7 +481,11 @@ function TextItem({
         onPaste={editing ? onPaste : undefined}
         onBlur={editing ? onBlur : undefined}
         className={`${boxWidth ? "msr:w-full msr:whitespace-pre-wrap msr:break-words" : "msr:whitespace-pre"} ${
-          editing ? "msr:min-h-6 msr:min-w-0 msr:cursor-text msr:border-0 msr:bg-transparent msr:px-0 msr:outline-none" : ""
+          editing
+            ? "msr:min-h-6 msr:min-w-0 msr:cursor-text msr:border-0 msr:bg-transparent msr:px-0 msr:outline-none"
+            : selected && interactive
+              ? "msr:cursor-move"
+              : ""
         }`}
         data-mesurer-text-input={editing ? "true" : undefined}
       />

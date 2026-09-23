@@ -342,6 +342,22 @@
   cursor: default !important;
 }
 
+.mesurer-root button[data-mesurer-resize-cursor],
+.mesurer-root button[data-mesurer-resize-cursor] *,
+[data-mesurer-overlay][data-mesurer-inspect] [data-mesurer-resize-cursor],
+[data-mesurer-overlay][data-mesurer-inspect] [data-mesurer-resize-cursor] * {
+  cursor: var(--msr-resize-cursor) !important;
+}
+
+html[data-mesurer-resize-cursor],
+html[data-mesurer-resize-cursor] *,
+html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect],
+html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
+.mesurer-root[data-mesurer-resize-cursor],
+.mesurer-root[data-mesurer-resize-cursor] * {
+  cursor: var(--msr-resize-cursor-lock) !important;
+}
+
 .mesurer-root,
 .mesurer-root *,
 .mesurer-root *::before,

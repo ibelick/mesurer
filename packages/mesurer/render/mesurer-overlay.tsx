@@ -210,7 +210,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     (toolMode !== "none" || Boolean(comments?.selectedId)) &&
     toolMode !== "xray" &&
     toolMode !== "rulers"
-  const overlayCapturesPointer = overlayInteractive && toolMode !== "selection"
+  const overlayCapturesPointer = overlayInteractive
   const selectionVisible = toolMode === "select"
   const showGuidePreview = interactive && guidesEnabled && Boolean(guides.preview)
 
@@ -304,6 +304,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         <MarqueeRect rect={marqueeRect} color={outlineColor} />
       ) : null}
 
+      <TextLayer {...text} selectionCount={selectionCount} />
+
       <PenLayer {...pen} selectionCount={selectionCount} />
 
       <ArrowsLayer
@@ -320,8 +322,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selectionCount={selectionCount}
         interactive={arrows.interactive}
       />
-
-      <TextLayer {...text} selectionCount={selectionCount} />
 
       {comments ? <CommentsLayer {...comments} /> : null}
 

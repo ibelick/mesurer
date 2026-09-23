@@ -73,7 +73,7 @@ export const GroupSelectionFrame = ({
 
   return (
     <div
-       className="msr:pointer-events-auto msr:absolute msr:border msr:border-dashed msr:border-[#0d99ff]"
+       className="msr:pointer-events-none msr:absolute msr:border msr:border-dashed msr:border-[#0d99ff]"
       style={{
         left: rect.left - scrollOffset.x,
         top: rect.top - scrollOffset.y,

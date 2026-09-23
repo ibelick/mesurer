@@ -59,7 +59,7 @@ type ToolbarTools = {
   setRulersVisible: Dispatch<SetStateAction<boolean>>;
   guideOrientation: "vertical" | "horizontal";
   setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
-  clearSelectedGuides: () => void;
+  clearSelection: () => void;
 };
 
 type ToolbarColorPicker = {
@@ -307,7 +307,7 @@ function ToolbarComponent(
     setRulersVisible,
     guideOrientation,
     setGuideOrientation,
-    clearSelectedGuides,
+    clearSelection,
   } = tools;
   const {
     active: colorPickerActive,
@@ -451,11 +451,13 @@ function ToolbarComponent(
       onCancelScreenshot();
       setXrayVisible(false);
       setRulersVisible(false);
+      if (group === "inspect") clearSelection();
       setToolMode(group === "inspect" ? "select" : "selection");
       setToolGroup(group);
       setOpenMenu(null);
     },
     [
+      clearSelection,
       onCancelScreenshot,
       onCancelTransient,
       onInteract,
@@ -603,13 +605,13 @@ function ToolbarComponent(
 
   const selectMode = useCallback(() => {
     onCancelTransient();
-    clearSelectedGuides();
+    clearSelection();
     setEnabled(true);
     setColorPickerActive(false);
     onCancelScreenshot();
     setToolMode((prev) => (prev === "select" ? "none" : "select"));
     onInteract();
-  }, [clearSelectedGuides, onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [clearSelection, onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const selectionMode = useCallback(() => {
     onCancelTransient()
