@@ -6,6 +6,7 @@ import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { CommentIconButton } from "./comment-icon-button"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { copyCommentSelector } from "./export"
 
 type CommentThreadCardProps = {
@@ -58,6 +59,7 @@ export function CommentThreadCard({
   const outsideAttemptRef = useRef(false)
   const message = comment.messages[0]
   const [editText, setEditText] = useState(message?.text ?? "")
+  const tooltipGroup = useToolbarTooltip()
   const replyTextRef = useRef(replyText)
   const editTextRef = useRef(editText)
   replyTextRef.current = replyText
@@ -130,6 +132,7 @@ export function CommentThreadCard({
         setNudge(false)
         event.stopPropagation()
       }}
+      onMouseLeave={tooltipGroup.onToolbarLeave}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault()
@@ -143,6 +146,8 @@ export function CommentThreadCard({
             data-mesurer-comment-actions="true"
             label="Comment actions"
             tooltip="More"
+            tooltipId="comment-thread-more"
+            tooltipGroup={tooltipGroup}
             aria-expanded={threadOverflowOpen}
             onClick={(event) => {
               const anchor = readDeleteAnchor(event.currentTarget)
@@ -179,6 +184,8 @@ export function CommentThreadCard({
         <CommentIconButton
           label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
           tooltip={comment.status === "resolved" ? "Reopen" : "Mark as resolved"}
+          tooltipId="comment-thread-resolve"
+          tooltipGroup={tooltipGroup}
           aria-pressed={comment.status === "resolved"}
           className={comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}
           onClick={() => onToggleResolved(comment.id)}
@@ -191,6 +198,8 @@ export function CommentThreadCard({
         <CommentIconButton
           label="Close comment"
           tooltip="Close"
+          tooltipId="comment-thread-close"
+          tooltipGroup={tooltipGroup}
           onClick={onClose}
         >
           <CloseIcon />
@@ -200,7 +209,7 @@ export function CommentThreadCard({
       <div>
         <div className="msr:min-w-0">
           {comment.messages.map((item, index) => (
-            <div key={item.id} className={`msr:group msr:relative ${index === 0 ? "" : "msr:mt-4"}`}>
+            <div key={item.id} className={`msr:group msr:relative ${index === 0 ? "" : "msr:mt-3"}`}>
               <div className="msr:flex msr:items-center msr:justify-between msr:gap-2 msr:text-[11px] msr:text-ink-500">
                 <span className="msr:font-medium msr:text-ink-700">You</span>
                 <time dateTime={new Date(item.createdAt).toISOString()}>{formatTime(item.createdAt)}</time>
@@ -212,6 +221,7 @@ export function CommentThreadCard({
                     placeholder="Edit comment"
                     ariaLabel="Edit comment"
                     actionLabel="Save edit"
+                    tooltipGroup={tooltipGroup}
                     onChange={(event) => {
                       outsideAttemptRef.current = false
                       setNudge(false)
@@ -230,34 +240,38 @@ export function CommentThreadCard({
                   />
                 ) : (
                   <p
-                    className="msr:mt-1 msr:whitespace-pre-wrap"
+                    className="msr:mt-0.5 msr:pr-6 msr:whitespace-pre-wrap"
                     style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                   >
                     {item.text}
                   </p>
                 )}
-                {editingMessageId !== item.id ? <CommentIconButton
-                  data-mesurer-comment-actions="true"
-                  label="Comment actions"
-                  tooltip="More"
-                  aria-expanded={overflowOpenId === item.id}
-                  wrapperClassName="msr:absolute msr:right-0 msr:top-0 msr:overflow-visible msr:opacity-0 msr:group-hover:opacity-100 msr:focus-within:opacity-100"
-                  onClick={(event) => {
-                    const anchor = readDeleteAnchor(event.currentTarget)
-                    setOverflowOpenId((value) => {
-                      if (value === item.id) {
-                        setMessageMenuAnchor(null)
-                        return null
-                      }
-                      setThreadOverflowOpen(false)
-                      setThreadMenuAnchor(null)
-                      setMessageMenuAnchor(anchor)
-                      return item.id
-                    })
-                  }}
-                >
-                   <MoreIcon />
-                </CommentIconButton> : null}
+                {editingMessageId !== item.id ? (
+                  <CommentIconButton
+                    data-mesurer-comment-actions="true"
+                    label="Comment actions"
+                    tooltip="More"
+                    tooltipId={`comment-message-more-${item.id}`}
+                    tooltipGroup={tooltipGroup}
+                    aria-expanded={overflowOpenId === item.id}
+                    wrapperClassName={`msr:absolute msr:right-0 msr:top-0.5 ${overflowOpenId === item.id ? "msr:opacity-100" : "msr:opacity-0 msr:group-hover:opacity-100 msr:focus-within:opacity-100"}`}
+                    onClick={(event) => {
+                      const anchor = readDeleteAnchor(event.currentTarget)
+                      setOverflowOpenId((value) => {
+                        if (value === item.id) {
+                          setMessageMenuAnchor(null)
+                          return null
+                        }
+                        setThreadOverflowOpen(false)
+                        setThreadMenuAnchor(null)
+                        setMessageMenuAnchor(anchor)
+                        return item.id
+                      })
+                    }}
+                  >
+                    <MoreIcon />
+                  </CommentIconButton>
+                ) : null}
                 {overflowOpenId === item.id ? (
                   <CommentOverflowMenu
                     commentId={comment.id}
@@ -293,6 +307,7 @@ export function CommentThreadCard({
           value={replyText}
           placeholder="Reply..."
           ariaLabel="Reply to comment"
+          tooltipGroup={tooltipGroup}
           onChange={(event) => {
             outsideAttemptRef.current = false
             setNudge(false)

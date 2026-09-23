@@ -10,6 +10,7 @@ import { SettingsButton } from "./settings-button"
 import { CheckIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
+import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -82,6 +83,7 @@ export function CommentsPanel({
     : statusFilteredComments
   const overlayPortalTarget =
     panelRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body
+  const tooltipGroup = useToolbarTooltip()
 
   useEffect(() => {
     let copiedTimeout: number | null = null
@@ -148,6 +150,7 @@ export function CommentsPanel({
       data-mesurer-comment-ui
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
+      onMouseLeave={tooltipGroup.onToolbarLeave}
     >
       <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:px-3">
         <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
@@ -192,6 +195,8 @@ export function CommentsPanel({
             data-mesurer-comment-actions
             label="Comment list actions"
             tooltip="More"
+            tooltipId="comment-list-more"
+            tooltipGroup={tooltipGroup}
             aria-expanded={openMenuId === "all"}
             className="msr:size-6"
             wrapperClassName="msr:h-6 msr:w-6"
@@ -237,6 +242,8 @@ export function CommentsPanel({
                       <CommentIconButton
                         label={comment.status === "resolved" ? "Reopen comment" : "Mark comment as resolved"}
                         tooltip={comment.status === "resolved" ? "Reopen" : "Mark as resolved"}
+                        tooltipId={`comment-list-resolve-${comment.id}`}
+                        tooltipGroup={tooltipGroup}
                         aria-pressed={comment.status === "resolved"}
                         className={`msr:size-6 ${comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}`}
                         wrapperClassName="msr:h-6 msr:w-6 msr:overflow-visible"
@@ -254,6 +261,8 @@ export function CommentsPanel({
                         data-mesurer-comment-actions
                         label={`Actions for comment: ${message?.text ?? "Empty comment"}`}
                         tooltip="More"
+                        tooltipId={`comment-list-more-${comment.id}`}
+                        tooltipGroup={tooltipGroup}
                         aria-expanded={openMenuId === comment.id}
                         className="msr:size-6"
                         wrapperClassName="msr:h-6 msr:w-6 msr:overflow-visible"

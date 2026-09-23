@@ -1,11 +1,14 @@
 import { useRef, type ButtonHTMLAttributes, type ReactNode } from "react"
 import { SettingsButton } from "../components/settings-button"
-import { Tooltip, useTooltip } from "../components/tooltip"
+import { Tooltip } from "../components/tooltip"
+import type { ToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { cn } from "../core/utils"
 
 type CommentIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
   tooltip?: string
+  tooltipId: string
+  tooltipGroup: ToolbarTooltip
   wrapperClassName?: string
   children: ReactNode
 }
@@ -13,27 +16,28 @@ type CommentIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export function CommentIconButton({
   label,
   tooltip = label,
+  tooltipId,
+  tooltipGroup,
   className,
   wrapperClassName,
   children,
   onClick,
   ...props
 }: CommentIconButtonProps) {
-  const tooltipState = useTooltip()
   const anchorRef = useRef<HTMLDivElement>(null)
-  const tooltipId = tooltip
 
   return (
     <div
       ref={anchorRef}
       className={cn(
-        "msr:relative msr:inline-flex msr:h-5 msr:w-5 msr:items-center msr:justify-center msr:leading-none",
+        "msr:inline-flex msr:h-5 msr:w-5 msr:items-center msr:justify-center msr:leading-none",
+        wrapperClassName?.includes("msr:absolute") ? "msr:absolute" : "msr:relative",
         wrapperClassName,
       )}
-      onMouseEnter={() => tooltipState.onTooltipEnter(tooltipId)}
-      onMouseLeave={tooltipState.onTooltipLeave}
-      onFocus={() => tooltipState.onTooltipEnter(tooltipId)}
-      onBlur={tooltipState.onTooltipLeave}
+      onMouseEnter={() => tooltipGroup.onTooltipEnter(tooltipId)}
+      onMouseLeave={() => tooltipGroup.onTooltipLeave(tooltipId)}
+      onFocus={() => tooltipGroup.onTooltipEnter(tooltipId)}
+      onBlur={() => tooltipGroup.onTooltipLeave(tooltipId)}
     >
       <SettingsButton
         shape="icon"
@@ -41,18 +45,15 @@ export function CommentIconButton({
         type="button"
         aria-label={label}
         className={cn("msr:leading-none", className)}
-        onClick={(event) => {
-          tooltipState.onTooltipLeave()
-          onClick?.(event)
-        }}
+        onClick={onClick}
         {...props}
       >
         {children}
       </SettingsButton>
       <Tooltip
         label={tooltip}
-        visible={tooltipState.visibleTooltipId === tooltipId}
-        instant={tooltipState.tooltipInstant}
+        visible={tooltipGroup.visibleTooltipId === tooltipId}
+        instant={tooltipGroup.tooltipInstant}
         side="top"
         anchorRef={anchorRef}
       />

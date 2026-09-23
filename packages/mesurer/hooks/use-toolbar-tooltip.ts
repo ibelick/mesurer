@@ -56,3 +56,5 @@ export const useToolbarTooltip = () => {
     onToolbarLeave,
   }
 }
+
+export type ToolbarTooltip = ReturnType<typeof useToolbarTooltip>
