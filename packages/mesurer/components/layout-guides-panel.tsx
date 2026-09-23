@@ -123,14 +123,23 @@ const NumberField = ({
             commit(draft)
             setFocused(false)
           }}
-          onChange={(event) => {
-            const next = event.currentTarget.value.replace(/[^\d.-]/g, "")
-            setDraft(next)
-            const parsed = Number(next)
-            if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
-          }}
-          onPointerDown={(event) => event.stopPropagation()}
-        />
+           onChange={(event) => {
+             const next = event.currentTarget.value.replace(/[^\d.-]/g, "")
+             setDraft(next)
+             const parsed = Number(next)
+             if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
+           }}
+           onKeyDown={(event) => {
+             if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+             event.preventDefault()
+             const current = Number(draft)
+             const base = Number.isFinite(current) ? current : value
+             const next = Math.min(max, Math.max(min, base + (event.key === "ArrowUp" ? 1 : -1)))
+             setDraft(String(next))
+             onChange(next)
+           }}
+           onPointerDown={(event) => event.stopPropagation()}
+         />
       }
     />
   )

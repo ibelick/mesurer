@@ -822,6 +822,7 @@ export function MesurerClient({
       setOpenMenu(null);
       return;
     }
+    setEnabledWithHistory(true);
     setSettingsOpen(false);
     colorPicker.setActive(false);
     screenshot.closeUi();
@@ -829,7 +830,7 @@ export function MesurerClient({
       setLayoutGuidesWithHistory([createLayoutGuide()]);
     }
     setOpenMenu({ type: "layout-guides" });
-  }, [colorPicker, openMenu, screenshot, setLayoutGuidesWithHistory, setOpenMenu, setSettingsOpen]);
+  }, [colorPicker, openMenu, screenshot, setEnabledWithHistory, setLayoutGuidesWithHistory, setOpenMenu, setSettingsOpen]);
 
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
