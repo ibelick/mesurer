@@ -24,6 +24,7 @@ type Options = {
   minimized: boolean;
   shortcutsEnabled: boolean;
   settingsOpen: boolean;
+  layoutGuidesOpen: boolean;
   ownerDocument: Document;
   ownerWindow: Window;
   toolbarRef: MutableRefObject<HTMLDivElement | null>;
@@ -305,6 +306,7 @@ export const useInteractionLifecycle = (options: Options) => {
     onToggleSettings: options.onToggleSettings,
     onToggleLayoutGuides: options.onToggleLayoutGuides,
     isSettingsOpen: () => options.settingsOpen,
+    isLayoutGuidesOpen: () => options.layoutGuidesOpen,
     onCloseColorPicker: () => options.colorPicker.setActive(false),
     isColorPickerActive: () => options.colorPicker.active,
     features: options.features,

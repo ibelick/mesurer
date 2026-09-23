@@ -1225,6 +1225,7 @@ export function MesurerClient({
     minimized,
     shortcutsEnabled: settingsShortcutsEnabled,
     settingsOpen,
+    layoutGuidesOpen: openMenu?.type === "layout-guides",
     ownerDocument,
     ownerWindow,
     toolbarRef,

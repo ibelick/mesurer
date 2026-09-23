@@ -1,13 +1,20 @@
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { colorToHex, parseCssColor } from "../core/colors"
 import {
   createLayoutGuide,
+  DEFAULT_LAYOUT_GUIDE_COLOR,
   layoutGuideLabel,
   type LayoutGuide,
   type LayoutGuideAlign,
   type LayoutGuideKind,
 } from "../core/layout-guides"
 import { cn } from "../core/utils"
+import {
+  ColorField,
+  ControlShell,
+  SettingsSelectCaret,
+  settingsSelectClassName,
+} from "./control-field"
 import { CloseIcon } from "./icons"
 import {
   EyeIcon,
@@ -21,6 +28,7 @@ import { CaretDownIcon, MinusIcon } from "./icons/menu-icons"
 
 type LayoutGuidesPanelProps = {
   guides: LayoutGuide[]
+  ownerWindow: Window
   onChange: Dispatch<SetStateAction<LayoutGuide[]>>
 }
 
@@ -30,6 +38,8 @@ const KindIcon = ({ kind }: { kind: LayoutGuideKind }) => {
   return <LayoutColumnsIcon size={14} />
 }
 
+const FIELD_COLUMNS = "msr:grid-cols-[78px_minmax(0,1fr)]"
+
 const Field = ({
   label,
   children,
@@ -37,7 +47,7 @@ const Field = ({
   label: string
   children: ReactNode
 }) => (
-  <label className="msr:grid msr:grid-cols-[4.5rem_minmax(0,1fr)] msr:items-center msr:gap-2 msr:text-[11px] msr:text-ink-700">
+  <label className={`msr:col-span-2 msr:grid msr:h-8 msr:w-full ${FIELD_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
     <span>{label}</span>
     {children}
   </label>
@@ -54,15 +64,21 @@ const NativeSelect = ({
   onChange: (value: string) => void
   children: ReactNode
 }) => (
-  <select
-    aria-label={label}
-    value={value}
-    onChange={(event) => onChange(event.currentTarget.value)}
-    className="mesurer-settings-select msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
-  >
-    {children}
-  </select>
+  <span className="msr:relative msr:block msr:w-full">
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(event) => onChange(event.currentTarget.value)}
+      className={settingsSelectClassName}
+    >
+      {children}
+    </select>
+    <SettingsSelectCaret />
+  </span>
 )
+
+const numberInputClassName =
+  "msr:h-full msr:w-full msr:min-w-0 msr:border-0 msr:bg-transparent msr:px-2 msr:font-mono msr:text-[12px] msr:font-medium msr:tabular-nums msr:text-ink-700 msr:outline-none"
 
 const NumberField = ({
   label,
@@ -76,79 +92,58 @@ const NumberField = ({
   min?: number
   max?: number
   onChange: (value: number) => void
-}) => (
-  <input
-    aria-label={label}
-    type="number"
-    inputMode="numeric"
-    min={min}
-    max={max}
-    value={Number.isFinite(value) ? value : 0}
-    onChange={(event) => {
-      const next = Number(event.currentTarget.value)
-      if (!Number.isFinite(next)) return
-      onChange(Math.min(max, Math.max(min, next)))
-    }}
-    className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:tabular-nums msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
-  />
-)
-
-function ColorRow({
-  value,
-  opacity,
-  onChange,
-}: {
-  value: string
-  opacity: number
-  onChange: (color: string, opacity: number) => void
-}) {
-  const parsed = parseCssColor(value)
-  const hex = parsed ? colorToHex({ ...parsed, alpha: 1 }).slice(1, 7).toUpperCase() : "FF0000"
-  const percent = Math.round(opacity * 100)
+}) => {
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => {
+    if (!focused) setDraft(String(value))
+  }, [focused, value])
+  const commit = (input: string) => {
+    const next = Number(input.replace(/[^\d.-]/g, ""))
+    if (!Number.isFinite(next)) {
+      setDraft(String(value))
+      return
+    }
+    onChange(Math.min(max, Math.max(min, next)))
+  }
   return (
-    <div className="msr:flex msr:h-6 msr:overflow-hidden msr:rounded-control msr:border msr:border-ink-200">
-      <span className="msr:relative msr:size-6 msr:shrink-0 msr:border-r msr:border-ink-200">
-        <span className="msr:absolute msr:inset-1 msr:rounded-[3px]" style={{ backgroundColor: value }} />
+    <ControlShell
+      left={
         <input
-          type="color"
-          aria-label="Layout guide color"
-          value={`#${hex}`}
-          className="msr:absolute msr:inset-0 msr:cursor-pointer msr:opacity-0"
-          onChange={(event) => onChange(event.currentTarget.value, opacity)}
+          aria-label={label}
+          type="text"
+          inputMode="numeric"
+          value={focused ? draft : String(value)}
+          className={numberInputClassName}
+          onFocus={() => {
+            setDraft(String(value))
+            setFocused(true)
+          }}
+          onBlur={() => {
+            commit(draft)
+            setFocused(false)
+          }}
+          onChange={(event) => {
+            const next = event.currentTarget.value.replace(/[^\d.-]/g, "")
+            setDraft(next)
+            const parsed = Number(next)
+            if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
         />
-      </span>
-      <input
-        aria-label="Layout guide hex"
-        value={hex}
-        maxLength={6}
-        className="msr:min-w-0 msr:flex-1 msr:border-0 msr:bg-transparent msr:px-1.5 msr:font-mono msr:text-[11px] msr:uppercase msr:text-ink-700 msr:outline-none"
-        onChange={(event) => {
-          const next = event.currentTarget.value.replace(/[^\da-f]/gi, "").slice(0, 6)
-          if (next.length === 6) onChange(`#${next}`, opacity)
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-      />
-      <input
-        aria-label="Layout guide opacity"
-        value={`${percent}%`}
-        className="msr:w-12 msr:border-l msr:border-ink-200 msr:bg-transparent msr:px-1 msr:text-[11px] msr:tabular-nums msr:text-ink-700 msr:outline-none"
-        onChange={(event) => {
-          const next = Number(event.currentTarget.value.replace(/\D/g, ""))
-          if (!Number.isFinite(next)) return
-          onChange(value, Math.min(100, Math.max(0, next)) / 100)
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-      />
-    </div>
+      }
+    />
   )
 }
 
 function LayoutGuideEditor({
   guide,
+  ownerWindow,
   onChange,
   onClose,
 }: {
   guide: LayoutGuide
+  ownerWindow: Window
   onChange: (guide: LayoutGuide) => void
   onClose: () => void
 }) {
@@ -158,7 +153,7 @@ function LayoutGuideEditor({
       : { stretch: "Stretch", min: "Left", center: "Center", max: "Right" }
   const sizeLabel = guide.kind === "rows" ? "Height" : guide.kind === "grid" ? "Size" : "Width"
   return (
-    <div className="msr:flex msr:flex-col msr:gap-2 msr:p-3">
+    <div className="mesurer-thin-scrollbar msr:flex msr:min-h-0 msr:flex-1 msr:flex-col msr:gap-2 msr:overflow-y-auto msr:p-3">
       <div className="msr:flex msr:items-center msr:justify-between msr:gap-2">
         <NativeSelect
           label="Layout guide type"
@@ -189,13 +184,21 @@ function LayoutGuideEditor({
           <NumberField label="Count" value={guide.count} min={1} max={24} onChange={(count) => onChange({ ...guide, count })} />
         </Field>
       ) : null}
-      <Field label="Color">
-        <ColorRow
-          value={guide.color}
-          opacity={guide.opacity}
-          onChange={(color, opacity) => onChange({ ...guide, color, opacity })}
-        />
-      </Field>
+      <ColorField
+        label="Color"
+        columns={FIELD_COLUMNS}
+        value={colorToHex({ ...(parseCssColor(guide.color) ?? parseCssColor(DEFAULT_LAYOUT_GUIDE_COLOR)!), alpha: guide.opacity })}
+        fallback={DEFAULT_LAYOUT_GUIDE_COLOR}
+        ownerWindow={ownerWindow}
+        onChange={(next) => {
+          const parsed = parseCssColor(next)
+          onChange({
+            ...guide,
+            color: parsed ? colorToHex({ ...parsed, alpha: 1 }).slice(0, 7) : next,
+            opacity: parsed?.alpha ?? guide.opacity,
+          })
+        }}
+      />
       {guide.kind !== "grid" ? (
         <Field label="Type">
           <NativeSelect
@@ -230,13 +233,14 @@ function LayoutGuideEditor({
   )
 }
 
-export function LayoutGuidesPanel({ guides, onChange }: LayoutGuidesPanelProps) {
+export function LayoutGuidesPanel({ guides, ownerWindow, onChange }: LayoutGuidesPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const editing = guides.find((guide) => guide.id === editingId)
   if (editing) {
     return (
       <LayoutGuideEditor
         guide={editing}
+        ownerWindow={ownerWindow}
         onClose={() => setEditingId(null)}
         onChange={(next) =>
           onChange((current) => current.map((guide) => (guide.id === next.id ? next : guide)))
@@ -245,9 +249,9 @@ export function LayoutGuidesPanel({ guides, onChange }: LayoutGuidesPanelProps) 
     )
   }
   return (
-    <div className="msr:flex msr:flex-col msr:gap-1 msr:p-2">
-      <div className="msr:flex msr:h-7 msr:items-center msr:justify-between msr:px-1">
-        <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-700">Layout guide</h2>
+    <div className="msr:flex msr:min-h-0 msr:flex-1 msr:flex-col msr:gap-1 msr:p-2">
+      <div className="msr:flex msr:h-7 msr:shrink-0 msr:items-center msr:justify-between msr:px-1">
+        <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-700">Layout guides</h2>
         <button
           type="button"
           aria-label="Add layout guide"
@@ -260,7 +264,7 @@ export function LayoutGuidesPanel({ guides, onChange }: LayoutGuidesPanelProps) 
       {guides.length === 0 ? (
         <p className="msr:px-1 msr:pb-2 msr:text-[11px] msr:text-ink-500">Add columns, rows, or a pixel grid on the page.</p>
       ) : (
-        <ul className="msr:m-0 msr:flex msr:list-none msr:flex-col msr:gap-0.5 msr:p-0">
+        <ul className="mesurer-thin-scrollbar msr:m-0 msr:flex msr:min-h-0 msr:flex-1 msr:list-none msr:flex-col msr:gap-0.5 msr:overflow-y-auto msr:p-0">
           {guides.map((guide) => (
             <li key={guide.id} className="msr:flex msr:items-center msr:gap-0.5">
               <button
@@ -272,7 +276,7 @@ export function LayoutGuidesPanel({ guides, onChange }: LayoutGuidesPanelProps) 
                   <KindIcon kind={guide.kind} />
                 </span>
                 <span className="msr:min-w-0 msr:flex-1 msr:truncate">{layoutGuideLabel(guide)}</span>
-                <CaretDownIcon size={8} className="msr:text-ink-400" />
+                <CaretDownIcon size={8} className="msr:-rotate-90 msr:text-ink-400" />
               </button>
               <button
                 type="button"

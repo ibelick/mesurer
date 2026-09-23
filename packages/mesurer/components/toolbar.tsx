@@ -1143,12 +1143,12 @@ function ToolbarComponent(
           ? createPortal(
               <div
                 ref={layoutGuidesMenuRef}
-                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[80] msr:w-60 msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[80] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                 style={{
                   top: layoutGuidesPlacement.top,
                   bottom: layoutGuidesPlacement.bottom,
                   right: layoutGuidesPlacement.right,
-                  maxHeight: layoutGuidesPlacement.height,
+                  maxHeight: Math.min(320, layoutGuidesPlacement.height),
                 }}
                 data-mesurer-layout-guides-panel
                 role="dialog"
@@ -1160,6 +1160,7 @@ function ToolbarComponent(
               >
                 <LayoutGuidesPanel
                   guides={layoutGuides.items}
+                  ownerWindow={eventTarget}
                   onChange={layoutGuides.onChange}
                 />
               </div>,

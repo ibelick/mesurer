@@ -16,7 +16,27 @@ const tracks = (count: number) => Array.from({ length: Math.max(1, Math.round(co
 
 const axisStyle = (guide: LayoutGuide): CSSProperties => {
   const columns = guide.kind === "columns"
-  const stretch = guide.align === "stretch"
+  const count = Math.max(1, Math.round(guide.count))
+  if (guide.align === "stretch") {
+    return {
+      position: "absolute",
+      inset: 0,
+      display: "grid",
+      ...(columns
+        ? {
+            gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
+            columnGap: guide.gutter,
+            paddingLeft: guide.offset,
+            paddingRight: guide.offset,
+          }
+        : {
+            gridTemplateRows: `repeat(${count}, minmax(0, 1fr))`,
+            rowGap: guide.gutter,
+            paddingTop: guide.offset,
+            paddingBottom: guide.offset,
+          }),
+    }
+  }
   return {
     position: "absolute",
     inset: 0,
@@ -25,28 +45,17 @@ const axisStyle = (guide: LayoutGuide): CSSProperties => {
     justifyContent:
       guide.align === "max" ? "flex-end" : guide.align === "center" ? "center" : "flex-start",
     alignItems: "stretch",
-    gap: stretch ? undefined : guide.gutter,
-    paddingTop: !columns ? (guide.align === "max" ? 0 : guide.offset) : 0,
+    gap: guide.gutter,
+    paddingTop: !columns && guide.align === "min" ? guide.offset : 0,
     paddingBottom: !columns && guide.align === "max" ? guide.offset : 0,
-    paddingLeft: columns ? (guide.align === "max" ? 0 : guide.offset) : 0,
+    paddingLeft: columns && guide.align === "min" ? guide.offset : 0,
     paddingRight: columns && guide.align === "max" ? guide.offset : 0,
-    ...(stretch
-      ? columns
-        ? {
-            display: "grid",
-            gridTemplateColumns: `repeat(${Math.max(1, Math.round(guide.count))}, minmax(0, 1fr))`,
-            columnGap: guide.gutter,
-            paddingLeft: guide.offset,
-            paddingRight: guide.offset,
-          }
-        : {
-            display: "grid",
-            gridTemplateRows: `repeat(${Math.max(1, Math.round(guide.count))}, minmax(0, 1fr))`,
-            rowGap: guide.gutter,
-            paddingTop: guide.offset,
-            paddingBottom: guide.offset,
-          }
-      : {}),
+    transform:
+      guide.align === "center"
+        ? columns
+          ? `translateX(${guide.offset}px)`
+          : `translateY(${guide.offset}px)`
+        : undefined,
   }
 }
 

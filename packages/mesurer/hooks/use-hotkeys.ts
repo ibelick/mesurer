@@ -98,6 +98,7 @@ type HotkeyOptions = {
   onToggleSettings: () => void
   onToggleLayoutGuides: () => void
   isSettingsOpen: () => boolean
+  isLayoutGuidesOpen: () => boolean
   onCloseColorPicker: () => void
   isColorPickerActive: () => boolean
   features: ResolvedMesurerFeatures
@@ -170,12 +171,17 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.minimizeMesurer()
           return
         }
-        if (isTypingInMesurer(event, target) && !current.isSettingsOpen()) return
+        if (isTypingInMesurer(event, target) && !current.isSettingsOpen() && !current.isLayoutGuidesOpen()) return
         if (isOverlayEscapeConsumed(event)) return
         event.preventDefault()
         if (current.isSettingsOpen()) {
           lastEscapeAtRef.current = now
           current.onToggleSettings()
+          return
+        }
+        if (current.isLayoutGuidesOpen()) {
+          lastEscapeAtRef.current = now
+          current.onToggleLayoutGuides()
           return
         }
         if (current.isScreenshotActive()) {

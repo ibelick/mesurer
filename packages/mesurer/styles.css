@@ -197,7 +197,7 @@
   background-color: var(--msr-color-ink-50);
 }
 
-.mesurer-root[data-theme="dark"] .mesurer-settings-panel .mesurer-control-shell {
+.mesurer-root[data-theme="dark"] .mesurer-control-shell {
   background-color: var(--msr-color-ink-100);
 }
 
@@ -217,7 +217,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .mesurer-root[data-theme="system"] .mesurer-settings-panel .mesurer-control-shell {
+  .mesurer-root[data-theme="system"] .mesurer-control-shell {
     background-color: var(--msr-color-ink-100);
   }
 

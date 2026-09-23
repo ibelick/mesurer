@@ -16,13 +16,6 @@ export type LayoutGuide = {
   align: LayoutGuideAlign
 }
 
-export type LayoutBand = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
 export const DEFAULT_LAYOUT_GUIDE_COLOR = "#FF0000"
 export const DEFAULT_LAYOUT_GUIDE_OPACITY = 0.1
 
@@ -79,60 +72,4 @@ export const layoutGuideLabel = (guide: LayoutGuide) => {
   const unit = guide.kind === "columns" ? "columns" : "rows"
   if (guide.align === "stretch") return `${guide.count} ${unit}`
   return `${guide.count} ${unit} (${Math.round(guide.size)}px)`
-}
-
-const tracks = (
-  count: number,
-  size: number,
-  gutter: number,
-  offset: number,
-  align: LayoutGuideAlign,
-  span: number,
-) => {
-  const n = Math.max(1, Math.round(count))
-  if (align === "stretch") {
-    const inner = Math.max(0, span - offset * 2)
-    const extent = Math.max(0, (inner - gutter * (n - 1)) / n)
-    return Array.from({ length: n }, (_, index) => ({
-      start: offset + index * (extent + gutter),
-      extent,
-    }))
-  }
-  const extent = Math.max(0, size)
-  const total = n * extent + (n - 1) * gutter
-  const origin =
-    align === "center"
-      ? (span - total) / 2 + offset
-      : align === "max"
-        ? span - offset - total
-        : offset
-  return Array.from({ length: n }, (_, index) => ({
-    start: origin + index * (extent + gutter),
-    extent,
-  }))
-}
-
-export const layoutGuideBands = (
-  guide: LayoutGuide,
-  viewport: { width: number; height: number },
-): LayoutBand[] => {
-  if (!guide.visible || guide.kind === "grid") return []
-  if (guide.kind === "columns") {
-    return tracks(guide.count, guide.size, guide.gutter, guide.offset, guide.align, viewport.width).map(
-      (track) => ({
-        x: track.start,
-        y: 0,
-        width: track.extent,
-        height: viewport.height,
-      }),
-    )
-  }
-  return tracks(guide.count, guide.size, guide.gutter, guide.offset, guide.align, viewport.height).map(
-    (track) => ({
-      x: 0,
-      y: track.start,
-      width: viewport.width,
-      height: track.extent,
-    }),
-  )
 }

@@ -1543,12 +1543,27 @@ test("layout guides overlay the page from the toolbar menu", async ({ page }) =>
   await page.getByRole("button", { name: "Layout guides (L)" }).click();
   const dialog = page.getByRole("dialog", { name: "Layout guides" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Layout guide" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Layout guides" })).toBeVisible();
   await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
   await expect(page.locator("[data-mesurer-layout-band]")).toHaveCount(5);
 
   await dialog.getByRole("button", { name: "Add layout guide" }).click();
   await expect(dialog.getByText("5 columns")).toHaveCount(2);
+
+  for (let index = 0; index < 12; index += 1) {
+    await dialog.getByRole("button", { name: "Add layout guide" }).click();
+  }
+  await expect(dialog.getByText("5 columns")).toHaveCount(14);
+  await expect
+    .poll(async () => dialog.evaluate((node) => node.scrollHeight > node.clientHeight || node.querySelector("ul")!.scrollHeight > node.querySelector("ul")!.clientHeight))
+    .toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Layout guides (L)" }).click();
+  await expect(dialog).toBeVisible();
 
   await dialog.getByText("5 columns").first().click();
   await dialog.getByLabel("Layout guide type").selectOption("grid");
