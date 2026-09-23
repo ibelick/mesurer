@@ -9,6 +9,7 @@ import type {
   MesurerStoredWorkspace,
   PagedWorkspaceStore,
 } from "mesurer";
+import { SAVE_WORKSPACE_MESSAGE } from "./messages";
 
 const SETTINGS_KEY = "mesurer:settings";
 
@@ -53,15 +54,34 @@ export const createExtensionPersistence = async (
     },
     saveWorkspace: (next) => {
       workspace = isPagedWorkspaceStore(next) ? next : normalizeStoredWorkspace(next);
-      void chrome.storage.local.set({ [key]: workspace }).catch((error) => {
+      const payload = { [key]: workspace };
+      void chrome.storage.local.set(payload).catch((error) => {
         errorHandler?.(error);
       });
+      try {
+        chrome.runtime?.sendMessage?.({
+          type: SAVE_WORKSPACE_MESSAGE,
+          key,
+          workspace,
+        });
+      } catch {
+        // background may be restarting
+      }
     },
     clearWorkspace: () => {
       workspace = null;
       void chrome.storage.local.remove(key).catch((error) => {
         errorHandler?.(error);
       });
+      try {
+        chrome.runtime?.sendMessage?.({
+          type: SAVE_WORKSPACE_MESSAGE,
+          key,
+          workspace: null,
+        });
+      } catch {
+        // background may be restarting
+      }
     },
     clearSettings: () => {
       settings = {};
@@ -95,3 +115,5 @@ export const createExtensionPersistence = async (
     },
   };
 };
+
+

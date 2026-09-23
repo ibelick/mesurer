@@ -25,6 +25,7 @@ import type { MesurerWorkspaceState } from "./use-mesurer-workspace-state";
 
 type SettingsState = {
   persistOnReload: boolean;
+  persistWorkspace: boolean;
   applyPersistedSettings: (settings: MesurerStoredSettings) => void;
   persistSettings: () => void;
 };
@@ -155,7 +156,7 @@ export const useWorkspaceLifecycle = ({
   );
 
   const saveWorkspace = useCallback(() => {
-    if (!settings.persistOnReload) return;
+    if (!settings.persistWorkspace) return;
     const pages: Record<string, MesurerPageArtifacts | null> = {};
     for (const [key, artifacts] of pageWorkspacesRef.current) {
       pages[key] = artifacts;
@@ -168,11 +169,11 @@ export const useWorkspaceLifecycle = ({
     pageWorkspacesRef,
     readPageArtifacts,
     readSessionChrome,
-    settings.persistOnReload,
+    settings.persistWorkspace,
   ]);
 
   const persistState = useCallback(() => {
-    if (!settings.persistOnReload) return;
+    if (!settings.persistWorkspace) return;
     if (isPointerDragActive()) return;
     if (workspacePersistTimeoutRef.current !== null)
       ownerWindow.clearTimeout(workspacePersistTimeoutRef.current);
@@ -183,7 +184,7 @@ export const useWorkspaceLifecycle = ({
   }, [
     ownerWindow,
     saveWorkspace,
-    settings.persistOnReload,
+    settings.persistWorkspace,
     workspacePersistTimeoutRef,
   ]);
 
@@ -513,7 +514,8 @@ export const useWorkspaceLifecycle = ({
       if (
         source?.workspace !== false &&
         snapshot.workspace &&
-        (nextSettings.persistOnReload ?? settings.persistOnReload)
+        ((nextSettings.persistOnReload ?? settings.persistOnReload) ||
+          settings.persistWorkspace)
       ) {
         const workspace = isPagedWorkspaceStore(snapshot.workspace)
           ? null

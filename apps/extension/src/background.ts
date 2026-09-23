@@ -1,4 +1,4 @@
-import { CAPTURE_VISIBLE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+import { CAPTURE_VISIBLE_MESSAGE, SAVE_WORKSPACE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
 
 const ACTIVE_TABS_KEY = "mesurer:active-tabs";
 const restoreTimers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -62,6 +62,27 @@ const inject = async (tabId: number, boot: ExtensionBoot) => {
   });
 };
 
+const pingAlive = async (tabId: number) => {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const state = (
+          globalThis as typeof globalThis & {
+            __MESURER_EXTENSION_STATE__?: { mounted?: boolean; recover?: () => void };
+          }
+        ).__MESURER_EXTENSION_STATE__;
+        if (!state?.mounted) return false;
+        state.recover?.();
+        return true;
+      },
+    });
+    return results[0]?.result === true;
+  } catch {
+    return false;
+  }
+};
+
 const restoreTab = (tabId: number, url?: string) => {
   if (!isInjectableUrl(url)) return;
   const previous = restoreTimers.get(tabId);
@@ -70,7 +91,20 @@ const restoreTab = (tabId: number, url?: string) => {
     tabId,
     setTimeout(() => {
       restoreTimers.delete(tabId);
-      void inject(tabId, "restore").catch((error) => {
+      void pingAlive(tabId)
+        .then(async (alive) => {
+          if (alive) {
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              world: "MAIN",
+              injectImmediately: true,
+              files: ["keyboard-gate.js"],
+            });
+            return;
+          }
+          return inject(tabId, "restore");
+        })
+        .catch((error) => {
         console.error("Mesurer failed to restore", error);
       });
     }, 50),
@@ -91,6 +125,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof tabId === "number" && typeof message.open === "boolean") {
       void setTabActive(tabId, message.open);
     }
+    return false;
+  }
+
+  if (message?.type === SAVE_WORKSPACE_MESSAGE && typeof message.key === "string") {
+    const write =
+      message.workspace == null
+        ? chrome.storage.local.remove(message.key)
+        : chrome.storage.local.set({ [message.key]: message.workspace });
+    void write.catch((error) => {
+      console.error("Mesurer failed to save workspace", error);
+    });
     return false;
   }
 

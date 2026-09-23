@@ -80,6 +80,7 @@ export type MesurerProps = {
   hoverHighlightEnabled?: boolean;
   layoutDetailsEnabled?: boolean;
   persistOnReload?: boolean;
+  persistSession?: boolean;
   shortcutsEnabled?: boolean;
   theme?: ThemeMode;
   portalTarget?: HTMLElement | ShadowRoot;
@@ -131,6 +132,7 @@ export function MesurerClient({
   hoverHighlightEnabled,
   layoutDetailsEnabled,
   persistOnReload,
+  persistSession = false,
   shortcutsEnabled: shortcutsEnabledDefault,
   theme: themeDefault,
   portalTarget,
@@ -155,6 +157,7 @@ export function MesurerClient({
   Omit<
     MesurerProps,
     | "persistKey"
+    | "persistSession"
     | "persistence"
     | "onPersistenceError"
     | "guideStyle"
@@ -168,6 +171,7 @@ export function MesurerClient({
   Pick<
     MesurerProps,
     | "persistKey"
+    | "persistSession"
     | "persistence"
     | "onPersistenceError"
     | "captureVisibleTab"
@@ -214,7 +218,7 @@ export function MesurerClient({
     [activePersistence],
   );
   const persistedState =
-    persistOnReload || storedState?.settings.persistOnReload
+    persistOnReload || persistSession || storedState?.settings.persistOnReload
       ? (isPagedWorkspaceStore(storedState?.workspace)
           ? null
           : storedState?.workspace ?? null)
@@ -535,6 +539,7 @@ export function MesurerClient({
     activePersistence,
     settings: {
       persistOnReload: settingsPersistOnReload,
+      persistWorkspace: persistSession || settingsPersistOnReload,
       applyPersistedSettings,
       persistSettings,
     },
@@ -585,9 +590,10 @@ export function MesurerClient({
       applyPageArtifacts(cached);
       return;
     }
-    const stored = settingsPersistOnReload
-      ? activePersistence.load()?.workspace ?? null
-      : null;
+    const stored =
+      persistSession || settingsPersistOnReload
+        ? activePersistence.load()?.workspace ?? null
+        : null;
     if (stored && !isPagedWorkspaceStore(stored)) {
       const artifacts = toPageArtifacts(stored);
       pageWorkspacesRef.current.set(pageKey, artifacts);
@@ -601,6 +607,7 @@ export function MesurerClient({
     clearPageArtifacts,
     pageKey,
     readPageArtifacts,
+    persistSession,
     saveWorkspace,
     settingsPersistOnReload,
   ]);
@@ -609,7 +616,7 @@ export function MesurerClient({
     activePersistence,
     persistSettings,
     persistState,
-    settingsPersistOnReload,
+    persistWorkspace: persistSession || settingsPersistOnReload,
     saveWorkspace,
     applyPersistenceSnapshot,
     storedState,

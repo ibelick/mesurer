@@ -10,7 +10,7 @@ type PersistenceLifecycleOptions = {
   activePersistence: MesurerPersistence
   persistSettings: () => void
   persistState: () => void
-  settingsPersistOnReload: boolean
+  persistWorkspace: boolean
   saveWorkspace: () => void
   applyPersistenceSnapshot: (
     snapshot: MesurerPersistenceSnapshot | null,
@@ -27,7 +27,7 @@ export const usePersistenceLifecycle = ({
   activePersistence,
   persistSettings,
   persistState,
-  settingsPersistOnReload,
+  persistWorkspace,
   saveWorkspace,
   applyPersistenceSnapshot,
   storedState,
@@ -52,43 +52,52 @@ export const usePersistenceLifecycle = ({
       return
     }
     persistSettings()
-    if (settingsPersistOnReload) persistState()
+    if (persistWorkspace) persistState()
   }, [
     applyingExternalPersistenceRef,
     persistSettings,
     persistState,
-    settingsPersistOnReload,
+    persistWorkspace,
   ])
 
   useEffect(() => {
     activePersistence.setErrorHandler?.((error) => persistenceErrorHandlerRef.current?.(error))
     const unsubscribe = activePersistence.subscribe?.(applyPersistenceSnapshot)
-    if (!settingsPersistOnReload) {
+    if (!persistWorkspace) {
       return () => {
         unsubscribe?.()
         activePersistence.setErrorHandler?.(undefined)
       }
     }
 
-    const handleBeforeUnload = () => saveWorkspace()
-    ownerWindow.addEventListener("beforeunload", handleBeforeUnload)
-    return () => {
-      unsubscribe?.()
-      ownerWindow.removeEventListener("beforeunload", handleBeforeUnload)
-      activePersistence.setErrorHandler?.(undefined)
+    const flushWorkspace = () => {
       if (workspacePersistTimeoutRef.current !== null) {
         ownerWindow.clearTimeout(workspacePersistTimeoutRef.current)
         workspacePersistTimeoutRef.current = null
-        saveWorkspace()
       }
+      saveWorkspace()
+    }
+    const handleVisibility = () => {
+      if (ownerWindow.document.visibilityState === "hidden") flushWorkspace()
+    }
+    ownerWindow.addEventListener("pagehide", flushWorkspace)
+    ownerWindow.addEventListener("beforeunload", flushWorkspace)
+    ownerWindow.document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      unsubscribe?.()
+      ownerWindow.removeEventListener("pagehide", flushWorkspace)
+      ownerWindow.removeEventListener("beforeunload", flushWorkspace)
+      ownerWindow.document.removeEventListener("visibilitychange", handleVisibility)
+      activePersistence.setErrorHandler?.(undefined)
+      flushWorkspace()
     }
   }, [
     activePersistence,
     applyPersistenceSnapshot,
     ownerWindow,
+    persistWorkspace,
     persistenceErrorHandlerRef,
     saveWorkspace,
-    settingsPersistOnReload,
     workspacePersistTimeoutRef,
   ])
 }

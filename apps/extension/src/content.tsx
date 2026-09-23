@@ -1,5 +1,6 @@
 import { createRoot, type Root } from "react-dom/client";
 import { Mesurer } from "mesurer";
+import type { MesurerPersistence } from "mesurer";
 import {
   destroyHost,
   getOrCreateContainer,
@@ -19,6 +20,8 @@ type ExtensionState = {
   root: Root | null;
   mounted: boolean;
   mounting: boolean;
+  persistence?: MesurerPersistence;
+  recover: () => void;
 };
 
 type ExtensionGlobal = typeof globalThis & {
@@ -40,6 +43,10 @@ const getTabId = () => {
   }
 };
 
+const recoverMountedHost = () => {
+  recoverHost();
+};
+
 const getState = () => {
   if (!extensionGlobal[STATE_KEY]) {
     extensionGlobal[STATE_KEY] = {
@@ -47,7 +54,10 @@ const getState = () => {
       root: null,
       mounted: false,
       mounting: false,
+      recover: recoverMountedHost,
     };
+  } else {
+    extensionGlobal[STATE_KEY].recover = recoverMountedHost;
   }
 
   return extensionGlobal[STATE_KEY];
@@ -114,19 +124,19 @@ const mount = async () => {
   try {
     setHostInvalidatedHandler(remountFromScratch);
     const { container, shadowRoot } = getOrCreateContainer();
-    let persistence: Awaited<ReturnType<typeof createExtensionPersistence>> | undefined;
-    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    if (typeof chrome !== "undefined" && chrome.storage?.local && !state.persistence) {
       try {
-        persistence = await createExtensionPersistence(location.origin, getTabId());
+        state.persistence = await createExtensionPersistence(location.origin, getTabId());
       } catch {
-        persistence = undefined;
+        state.persistence = undefined;
       }
     }
     state.root = createRoot(container);
     state.root.render(
       <Mesurer
         portalTarget={shadowRoot}
-        persistence={persistence}
+        persistence={state.persistence}
+        persistSession
         persistOnReload={new URLSearchParams(location.search).has("persist")}
         captureVisibleTab={captureVisibleTabPng}
       />,
@@ -156,6 +166,9 @@ const unmount = () => {
   state.root = null;
   state.mounted = false;
   state.mounting = false;
+  if (!state.persistence?.load()?.settings.persistOnReload) {
+    state.persistence?.clearWorkspace();
+  }
   destroyHost();
   setOpen(false);
 };
