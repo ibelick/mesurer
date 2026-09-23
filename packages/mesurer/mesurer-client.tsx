@@ -877,9 +877,11 @@ export function MesurerClient({
     toolMode,
   ]);
 
+  const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
   const toggleLayoutGuides = useCallback(() => {
-    if (openMenu?.type === "layout-guides") {
-      setOpenMenu(null);
+    if (layoutGuidesVisible) {
+      setLayoutGuidesVisible(false);
+      if (openMenu?.type === "layout-guides") setOpenMenu(null);
       return;
     }
     setEnabledWithHistory(true);
@@ -889,8 +891,21 @@ export function MesurerClient({
     if (layoutGuidesRef.current.length === 0) {
       setLayoutGuidesWithHistory([createLayoutGuide()]);
     }
+    setLayoutGuidesVisible(true);
     setOpenMenu({ type: "layout-guides" });
-  }, [colorPicker, openMenu, screenshot, setEnabledWithHistory, setLayoutGuidesWithHistory, setOpenMenu, setSettingsOpen]);
+  }, [
+    colorPicker,
+    layoutGuidesVisible,
+    openMenu,
+    screenshot,
+    setEnabledWithHistory,
+    setLayoutGuidesWithHistory,
+    setOpenMenu,
+    setSettingsOpen,
+  ]);
+  const closeLayoutGuidesMenu = useCallback(() => {
+    if (openMenu?.type === "layout-guides") setOpenMenu(null);
+  }, [openMenu, setOpenMenu]);
 
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
@@ -1389,6 +1404,7 @@ export function MesurerClient({
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
     onToggleLayoutGuides: toggleLayoutGuides,
+    onCloseLayoutGuidesMenu: closeLayoutGuidesMenu,
     onCopyComments: async () => {
       const copied = await copyCommentsForAgent(comments, ownerWindow)
       if (copied) {
@@ -1549,7 +1565,7 @@ export function MesurerClient({
         selectedGuideIds,
       }}
       layoutGuides={layoutGuides}
-      layoutGuidesVisible={openMenu?.type === "layout-guides"}
+      layoutGuidesVisible={layoutGuidesVisible}
       overlay={{
         enabled,
         interactive: overlayInteractive,
@@ -1769,6 +1785,7 @@ export function MesurerClient({
           items: layoutGuides,
           onChange: setLayoutGuidesWithHistory,
           onToggle: toggleLayoutGuides,
+          visible: layoutGuidesVisible,
         },
         colorPicker: {
           active: colorPicker.active,

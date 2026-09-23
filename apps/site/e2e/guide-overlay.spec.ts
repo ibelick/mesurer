@@ -1650,28 +1650,31 @@ test("layout guides overlay the page from the toolbar menu", async ({ page }) =>
   await page.keyboard.press("ControlOrMeta+z");
   await expect(dialog.getByText("5 columns")).toHaveCount(14);
 
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Layout guides (L)" }).click();
-  await expect(dialog).toBeVisible();
-  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
-  await page.getByRole("button", { name: "Minimize toolbar" }).click();
-  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
-  await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
-
-  await page.getByRole("button", { name: "Layout guides (L)" }).click();
-  await expect(dialog).toBeVisible();
-
   await dialog.getByText("5 columns").first().click();
   await dialog.getByLabel("Layout guide type").selectOption("grid");
   await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
-
   await dialog.getByRole("button", { name: "Back to layout guides" }).click();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Layout guides (L)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.mouse.click(240, 240);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+
   await page.getByRole("button", { name: "Layout guides (L)" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("[data-mesurer-layout-guides]")).toHaveCount(0);

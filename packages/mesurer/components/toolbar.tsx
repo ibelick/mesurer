@@ -106,6 +106,7 @@ type ToolbarLayoutGuides = {
   items: LayoutGuide[];
   onChange: Dispatch<SetStateAction<LayoutGuide[]>>;
   onToggle: () => void;
+  visible: boolean;
 };
 
 type ToolbarProps = {
@@ -1190,7 +1191,7 @@ function ToolbarComponent(
       <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="layout-guides"
-          active={layoutGuidesOpen}
+          active={layoutGuides.visible}
           label="Layout guides"
           shortcut="L"
           onClick={() => {

@@ -97,6 +97,7 @@ type HotkeyOptions = {
   onToggleRulers: () => void
   onToggleSettings: () => void
   onToggleLayoutGuides: () => void
+  onCloseLayoutGuidesMenu: () => void
   isSettingsOpen: () => boolean
   isLayoutGuidesOpen: () => boolean
   onCloseColorPicker: () => void
@@ -181,7 +182,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
         }
         if (current.isLayoutGuidesOpen()) {
           lastEscapeAtRef.current = now
-          current.onToggleLayoutGuides()
+          current.onCloseLayoutGuidesMenu()
           return
         }
         if (current.isScreenshotActive()) {

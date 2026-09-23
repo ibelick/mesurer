@@ -102,6 +102,7 @@ type Options = {
   onMinimize: () => void;
   onToggleSettings: () => void;
   onToggleLayoutGuides: () => void;
+  onCloseLayoutGuidesMenu: () => void;
    onCopyComments: () => void | Promise<boolean>;
   dismissInspectorPins: () => boolean;
   selectedCommentId: string | null;
@@ -305,6 +306,7 @@ export const useInteractionLifecycle = (options: Options) => {
     },
     onToggleSettings: options.onToggleSettings,
     onToggleLayoutGuides: options.onToggleLayoutGuides,
+    onCloseLayoutGuidesMenu: options.onCloseLayoutGuidesMenu,
     isSettingsOpen: () => options.settingsOpen,
     isLayoutGuidesOpen: () => options.layoutGuidesOpen,
     onCloseColorPicker: () => options.colorPicker.setActive(false),
