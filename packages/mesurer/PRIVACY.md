@@ -23,9 +23,16 @@ Mesurer does not collect:
 
 Used only when the user explicitly activates the extension, to run Mesurer on the current tab.
 
+### optional host access
+
+After you turn Mesurer on, Chrome may ask for access to that site so the toolbar can stay on
+through reloads and in-site navigations. This is not used to read or send page content off-device.
+
 ### scripting
 
 Used to inject the extension script into the active page to render measurement overlays and guides.
+After you turn Mesurer on for a tab, the same script may be re-injected when that tab navigates so
+the toolbar can stay available.
 
 ### storage
 

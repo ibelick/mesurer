@@ -24,6 +24,7 @@ type Options = {
   minimized: boolean;
   shortcutsEnabled: boolean;
   settingsOpen: boolean;
+  layoutGuidesOpen: boolean;
   ownerDocument: Document;
   ownerWindow: Window;
   toolbarRef: MutableRefObject<HTMLDivElement | null>;
@@ -100,6 +101,8 @@ type Options = {
   onInteract: () => void;
   onMinimize: () => void;
   onToggleSettings: () => void;
+  onToggleLayoutGuides: () => void;
+  onCloseLayoutGuidesMenu: () => void;
    onCopyComments: () => void | Promise<boolean>;
   dismissInspectorPins: () => boolean;
   selectedCommentId: string | null;
@@ -302,7 +305,10 @@ export const useInteractionLifecycle = (options: Options) => {
       });
     },
     onToggleSettings: options.onToggleSettings,
+    onToggleLayoutGuides: options.onToggleLayoutGuides,
+    onCloseLayoutGuidesMenu: options.onCloseLayoutGuidesMenu,
     isSettingsOpen: () => options.settingsOpen,
+    isLayoutGuidesOpen: () => options.layoutGuidesOpen,
     onCloseColorPicker: () => options.colorPicker.setActive(false),
     isColorPickerActive: () => options.colorPicker.active,
     features: options.features,

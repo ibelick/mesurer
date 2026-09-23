@@ -94,6 +94,9 @@ export const useMesurerSettings = ({
   const [lastToolMode, setLastToolMode] = useState<PersistentToolMode>(
     persistedSettings.lastToolMode ?? "select",
   );
+  const [toolbarPosition, setToolbarPosition] = useState(
+    persistedSettings.toolbarPosition ?? { x: 16, y: 16 },
+  );
   const [colorPickerFormats, setColorPickerFormats] = useState(
     persistedSettings.colorPickerFormats ?? defaults.colorPickerFormats,
   );
@@ -128,6 +131,8 @@ export const useMesurerSettings = ({
     setPersistOnReload(defaults.persistOnReload);
     setShortcutsEnabled(defaults.shortcutsEnabled);
     setTheme(defaults.theme);
+    setLastToolMode("select");
+    setToolbarPosition({ x: 16, y: 16 });
     setColorPickerFormats([...defaults.colorPickerFormats]);
     setColorPickerClickFormat(defaults.colorPickerClickFormat);
     toggles.setSnapEnabled(defaults.snapEnabled);
@@ -163,6 +168,7 @@ export const useMesurerSettings = ({
       shortcutsEnabled,
       theme,
       lastToolMode,
+      toolbarPosition,
       guideStyle,
       rulerSettings,
       screenshotSettings,
@@ -185,6 +191,7 @@ export const useMesurerSettings = ({
     shortcutsEnabled,
     theme,
     lastToolMode,
+    toolbarPosition,
     rulerSettings,
     screenshotSettings,
     textStyle,
@@ -221,6 +228,7 @@ export const useMesurerSettings = ({
     if (settings.shortcutsEnabled !== undefined) setShortcutsEnabled(settings.shortcutsEnabled);
     if (settings.theme !== undefined) setTheme(settings.theme);
     if (settings.lastToolMode !== undefined) setLastToolMode(settings.lastToolMode);
+    if (settings.toolbarPosition !== undefined) setToolbarPosition(settings.toolbarPosition);
     if (settings.snapEnabled !== undefined) toggles.setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) {
       toggles.setSnapGuidesEnabled(settings.snapGuidesEnabled);
@@ -274,6 +282,8 @@ export const useMesurerSettings = ({
     setTheme,
     lastToolMode,
     setLastToolMode,
+    toolbarPosition,
+    setToolbarPosition,
     colorPickerFormats,
     setColorPickerFormats,
     colorPickerClickFormat,

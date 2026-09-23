@@ -17,15 +17,20 @@ export type {
 export type { ColorPickerFormat, ColorSample } from "./core/colors";
 export {
   createLocalStoragePersistence,
+  createPageScopedPersistence,
   MESURER_STORAGE_VERSION,
   normalizeStoredSettings,
   normalizeStoredWorkspace,
+  isPagedWorkspaceStore,
 } from "./core/persistence";
 export type {
   MesurerPersistence,
   MesurerPersistenceSnapshot,
   MesurerStoredSettings,
   MesurerStoredWorkspace,
+  PagedWorkspaceStore,
+  MesurerPageArtifacts,
+  MesurerSessionChrome,
   GuidePattern,
   GuideStyle,
   RulerSettings,

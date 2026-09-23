@@ -1,0 +1,79 @@
+import { createId } from "./utils"
+
+export type LayoutGuideKind = "columns" | "rows" | "grid"
+export type LayoutGuideAlign = "stretch" | "min" | "center" | "max"
+
+export type LayoutGuide = {
+  id: string
+  kind: LayoutGuideKind
+  visible: boolean
+  color: string
+  opacity: number
+  count: number
+  size: number
+  gutter: number
+  offset: number
+  align: LayoutGuideAlign
+}
+
+export const DEFAULT_LAYOUT_GUIDE_COLOR = "#FF0000"
+export const DEFAULT_LAYOUT_GUIDE_OPACITY = 0.1
+
+const KINDS: LayoutGuideKind[] = ["columns", "rows", "grid"]
+const ALIGNS: LayoutGuideAlign[] = ["stretch", "min", "center", "max"]
+const MAX_LAYOUT_GUIDE_COUNT = 24
+const MAX_LAYOUT_GUIDE_SIZE = 4096
+const MAX_LAYOUT_GUIDE_GUTTER = 800
+const MAX_LAYOUT_GUIDE_OFFSET = 4096
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+export const createLayoutGuide = (partial: Partial<LayoutGuide> = {}): LayoutGuide => ({
+  id: createId(),
+  kind: "columns",
+  visible: true,
+  color: DEFAULT_LAYOUT_GUIDE_COLOR,
+  opacity: DEFAULT_LAYOUT_GUIDE_OPACITY,
+  count: 5,
+  size: 72,
+  gutter: 20,
+  offset: 0,
+  align: "stretch",
+  ...partial,
+})
+
+export const isLayoutGuide = (value: unknown): value is LayoutGuide => {
+  if (!value || typeof value !== "object") return false
+  const input = value as LayoutGuide
+  return (
+    typeof input.id === "string" &&
+    KINDS.includes(input.kind) &&
+    typeof input.visible === "boolean" &&
+    typeof input.color === "string" &&
+    typeof input.opacity === "number" && Number.isFinite(input.opacity) &&
+    typeof input.count === "number" && Number.isFinite(input.count) &&
+    typeof input.size === "number" && Number.isFinite(input.size) &&
+    typeof input.gutter === "number" && Number.isFinite(input.gutter) &&
+    typeof input.offset === "number" && Number.isFinite(input.offset) &&
+    ALIGNS.includes(input.align)
+  )
+}
+
+export const normalizeLayoutGuides = (value: unknown): LayoutGuide[] => {
+  if (!Array.isArray(value)) return []
+  return value.filter(isLayoutGuide).map((guide) => ({
+    ...guide,
+    opacity: clamp(guide.opacity, 0, 1),
+    count: clamp(Math.round(guide.count), 1, MAX_LAYOUT_GUIDE_COUNT),
+    size: clamp(guide.size, 0, MAX_LAYOUT_GUIDE_SIZE),
+    gutter: clamp(guide.gutter, 0, MAX_LAYOUT_GUIDE_GUTTER),
+    offset: clamp(guide.offset, 0, MAX_LAYOUT_GUIDE_OFFSET),
+  }))
+}
+
+export const layoutGuideLabel = (guide: LayoutGuide) => {
+  if (guide.kind === "grid") return `Grid ${Math.round(guide.size)}px`
+  const unit = guide.kind === "columns" ? "columns" : "rows"
+  if (guide.align === "stretch") return `${guide.count} ${unit}`
+  return `${guide.count} ${unit} (${Math.round(guide.size)}px)`
+}

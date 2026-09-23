@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { SendIcon } from "../components/icons"
 import { Tooltip, useTooltip } from "../components/tooltip"
+import type { ToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 
 const COMPOSER_MAX_HEIGHT = 128
 const COMPOSER_SINGLE_ROW_HEIGHT = 34
@@ -17,6 +18,7 @@ type CommentComposerProps = {
   onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   onSubmit: () => void
+  tooltipGroup?: ToolbarTooltip
 }
 
 export function CommentComposer({
@@ -27,12 +29,20 @@ export function CommentComposer({
   onChange,
   onKeyDown,
   onSubmit,
+  tooltipGroup,
 }: CommentComposerProps) {
   const [expanded, setExpanded] = useState(false)
   const [height, setHeight] = useState(COMPOSER_SINGLE_ROW_HEIGHT)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const sendButtonRef = useRef<HTMLDivElement | null>(null)
-  const tooltip = useTooltip()
+  const localTooltip = useTooltip()
+  const tooltip = tooltipGroup ?? {
+    visibleTooltipId: localTooltip.visibleTooltipId,
+    tooltipInstant: localTooltip.tooltipInstant,
+    onTooltipEnter: localTooltip.onTooltipEnter,
+    onTooltipLeave: (_id: string) => localTooltip.onTooltipLeave(),
+    onToolbarLeave: localTooltip.onTooltipContainerLeave,
+  }
   const tooltipId = `comment-composer-send-${ariaLabel}`
   const canSubmit = Boolean(value.trim())
   const resetHeight = () => {
@@ -84,27 +94,7 @@ export function CommentComposer({
           overflowWrap: "anywhere",
           wordBreak: "break-word",
         }}
-        onChange={(event) => {
-          onChange(event)
-          const textarea = event.currentTarget
-          textarea.style.height = "auto"
-          textarea.style.overflowY = "hidden"
-          textarea.style.paddingRight = `${COMPOSER_COMPACT_RIGHT_PADDING}px`
-          textarea.style.paddingBottom = `${COMPOSER_COMPACT_BOTTOM_PADDING}px`
-          const singleRowHeight = textarea.scrollHeight
-          const nextExpanded = singleRowHeight > COMPOSER_SINGLE_ROW_HEIGHT
-          setExpanded(nextExpanded)
-          if (nextExpanded) {
-            textarea.style.paddingRight = `${COMPOSER_EXPANDED_RIGHT_PADDING}px`
-            textarea.style.paddingBottom = `${COMPOSER_EXPANDED_BOTTOM_PADDING}px`
-          }
-          const contentHeight = nextExpanded ? textarea.scrollHeight : COMPOSER_SINGLE_ROW_HEIGHT
-          const nextHeight = nextExpanded
-            ? `${Math.min(COMPOSER_MAX_HEIGHT, contentHeight)}px`
-            : `${COMPOSER_SINGLE_ROW_HEIGHT}px`
-          textarea.style.height = nextHeight
-          setHeight(Number.parseInt(nextHeight, 10))
-        }}
+        onChange={onChange}
         onKeyDown={(event) => {
           onKeyDown(event)
           if (event.key === "Enter" && !event.shiftKey) resetHeight()
@@ -115,9 +105,9 @@ export function CommentComposer({
         ref={sendButtonRef}
         className={`msr:absolute msr:right-1.5 msr:flex msr:items-center ${expanded ? "msr:bottom-1.5" : "msr:top-1/2 msr:-translate-y-1/2"}`}
         onMouseEnter={() => canSubmit && tooltip.onTooltipEnter(tooltipId)}
-        onMouseLeave={tooltip.onTooltipLeave}
+        onMouseLeave={() => tooltip.onTooltipLeave(tooltipId)}
         onFocus={() => canSubmit && tooltip.onTooltipEnter(tooltipId)}
-        onBlur={tooltip.onTooltipLeave}
+        onBlur={() => tooltip.onTooltipLeave(tooltipId)}
       >
         <button
           type="button"

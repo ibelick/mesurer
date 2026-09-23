@@ -137,12 +137,24 @@ export type DistanceOverlay = {
     y: number
     value: number
   } | null
+  extraHorizontals?: Array<{
+    x1: number
+    x2: number
+    y: number
+    value: number
+  }>
   vertical: {
     y1: number
     y2: number
     x: number
     value: number
   } | null
+  extraVerticals?: Array<{
+    y1: number
+    y2: number
+    x: number
+    value: number
+  }>
   connectors: Array<{
     x1: number
     y1: number
@@ -174,6 +186,7 @@ export type OpenMenu =
   | { type: "comments"; panel: boolean }
   | { type: "guide-orientation" }
   | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
+  | { type: "layout-guides" }
   | null
 
 export type PersistentToolMode = Exclude<ToolMode, "none" | "xray" | "rulers">

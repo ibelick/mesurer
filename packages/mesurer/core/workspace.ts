@@ -5,6 +5,16 @@ export const TAB_ID_KEY = "mesurer:tab-id"
 export const SETTINGS_STORAGE_KEY = "mesurer-settings"
 export const LEGACY_STORAGE_KEY = "mesurer-state"
 
+export const getPageKey = (ownerWindow: Window) => {
+  const path = ownerWindow.location.pathname.replace(/\/+$/, "") || "/"
+  const params = new URLSearchParams(ownerWindow.location.search)
+  params.sort()
+  const query = params.toString()
+  const hash = ownerWindow.location.hash
+  const routeHash = hash.startsWith("#/") ? hash : ""
+  return `${path}${query ? `?${query}` : ""}${routeHash}`
+}
+
 export const stripMeasurement = (measurement: Measurement): Measurement => ({
   ...measurement,
   elementRef: undefined,

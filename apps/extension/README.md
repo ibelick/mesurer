@@ -29,6 +29,7 @@ This generates the extension files in `apps/extension/dist`.
 
 - Open any regular website page.
 - Click the Mesurer extension icon to toggle the toolbar on/off.
+- After Mesurer is on, the toolbar stays on that tab across reloads, in-page updates, and same-tab navigations, with the last tool still selected. Click the icon again to turn it off.
 - Screenshot on mesurer.dev or localhost uses the extension when it is installed, so Chrome will not ask to share the tab.
 - Screenshot on other pages uses the extension's visible-tab capture API after the extension is activated for that tab.
 - Use the grouped Select &amp; Inspect and Annotate toolbars to access Inspect, Select, Comments, Guides, Rulers, Arrows, Pen, Text, Typography, X-ray, Sample color, and Screenshot.

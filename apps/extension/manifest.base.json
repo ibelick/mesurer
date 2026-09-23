@@ -5,9 +5,8 @@
   "version": "0.0.0",
   "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],
   "host_permissions": [
-    "http://localhost/*",
-    "http://127.0.0.1/*",
-    "https://mesurer.dev/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "icons": {
     "16": "icons/icon-16.png",

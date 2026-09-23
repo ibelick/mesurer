@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent } from "react"
 import type { CommentDraft } from "./state"
 import type { CommentFilter, CommentThread, Rect } from "./types"
 import { CommentHoverCard } from "./comment-hover-card"
@@ -64,21 +64,14 @@ const MARKER_OFFSETS = [
 const markerStyleWithOffset = (
   point: { x: number; y: number },
   offsetIndex: number,
-  viewport: { innerWidth: number; innerHeight: number } | null,
 ) => {
   const offset = MARKER_OFFSETS[offsetIndex] ?? {
     x: 0,
     y: MARKER_OFFSET_DISTANCE * Math.ceil(offsetIndex / 2),
   }
   return {
-    left: Math.min(
-      Math.max(4, point.x - 12 + offset.x),
-      Math.max(4, (viewport?.innerWidth ?? Number.POSITIVE_INFINITY) - 28),
-    ),
-    top: Math.min(
-      Math.max(4, point.y - 12 + offset.y),
-      Math.max(4, (viewport?.innerHeight ?? Number.POSITIVE_INFINITY) - 28),
-    ),
+    left: point.x - 12 + offset.x,
+    top: point.y - 12 + offset.y,
   }
 }
 
@@ -134,6 +127,13 @@ export function CommentsLayer({
   const draftOutsideAttemptRef = useRef(false)
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
   const hoverTimeoutRef = useRef<number | null>(null)
+  const ownerWindow = ownerDocument.defaultView
+  useEffect(
+    () => () => {
+      if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
+    },
+    [ownerWindow],
+  )
   const visibleComments = comments.filter((comment) =>
     comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
   )
@@ -165,7 +165,6 @@ export function CommentsLayer({
       setDraftRect(null)
       return
     }
-    const ownerWindow = ownerDocument.defaultView
     if (!ownerWindow) return
     let frame: number | null = null
     const update = () => {
@@ -177,16 +176,16 @@ export function CommentsLayer({
     return () => {
       if (frame !== null) ownerWindow.cancelAnimationFrame(frame)
     }
-  }, [draft?.element, ownerDocument])
+  }, [draft?.element, ownerWindow])
 
   const showHover = () => {
-    if (hoverTimeoutRef.current !== null) window.clearTimeout(hoverTimeoutRef.current)
+    if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
   }
   const hideHover = () => {
-    hoverTimeoutRef.current = window.setTimeout(() => setHoveredId(null), 120)
+    if (ownerWindow) hoverTimeoutRef.current = ownerWindow.setTimeout(() => setHoveredId(null), 120)
   }
   const draftOverlay = useOverlayPosition({
-    ownerWindow: ownerDocument.defaultView,
+    ownerWindow,
     position: draft
       ? { left: draft.point.x + 16, top: draft.point.y - 12 }
       : { left: 0, top: 0 },
@@ -197,10 +196,15 @@ export function CommentsLayer({
     enabled: draft !== null,
   })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if ((!selectedId && !draft) || (!onClose && !onDraftCancel)) return
     const handlePointerDown = (event: Event) => {
       const pointerEvent = event as globalThis.PointerEvent
+      const clickedDraftBackdrop = event.composedPath().some((target) =>
+        typeof (target as Element).matches === "function" &&
+        (target as Element).matches("[data-mesurer-comment-draft-backdrop]"),
+      )
+      if (draft && clickedDraftBackdrop) return
       const draftRect = draftOverlay.overlayRef.current?.getBoundingClientRect()
       const clickedDraft = draftRect
         ? pointerEvent.clientX >= draftRect.left &&
@@ -310,7 +314,6 @@ export function CommentsLayer({
               ...markerStyleWithOffset(
                 point,
                 movingId === comment.id ? 0 : duplicateIndex,
-                ownerDocument.defaultView,
               ),
               opacity: comment.status === "resolved" ? 0.45 : 1,
             }}
@@ -373,8 +376,14 @@ export function CommentsLayer({
         <>
           <div
             className="msr:pointer-events-auto msr:absolute msr:inset-0"
+            data-mesurer-comment-draft-backdrop
             onPointerDown={(event) => {
               event.stopPropagation()
+              if (draftText.trim() && !draftOutsideAttemptRef.current) {
+                draftOutsideAttemptRef.current = true
+                setDraftNudge(true)
+                return
+              }
               onDraftCancel()
             }}
           />

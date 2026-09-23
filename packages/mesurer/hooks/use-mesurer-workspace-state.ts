@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { CommentThread, DistanceOverlay, Guide, Measurement, OpenMenu, Rect, TextAnnotation, ToolMode } from "../core/types";
 import type { MesurerStoredWorkspace } from "../core/persistence";
+import type { LayoutGuide } from "../core/layout-guides";
 import { useDragState } from "./use-drag-state";
 import { useGuideState } from "./use-guide-state";
 import { useMeasureToggles } from "./use-measure-toggles";
@@ -65,6 +66,8 @@ export const useMesurerWorkspaceState = ({
   const selectedArrowIdsRef = useRef(persistedState?.selectedArrowIds ?? initialState?.selectedArrowIds ?? []);
   const penStrokesRef = useRef(persistedState?.penStrokes ?? initialState?.penStrokes ?? []);
   const selectedPenStrokeIdsRef = useRef<string[]>(persistedState?.selectedPenStrokeIds ?? initialState?.selectedPenStrokeIds ?? []);
+  const layoutGuidesRef = useRef<LayoutGuide[]>(persistedState?.layoutGuides ?? initialState?.layoutGuides ?? []);
+  const [layoutGuides, setLayoutGuides] = useState<LayoutGuide[]>(layoutGuidesRef.current);
 
   const { overlayRef, selectedElementRef, hoverElementRef } = useOverlayRefs();
   const localState = useMesurerLocalState({
@@ -133,6 +136,7 @@ export const useMesurerWorkspaceState = ({
     selectedArrowIdsRef,
     penStrokesRef,
     selectedPenStrokeIdsRef,
+    layoutGuidesRef,
     overlayRef,
     selectedElementRef,
     hoverElementRef,
@@ -157,6 +161,8 @@ export const useMesurerWorkspaceState = ({
     setXrayVisible,
     guideOrientation,
     setGuideOrientation,
+    layoutGuides,
+    setLayoutGuides,
   };
 };
 

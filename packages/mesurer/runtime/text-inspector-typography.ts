@@ -97,6 +97,11 @@ export const hasRenderableText = (element: Element) => {
   return false
 }
 
+export const hasDirectRenderableText = (element: Element) =>
+  Array.from(element.childNodes).some(
+    (node) => node.nodeType === 3 && Boolean(node.nodeValue?.trim()),
+  )
+
 export class TypographyInspector {
   private rulesCache: FlatRule[] | null = null
 

@@ -405,14 +405,37 @@ export const useAnnotationSelection = ({
   const beginMoveSession = useCallback((extra?: ExtraMoveId) => {
     const items = itemsRef.current
     const selected = selectedIdsRef.current
-    const guideIds = new Set(selected.selectedGuideIds)
-    const arrowIds = new Set(selected.selectedArrowIds)
-    const penIds = new Set(selected.selectedPenStrokeIds)
-    const textIds = new Set(selected.selectedTextIds)
-    if (extra?.guideId) guideIds.add(extra.guideId)
-    if (extra?.arrowId) arrowIds.add(extra.arrowId)
-    if (extra?.penId) penIds.add(extra.penId)
-    if (extra?.textId) textIds.add(extra.textId)
+    let guideIds = new Set(selected.selectedGuideIds)
+    let arrowIds = new Set(selected.selectedArrowIds)
+    let penIds = new Set(selected.selectedPenStrokeIds)
+    let textIds = new Set(selected.selectedTextIds)
+    const selectedCount = guideIds.size + arrowIds.size + penIds.size + textIds.size
+    const extraAlreadySelected = Boolean(
+      (extra?.guideId && guideIds.has(extra.guideId)) ||
+        (extra?.arrowId && arrowIds.has(extra.arrowId)) ||
+        (extra?.penId && penIds.has(extra.penId)) ||
+        (extra?.textId && textIds.has(extra.textId)),
+    )
+    const moveGroup = extraAlreadySelected && selectedCount > 1
+
+    if (extra && !moveGroup) {
+      guideIds = extra.guideId ? new Set([extra.guideId]) : new Set()
+      arrowIds = extra.arrowId ? new Set([extra.arrowId]) : new Set()
+      penIds = extra.penId ? new Set([extra.penId]) : new Set()
+      textIds = extra.textId ? new Set([extra.textId]) : new Set()
+      selectedIdsRef.current = {
+        selectedGuideIds: [...guideIds],
+        selectedArrowIds: [...arrowIds],
+        selectedPenStrokeIds: [...penIds],
+        selectedTextIds: [...textIds],
+      }
+    } else {
+      if (extra?.guideId) guideIds.add(extra.guideId)
+      if (extra?.arrowId) arrowIds.add(extra.arrowId)
+      if (extra?.penId) penIds.add(extra.penId)
+      if (extra?.textId) textIds.add(extra.textId)
+    }
+
     selectionDragOffsetRef.current = { x: 0, y: 0 }
     setSelectionDragOffset({ x: 0, y: 0 })
     moveSessionRef.current = {
@@ -420,7 +443,7 @@ export const useAnnotationSelection = ({
       arrows: items.arrows.filter((arrow) => arrowIds.has(arrow.id)),
       penStrokes: items.penStrokes.filter((stroke) => penIds.has(stroke.id)),
       texts: items.textAnnotations.filter((item) => textIds.has(item.id)),
-      frame: groupRotateFrameRef.current,
+      frame: moveGroup ? groupRotateFrameRef.current : null,
     }
   }, [])
 

@@ -98,8 +98,8 @@ export const PenLayer = memo(function PenLayer({
     trackDrag(event)
   }
   return (
-    <div className="msr:absolute msr:inset-0 msr:pointer-events-none">
-    <svg aria-hidden="true" className="msr:absolute msr:inset-0 msr:size-full" style={{ pointerEvents: selectionMode ? "auto" : "none" }} data-mesurer-pen-layer="true">
+    <div className="msr:absolute msr:inset-0 msr:z-[1] msr:pointer-events-none">
+    <svg aria-hidden="true" className="msr:absolute msr:inset-0 msr:size-full msr:pointer-events-none" data-mesurer-pen-layer="true">
       {strokes.map((stroke) => (
         <g
           key={stroke.id}
@@ -113,7 +113,7 @@ export const PenLayer = memo(function PenLayer({
           ].filter(Boolean).join(" ") || undefined}
           data-mesurer-pen-transform={stroke.id}
         >
-          <path d={pathForPoints(translate(stroke.points))} fill="none" stroke="transparent" strokeWidth={Math.max(28, stroke.width + 20)} strokeLinecap="round" strokeLinejoin="round" pointerEvents={selectionMode ? "stroke" : "none"} onPointerDown={(event) => startMove(stroke, event)} data-mesurer-pen-id={stroke.id} />
+          <path d={pathForPoints(translate(stroke.points))} fill="none" stroke="transparent" strokeWidth={Math.max(36, stroke.width + 28)} strokeLinecap="round" strokeLinejoin="round" pointerEvents={selectionMode ? "stroke" : "none"} style={selectionMode ? { cursor: "move" } : undefined} onPointerDown={(event) => startMove(stroke, event)} data-mesurer-pen-id={stroke.id} />
           <path d={pathForPoints(translate(stroke.points))} fill="none" stroke={stroke.color} strokeWidth={stroke.width} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" data-mesurer-pen="true" data-mesurer-pen-id={stroke.id} />
         </g>
       ))}
@@ -125,7 +125,7 @@ export const PenLayer = memo(function PenLayer({
       const box = penBounds(stroke)
       const showControls = selectionCount === 1
       return (
-        <div key={stroke.id} className={`msr:absolute ${showControls ? "msr:pointer-events-auto" : "msr:pointer-events-none"}`} style={{ left: box.x - scrollOffset.x + (selectedIds.includes(stroke.id) ? moveOffset.x : 0), top: box.y - scrollOffset.y + (selectedIds.includes(stroke.id) ? moveOffset.y : 0), width: box.width, height: box.height, transform: `rotate(${stroke.rotation ?? 0}deg)`, transformOrigin: "center center" }} onPointerDown={showControls ? (event) => startMove(stroke, event) : undefined}>
+        <div key={stroke.id} className={`msr:absolute ${showControls ? "msr:pointer-events-auto msr:cursor-move" : "msr:pointer-events-none"}`} style={{ left: box.x - scrollOffset.x + (selectedIds.includes(stroke.id) ? moveOffset.x : 0), top: box.y - scrollOffset.y + (selectedIds.includes(stroke.id) ? moveOffset.y : 0), width: box.width, height: box.height, transform: `rotate(${stroke.rotation ?? 0}deg)`, transformOrigin: "center center" }} onPointerDown={showControls ? (event) => startMove(stroke, event) : undefined}>
            <TextTransformFrame frameDataAttribute="data-mesurer-pen-frame" handleDataAttribute="data-mesurer-pen-handle" rotation={stroke.rotation ?? 0} showControls={showControls} showOutline onResizeStart={(handle, event) => startResize(stroke, handle, event)} onRotateStart={(event) => startRotate(stroke, event)} />
         </div>
       )

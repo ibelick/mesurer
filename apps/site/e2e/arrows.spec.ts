@@ -296,6 +296,47 @@ test("selects an arrow by clicking its visible arrowhead", async ({ page }) => {
   await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(1);
 });
 
+test("clears annotation selection when switching to Inspect", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateArrows(page);
+  await drawArrow(page);
+  await activateSelection(page);
+  await page.mouse.click(220, 210);
+  await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Select and inspect tools (1)" }).click();
+  await expect(page.locator('[data-mesurer-arrow-frame="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-mesurer-arrow-node="true"]')).toHaveCount(0);
+});
+
+test("moving an arrow over text does not move the text", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.locator(".mesurer-toolbar-tool-switch")).toBeVisible();
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(220, 180);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("Stay put");
+  await page.keyboard.press("Escape");
+
+  await activateArrows(page);
+  await drawArrow(page);
+  await activateSelection(page);
+
+  const text = page.locator('[data-mesurer-text="true"]');
+  const before = await text.boundingBox();
+  expect(before).not.toBeNull();
+
+  await page.mouse.move(180, 196);
+  await page.mouse.down();
+  await page.mouse.move(200, 216, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await text.boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.x).toBe(before!.x);
+  expect(after!.y).toBe(before!.y);
+});
+
 test("resizes an arrow from its endpoint handle", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -313,7 +354,7 @@ test("resizes an arrow from its endpoint handle", async ({ page }) => {
   await page.mouse.up();
 
   const arrow = page.locator('[data-mesurer-arrow="true"]');
-  await expect(arrow).toHaveAttribute("d", "M 120 160 Q 260 230 400 300");
+  await expect(arrow).toHaveAttribute("d", "M 120 160 Q 250 230 380 300");
 });
 
 test("resizes an arrow from its start endpoint", async ({ page }) => {

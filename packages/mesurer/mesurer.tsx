@@ -22,6 +22,7 @@ export default function Mesurer({
   hoverHighlightEnabled = true,
   layoutDetailsEnabled = true,
   persistOnReload = false,
+  persistSession = false,
   shortcutsEnabled = true,
   theme = "system",
   portalTarget,
@@ -59,6 +60,7 @@ export default function Mesurer({
       hoverHighlightEnabled={hoverHighlightEnabled}
       layoutDetailsEnabled={layoutDetailsEnabled}
       persistOnReload={persistOnReload}
+      persistSession={persistSession}
       shortcutsEnabled={shortcutsEnabled}
       theme={theme}
       persistKey={persistKey}

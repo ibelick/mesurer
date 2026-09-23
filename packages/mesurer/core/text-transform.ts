@@ -69,6 +69,33 @@ export const resizeCursor = (handle: ResizeHandle, rotation: number) => {
   return HANDLE_CURSOR[RESIZE_HANDLES[index] ?? handle]
 }
 
+let restoreResizeCursor: (() => void) | null = null
+
+export const beginResizeCursor = (cursor: string, target: Element) => {
+  restoreResizeCursor?.()
+  const ownerDocument = target.ownerDocument
+  const locked = [ownerDocument.documentElement, target.closest(".mesurer-root")].filter(
+    (node): node is HTMLElement => node instanceof HTMLElement,
+  )
+  for (const node of locked) {
+    node.setAttribute("data-mesurer-resize-cursor", cursor)
+    node.style.setProperty("--msr-resize-cursor-lock", cursor)
+  }
+  const restore = () => {
+    if (restoreResizeCursor !== restore) return
+    restoreResizeCursor = null
+    for (const node of locked) {
+      node.removeAttribute("data-mesurer-resize-cursor")
+      node.style.removeProperty("--msr-resize-cursor-lock")
+    }
+    ownerDocument.removeEventListener("pointerup", restore, true)
+    ownerDocument.removeEventListener("pointercancel", restore, true)
+  }
+  restoreResizeCursor = restore
+  ownerDocument.addEventListener("pointerup", restore, true)
+  ownerDocument.addEventListener("pointercancel", restore, true)
+}
+
 export const rotationFromPointer = (center: Point, pointer: Point) =>
   (Math.atan2(pointer.x - center.x, center.y - pointer.y) * 180) / Math.PI
 

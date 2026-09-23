@@ -1,6 +1,7 @@
 import { GUIDE_SNAP_DISTANCE } from "./constants"
 import { getDistanceOverlay } from "./distances"
 import { getRectFromDom } from "./dom"
+import { getPaddingBoxRect } from "./geometry"
 import { getGuideDistance, getGuideRect } from "./guides"
 import type { Guide, InspectMeasurement, OptionTarget, Point } from "./types"
 
@@ -61,8 +62,13 @@ export const getOptionPairOverlay = (params: {
         }
       : null
 
-  const hoverTarget: OptionTarget | null = params.hoverGuide
-    ? { rect: getGuideRect(params.hoverGuide, ownerWindow), guideId: params.hoverGuide.id }
+  const hoverGuide =
+    params.hoverGuide && params.hoverGuide.id !== params.selectedGuide?.id
+      ? params.hoverGuide
+      : null
+
+  const hoverTarget: OptionTarget | null = hoverGuide
+    ? { rect: getGuideRect(hoverGuide, ownerWindow), guideId: hoverGuide.id }
     : params.hoverElement
       ? {
           rect: getRectFromDom(params.hoverElement),
@@ -138,7 +144,7 @@ export const getOptionContainerLines = (params: {
     containerElement &&
     containerElement !== ownerDocument.body &&
     containerElement !== ownerDocument.documentElement
-      ? getRectFromDom(containerElement)
+      ? getPaddingBoxRect(getRectFromDom(containerElement), containerElement, ownerWindow)
       : {
           left: 0,
           top: 0,

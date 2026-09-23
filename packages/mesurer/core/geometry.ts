@@ -33,6 +33,24 @@ export const getRectFromPoints = (start: Point, end: Point): Rect => {
   return { left, top, width, height }
 }
 
+export const getPaddingBoxRect = (
+  rect: Rect,
+  element: Element,
+  ownerWindow: Window,
+): Rect => {
+  const style = ownerWindow.getComputedStyle(element)
+  const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0
+  const borderRight = Number.parseFloat(style.borderRightWidth) || 0
+  const borderTop = Number.parseFloat(style.borderTopWidth) || 0
+  const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0
+  return {
+    left: rect.left + borderLeft,
+    top: rect.top + borderTop,
+    width: Math.max(0, rect.width - borderLeft - borderRight),
+    height: Math.max(0, rect.height - borderTop - borderBottom),
+  }
+}
+
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
 

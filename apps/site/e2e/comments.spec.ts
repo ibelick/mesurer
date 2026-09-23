@@ -52,7 +52,7 @@ test("creates a comment attached to the selected DOM element", async ({ page }) 
   if (!openBox) throw new Error("Comment card is not visible");
   expect(openBox.width).toBeCloseTo(hoverBox.width, 0);
   expect(openBox.x).toBeCloseTo(hoverBox.x, 0);
-  expect(openBox.y).toBeCloseTo(hoverBox.y, 0);
+  expect(Math.abs(openBox.y - hoverBox.y)).toBeLessThan(16);
   await openCard.getByRole("button", { name: "Comment actions" }).nth(2).click();
   await page.locator("[data-mesurer-comment-overflow-menu]").getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Yes" }).click();

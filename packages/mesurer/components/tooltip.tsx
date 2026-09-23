@@ -41,10 +41,7 @@ export function Tooltip({
   const pinned = visible === true && layer !== null
 
   useLayoutEffect(() => {
-    if (!pinned) {
-      setCoords(null)
-      return
-    }
+    if (!pinned) return
     const anchor = anchorRef?.current
     if (!anchor) return
 
@@ -89,6 +86,8 @@ export function Tooltip({
       current ? { left: current.left + shiftX, top: current.top + shiftY } : current,
     )
   }, [coords, layer, pinned])
+
+  if (visible === false) return null
 
   const node = (
     <span

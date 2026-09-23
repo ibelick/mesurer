@@ -1,15 +1,20 @@
 export function DropperIcon({ size = 20, strokePx = 1, fill = 1 }: { size?: number; strokePx?: number; fill?: number }) {
+  const stroke = (strokePx * 256) / size / fill
+  const scale = 256 / 24
+
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" fill="none" aria-hidden="true">
-      <path
-        transform="rotate(-45 128 128)"
-        d="M108 48H148A16 16 0 0 1 164 64V92H148V156L142 200A12 12 0 0 1 114 200L108 156V92H92V64A16 16 0 0 1 108 48Z"
+      <g
+        transform={`scale(${scale})`}
         fill="none"
         stroke="currentColor"
-        strokeWidth={(strokePx * 256) / size / fill}
+        strokeWidth={stroke / scale}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
+      >
+        <path d="M11 7l6 6" />
+        <path d="M4 16l11.7-11.7a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4l-11.7 11.7h-4v-4" />
+      </g>
     </svg>
   )
 }

@@ -197,7 +197,7 @@
   background-color: var(--msr-color-ink-50);
 }
 
-.mesurer-root[data-theme="dark"] .mesurer-settings-panel .mesurer-control-shell {
+.mesurer-root[data-theme="dark"] .mesurer-control-shell {
   background-color: var(--msr-color-ink-100);
 }
 
@@ -217,7 +217,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .mesurer-root[data-theme="system"] .mesurer-settings-panel .mesurer-control-shell {
+  .mesurer-root[data-theme="system"] .mesurer-control-shell {
     background-color: var(--msr-color-ink-100);
   }
 
@@ -342,6 +342,22 @@
   cursor: default !important;
 }
 
+.mesurer-root button[data-mesurer-resize-cursor],
+.mesurer-root button[data-mesurer-resize-cursor] *,
+[data-mesurer-overlay][data-mesurer-inspect] [data-mesurer-resize-cursor],
+[data-mesurer-overlay][data-mesurer-inspect] [data-mesurer-resize-cursor] * {
+  cursor: var(--msr-resize-cursor) !important;
+}
+
+html[data-mesurer-resize-cursor],
+html[data-mesurer-resize-cursor] *,
+html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect],
+html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
+.mesurer-root[data-mesurer-resize-cursor],
+.mesurer-root[data-mesurer-resize-cursor] * {
+  cursor: var(--msr-resize-cursor-lock) !important;
+}
+
 .mesurer-root,
 .mesurer-root *,
 .mesurer-root *::before,
@@ -393,6 +409,19 @@
   display: block;
   width: max-content;
   max-width: 100%;
+}
+
+.mesurer-layout-guides,
+.mesurer-layout-guides-layer,
+.mesurer-layout-guides-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mesurer-layout-guides {
+  z-index: 2;
+  overflow: hidden;
 }
 
 .mesurer-toolbar-chrome {
@@ -518,7 +547,8 @@
   transform: translateX(calc(-1 * var(--msr-inspect-w, 0px)));
 }
 
-.mesurer-toolbar-tool-stage:has([role="menu"]) {
+.mesurer-toolbar-tool-stage:has([role="menu"]),
+.mesurer-toolbar-tool-stage:has([role="dialog"]) {
   overflow: visible;
 }
 

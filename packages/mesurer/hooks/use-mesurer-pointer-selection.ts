@@ -288,6 +288,26 @@ export const useMesurerPointerSelection = ({
       return
     }
 
+    if (selectionMode) {
+      if (!additive) {
+        commit()
+        selectOverlayAnnotations({
+          left: point.x,
+          top: point.y,
+          width: 0,
+          height: 0,
+        })
+        clearDomSelection()
+        setSelectedElement(null)
+        setSelectedMeasurement(null)
+        setSelectedMeasurements([])
+        clearSelectionRect()
+        clickCycleRef.current = null
+      }
+      resetDragState()
+      return
+    }
+
     const selectedHit = shiftToggleElementRef.current
       ? (selectedMeasurements.find(
           (measurement) =>
@@ -351,6 +371,7 @@ export const useMesurerPointerSelection = ({
     if (target) {
       const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window)
       clearTransientMeasurements()
+      if (!additive) setSelectedGuideIds([])
       if (additive) {
         const alreadySelected = selectedMeasurements.some(
           (measurement) => measurement.elementRef === target
@@ -382,6 +403,7 @@ export const useMesurerPointerSelection = ({
         return
       }
       commit()
+      if (!additive) setSelectedGuideIds([])
       if (selectionMode) {
         selectOverlayAnnotations({
           left: point.x,
@@ -417,6 +439,7 @@ export const useMesurerPointerSelection = ({
     setSelectionOriginRect,
     snapEnabled,
     window,
+    setSelectedGuideIds,
   ])
 
   return {

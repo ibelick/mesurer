@@ -96,7 +96,10 @@ type HotkeyOptions = {
   onToggleXray: () => void
   onToggleRulers: () => void
   onToggleSettings: () => void
+  onToggleLayoutGuides: () => void
+  onCloseLayoutGuidesMenu: () => void
   isSettingsOpen: () => boolean
+  isLayoutGuidesOpen: () => boolean
   onCloseColorPicker: () => void
   isColorPickerActive: () => boolean
   features: ResolvedMesurerFeatures
@@ -169,12 +172,17 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.minimizeMesurer()
           return
         }
-        if (isTypingInMesurer(event, target) && !current.isSettingsOpen()) return
+        if (isTypingInMesurer(event, target) && !current.isSettingsOpen() && !current.isLayoutGuidesOpen()) return
         if (isOverlayEscapeConsumed(event)) return
         event.preventDefault()
         if (current.isSettingsOpen()) {
           lastEscapeAtRef.current = now
           current.onToggleSettings()
+          return
+        }
+        if (current.isLayoutGuidesOpen()) {
+          lastEscapeAtRef.current = now
+          current.onCloseLayoutGuidesMenu()
           return
         }
         if (current.isScreenshotActive()) {
@@ -329,6 +337,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
+      if (key === "l") {
+        event.preventDefault()
+        current.onInteract()
+        current.setEnabled(true)
+        current.onToggleLayoutGuides()
+        return
+      }
+
       if (toolGroupShortcut) {
         event.preventDefault()
         event.stopImmediatePropagation()
@@ -339,6 +355,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.onCloseScreenshot()
         current.setXrayVisible(false)
         current.setRulersVisible(false)
+        if (toolGroupShortcut === "1") current.clearSelection()
         current.setToolMode(toolGroupShortcut === "1" ? "select" : "selection")
         return
       }
@@ -351,6 +368,7 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onInteract()
           current.clearTransientState()
           current.onCloseScreenshot()
+          if (requestedToolMode === "select") current.clearSelection()
           current.setToolMode((prev) =>
             prev === requestedToolMode ? "none" : requestedToolMode,
           )
@@ -436,5 +454,5 @@ export const useHotkeys = (options: HotkeyOptions) => {
       detachPointerDown()
       target.removeEventListener("message", handleKeyboardBridge)
     }
-  }, [options.enabled, options.eventTarget, options.overlayRef])
+  }, [options.eventTarget, options.overlayRef])
 }

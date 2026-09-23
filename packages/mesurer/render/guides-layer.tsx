@@ -144,7 +144,7 @@ export function GuidesLayer({
           data-mesurer-guide-menu
           autoFocus
           tabIndex={0}
-          className="msr:pointer-events-auto msr:absolute msr:w-32"
+           className="msr:pointer-events-auto msr:absolute msr:z-[100] msr:w-32"
           style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {

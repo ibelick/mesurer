@@ -1,9 +1,9 @@
 import { memo, useRef, type PointerEvent } from "react"
-import { arrowHead, arrowPath, midpoint, quadraticPoint } from "../core/arrows"
+import { arrowHead, arrowPath, midpoint } from "../core/arrows"
 import type { Arrow, Point } from "../core/types"
-import { arrowBounds, moveArrow, resizeArrow, rotateArrow, transformedArrowPoints } from "../core/arrow-transform"
+import { arrowBounds, resizeArrow, rotateArrow, transformedArrowPoints } from "../core/arrow-transform"
 import { boxCenter, rotationFromPointer, type ResizeHandle } from "../core/text-transform"
-import { HandleNode } from "./handle-node"
+import { HandleNode, HANDLE_HIT_SIZE } from "./handle-node"
 import { TextTransformFrame } from "./text-transform-frame"
 
 type ArrowsLayerProps = {
@@ -40,6 +40,7 @@ const ArrowNode = ({
     x={x}
     y={y}
     color={color}
+    style={{ cursor: interactive ? "move" : undefined }}
     pointerEvents={interactive ? "all" : "none"}
     data-mesurer-arrow-node="true"
     data-mesurer-arrow-id={id}
@@ -60,6 +61,7 @@ const ArrowLine = ({
   preview = false,
   id,
   interactive = true,
+  showPath = true,
 }: {
   start: Point
   end: Point
@@ -71,62 +73,68 @@ const ArrowLine = ({
   preview?: boolean
   id?: string
   interactive?: boolean
+  showPath?: boolean
 }) => {
   const control = providedControl ?? midpoint(start, end)
   const path = arrowPath(start, end, control)
   const head = arrowHead(start, control, end, width)
-  const touchPoints = preview
-    ? []
-    : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => quadraticPoint(start, control, end, t))
+  const hitWidth = Math.max(width + 24, 32)
+  const nodeHit = HANDLE_HIT_SIZE / 2 + 4
+  const hitCursor = interactive && !preview ? { cursor: "move" as const } : undefined
 
   return (
     <g>
-      {touchPoints.map((point, index) => (
-        <circle
-          key={`touch-${index}`}
-          cx={point.x}
-          cy={point.y}
-          r="12"
-          fill="transparent"
-          pointerEvents={interactive ? "all" : "none"}
-          data-mesurer-arrow-id={id}
-          data-mesurer-arrow-touch-zone="true"
-        />
-      ))}
-      <path
-        d={path}
-        fill="none"
-        stroke={color}
-        opacity="0"
-        strokeWidth={Math.max(width, 24)}
-        pointerEvents={preview || !interactive ? "none" : "all"}
-        data-mesurer-arrow-id={id}
-        data-mesurer-arrow-hit="true"
-      />
-      <path
-        d={path}
-        fill="none"
-        stroke={color}
-        strokeWidth={width}
-        strokeLinecap="round"
-        pointerEvents={preview || !interactive ? "none" : "all"}
-        opacity={preview ? 0.65 : 1}
-        data-mesurer-arrow={preview ? undefined : "true"}
-        data-mesurer-arrow-id={id}
-        data-mesurer-arrow-preview={preview ? "true" : undefined}
-      />
-      <path
-        d={`M ${head.left.x} ${head.left.y} L ${head.tip.x} ${head.tip.y} L ${head.right.x} ${head.right.y}`}
-        fill="none"
-        stroke={color}
-        strokeWidth={width}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        pointerEvents={preview || !interactive ? "none" : "all"}
-        opacity={preview ? 0.65 : 1}
-        data-mesurer-arrow-id={id}
-        data-mesurer-arrow-hit="true"
-      />
+      {showPath ? (
+        <>
+          <path
+            d={path}
+            fill="none"
+            stroke={color}
+            opacity="0"
+            strokeWidth={hitWidth}
+            strokeLinecap="round"
+            pointerEvents={preview || !interactive ? "none" : "stroke"}
+            style={hitCursor}
+            data-mesurer-arrow-id={id}
+            data-mesurer-arrow-hit="true"
+          />
+          <path
+            d={path}
+            fill="none"
+            stroke={color}
+            strokeWidth={width}
+            strokeLinecap="round"
+            pointerEvents="none"
+            opacity={preview ? 0.65 : 1}
+            data-mesurer-arrow={preview ? undefined : "true"}
+            data-mesurer-arrow-id={id}
+            data-mesurer-arrow-preview={preview ? "true" : undefined}
+          />
+          <path
+            d={`M ${head.left.x} ${head.left.y} L ${head.tip.x} ${head.tip.y} L ${head.right.x} ${head.right.y}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={Math.max(width, hitWidth)}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pointerEvents={preview || !interactive ? "none" : "stroke"}
+            style={hitCursor}
+            opacity="0"
+            data-mesurer-arrow-id={id}
+            data-mesurer-arrow-hit="true"
+          />
+          <path
+            d={`M ${head.left.x} ${head.left.y} L ${head.tip.x} ${head.tip.y} L ${head.right.x} ${head.right.y}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pointerEvents="none"
+            opacity={preview ? 0.65 : 1}
+          />
+        </>
+      ) : null}
       {selected && showNodes ? (
         <>
           <ArrowNode
@@ -153,16 +161,13 @@ const ArrowLine = ({
             handle="end"
             interactive={interactive}
           />
-        </>
-      ) : null}
-      {selected && showNodes ? (
-        <>
           <circle
             cx={start.x}
             cy={start.y}
-            r="12"
+            r={nodeHit}
             fill="transparent"
             pointerEvents={interactive ? "all" : "none"}
+            style={hitCursor}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="start"
             data-mesurer-arrow-hit="true"
@@ -172,9 +177,10 @@ const ArrowLine = ({
           <circle
             cx={control.x}
             cy={control.y}
-            r="12"
+            r={nodeHit}
             fill="transparent"
             pointerEvents={interactive ? "all" : "none"}
+            style={hitCursor}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="control"
             data-mesurer-arrow-hit="true"
@@ -184,9 +190,10 @@ const ArrowLine = ({
           <circle
             cx={end.x}
             cy={end.y}
-            r="12"
+            r={nodeHit}
             fill="transparent"
             pointerEvents={interactive ? "all" : "none"}
+            style={hitCursor}
             data-mesurer-arrow-id={id}
             data-mesurer-arrow-handle="end"
             data-mesurer-arrow-hit="true"
@@ -259,13 +266,24 @@ export const ArrowsLayer = memo(function ArrowsLayer({
     dragRef.current = null
   }
 
+  const toScreen = (arrow: Arrow) => {
+    const points = transformedArrowPoints(arrow)
+    return {
+      start: { x: points[0]!.x - scrollOffset.x, y: points[0]!.y - scrollOffset.y },
+      control: { x: points[1]!.x - scrollOffset.x, y: points[1]!.y - scrollOffset.y },
+      end: { x: points[2]!.x - scrollOffset.x, y: points[2]!.y - scrollOffset.y },
+    }
+  }
+
   return (
-    <div className="msr:pointer-events-none msr:absolute msr:inset-0" data-mesurer-arrows-layer="true" onPointerMove={handleMove} onPointerUp={endDrag}>
+    <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-10" data-mesurer-arrows-layer="true" onPointerMove={handleMove} onPointerUp={endDrag}>
       <svg
         aria-hidden="true"
         className="msr:pointer-events-none msr:absolute msr:inset-0 msr:size-full"
       >
-      {arrows.map((arrow) => (
+      {arrows.map((arrow) => {
+        const points = toScreen(arrow)
+        return (
         <g
           key={arrow.id}
           transform={
@@ -275,18 +293,19 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           }
         >
         <ArrowLine
-          start={{ x: transformedArrowPoints(arrow)[0]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[0]!.y - scrollOffset.y }}
-          end={{ x: transformedArrowPoints(arrow)[2]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[2]!.y - scrollOffset.y }}
-          control={{ x: transformedArrowPoints(arrow)[1]!.x - scrollOffset.x, y: transformedArrowPoints(arrow)[1]!.y - scrollOffset.y }}
+          start={points.start}
+          end={points.end}
+          control={points.control}
           color={arrow.color}
           width={arrow.width}
-          selected={selectedIds.includes(arrow.id)}
-          showNodes={selectionCount === 1}
+          selected={false}
+          showNodes={false}
           id={arrow.id}
           interactive={interactive}
         />
         </g>
-      ))}
+        )
+      })}
       {preview ? (
         <ArrowLine
           start={{ x: preview.start.x - scrollOffset.x, y: preview.start.y - scrollOffset.y }}
@@ -314,7 +333,7 @@ export const ArrowsLayer = memo(function ArrowsLayer({
             <TextTransformFrame
               rotation={arrow.rotation ?? 0}
               showControls={selectionCount === 1}
-              handleOffset={8}
+              handleOffset={0}
               frameDataAttribute="data-mesurer-arrow-frame"
               handleDataAttribute="data-mesurer-arrow-handle"
               onResizeStart={(handle, event) => startResize(arrow, handle, event)}
@@ -323,6 +342,37 @@ export const ArrowsLayer = memo(function ArrowsLayer({
           </div>
         )
       })}
+      <svg
+        aria-hidden="true"
+        className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-20 msr:size-full"
+      >
+        {arrows.filter((arrow) => selectedIds.includes(arrow.id)).map((arrow) => {
+          const points = toScreen(arrow)
+          return (
+            <g
+              key={`nodes-${arrow.id}`}
+              transform={
+                moveOffset.x || moveOffset.y
+                  ? `translate(${moveOffset.x} ${moveOffset.y})`
+                  : undefined
+              }
+            >
+              <ArrowLine
+                start={points.start}
+                end={points.end}
+                control={points.control}
+                color={arrow.color}
+                width={arrow.width}
+                selected
+                showPath={false}
+                showNodes={selectionCount === 1}
+                id={arrow.id}
+                interactive={interactive}
+              />
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
 })

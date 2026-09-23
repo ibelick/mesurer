@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type SetStateAction,
 } from "react";
 import {
@@ -32,12 +33,13 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { TypographyInspector, hasRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
+import { TypographyInspector, hasDirectRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getElementSelector } from "./core/selector";
+import { createLayoutGuide, type LayoutGuide } from "./core/layout-guides";
 import { addMesurerCaptureListener } from "./core/keyboard-gate";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
@@ -48,8 +50,12 @@ import type { CommentThread, ToolMode } from "./core/types";
 import type { CommentFilter } from "./comments/types";
 import {
   createLocalStoragePersistence,
+  createPageScopedPersistence,
+  isPagedWorkspaceStore,
+  toPageArtifacts,
   type MesurerPersistence,
   type MesurerStoredWorkspace,
+  type MesurerPageArtifacts,
   type GuideStyle,
   type RulerSettings,
   type ThemeMode,
@@ -65,6 +71,7 @@ import {
   SETTINGS_STORAGE_KEY,
   sanitizeStoredSettings,
 } from "./core/workspace";
+import { usePageKey } from "./hooks/use-page-key";
 export type MesurerProps = {
   highlightColor?: string;
   guideColor?: string;
@@ -73,6 +80,7 @@ export type MesurerProps = {
   hoverHighlightEnabled?: boolean;
   layoutDetailsEnabled?: boolean;
   persistOnReload?: boolean;
+  persistSession?: boolean;
   shortcutsEnabled?: boolean;
   theme?: ThemeMode;
   portalTarget?: HTMLElement | ShadowRoot;
@@ -112,6 +120,7 @@ export type MesurerProps = {
     activeMeasurement?: MesurerStoredWorkspace["activeMeasurement"];
     heldDistances?: MesurerStoredWorkspace["heldDistances"];
     comments?: CommentThread[];
+    layoutGuides?: MesurerStoredWorkspace["layoutGuides"];
   };
 };
 let mesurerInstanceCount = 0;
@@ -123,6 +132,7 @@ export function MesurerClient({
   hoverHighlightEnabled,
   layoutDetailsEnabled,
   persistOnReload,
+  persistSession = false,
   shortcutsEnabled: shortcutsEnabledDefault,
   theme: themeDefault,
   portalTarget,
@@ -147,6 +157,7 @@ export function MesurerClient({
   Omit<
     MesurerProps,
     | "persistKey"
+    | "persistSession"
     | "persistence"
     | "onPersistenceError"
     | "guideStyle"
@@ -160,6 +171,7 @@ export function MesurerClient({
   Pick<
     MesurerProps,
     | "persistKey"
+    | "persistSession"
     | "persistence"
     | "onPersistenceError"
     | "captureVisibleTab"
@@ -184,6 +196,9 @@ export function MesurerClient({
       ? `mesurer-state:${tabIdRef.current}`
       : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
   const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
+  const pageKey = usePageKey(ownerWindow);
+  const appliedPageKeyRef = useRef(pageKey);
+  const pageWorkspacesRef = useRef(new Map<string, MesurerPageArtifacts>());
   const toolbarRef = useRef<HTMLDivElement>(null);
   const persistenceErrorHandlerRef = useRef(onPersistenceError);
   persistenceErrorHandlerRef.current = onPersistenceError;
@@ -196,21 +211,17 @@ export function MesurerClient({
         SETTINGS_STORAGE_KEY,
         legacyStorageKey,
       );
-    return next;
+    return createPageScopedPersistence(next, () => appliedPageKeyRef.current);
   }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
-  useEffect(() => {
-    activePersistence.setErrorHandler?.((error) =>
-      persistenceErrorHandlerRef.current?.(error),
-    );
-    return () => activePersistence.setErrorHandler?.(undefined);
-  }, [activePersistence]);
   const storedState = useMemo(
     () => activePersistence.load(),
     [activePersistence],
   );
   const persistedState =
-    persistOnReload || storedState?.settings.persistOnReload
-      ? (storedState?.workspace ?? null)
+    persistOnReload || persistSession || storedState?.settings.persistOnReload
+      ? (isPagedWorkspaceStore(storedState?.workspace)
+          ? null
+          : storedState?.workspace ?? null)
       : null;
   const persistedSettings = sanitizeStoredSettings(
     ownerWindow,
@@ -369,6 +380,9 @@ export function MesurerClient({
     toggleResolved: toggleCommentResolved,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
+    layoutGuides,
+    layoutGuidesRef,
+    setLayoutGuides,
   } = workspace;
   const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
     setCommentFilter(filter);
@@ -462,6 +476,8 @@ export function MesurerClient({
     setTheme: setSettingsTheme,
     lastToolMode: settingsLastToolMode,
     setLastToolMode: setSettingsLastToolMode,
+    toolbarPosition: settingsToolbarPosition,
+    setToolbarPosition: setSettingsToolbarPosition,
     colorPickerFormats: settingsColorFormats,
     setColorPickerFormats: setSettingsColorFormats,
     colorPickerClickFormat: settingsColorClickFormat,
@@ -523,6 +539,7 @@ export function MesurerClient({
     activePersistence,
     settings: {
       persistOnReload: settingsPersistOnReload,
+      persistWorkspace: persistSession || settingsPersistOnReload,
       applyPersistedSettings,
       persistSettings,
     },
@@ -533,12 +550,17 @@ export function MesurerClient({
     applyingExternalPersistenceRef,
     workspacePersistTimeoutRef,
     storedState,
+    appliedPageKeyRef,
+    pageWorkspacesRef,
   });
   const {
     saveWorkspace,
     persistState,
     applyPersistenceSnapshot,
+    applyPageArtifacts,
     clearWorkspace,
+    clearPageArtifacts,
+    readPageArtifacts,
     setEnabledPersisted,
     setToolModePersisted,
     setRulersVisiblePersisted,
@@ -555,17 +577,50 @@ export function MesurerClient({
     setSelectedPenStrokeIdsPersisted,
     setSelectedTextIdsPersisted,
     setCommentsPersisted,
+    setLayoutGuidesPersisted,
   } = workspaceLifecycle;
   persistCommentsRef.current = setCommentsPersisted;
+  useLayoutEffect(() => {
+    if (appliedPageKeyRef.current === pageKey) return;
+    pageWorkspacesRef.current.set(appliedPageKeyRef.current, readPageArtifacts());
+    saveWorkspace();
+    appliedPageKeyRef.current = pageKey;
+    const cached = pageWorkspacesRef.current.get(pageKey);
+    if (cached) {
+      applyPageArtifacts(cached);
+      return;
+    }
+    const stored =
+      persistSession || settingsPersistOnReload
+        ? activePersistence.load()?.workspace ?? null
+        : null;
+    if (stored && !isPagedWorkspaceStore(stored)) {
+      const artifacts = toPageArtifacts(stored);
+      pageWorkspacesRef.current.set(pageKey, artifacts);
+      applyPageArtifacts(artifacts);
+      return;
+    }
+    clearPageArtifacts();
+  }, [
+    activePersistence,
+    applyPageArtifacts,
+    clearPageArtifacts,
+    pageKey,
+    readPageArtifacts,
+    persistSession,
+    saveWorkspace,
+    settingsPersistOnReload,
+  ]);
   usePersistenceLifecycle({
     ownerWindow,
     activePersistence,
     persistSettings,
     persistState,
-    settingsPersistOnReload,
+    persistWorkspace: persistSession || settingsPersistOnReload,
     saveWorkspace,
     applyPersistenceSnapshot,
     storedState,
+    persistenceErrorHandlerRef,
     applyingExternalPersistenceRef,
     workspacePersistTimeoutRef,
   });
@@ -575,22 +630,32 @@ export function MesurerClient({
     orientation: "vertical" | "horizontal";
     position: number;
   } | null>(null);
-  const [scrollOffset, setScrollOffset] = useState({
-    x: ownerWindow.scrollX,
-    y: ownerWindow.scrollY,
-  });
-  useLayoutEffect(() => {
-    const updateScrollOffset = () => {
-      setScrollOffset({ x: ownerWindow.scrollX, y: ownerWindow.scrollY });
-    };
-    updateScrollOffset();
-    ownerWindow.addEventListener("scroll", updateScrollOffset, true);
-    ownerWindow.addEventListener("resize", updateScrollOffset);
+  const subscribeToScrollOffset = useCallback((onStoreChange: () => void) => {
+    ownerWindow.addEventListener("scroll", onStoreChange, true);
+    ownerWindow.addEventListener("resize", onStoreChange);
     return () => {
-      ownerWindow.removeEventListener("scroll", updateScrollOffset, true);
-      ownerWindow.removeEventListener("resize", updateScrollOffset);
+      ownerWindow.removeEventListener("scroll", onStoreChange, true);
+      ownerWindow.removeEventListener("resize", onStoreChange);
     };
   }, [ownerWindow]);
+  const scrollSnapshotRef = useRef({
+    ownerWindow,
+    value: { x: ownerWindow.scrollX, y: ownerWindow.scrollY },
+  });
+  const getScrollOffset = useCallback(() => {
+    const previous = scrollSnapshotRef.current;
+    const x = ownerWindow.scrollX;
+    const y = ownerWindow.scrollY;
+    if (previous.ownerWindow !== ownerWindow || previous.value.x !== x || previous.value.y !== y) {
+      scrollSnapshotRef.current = { ownerWindow, value: { x, y } };
+    }
+    return scrollSnapshotRef.current.value;
+  }, [ownerWindow]);
+  const scrollOffset = useSyncExternalStore(
+    subscribeToScrollOffset,
+    getScrollOffset,
+    getScrollOffset,
+  );
   enabledRef.current = enabled;
   xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
@@ -605,6 +670,7 @@ export function MesurerClient({
     }
   }, [enabled, heldDistances.length, setHeldDistancesPersisted, toolMode]);
   guidesRef.current = guides;
+  layoutGuidesRef.current = layoutGuides;
   selectedGuideIdsRef.current = selectedGuideIds;
   arrowsRef.current = arrows;
   selectedArrowIdsRef.current = selectedArrowIds;
@@ -669,6 +735,10 @@ export function MesurerClient({
       comments,
       setComments: setCommentsPersisted,
     },
+    layoutGuides: {
+      layoutGuides,
+      setLayoutGuides: setLayoutGuidesPersisted,
+    },
     transient: {
       setStart,
       setEnd,
@@ -686,6 +756,13 @@ export function MesurerClient({
   const redo = useCallback(() => {
     redoHistory();
   }, [redoHistory]);
+  const setLayoutGuidesWithHistory = useCallback(
+    (value: SetStateAction<LayoutGuide[]>) => {
+      recordSnapshot();
+      setLayoutGuidesPersisted(value);
+    },
+    [recordSnapshot, setLayoutGuidesPersisted],
+  );
   const toggleResolvedComment = useCallback((id: string) => {
     recordSnapshot();
     toggleCommentResolved(id);
@@ -748,6 +825,7 @@ export function MesurerClient({
     setEnabled: (value) => setEnabledWithHistory(value),
     setToolModeNone: () => setToolModeWithHistory("none"),
   });
+  const closeColorPicker = useCallback(() => colorPicker.setActive(false), [colorPicker.setActive]);
   const screenshot = useScreenshot({
     ownerDocument,
     ownerWindow,
@@ -798,6 +876,36 @@ export function MesurerClient({
     settingsOpen,
     toolMode,
   ]);
+
+  const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
+  const toggleLayoutGuides = useCallback(() => {
+    if (layoutGuidesVisible) {
+      setLayoutGuidesVisible(false);
+      if (openMenu?.type === "layout-guides") setOpenMenu(null);
+      return;
+    }
+    setEnabledWithHistory(true);
+    setSettingsOpen(false);
+    colorPicker.setActive(false);
+    screenshot.closeUi();
+    if (layoutGuidesRef.current.length === 0) {
+      setLayoutGuidesWithHistory([createLayoutGuide()]);
+    }
+    setLayoutGuidesVisible(true);
+    setOpenMenu({ type: "layout-guides" });
+  }, [
+    colorPicker,
+    layoutGuidesVisible,
+    openMenu,
+    screenshot,
+    setEnabledWithHistory,
+    setLayoutGuidesWithHistory,
+    setOpenMenu,
+    setSettingsOpen,
+  ]);
+  const closeLayoutGuidesMenu = useCallback(() => {
+    if (openMenu?.type === "layout-guides") setOpenMenu(null);
+  }, [openMenu, setOpenMenu]);
 
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
@@ -987,7 +1095,7 @@ export function MesurerClient({
     if (!selectedElement) return null;
     const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
     if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
-    if (!hasRenderableText(selectedElement)) return null;
+    if (!hasDirectRenderableText(selectedElement)) return null;
     return typographyInspector.getFast(selectedElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
   useEffect(() => () => {
@@ -1187,15 +1295,37 @@ export function MesurerClient({
   }, [setMinimized, setToolbarActive]);
   const minimizeMesurer = useCallback(() => {
     setSettingsOpen(false);
+    setOpenMenu(null);
+    setSelectedCommentId(null);
+    cancelCommentDraft();
+    commentRuntime.setHoverElement(null);
     colorPicker.setActive(false);
     screenshot.closeUi();
+    clearSelection();
+    setHoverRect(null);
+    setHoverPointer(null);
+    setHoverElement(null);
     setMinimized(true);
-  }, [colorPicker, screenshot, setMinimized, setSettingsOpen]);
+  }, [
+    cancelCommentDraft,
+    clearSelection,
+    colorPicker,
+    commentRuntime,
+    screenshot,
+    setHoverElement,
+    setHoverPointer,
+    setHoverRect,
+    setMinimized,
+    setOpenMenu,
+    setSelectedCommentId,
+    setSettingsOpen,
+  ]);
+  const closeScreenshotUi = screenshot.closeUi;
   useEffect(() => {
-    if (!features.screenshot) screenshot.closeUi();
+    if (!features.screenshot) closeScreenshotUi();
     if (!features.rulers) setRulersVisible(false);
     if (!features.settings) setSettingsOpen(false);
-  }, [features.rulers, features.screenshot, features.settings, screenshot, setRulersVisible, setSettingsOpen]);
+  }, [closeScreenshotUi, features.rulers, features.screenshot, features.settings, setRulersVisible, setSettingsOpen]);
   const { clearTransientState } = useInteractionLifecycle({
     enabled,
     toolMode,
@@ -1205,6 +1335,7 @@ export function MesurerClient({
     minimized,
     shortcutsEnabled: settingsShortcutsEnabled,
     settingsOpen,
+    layoutGuidesOpen: openMenu?.type === "layout-guides",
     ownerDocument,
     ownerWindow,
     toolbarRef,
@@ -1272,6 +1403,8 @@ export function MesurerClient({
     onInteract: activateToolbar,
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
+    onToggleLayoutGuides: toggleLayoutGuides,
+    onCloseLayoutGuidesMenu: closeLayoutGuidesMenu,
     onCopyComments: async () => {
       const copied = await copyCommentsForAgent(comments, ownerWindow)
       if (copied) {
@@ -1414,6 +1547,7 @@ export function MesurerClient({
     <MesurerPortal
       portalTarget={portalTarget}
       theme={settingsTheme}
+      enabled={enabled}
       rootRef={overlayRef}
       toolbarRef={toolbarRef}
       screenshotOverlayRef={screenshot.overlayRef}
@@ -1430,9 +1564,12 @@ export function MesurerClient({
         guides,
         selectedGuideIds,
       }}
+      layoutGuides={layoutGuides}
+      layoutGuidesVisible={layoutGuidesVisible}
       overlay={{
         enabled,
         interactive: overlayInteractive,
+        minimized,
         toolMode,
         guidesEnabled,
         altPressed,
@@ -1492,11 +1629,12 @@ export function MesurerClient({
               : null,
           ownerWindow,
           highlightColor: settingsHighlightColor,
-           selectedSelectorCopied: Boolean(
-             selectedElement && copiedSelector === getElementSelector(selectedElement),
-           ),
-           selectedTypography,
-         },
+            selectedSelectorCopied: Boolean(
+              selectedElement && copiedSelector === getElementSelector(selectedElement),
+            ),
+            selectedTypography,
+            selectedMeasurementCount: selectedMeasurements.length,
+          },
         distances: {
           held: heldDistances,
           optionPair: optionPairOverlay,
@@ -1544,7 +1682,7 @@ export function MesurerClient({
             ),
           onChangeStart: recordSnapshot,
           editingArrowId: arrowsPointer.editingArrowId,
-          interactive: overlayInteractive,
+          interactive: overlayInteractive && toolMode === "selection",
         },
         pen: {
           strokes: penStrokes,
@@ -1624,7 +1762,8 @@ export function MesurerClient({
       }}
       toolbar={{
         eventTarget: ownerWindow,
-        initialPosition: initialState?.toolbarPosition ?? { x: 16, y: 16 },
+        initialPosition: settingsToolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
+        onPositionChange: setSettingsToolbarPosition,
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
@@ -1640,6 +1779,13 @@ export function MesurerClient({
           setRulersVisible: setRulersVisiblePersisted,
           guideOrientation,
           setGuideOrientation: setGuideOrientationWithHistory,
+          clearSelection,
+        },
+        layoutGuides: {
+          items: layoutGuides,
+          onChange: setLayoutGuidesWithHistory,
+          onToggle: toggleLayoutGuides,
+          visible: layoutGuidesVisible,
         },
         colorPicker: {
           active: colorPicker.active,
@@ -1653,7 +1799,7 @@ export function MesurerClient({
               ownerWindow={ownerWindow}
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
-              onClose={() => colorPicker.setActive(false)}
+              onClose={closeColorPicker}
             />
           ),
         },

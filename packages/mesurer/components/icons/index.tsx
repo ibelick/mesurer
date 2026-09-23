@@ -28,3 +28,4 @@ export { TypeIcon as TextIcon } from './type'
 export { XRayIcon as XrayIcon } from './x-ray'
 
 export { CaretDownIcon, CheckIcon, MinusIcon, MoreIcon } from './menu-icons'
+export { LayoutColumnsIcon, LayoutGridIcon, LayoutRowsIcon, PlusIcon } from './layout-guides'

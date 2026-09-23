@@ -52,6 +52,7 @@ type OverlaySelection = {
   highlightColor: string
   selectedSelectorCopied: boolean
   selectedTypography: TypographyInfo | null
+  selectedMeasurementCount: number
 }
 
 type OverlayDistances = {
@@ -91,6 +92,7 @@ type OverlayGuides = {
 type MesurerOverlayProps = {
   enabled: boolean
   interactive?: boolean
+  minimized?: boolean
   toolMode: ToolMode
   guidesEnabled: boolean
   altPressed: boolean
@@ -173,6 +175,7 @@ type MesurerOverlayProps = {
 export const MesurerOverlay = memo(function MesurerOverlay({
   enabled,
   interactive = true,
+  minimized = false,
   toolMode,
   guidesEnabled,
   altPressed,
@@ -209,8 +212,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
     (toolMode !== "none" || Boolean(comments?.selectedId)) &&
     toolMode !== "xray" &&
     toolMode !== "rulers"
-  const overlayCapturesPointer = overlayInteractive && toolMode !== "selection"
-  const selectionVisible = toolMode === "select"
+  const overlayCapturesPointer = overlayInteractive
+  const selectionVisible = toolMode === "select" && !minimized
   const showGuidePreview = interactive && guidesEnabled && Boolean(guides.preview)
 
   return (
@@ -246,10 +249,14 @@ export const MesurerOverlay = memo(function MesurerOverlay({
       }}
       onPointerDown={(event) => {
         if (eventPathHits(event.nativeEvent, "[data-mesurer-inspect-info-card]")) return
+        const activeCommentInput = event.currentTarget.querySelector<HTMLTextAreaElement>(
+          "[data-mesurer-comment-popover] textarea",
+        )
         if (
           toolMode === "comments" &&
           comments?.draft &&
-          !eventPathHits(event.nativeEvent, "[data-mesurer-comment-popover]")
+          !eventPathHits(event.nativeEvent, "[data-mesurer-comment-popover]") &&
+          !activeCommentInput?.value.trim()
         ) {
           comments.onDraftCancel?.()
           return
@@ -257,7 +264,8 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         if (
           toolMode === "comments" &&
           comments?.selectedId &&
-          !eventPathHits(event.nativeEvent, COMMENT_CHROME_SELECTOR)
+          !eventPathHits(event.nativeEvent, COMMENT_CHROME_SELECTOR) &&
+          !activeCommentInput?.value.trim()
         ) {
           comments.onClose?.()
           return
@@ -294,12 +302,16 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         ownerWindow={selection.ownerWindow}
         highlightColor={selection.highlightColor}
         selectedSelectorCopied={selection.selectedSelectorCopied}
-        selectedTypography={selection.selectedTypography}
-      />
+         selectedTypography={selection.selectedTypography}
+         selectedMeasurementCount={selection.selectedMeasurementCount}
+         hideInfoCard={selectionVisible && altPressed}
+       />
 
       {toolMode === "selection" && marqueeRect ? (
         <MarqueeRect rect={marqueeRect} color={outlineColor} />
       ) : null}
+
+      <TextLayer {...text} selectionCount={selectionCount} />
 
       <PenLayer {...pen} selectionCount={selectionCount} />
 
@@ -317,8 +329,6 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selectionCount={selectionCount}
         interactive={arrows.interactive}
       />
-
-      <TextLayer {...text} selectionCount={selectionCount} />
 
       {comments ? <CommentsLayer {...comments} /> : null}
 
@@ -367,7 +377,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         optionPair={distances.optionPair}
         guideDistance={distances.guideDistance}
         containerLines={distances.containerLines}
-        showOption={selectionVisible && altPressed}
+        showOption={(selectionVisible || guides.selectedIds.length > 0) && altPressed}
         showGuideDistance={interactive && guidesEnabled && altPressed}
         showContainer={selectionVisible && altPressed}
       />

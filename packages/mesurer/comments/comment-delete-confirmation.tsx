@@ -52,6 +52,8 @@ export function CommentDeleteConfirmation({
   portalTarget = null,
 }: CommentDeleteConfirmationProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null)
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
   const anchored = Boolean(anchor && ownerWindow)
   const overlay = useOverlayPosition({
     ownerWindow: ownerWindow ?? null,
@@ -76,9 +78,9 @@ export function CommentDeleteConfirmation({
       event.preventDefault()
       event.stopPropagation()
       if ("stopImmediatePropagation" in event) event.stopImmediatePropagation()
-      onCancel()
+      onCancelRef.current()
     })
-  }, [onCancel, ownerWindow])
+  }, [ownerWindow])
 
   const dialog = (
     <div
