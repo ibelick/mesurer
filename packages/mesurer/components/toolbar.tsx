@@ -46,7 +46,7 @@ import {
   TextIcon,
   XrayIcon,
   CommentIcon,
-  LayoutColumnsIcon,
+  LayoutGridIcon,
 } from "./icons";
 
 type ToolbarTools = {
@@ -1137,7 +1137,7 @@ function ToolbarComponent(
           tooltip={toolbarTooltip}
           tooltipVisible={tooltipsEnabled && visibleTooltipId === "layout-guides"}
         >
-          <LayoutColumnsIcon size={20} />
+          <LayoutGridIcon size={20} />
         </ToolbarButton>
         {layoutGuidesOpen
           ? createPortal(
