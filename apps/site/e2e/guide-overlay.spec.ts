@@ -1558,9 +1558,19 @@ test("layout guides overlay the page from the toolbar menu", async ({ page }) =>
     .poll(async () => dialog.evaluate((node) => node.scrollHeight > node.clientHeight || node.querySelector("ul")!.scrollHeight > node.querySelector("ul")!.clientHeight))
     .toBe(true);
 
+  await dialog.getByRole("button", { name: "Remove 5 columns" }).first().click();
+  await expect(dialog.getByText("5 columns")).toHaveCount(13);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(dialog.getByText("5 columns")).toHaveCount(14);
+
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
 
   await page.getByRole("button", { name: "Layout guides (L)" }).click();
   await expect(dialog).toBeVisible();

@@ -38,7 +38,7 @@ import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getElementSelector } from "./core/selector";
-import { createLayoutGuide } from "./core/layout-guides";
+import { createLayoutGuide, type LayoutGuide } from "./core/layout-guides";
 import { addMesurerCaptureListener } from "./core/keyboard-gate";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
@@ -675,6 +675,10 @@ export function MesurerClient({
       comments,
       setComments: setCommentsPersisted,
     },
+    layoutGuides: {
+      layoutGuides,
+      setLayoutGuides: setLayoutGuidesPersisted,
+    },
     transient: {
       setStart,
       setEnd,
@@ -692,6 +696,13 @@ export function MesurerClient({
   const redo = useCallback(() => {
     redoHistory();
   }, [redoHistory]);
+  const setLayoutGuidesWithHistory = useCallback(
+    (value: SetStateAction<LayoutGuide[]>) => {
+      recordSnapshot();
+      setLayoutGuidesPersisted(value);
+    },
+    [recordSnapshot, setLayoutGuidesPersisted],
+  );
   const toggleResolvedComment = useCallback((id: string) => {
     recordSnapshot();
     toggleCommentResolved(id);
@@ -1436,6 +1447,7 @@ export function MesurerClient({
     <MesurerPortal
       portalTarget={portalTarget}
       theme={settingsTheme}
+      enabled={enabled}
       rootRef={overlayRef}
       toolbarRef={toolbarRef}
       screenshotOverlayRef={screenshot.overlayRef}
@@ -1666,7 +1678,7 @@ export function MesurerClient({
         },
         layoutGuides: {
           items: layoutGuides,
-          onChange: setLayoutGuidesPersisted,
+          onChange: setLayoutGuidesWithHistory,
           onToggle: toggleLayoutGuides,
         },
         colorPicker: {

@@ -3,6 +3,7 @@ import { parseCssColor } from "../core/colors"
 import type { LayoutGuide } from "../core/layout-guides"
 
 type LayoutGuidesOverlayProps = {
+  enabled: boolean
   guides: LayoutGuide[]
 }
 
@@ -12,11 +13,11 @@ const fillFor = (guide: LayoutGuide) => {
   return `rgba(${Math.round(sample.red)}, ${Math.round(sample.green)}, ${Math.round(sample.blue)}, ${guide.opacity})`
 }
 
-const tracks = (count: number) => Array.from({ length: Math.max(1, Math.round(count)) }, (_, index) => index)
+const tracks = (count: number) => Array.from({ length: Math.max(1, Math.min(24, Math.round(count))) }, (_, index) => index)
 
 const axisStyle = (guide: LayoutGuide): CSSProperties => {
   const columns = guide.kind === "columns"
-  const count = Math.max(1, Math.round(guide.count))
+  const count = Math.max(1, Math.min(24, Math.round(guide.count)))
   if (guide.align === "stretch") {
     return {
       position: "absolute",
@@ -65,7 +66,8 @@ const trackStyle = (guide: LayoutGuide, fill: string): CSSProperties => {
   return { height: guide.size, flex: "none", backgroundColor: fill }
 }
 
-export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ guides }: LayoutGuidesOverlayProps) {
+export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, guides }: LayoutGuidesOverlayProps) {
+  if (!enabled) return null
   const visible = guides.filter((guide) => guide.visible)
   if (visible.length === 0) return null
   return (

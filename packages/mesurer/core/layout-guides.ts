@@ -21,6 +21,7 @@ export const DEFAULT_LAYOUT_GUIDE_OPACITY = 0.1
 
 const KINDS: LayoutGuideKind[] = ["columns", "rows", "grid"]
 const ALIGNS: LayoutGuideAlign[] = ["stretch", "min", "center", "max"]
+const MAX_LAYOUT_GUIDE_COUNT = 24
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -47,7 +48,7 @@ export const isLayoutGuide = (value: unknown): value is LayoutGuide => {
     typeof input.visible === "boolean" &&
     typeof input.color === "string" &&
     typeof input.opacity === "number" &&
-    typeof input.count === "number" &&
+    typeof input.count === "number" && Number.isFinite(input.count) &&
     typeof input.size === "number" &&
     typeof input.gutter === "number" &&
     typeof input.offset === "number" &&
@@ -60,7 +61,7 @@ export const normalizeLayoutGuides = (value: unknown): LayoutGuide[] => {
   return value.filter(isLayoutGuide).map((guide) => ({
     ...guide,
     opacity: clamp(guide.opacity, 0, 1),
-    count: Math.max(1, Math.round(guide.count)),
+    count: clamp(Math.round(guide.count), 1, MAX_LAYOUT_GUIDE_COUNT),
     size: Math.max(0, guide.size),
     gutter: Math.max(0, guide.gutter),
     offset: guide.offset,

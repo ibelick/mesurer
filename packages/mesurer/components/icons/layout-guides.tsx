@@ -3,19 +3,19 @@ import type { ReactNode, SVGProps } from "react"
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number
   strokePx?: number
-  fill?: number
+  frameScale?: number
 }
 
-const strokeFor = (size: number, strokePx: number, fill: number) => (strokePx * 256) / size / fill
+const strokeFor = (size: number, strokePx: number, frameScale: number) => (strokePx * 256) / size / frameScale
 
 const FrameIcon = ({
   size = 20,
   strokePx = 1,
-  fill = 1,
+  frameScale = 1,
   children,
   ...props
 }: IconProps & { children: ReactNode }) => {
-  const stroke = strokeFor(size, strokePx, fill)
+  const stroke = strokeFor(size, strokePx, frameScale)
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" fill="none" aria-hidden="true" {...props}>
       <path
@@ -33,20 +33,20 @@ const FrameIcon = ({
   )
 }
 
-export const LayoutGridIcon = ({ size = 20, strokePx = 1, fill = 1, ...props }: IconProps) => (
-  <FrameIcon size={size} strokePx={strokePx} fill={fill} {...props}>
+export const LayoutGridIcon = ({ size = 20, strokePx = 1, frameScale = 1, ...props }: IconProps) => (
+  <FrameIcon size={size} strokePx={strokePx} frameScale={frameScale} {...props}>
     <path d="M128 48v160M48 128h160" />
   </FrameIcon>
 )
 
-export const LayoutColumnsIcon = ({ size = 20, strokePx = 1, fill = 1, ...props }: IconProps) => (
-  <FrameIcon size={size} strokePx={strokePx} fill={fill} {...props}>
+export const LayoutColumnsIcon = ({ size = 20, strokePx = 1, frameScale = 1, ...props }: IconProps) => (
+  <FrameIcon size={size} strokePx={strokePx} frameScale={frameScale} {...props}>
     <path d="M101.33 48v160M154.67 48v160" />
   </FrameIcon>
 )
 
-export const LayoutRowsIcon = ({ size = 20, strokePx = 1, fill = 1, ...props }: IconProps) => (
-  <FrameIcon size={size} strokePx={strokePx} fill={fill} {...props}>
+export const LayoutRowsIcon = ({ size = 20, strokePx = 1, frameScale = 1, ...props }: IconProps) => (
+  <FrameIcon size={size} strokePx={strokePx} frameScale={frameScale} {...props}>
     <path d="M48 101.33h160M48 154.67h160" />
   </FrameIcon>
 )

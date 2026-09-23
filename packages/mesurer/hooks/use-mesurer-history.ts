@@ -11,6 +11,7 @@ import type {
   CommentThread,
   ToolMode,
 } from "../core/types"
+import type { LayoutGuide } from "../core/layout-guides"
 
 type GuideOrientation = "vertical" | "horizontal"
 
@@ -32,6 +33,7 @@ type MesurerSnapshot = {
   penStrokes: PenStroke[]
   selectedPenStrokeIds: string[]
   comments: CommentThread[]
+  layoutGuides: LayoutGuide[]
 }
 
 type UseMesurerHistoryArgs = {
@@ -87,6 +89,10 @@ type UseMesurerHistoryArgs = {
     comments: CommentThread[]
     setComments: (value: SetStateAction<CommentThread[]>) => void
   }
+  layoutGuides: {
+    layoutGuides: LayoutGuide[]
+    setLayoutGuides: (value: SetStateAction<LayoutGuide[]>) => void
+  }
   transient: {
     setStart: (value: SetStateAction<{ x: number; y: number } | null>) => void
     setEnd: (value: SetStateAction<{ x: number; y: number } | null>) => void
@@ -121,6 +127,7 @@ export const useMesurerHistory = ({
   text,
   pen,
   comments,
+  layoutGuides,
   transient,
 }: UseMesurerHistoryArgs) => {
   const {
@@ -165,6 +172,7 @@ export const useMesurerHistory = ({
   const { textAnnotations, setTextAnnotations } = text
   const { penStrokes, setPenStrokes, selectedPenStrokeIds, setSelectedPenStrokeIds } = pen
   const { comments: commentEntries, setComments } = comments
+  const { layoutGuides: layoutGuideEntries, setLayoutGuides } = layoutGuides
 
   const historyRef = useRef<MesurerSnapshot[]>([])
   const futureRef = useRef<MesurerSnapshot[]>([])
@@ -189,6 +197,7 @@ export const useMesurerHistory = ({
       penStrokes: [...penStrokes],
       selectedPenStrokeIds: [...selectedPenStrokeIds],
       comments: [...commentEntries],
+      layoutGuides: [...layoutGuideEntries],
     }
   }, [
     activeMeasurement,
@@ -208,6 +217,7 @@ export const useMesurerHistory = ({
     penStrokes,
     selectedPenStrokeIds,
     commentEntries,
+    layoutGuideEntries,
   ])
 
   const getSnapshotSignature = useCallback((snapshot: MesurerSnapshot) => {
@@ -244,6 +254,7 @@ export const useMesurerHistory = ({
       snapshot.penStrokes.map((stroke) => `${stroke.id}:${stroke.rotation ?? ""}:${stroke.points.map((point) => `${point.x},${point.y}`).join(";")}`).join(","),
       snapshot.selectedPenStrokeIds.join(","),
       snapshot.comments.map((comment) => `${comment.id}:${comment.status}:${comment.messages.map((message) => `${message.id}:${message.text}`).join(",")}`).join(","),
+      snapshot.layoutGuides.map((guide) => `${guide.id}:${guide.kind}:${guide.visible}:${guide.color}:${guide.opacity}:${guide.count}:${guide.size}:${guide.gutter}:${guide.offset}:${guide.align}`).join(","),
     ].join("|")
   }, [])
 
@@ -278,6 +289,7 @@ export const useMesurerHistory = ({
       setPenStrokes(snapshot.penStrokes)
       setSelectedPenStrokeIds(snapshot.selectedPenStrokeIds)
       setComments(snapshot.comments)
+      setLayoutGuides(snapshot.layoutGuides)
       setStart(null)
       setEnd(null)
       setIsDragging(false)
@@ -318,6 +330,7 @@ export const useMesurerHistory = ({
       setPenStrokes,
       setSelectedPenStrokeIds,
       setComments,
+      setLayoutGuides,
     ]
   )
 

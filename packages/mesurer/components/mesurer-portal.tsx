@@ -29,6 +29,7 @@ type MesurerPortalProps = {
   screenshot: ComponentPropsWithoutRef<typeof ScreenshotSelectOverlay>;
   toolbar: ComponentPropsWithoutRef<typeof Toolbar>;
   theme: "system" | "light" | "dark";
+  enabled: boolean;
   layoutGuides: LayoutGuide[];
 };
 
@@ -42,6 +43,7 @@ export function MesurerPortal({
   screenshot,
   toolbar,
   theme,
+  enabled,
   layoutGuides,
 }: MesurerPortalProps) {
   useEffect(() => {
@@ -75,7 +77,7 @@ export function MesurerPortal({
       data-theme={theme}
       tabIndex={-1}
     >
-      <LayoutGuidesOverlay guides={layoutGuides} />
+      <LayoutGuidesOverlay enabled={enabled} guides={layoutGuides} />
       {rulers.visible ? (
         <RulersOverlay
           ownerWindow={rulers.ownerWindow}
