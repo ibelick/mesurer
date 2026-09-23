@@ -113,6 +113,7 @@ export type MesurerProps = {
     activeMeasurement?: MesurerStoredWorkspace["activeMeasurement"];
     heldDistances?: MesurerStoredWorkspace["heldDistances"];
     comments?: CommentThread[];
+    layoutGuides?: MesurerStoredWorkspace["layoutGuides"];
   };
 };
 let mesurerInstanceCount = 0;
@@ -825,10 +826,10 @@ export function MesurerClient({
     colorPicker.setActive(false);
     screenshot.closeUi();
     if (layoutGuidesRef.current.length === 0) {
-      setLayoutGuidesPersisted([createLayoutGuide()]);
+      setLayoutGuidesWithHistory([createLayoutGuide()]);
     }
     setOpenMenu({ type: "layout-guides" });
-  }, [colorPicker, openMenu, screenshot, setLayoutGuidesPersisted, setOpenMenu, setSettingsOpen]);
+  }, [colorPicker, openMenu, screenshot, setLayoutGuidesWithHistory, setOpenMenu, setSettingsOpen]);
 
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
