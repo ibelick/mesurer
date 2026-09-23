@@ -22,9 +22,9 @@ export const DEFAULT_LAYOUT_GUIDE_OPACITY = 0.1
 const KINDS: LayoutGuideKind[] = ["columns", "rows", "grid"]
 const ALIGNS: LayoutGuideAlign[] = ["stretch", "min", "center", "max"]
 const MAX_LAYOUT_GUIDE_COUNT = 24
-const MAX_LAYOUT_GUIDE_SIZE = 400
-const MAX_LAYOUT_GUIDE_GUTTER = 200
-const MAX_LAYOUT_GUIDE_OFFSET = 800
+const MAX_LAYOUT_GUIDE_SIZE = 4096
+const MAX_LAYOUT_GUIDE_GUTTER = 800
+const MAX_LAYOUT_GUIDE_OFFSET = 4096
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 

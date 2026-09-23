@@ -225,16 +225,16 @@ function LayoutGuideEditor({
       ) : null}
       {guide.kind === "grid" || guide.align !== "stretch" ? (
         <Field label={sizeLabel}>
-          <NumberField label={sizeLabel} value={guide.size} min={1} max={400} onChange={(size) => onChange({ ...guide, size })} />
+          <NumberField label={sizeLabel} value={guide.size} min={1} max={4096} onChange={(size) => onChange({ ...guide, size })} />
         </Field>
       ) : null}
       {guide.kind !== "grid" ? (
         <>
           <Field label="Offset">
-            <NumberField label="Offset" value={guide.offset} min={0} max={800} onChange={(offset) => onChange({ ...guide, offset })} />
+            <NumberField label="Offset" value={guide.offset} min={0} max={4096} onChange={(offset) => onChange({ ...guide, offset })} />
           </Field>
           <Field label="Gutter">
-            <NumberField label="Gutter" value={guide.gutter} min={0} max={200} onChange={(gutter) => onChange({ ...guide, gutter })} />
+            <NumberField label="Gutter" value={guide.gutter} min={0} max={800} onChange={(gutter) => onChange({ ...guide, gutter })} />
           </Field>
         </>
       ) : null}

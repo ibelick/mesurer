@@ -15,42 +15,35 @@ const fillFor = (guide: LayoutGuide) => {
 
 const tracks = (count: number) => Array.from({ length: Math.max(1, Math.min(24, Math.round(count))) }, (_, index) => index)
 
+const pack = (align: LayoutGuide["align"]) =>
+  align === "max" ? "end" : align === "center" ? "center" : "start"
+
 const axisStyle = (guide: LayoutGuide): CSSProperties => {
   const columns = guide.kind === "columns"
   const count = Math.max(1, Math.min(24, Math.round(guide.count)))
-  if (guide.align === "stretch") {
-    return {
-      position: "absolute",
-      inset: 0,
-      display: "grid",
-      ...(columns
-        ? {
-            gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
-            columnGap: guide.gutter,
-            paddingLeft: guide.offset,
-            paddingRight: guide.offset,
-          }
-        : {
-            gridTemplateRows: `repeat(${count}, minmax(0, 1fr))`,
-            rowGap: guide.gutter,
-            paddingTop: guide.offset,
-            paddingBottom: guide.offset,
-          }),
-    }
-  }
+  const size = Math.max(1, guide.size)
+  const stretch = guide.align === "stretch"
+  const template = stretch ? `repeat(${count}, minmax(0, 1fr))` : `repeat(${count}, ${size}px)`
+  const packed = pack(guide.align)
   return {
     position: "absolute",
     inset: 0,
-    display: "flex",
-    flexDirection: columns ? "row" : "column",
-    justifyContent:
-      guide.align === "max" ? "flex-end" : guide.align === "center" ? "center" : "flex-start",
-    alignItems: "stretch",
-    gap: guide.gutter,
-    paddingTop: !columns && guide.align === "min" ? guide.offset : 0,
-    paddingBottom: !columns && guide.align === "max" ? guide.offset : 0,
-    paddingLeft: columns && guide.align === "min" ? guide.offset : 0,
-    paddingRight: columns && guide.align === "max" ? guide.offset : 0,
+    display: "grid",
+    ...(columns
+      ? {
+          gridTemplateColumns: template,
+          columnGap: guide.gutter,
+          justifyContent: stretch ? undefined : packed,
+          paddingLeft: stretch || guide.align === "min" ? guide.offset : 0,
+          paddingRight: stretch || guide.align === "max" ? guide.offset : 0,
+        }
+      : {
+          gridTemplateRows: template,
+          rowGap: guide.gutter,
+          alignContent: stretch ? undefined : packed,
+          paddingTop: stretch || guide.align === "min" ? guide.offset : 0,
+          paddingBottom: stretch || guide.align === "max" ? guide.offset : 0,
+        }),
     transform:
       guide.align === "center"
         ? columns
@@ -60,11 +53,13 @@ const axisStyle = (guide: LayoutGuide): CSSProperties => {
   }
 }
 
-const trackStyle = (guide: LayoutGuide, fill: string): CSSProperties => {
-  if (guide.align === "stretch") return { backgroundColor: fill, minWidth: 0, minHeight: 0 }
-  if (guide.kind === "columns") return { width: guide.size, flex: "none", backgroundColor: fill }
-  return { height: guide.size, flex: "none", backgroundColor: fill }
-}
+const trackStyle = (fill: string): CSSProperties => ({
+  backgroundColor: fill,
+  minWidth: 0,
+  minHeight: 0,
+  width: "100%",
+  height: "100%",
+})
 
 export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, guides }: LayoutGuidesOverlayProps) {
   if (!enabled) return null
@@ -94,7 +89,7 @@ export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, 
               <div
                 key={index}
                 data-mesurer-layout-band
-                style={trackStyle(guide, fill)}
+                style={trackStyle(fill)}
               />
             ))}
           </div>
