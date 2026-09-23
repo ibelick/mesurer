@@ -1,28 +1,118 @@
-import { CAPTURE_VISIBLE_MESSAGE } from "./messages";
+import { CAPTURE_VISIBLE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+
+const ACTIVE_TABS_KEY = "mesurer:active-tabs";
+const restoreTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+const isInjectableUrl = (url: string | undefined) => {
+  if (!url) return true;
+  return (
+    !url.startsWith("chrome://") &&
+    !url.startsWith("chrome-extension://") &&
+    !url.startsWith("edge://") &&
+    !url.startsWith("about:") &&
+    !url.startsWith("https://chrome.google.com/webstore") &&
+    !url.startsWith("https://chromewebstore.google.com/")
+  );
+};
+
+const readActiveTabs = async () => {
+  try {
+    const stored = await chrome.storage.session.get(ACTIVE_TABS_KEY);
+    const ids = stored[ACTIVE_TABS_KEY];
+    return Array.isArray(ids) ? ids.filter((id): id is number => typeof id === "number") : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeActiveTabs = async (ids: number[]) => {
+  try {
+    await chrome.storage.session.set({ [ACTIVE_TABS_KEY]: ids });
+  } catch {
+    // session storage may be unavailable in older browsers
+  }
+};
+
+const setTabActive = async (tabId: number, open: boolean) => {
+  const ids = await readActiveTabs();
+  const next = open ? Array.from(new Set([...ids, tabId])) : ids.filter((id) => id !== tabId);
+  await writeActiveTabs(next);
+};
+
+const inject = async (tabId: number, boot: ExtensionBoot) => {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    injectImmediately: true,
+    files: ["keyboard-gate.js"],
+  });
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    injectImmediately: true,
+    func: (mode: ExtensionBoot) => {
+      (globalThis as typeof globalThis & { __MESURER_BOOT__?: ExtensionBoot }).__MESURER_BOOT__ =
+        mode;
+    },
+    args: [boot],
+  });
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    injectImmediately: true,
+    files: ["content.js"],
+  });
+};
+
+const restoreTab = (tabId: number, url?: string) => {
+  if (!isInjectableUrl(url)) return;
+  const previous = restoreTimers.get(tabId);
+  if (previous) clearTimeout(previous);
+  restoreTimers.set(
+    tabId,
+    setTimeout(() => {
+      restoreTimers.delete(tabId);
+      void inject(tabId, "restore").catch((error) => {
+        console.error("Mesurer failed to restore", error);
+      });
+    }, 50),
+  );
+};
 
 chrome.action.onClicked.addListener((tab) => {
-  if (typeof tab.id !== "number") return
-  const tabId: number = tab.id
+  if (typeof tab.id !== "number") return;
+  const tabId: number = tab.id;
+  if (!isInjectableUrl(tab.url)) return;
 
-  chrome.scripting
-    .executeScript({
-      target: { tabId },
-      world: "MAIN",
-      injectImmediately: true,
-      files: ["keyboard-gate.js"],
-    })
-    .then(() =>
-      chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["content.js"],
-      }),
-    )
-    .catch((error) => {
+  const start = () => {
+    inject(tabId, "toggle").catch((error) => {
       console.error("Mesurer failed to inject", error);
     });
+  };
+
+  if (!tab.url) {
+    start();
+    return;
+  }
+
+  try {
+    const originPattern = `${new URL(tab.url).origin}/*`;
+    chrome.permissions.request({ origins: [originPattern] }, () => {
+      void chrome.runtime.lastError;
+      start();
+    });
+  } catch {
+    start();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === SESSION_MESSAGE) {
+    const tabId = sender.tab?.id;
+    if (typeof tabId === "number" && typeof message.open === "boolean") {
+      void setTabActive(tabId, message.open);
+    }
+    return false;
+  }
+
   if (message?.type !== CAPTURE_VISIBLE_MESSAGE) return false;
   const windowId = sender.tab?.windowId;
   const senderTabId = sender.tab?.id;
@@ -48,4 +138,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   });
   return true;
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete" && !changeInfo.url) return;
+  void readActiveTabs().then((ids) => {
+    if (!ids.includes(tabId)) return;
+    restoreTab(tabId, changeInfo.url ?? tab.url);
+  });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  const timer = restoreTimers.get(tabId);
+  if (timer) clearTimeout(timer);
+  restoreTimers.delete(tabId);
+  void setTabActive(tabId, false);
 });
