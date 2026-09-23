@@ -1538,6 +1538,28 @@ test("guide and comment submenus close on outside click and trigger reclick", as
   await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 });
 
+test("layout guides overlay the page from the toolbar menu", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Layout guides (L)" }).click();
+  const dialog = page.getByRole("dialog", { name: "Layout guides" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Layout guide" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+  await expect(page.locator("[data-mesurer-layout-band]")).toHaveCount(5);
+
+  await dialog.getByRole("button", { name: "Add layout guide" }).click();
+  await expect(dialog.getByText("5 columns")).toHaveCount(2);
+
+  await dialog.getByText("5 columns").first().click();
+  await dialog.getByLabel("Layout guide type").selectOption("grid");
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Back to layout guides" }).click();
+  await page.getByRole("button", { name: "Layout guides (L)" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("[data-mesurer-layout-guides]")).toBeVisible();
+});
+
 test("toolbar tools close Settings", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Settings" }).click();

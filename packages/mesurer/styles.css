@@ -395,6 +395,19 @@
   max-width: 100%;
 }
 
+.mesurer-layout-guides,
+.mesurer-layout-guides-layer,
+.mesurer-layout-guides-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mesurer-layout-guides {
+  z-index: 2;
+  overflow: hidden;
+}
+
 .mesurer-toolbar-chrome {
   position: absolute;
   top: 0;
@@ -518,7 +531,8 @@
   transform: translateX(calc(-1 * var(--msr-inspect-w, 0px)));
 }
 
-.mesurer-toolbar-tool-stage:has([role="menu"]) {
+.mesurer-toolbar-tool-stage:has([role="menu"]),
+.mesurer-toolbar-tool-stage:has([role="dialog"]) {
   overflow: visible;
 }
 

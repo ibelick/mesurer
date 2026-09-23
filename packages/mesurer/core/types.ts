@@ -174,6 +174,7 @@ export type OpenMenu =
   | { type: "comments"; panel: boolean }
   | { type: "guide-orientation" }
   | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
+  | { type: "layout-guides" }
   | null
 
 export type PersistentToolMode = Exclude<ToolMode, "none" | "xray" | "rulers">

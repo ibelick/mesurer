@@ -65,6 +65,7 @@ export const useWorkspaceLifecycle = ({
     textAnnotationsRef,
     selectedTextIdsRef,
     commentsRef,
+    layoutGuidesRef,
     setEnabled,
     setXrayVisible,
     setToolMode,
@@ -81,6 +82,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedArrowIds,
     setTextAnnotations,
     setComments,
+    setLayoutGuides,
     setPenStrokes,
     setSelectedPenStrokeIds,
     setSelectedElement,
@@ -112,6 +114,7 @@ export const useWorkspaceLifecycle = ({
         : null,
       heldDistances: heldDistancesRef.current.map(stripDistance),
       comments: commentsRef.current,
+      layoutGuides: layoutGuidesRef.current,
     };
     activePersistence.saveWorkspace(value);
   }, [
@@ -127,6 +130,7 @@ export const useWorkspaceLifecycle = ({
     selectedPenStrokeIdsRef,
     textAnnotationsRef,
     commentsRef,
+    layoutGuidesRef,
     selectedTextIdsRef,
     activeMeasurementRef,
     heldDistancesRef,
@@ -168,6 +172,7 @@ export const useWorkspaceLifecycle = ({
     textAnnotationsRef.current = [];
     selectedTextIdsRef.current = [];
     commentsRef.current = [];
+    layoutGuidesRef.current = [];
     penStrokesRef.current = [];
     selectedPenStrokeIdsRef.current = [];
     closeScreenshotRef.current();
@@ -190,6 +195,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedPenStrokeIds([]);
     setSelectedTextIds([]);
     setComments([]);
+    setLayoutGuides([]);
   }, [
     closeScreenshotRef,
     clearWorkspaceTransientRef,
@@ -207,6 +213,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedTextIds,
     setTextAnnotations,
     setComments,
+    setLayoutGuides,
     setToolMode,
     setXrayVisible,
     activeMeasurementRef,
@@ -245,6 +252,7 @@ export const useWorkspaceLifecycle = ({
       textAnnotationsRef.current = value.textAnnotations;
       selectedTextIdsRef.current = value.selectedTextIds ?? [];
       commentsRef.current = value.comments ?? [];
+      layoutGuidesRef.current = value.layoutGuides ?? [];
       if (!value.enabled) closeScreenshotRef.current();
       setEnabled(value.enabled);
       setToolMode(value.toolMode);
@@ -263,6 +271,7 @@ export const useWorkspaceLifecycle = ({
       setSelectedTextIds(value.selectedTextIds ?? []);
       setHeldDistances(value.heldDistances);
       setComments(value.comments ?? []);
+      setLayoutGuides(value.layoutGuides ?? []);
     },
     [
       closeScreenshotRef,
@@ -282,6 +291,7 @@ export const useWorkspaceLifecycle = ({
       setSelectedTextIds,
       setTextAnnotations,
       setComments,
+      setLayoutGuides,
       setToolMode,
       setXrayVisible,
       activeMeasurementRef,
@@ -430,6 +440,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedTextIds,
   );
   const setCommentsPersisted = usePersistedSetter(commentsRef, setComments);
+  const setLayoutGuidesPersisted = usePersistedSetter(layoutGuidesRef, setLayoutGuides);
 
   const clearWorkspace = useCallback(() => {
     clearPersistedWorkspace();
@@ -456,6 +467,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedPenStrokeIdsPersisted,
     setSelectedTextIdsPersisted,
     setCommentsPersisted,
+    setLayoutGuidesPersisted,
     storedState,
   };
 };

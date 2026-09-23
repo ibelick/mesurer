@@ -96,6 +96,7 @@ type HotkeyOptions = {
   onToggleXray: () => void
   onToggleRulers: () => void
   onToggleSettings: () => void
+  onToggleLayoutGuides: () => void
   isSettingsOpen: () => boolean
   onCloseColorPicker: () => void
   isColorPickerActive: () => boolean
@@ -326,6 +327,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.onCloseScreenshot()
         if (key === "x") current.onToggleXray()
         else current.onToggleRulers()
+        return
+      }
+
+      if (key === "l") {
+        event.preventDefault()
+        current.onInteract()
+        current.setEnabled(true)
+        current.onToggleLayoutGuides()
         return
       }
 

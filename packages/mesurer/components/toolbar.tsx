@@ -24,9 +24,11 @@ import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
+import { LayoutGuidesPanel } from "./layout-guides-panel";
 import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
 import { MenuItem, MenuSurface } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
+import type { LayoutGuide } from "../core/layout-guides";
 import {
   CaretDownIcon,
   ArrowIcon,
@@ -44,6 +46,7 @@ import {
   TextIcon,
   XrayIcon,
   CommentIcon,
+  LayoutColumnsIcon,
 } from "./icons";
 
 type ToolbarTools = {
@@ -98,6 +101,12 @@ type ToolbarComments = {
   onStatusFilterChange: (filter: CommentFilter) => void;
 };
 
+type ToolbarLayoutGuides = {
+  items: LayoutGuide[];
+  onChange: Dispatch<SetStateAction<LayoutGuide[]>>;
+  onToggle: () => void;
+};
+
 type ToolbarProps = {
   eventTarget: Window;
   initialPosition: { x: number; y: number };
@@ -109,6 +118,7 @@ type ToolbarProps = {
   colorPicker: ToolbarColorPicker;
   screenshot: ToolbarScreenshot;
   comments: ToolbarComments;
+  layoutGuides: ToolbarLayoutGuides;
   settings: ToolbarSettings;
   features: ResolvedMesurerFeatures;
   openMenu: OpenMenu;
@@ -278,6 +288,7 @@ function ToolbarComponent(
     colorPicker,
     screenshot,
     comments,
+    layoutGuides,
     settings,
     features,
     openMenu,
@@ -377,6 +388,7 @@ function ToolbarComponent(
   const commentMenuRef = useRef<HTMLDivElement | null>(null);
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
   const guideMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const layoutGuidesAnchorRef = useRef<HTMLDivElement | null>(null);
   const commentPanelPortalTarget =
     commentMenuRef.current?.closest("[data-mesurer-root]") ?? eventTarget.document.body;
   const toolStageRef = useRef<HTMLDivElement | null>(null);
@@ -422,7 +434,8 @@ function ToolbarComponent(
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
-  const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !settingsOpen;
+  const layoutGuidesOpen = openMenu?.type === "layout-guides";
+  const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !settingsOpen && !layoutGuidesOpen;
   const settingsShortcut = getSettingsShortcut(eventTarget);
   const copyCommentsShortcut = /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform) ? "⌘ K" : "Ctrl + K";
 
@@ -574,6 +587,14 @@ function ToolbarComponent(
       anchorRef: commentButtonRef,
       eventTarget,
       open: commentsPanelOpen,
+      refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
+    });
+  const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: layoutGuidesAnchorRef,
+      eventTarget,
+      open: layoutGuidesOpen,
       refreshKey: `${position.x}:${position.y}`,
       fixed: true,
     });
@@ -830,7 +851,9 @@ function ToolbarComponent(
         (commentButtonRef.current && path.includes(commentButtonRef.current)) ||
         (guideMenuButtonRef.current && path.includes(guideMenuButtonRef.current)) ||
         pathHas("[data-mesurer-menu-trigger]") ||
-        pathHas("[role='menu']")
+        pathHas("[role='menu']") ||
+        pathHas("[data-mesurer-layout-guides-panel]") ||
+        pathHas("[data-tool-id='layout-guides']")
       ) {
         return
       }
@@ -1100,6 +1123,49 @@ function ToolbarComponent(
             </MenuItem>
           </MenuSurface>
         ) : null}
+      </div>
+      <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
+        <ToolbarButton
+          id="layout-guides"
+          active={layoutGuidesOpen || layoutGuides.items.some((guide) => guide.visible)}
+          label="Layout guides"
+          shortcut="L"
+          onClick={() => {
+            onCancelScreenshot();
+            layoutGuides.onToggle();
+          }}
+          tooltip={toolbarTooltip}
+          tooltipVisible={tooltipsEnabled && visibleTooltipId === "layout-guides"}
+        >
+          <LayoutColumnsIcon size={20} />
+        </ToolbarButton>
+        {layoutGuidesOpen
+          ? createPortal(
+              <div
+                ref={layoutGuidesMenuRef}
+                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[80] msr:w-60 msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                style={{
+                  top: layoutGuidesPlacement.top,
+                  bottom: layoutGuidesPlacement.bottom,
+                  right: layoutGuidesPlacement.right,
+                  maxHeight: layoutGuidesPlacement.height,
+                }}
+                data-mesurer-layout-guides-panel
+                role="dialog"
+                aria-label="Layout guides"
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerMove={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <LayoutGuidesPanel
+                  guides={layoutGuides.items}
+                  onChange={layoutGuides.onChange}
+                />
+              </div>,
+              commentPanelPortalTarget,
+            )
+          : null}
       </div>
       <ToolbarButton
         id="color-picker"

@@ -11,6 +11,7 @@ import type {
 } from "./types"
 import type { ColorPickerFormat } from "./colors"
 import { normalizeTextStyle, type TextStyleSettings } from "./text-style"
+import { normalizeLayoutGuides, type LayoutGuide } from "./layout-guides"
 
 export type { TextFont, TextStyleSettings } from "./text-style"
 
@@ -100,6 +101,7 @@ export type MesurerStoredWorkspace = {
   activeMeasurement: Measurement | null
   heldDistances: DistanceOverlay[]
   comments?: CommentThread[]
+  layoutGuides?: LayoutGuide[]
 }
 
 export type MesurerPersistenceSnapshot = {
@@ -433,6 +435,7 @@ export const normalizeStoredWorkspace = (value: unknown): MesurerStoredWorkspace
     activeMeasurement: isMeasurement(input.activeMeasurement) ? input.activeMeasurement : null,
     heldDistances: input.heldDistances.filter(isDistanceOverlay),
     comments: Array.isArray(input.comments) ? input.comments.filter(isCommentThread) : [],
+    layoutGuides: normalizeLayoutGuides(input.layoutGuides),
   }
 }
 

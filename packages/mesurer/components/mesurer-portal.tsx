@@ -1,9 +1,11 @@
 import { createPortal } from "react-dom";
 import { useEffect, type ComponentPropsWithoutRef, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
+import { LayoutGuidesOverlay } from "./layout-guides-overlay";
 import { ScreenshotSelectOverlay } from "./screenshot-select-overlay";
 import { Toolbar } from "./toolbar";
 import { MesurerOverlay } from "../render/mesurer-overlay";
+import type { LayoutGuide } from "../core/layout-guides";
 
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
@@ -27,6 +29,7 @@ type MesurerPortalProps = {
   screenshot: ComponentPropsWithoutRef<typeof ScreenshotSelectOverlay>;
   toolbar: ComponentPropsWithoutRef<typeof Toolbar>;
   theme: "system" | "light" | "dark";
+  layoutGuides: LayoutGuide[];
 };
 
 export function MesurerPortal({
@@ -39,6 +42,7 @@ export function MesurerPortal({
   screenshot,
   toolbar,
   theme,
+  layoutGuides,
 }: MesurerPortalProps) {
   useEffect(() => {
     const ownerWindow = portalTarget.ownerDocument.defaultView;
@@ -71,6 +75,7 @@ export function MesurerPortal({
       data-theme={theme}
       tabIndex={-1}
     >
+      <LayoutGuidesOverlay guides={layoutGuides} />
       {rulers.visible ? (
         <RulersOverlay
           ownerWindow={rulers.ownerWindow}

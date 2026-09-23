@@ -38,6 +38,7 @@ import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { CommentRuntimeStore, copyCommentSelector, copyCommentsForAgent, useCommentPointer } from "./comments";
 import { getElementSelector } from "./core/selector";
+import { createLayoutGuide } from "./core/layout-guides";
 import { addMesurerCaptureListener } from "./core/keyboard-gate";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
@@ -369,6 +370,9 @@ export function MesurerClient({
     toggleResolved: toggleCommentResolved,
     updateTarget: updateCommentTarget,
     updateMessage: updateCommentMessage,
+    layoutGuides,
+    layoutGuidesRef,
+    setLayoutGuides,
   } = workspace;
   const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
     setCommentFilter(filter);
@@ -555,6 +559,7 @@ export function MesurerClient({
     setSelectedPenStrokeIdsPersisted,
     setSelectedTextIdsPersisted,
     setCommentsPersisted,
+    setLayoutGuidesPersisted,
   } = workspaceLifecycle;
   persistCommentsRef.current = setCommentsPersisted;
   usePersistenceLifecycle({
@@ -605,6 +610,7 @@ export function MesurerClient({
     }
   }, [enabled, heldDistances.length, setHeldDistancesPersisted, toolMode]);
   guidesRef.current = guides;
+  layoutGuidesRef.current = layoutGuides;
   selectedGuideIdsRef.current = selectedGuideIds;
   arrowsRef.current = arrows;
   selectedArrowIdsRef.current = selectedArrowIds;
@@ -798,6 +804,20 @@ export function MesurerClient({
     settingsOpen,
     toolMode,
   ]);
+
+  const toggleLayoutGuides = useCallback(() => {
+    if (openMenu?.type === "layout-guides") {
+      setOpenMenu(null);
+      return;
+    }
+    setSettingsOpen(false);
+    colorPicker.setActive(false);
+    screenshot.closeUi();
+    if (layoutGuidesRef.current.length === 0) {
+      setLayoutGuidesPersisted([createLayoutGuide()]);
+    }
+    setOpenMenu({ type: "layout-guides" });
+  }, [colorPicker, openMenu, screenshot, setLayoutGuidesPersisted, setOpenMenu, setSettingsOpen]);
 
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
@@ -1272,6 +1292,7 @@ export function MesurerClient({
     onInteract: activateToolbar,
     onMinimize: minimizeMesurer,
     onToggleSettings: toggleSettings,
+    onToggleLayoutGuides: toggleLayoutGuides,
     onCopyComments: async () => {
       const copied = await copyCommentsForAgent(comments, ownerWindow)
       if (copied) {
@@ -1430,6 +1451,7 @@ export function MesurerClient({
         guides,
         selectedGuideIds,
       }}
+      layoutGuides={layoutGuides}
       overlay={{
         enabled,
         interactive: overlayInteractive,
@@ -1640,6 +1662,11 @@ export function MesurerClient({
           setRulersVisible: setRulersVisiblePersisted,
           guideOrientation,
           setGuideOrientation: setGuideOrientationWithHistory,
+        },
+        layoutGuides: {
+          items: layoutGuides,
+          onChange: setLayoutGuidesPersisted,
+          onToggle: toggleLayoutGuides,
         },
         colorPicker: {
           active: colorPicker.active,
