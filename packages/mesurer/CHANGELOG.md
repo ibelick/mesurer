@@ -4,13 +4,14 @@
 
 - add configurable column, row, and pixel layout guides with selection, keyboard controls, persistence, and undo/redo
 - scope workspaces to page URLs and preserve guides, comments, measurements, and annotations across navigation and reloads
-- improve inspect measurements, spacing geometry, typography details, and guide-linked distances
+- improve inspect selection, transparent and iframe targets, spacing geometry, typography details, and guide-linked distances
 - improve arrow, pen, and text annotation selection, transforms, cursors, and group editing
 - improve comment threads with replies, editing, deletion, resolve/reopen actions, selector copying, tooltips, and safer draft dismissal
 - improve toolbar dragging, menu stacking, minimization, restoration, and overlay lifecycle behavior
+- add dark mode and theme-aware controls across the toolbar, comments, settings, and menus
+- improve keyboard ownership, host-page focus handling, CSS isolation, and overlay stacking
+- improve color picker, screenshot, ruler, and settings interactions
 - improve the Chrome extension across reloads, SPA navigation, host recovery, tab persistence, screenshots, and per-tab workspaces
-- reduce redundant React effects and stabilize subscriptions
-- expand Playwright coverage for guides, annotations, comments, persistence, navigation, and extension behavior
 
 ## 0.1.5
 
