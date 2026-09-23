@@ -1040,7 +1040,7 @@ function ToolbarComponent(
         {guideMenuOpen ? (
           <MenuSurface
             className={cn(
-              "msr:absolute msr:w-44",
+              "msr:absolute msr:z-[100] msr:w-44",
               "msr:flex msr:flex-col msr:gap-px",
               menuSide === "bottom"
                 ? "msr:top-full msr:mt-2"
@@ -1143,7 +1143,7 @@ function ToolbarComponent(
           ? createPortal(
               <div
                 ref={layoutGuidesMenuRef}
-                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[80] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                 style={{
                   top: layoutGuidesPlacement.top,
                   bottom: layoutGuidesPlacement.bottom,
