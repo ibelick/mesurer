@@ -340,6 +340,50 @@ test("dragging a toolbar tool moves the toolbar without selecting the tool", asy
   await expect(guides).toHaveAttribute("aria-pressed", "true");
 });
 
+test("toolbar position stays after a full page navigation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-surface");
+  const guides = page.getByRole("button", { name: "Guides (G)" });
+  const before = await toolbar.boundingBox();
+  expect(before).not.toBeNull();
+  const box = await guides.boundingBox();
+  expect(box).not.toBeNull();
+  const startX = box!.x + box!.width / 2;
+  const startY = box!.y + box!.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 72, startY + 48, { steps: 8 });
+  await page.mouse.up();
+  const moved = await toolbar.boundingBox();
+  expect(moved).not.toBeNull();
+  expect(moved!.x).toBeGreaterThan(before!.x + 30);
+  expect(moved!.y).toBeGreaterThan(before!.y + 20);
+  await expect.poll(() =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem("mesurer-settings");
+      if (!raw) return 16;
+      try {
+        const parsed = JSON.parse(raw) as { settings?: { toolbarPosition?: { x: number } } };
+        return parsed.settings?.toolbarPosition?.x ?? 16;
+      } catch {
+        return 16;
+      }
+    }),
+  ).toBeGreaterThan(40);
+
+  await page.goto("/e2e/fixtures/other-page.html");
+  const after = await toolbar.boundingBox();
+  expect(after).not.toBeNull();
+  expect(Math.abs(after!.x - moved!.x)).toBeLessThan(2);
+  expect(Math.abs(after!.y - moved!.y)).toBeLessThan(2);
+
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const back = await toolbar.boundingBox();
+  expect(back).not.toBeNull();
+  expect(Math.abs(back!.x - moved!.x)).toBeLessThan(2);
+  expect(Math.abs(back!.y - moved!.y)).toBeLessThan(2);
+});
+
 test("dragging from tabs, Settings, and submenus moves the toolbar", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-surface");
@@ -1748,6 +1792,76 @@ test("persist on reload keeps the workspace", async ({ page }) => {
 
   await page.reload();
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("persist keeps overlays after a full navigation back", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
+  await page.getByRole("switch", { name: "Persist" }).click();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  await page.goto("/e2e/fixtures/other-page.html");
+  await expect(page.getByRole("button", { name: "Inspect (I)" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("guides and drawings stay on the page they were created on", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  await page.evaluate(() => {
+    history.pushState({}, "", "/e2e/fixtures/other-page.html");
+  });
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guides (G)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.evaluate(() => {
+    history.pushState({}, "", "/e2e/fixtures/guide-overlay.html");
+  });
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Guides (G)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("query strings keep overlay artifacts on separate pages", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html?item=1");
+  await page.getByRole("button", { name: "Guides (G)" }).click();
+  await page.mouse.click(300, 200);
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+
+  await page.evaluate(() => {
+    history.pushState({}, "", "/e2e/fixtures/guide-overlay.html?item=2");
+  });
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.evaluate(() => {
+    history.pushState({}, "", "/e2e/fixtures/guide-overlay.html?item=1");
+  });
+  await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("near-edge rulers reveal when the pointer approaches the edge", async ({ page }) => {

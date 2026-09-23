@@ -12,11 +12,16 @@ export const useToolbarDrag = (
   initialPosition: Point,
   eventTarget: Window,
   onDragStart?: () => void,
+  onPositionChange?: (position: Point) => void,
 ) => {
   const [position, setPosition] = useState(initialPosition)
+  const positionRef = useRef(position)
+  positionRef.current = position
   const suppressClickRef = useRef(false)
   const onDragStartRef = useRef(onDragStart)
   onDragStartRef.current = onDragStart
+  const onPositionChangeRef = useRef(onPositionChange)
+  onPositionChangeRef.current = onPositionChange
   const dragRef = useRef({
     pointerId: -1,
     dragging: false,
@@ -73,12 +78,14 @@ export const useToolbarDrag = (
   const onPointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const current = dragRef.current
     if (current.pointerId !== event.pointerId) return
-    suppressClickRef.current = current.dragging
+    const dragged = current.dragging
+    suppressClickRef.current = dragged
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
     current.pointerId = -1
     current.dragging = false
+    if (dragged) onPositionChangeRef.current?.(positionRef.current)
   }, [])
 
   const consumeDragClick = useCallback(() => {

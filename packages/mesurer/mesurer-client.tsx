@@ -49,8 +49,12 @@ import type { CommentThread, ToolMode } from "./core/types";
 import type { CommentFilter } from "./comments/types";
 import {
   createLocalStoragePersistence,
+  createPageScopedPersistence,
+  isPagedWorkspaceStore,
+  toPageArtifacts,
   type MesurerPersistence,
   type MesurerStoredWorkspace,
+  type MesurerPageArtifacts,
   type GuideStyle,
   type RulerSettings,
   type ThemeMode,
@@ -66,6 +70,7 @@ import {
   SETTINGS_STORAGE_KEY,
   sanitizeStoredSettings,
 } from "./core/workspace";
+import { usePageKey } from "./hooks/use-page-key";
 export type MesurerProps = {
   highlightColor?: string;
   guideColor?: string;
@@ -186,6 +191,9 @@ export function MesurerClient({
       ? `mesurer-state:${tabIdRef.current}`
       : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
   const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
+  const pageKey = usePageKey(ownerWindow);
+  const appliedPageKeyRef = useRef(pageKey);
+  const pageWorkspacesRef = useRef(new Map<string, MesurerPageArtifacts>());
   const toolbarRef = useRef<HTMLDivElement>(null);
   const persistenceErrorHandlerRef = useRef(onPersistenceError);
   persistenceErrorHandlerRef.current = onPersistenceError;
@@ -198,7 +206,7 @@ export function MesurerClient({
         SETTINGS_STORAGE_KEY,
         legacyStorageKey,
       );
-    return next;
+    return createPageScopedPersistence(next, () => appliedPageKeyRef.current);
   }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
   useEffect(() => {
     activePersistence.setErrorHandler?.((error) =>
@@ -212,7 +220,9 @@ export function MesurerClient({
   );
   const persistedState =
     persistOnReload || storedState?.settings.persistOnReload
-      ? (storedState?.workspace ?? null)
+      ? (isPagedWorkspaceStore(storedState?.workspace)
+          ? null
+          : storedState?.workspace ?? null)
       : null;
   const persistedSettings = sanitizeStoredSettings(
     ownerWindow,
@@ -467,6 +477,8 @@ export function MesurerClient({
     setTheme: setSettingsTheme,
     lastToolMode: settingsLastToolMode,
     setLastToolMode: setSettingsLastToolMode,
+    toolbarPosition: settingsToolbarPosition,
+    setToolbarPosition: setSettingsToolbarPosition,
     colorPickerFormats: settingsColorFormats,
     setColorPickerFormats: setSettingsColorFormats,
     colorPickerClickFormat: settingsColorClickFormat,
@@ -538,12 +550,17 @@ export function MesurerClient({
     applyingExternalPersistenceRef,
     workspacePersistTimeoutRef,
     storedState,
+    appliedPageKeyRef,
+    pageWorkspacesRef,
   });
   const {
     saveWorkspace,
     persistState,
     applyPersistenceSnapshot,
+    applyPageArtifacts,
     clearWorkspace,
+    clearPageArtifacts,
+    readPageArtifacts,
     setEnabledPersisted,
     setToolModePersisted,
     setRulersVisiblePersisted,
@@ -563,6 +580,35 @@ export function MesurerClient({
     setLayoutGuidesPersisted,
   } = workspaceLifecycle;
   persistCommentsRef.current = setCommentsPersisted;
+  useLayoutEffect(() => {
+    if (appliedPageKeyRef.current === pageKey) return;
+    pageWorkspacesRef.current.set(appliedPageKeyRef.current, readPageArtifacts());
+    saveWorkspace();
+    appliedPageKeyRef.current = pageKey;
+    const cached = pageWorkspacesRef.current.get(pageKey);
+    if (cached) {
+      applyPageArtifacts(cached);
+      return;
+    }
+    const stored = settingsPersistOnReload
+      ? activePersistence.load()?.workspace ?? null
+      : null;
+    if (stored && !isPagedWorkspaceStore(stored)) {
+      const artifacts = toPageArtifacts(stored);
+      pageWorkspacesRef.current.set(pageKey, artifacts);
+      applyPageArtifacts(artifacts);
+      return;
+    }
+    clearPageArtifacts();
+  }, [
+    activePersistence,
+    applyPageArtifacts,
+    clearPageArtifacts,
+    pageKey,
+    readPageArtifacts,
+    saveWorkspace,
+    settingsPersistOnReload,
+  ]);
   usePersistenceLifecycle({
     ownerWindow,
     activePersistence,
@@ -1685,7 +1731,8 @@ export function MesurerClient({
       }}
       toolbar={{
         eventTarget: ownerWindow,
-        initialPosition: initialState?.toolbarPosition ?? { x: 16, y: 16 },
+        initialPosition: settingsToolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
+        onPositionChange: setSettingsToolbarPosition,
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,

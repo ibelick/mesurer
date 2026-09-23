@@ -1,16 +1,24 @@
 import {
+  isPagedWorkspaceStore,
   normalizeStoredSettings,
   normalizeStoredWorkspace,
 } from "mesurer";
 import type {
   MesurerPersistence,
   MesurerPersistenceSnapshot,
+  MesurerStoredWorkspace,
+  PagedWorkspaceStore,
 } from "mesurer";
 
 const SETTINGS_KEY = "mesurer:settings";
 
 const workspaceKey = (origin: string, tabId: string) =>
   `mesurer:workspace:${encodeURIComponent(origin)}:${tabId}`;
+
+const readWorkspaceValue = (
+  value: unknown,
+): MesurerStoredWorkspace | PagedWorkspaceStore | null =>
+  isPagedWorkspaceStore(value) ? value : normalizeStoredWorkspace(value);
 
 export const createExtensionPersistence = async (
   origin: string,
@@ -19,7 +27,7 @@ export const createExtensionPersistence = async (
   const key = workspaceKey(origin, tabId);
   const stored = await chrome.storage.local.get([SETTINGS_KEY, key]);
   let settings = normalizeStoredSettings(stored[SETTINGS_KEY]);
-  let workspace = normalizeStoredWorkspace(stored[key]);
+  let workspace = readWorkspaceValue(stored[key]);
   let errorHandler: ((error: unknown) => void) | undefined;
   let settingsTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -44,7 +52,7 @@ export const createExtensionPersistence = async (
       scheduleSettingsSave();
     },
     saveWorkspace: (next) => {
-      workspace = normalizeStoredWorkspace(next);
+      workspace = isPagedWorkspaceStore(next) ? next : normalizeStoredWorkspace(next);
       void chrome.storage.local.set({ [key]: workspace }).catch((error) => {
         errorHandler?.(error);
       });
@@ -72,7 +80,7 @@ export const createExtensionPersistence = async (
         const settingsChanged = Boolean(changes[SETTINGS_KEY]);
         const workspaceChanged = Boolean(changes[key]);
         if (changes[SETTINGS_KEY]) settings = normalizeStoredSettings(changes[SETTINGS_KEY].newValue);
-        if (changes[key]) workspace = normalizeStoredWorkspace(changes[key].newValue);
+        if (changes[key]) workspace = readWorkspaceValue(changes[key].newValue);
         if (settingsChanged || workspaceChanged) {
           listener(snapshot(), {
             settings: settingsChanged,

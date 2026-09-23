@@ -5,7 +5,14 @@ import type {
   MesurerPersistenceSnapshot,
   MesurerStoredSettings,
   MesurerStoredWorkspace,
+  MesurerPageArtifacts,
+  MesurerSessionChrome,
   PersistenceChangeSource,
+} from "../core/persistence";
+import {
+  isPagedWorkspaceStore,
+  mergeWorkspace,
+  toPageArtifacts,
 } from "../core/persistence";
 import { createPersistedSetter } from "../core/persisted-setter";
 import { isPointerDragActive } from "../core/pointer-drag";
@@ -33,6 +40,8 @@ type Options = {
   applyingExternalPersistenceRef: MutableRefObject<boolean>;
   workspacePersistTimeoutRef: MutableRefObject<number | null>;
   storedState: MesurerPersistenceSnapshot | null;
+  appliedPageKeyRef: MutableRefObject<string>;
+  pageWorkspacesRef: MutableRefObject<Map<string, MesurerPageArtifacts>>;
 };
 
 export const useWorkspaceLifecycle = ({
@@ -46,6 +55,8 @@ export const useWorkspaceLifecycle = ({
   applyingExternalPersistenceRef,
   workspacePersistTimeoutRef,
   storedState,
+  appliedPageKeyRef,
+  pageWorkspacesRef,
 }: Options) => {
   const {
     enabledRef,
@@ -92,52 +103,72 @@ export const useWorkspaceLifecycle = ({
     clearSelectionRect,
   } = workspace;
 
-  const saveWorkspace = useCallback(() => {
-    if (!settings.persistOnReload) return;
-    const value: MesurerStoredWorkspace = {
-      enabled: enabledRef.current,
-      xrayVisible: xrayVisibleRef.current,
-      toolMode: toolModeRef.current,
-      rulersVisible: rulersVisibleRef.current,
-      guideOrientation: guideOrientationRef.current,
-      guides: guidesRef.current,
-      selectedGuideIds: selectedGuideIdsRef.current,
-      arrows: arrowsRef.current,
-      selectedArrowIds: selectedArrowIdsRef.current,
-      penStrokes: penStrokesRef.current,
-      selectedPenStrokeIds: selectedPenStrokeIdsRef.current,
-      textAnnotations: textAnnotationsRef.current,
-      selectedTextIds: selectedTextIdsRef.current,
-      measurements: measurementsRef.current.map(stripMeasurement),
-      activeMeasurement: activeMeasurementRef.current
-        ? stripMeasurement(activeMeasurementRef.current)
-        : null,
-      heldDistances: heldDistancesRef.current.map(stripDistance),
-      comments: commentsRef.current,
-      layoutGuides: layoutGuidesRef.current,
-    };
-    activePersistence.saveWorkspace(value);
-  }, [
-    activePersistence,
-    enabledRef,
-    guidesRef,
-    measurementsRef,
-    settings.persistOnReload,
-    arrowsRef,
-    selectedGuideIdsRef,
-    selectedArrowIdsRef,
-    penStrokesRef,
-    selectedPenStrokeIdsRef,
-    textAnnotationsRef,
-    commentsRef,
-    layoutGuidesRef,
-    selectedTextIdsRef,
+  const readPageArtifacts = useCallback((): MesurerPageArtifacts => ({
+    guides: guidesRef.current,
+    selectedGuideIds: selectedGuideIdsRef.current,
+    arrows: arrowsRef.current,
+    selectedArrowIds: selectedArrowIdsRef.current,
+    penStrokes: penStrokesRef.current,
+    selectedPenStrokeIds: selectedPenStrokeIdsRef.current,
+    textAnnotations: textAnnotationsRef.current,
+    selectedTextIds: selectedTextIdsRef.current,
+    measurements: measurementsRef.current.map(stripMeasurement),
+    activeMeasurement: activeMeasurementRef.current
+      ? stripMeasurement(activeMeasurementRef.current)
+      : null,
+    heldDistances: heldDistancesRef.current.map(stripDistance),
+    comments: commentsRef.current,
+    layoutGuides: layoutGuidesRef.current,
+  }), [
     activeMeasurementRef,
+    arrowsRef,
+    commentsRef,
+    guidesRef,
     heldDistancesRef,
+    layoutGuidesRef,
+    measurementsRef,
+    penStrokesRef,
+    selectedArrowIdsRef,
+    selectedGuideIdsRef,
+    selectedPenStrokeIdsRef,
+    selectedTextIdsRef,
+    textAnnotationsRef,
+  ]);
+
+  const readSessionChrome = useCallback((): MesurerSessionChrome => ({
+    enabled: enabledRef.current,
+    xrayVisible: xrayVisibleRef.current,
+    toolMode: toolModeRef.current,
+    rulersVisible: rulersVisibleRef.current,
+    guideOrientation: guideOrientationRef.current,
+  }), [
+    enabledRef,
+    guideOrientationRef,
+    rulersVisibleRef,
     toolModeRef,
     xrayVisibleRef,
-    rulersVisibleRef,
-    guideOrientationRef,
+  ]);
+
+  const readWorkspace = useCallback(
+    (): MesurerStoredWorkspace => mergeWorkspace(readSessionChrome(), readPageArtifacts()),
+    [readPageArtifacts, readSessionChrome],
+  );
+
+  const saveWorkspace = useCallback(() => {
+    if (!settings.persistOnReload) return;
+    const pages: Record<string, MesurerPageArtifacts | null> = {};
+    for (const [key, artifacts] of pageWorkspacesRef.current) {
+      pages[key] = artifacts;
+    }
+    pages[appliedPageKeyRef.current] = readPageArtifacts();
+    activePersistence.saveWorkspace({ ...readSessionChrome(), pages });
+  }, [
+    activePersistence,
+    appliedPageKeyRef,
+    pageWorkspacesRef,
+    readPageArtifacts,
+    readSessionChrome,
+    settings.persistOnReload,
   ]);
 
   const persistState = useCallback(() => {
@@ -196,6 +227,7 @@ export const useWorkspaceLifecycle = ({
     setSelectedTextIds([]);
     setComments([]);
     setLayoutGuides([]);
+    pageWorkspacesRef.current.clear();
   }, [
     closeScreenshotRef,
     clearWorkspaceTransientRef,
@@ -231,6 +263,81 @@ export const useWorkspaceLifecycle = ({
     commentsRef,
     toolModeRef,
     xrayVisibleRef,
+    pageWorkspacesRef,
+  ]);
+
+  const clearPageArtifacts = useCallback(() => {
+    clearWorkspaceTransientRef.current();
+    measurementsRef.current = [];
+    activeMeasurementRef.current = null;
+    heldDistancesRef.current = [];
+    guidesRef.current = [];
+    selectedGuideIdsRef.current = [];
+    arrowsRef.current = [];
+    selectedArrowIdsRef.current = [];
+    textAnnotationsRef.current = [];
+    selectedTextIdsRef.current = [];
+    commentsRef.current = [];
+    layoutGuidesRef.current = [];
+    penStrokesRef.current = [];
+    selectedPenStrokeIdsRef.current = [];
+    closeScreenshotRef.current();
+    setMeasurements([]);
+    setActiveMeasurement(null);
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
+    setHeldDistances([]);
+    setGuides([]);
+    setSelectedGuideIds([]);
+    setArrows([]);
+    setSelectedArrowIds([]);
+    setTextAnnotations([]);
+    setPenStrokes([]);
+    setSelectedPenStrokeIds([]);
+    setSelectedTextIds([]);
+    setComments([]);
+    setLayoutGuides([]);
+    setSelectedElement(null);
+    setHoverElement(null);
+    setHoverRect(null);
+    setHoverPointer(null);
+    clearSelectionRect();
+  }, [
+    activeMeasurementRef,
+    arrowsRef,
+    clearSelectionRect,
+    clearWorkspaceTransientRef,
+    closeScreenshotRef,
+    commentsRef,
+    guidesRef,
+    heldDistancesRef,
+    layoutGuidesRef,
+    measurementsRef,
+    penStrokesRef,
+    selectedArrowIdsRef,
+    selectedGuideIdsRef,
+    selectedPenStrokeIdsRef,
+    selectedTextIdsRef,
+    setActiveMeasurement,
+    setArrows,
+    setComments,
+    setGuides,
+    setHeldDistances,
+    setHoverElement,
+    setHoverPointer,
+    setHoverRect,
+    setLayoutGuides,
+    setMeasurements,
+    setPenStrokes,
+    setSelectedArrowIds,
+    setSelectedElement,
+    setSelectedGuideIds,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+    setSelectedPenStrokeIds,
+    setSelectedTextIds,
+    setTextAnnotations,
+    textAnnotationsRef,
   ]);
 
   const applyPersistedWorkspace = useCallback(
@@ -309,6 +416,85 @@ export const useWorkspaceLifecycle = ({
       commentsRef,
       toolModeRef,
       xrayVisibleRef,
+      layoutGuidesRef,
+      rulersVisibleRef,
+    ],
+  );
+
+  const applyPageArtifacts = useCallback(
+    (value: MesurerPageArtifacts) => {
+      const artifacts = toPageArtifacts(value);
+      measurementsRef.current = artifacts.measurements;
+      activeMeasurementRef.current = artifacts.activeMeasurement;
+      heldDistancesRef.current = artifacts.heldDistances;
+      guidesRef.current = artifacts.guides;
+      selectedGuideIdsRef.current = artifacts.selectedGuideIds;
+      arrowsRef.current = artifacts.arrows;
+      selectedArrowIdsRef.current = artifacts.selectedArrowIds;
+      penStrokesRef.current = artifacts.penStrokes;
+      selectedPenStrokeIdsRef.current = artifacts.selectedPenStrokeIds ?? [];
+      textAnnotationsRef.current = artifacts.textAnnotations;
+      selectedTextIdsRef.current = artifacts.selectedTextIds ?? [];
+      commentsRef.current = artifacts.comments ?? [];
+      layoutGuidesRef.current = artifacts.layoutGuides ?? [];
+      setMeasurements(artifacts.measurements);
+      setActiveMeasurement(artifacts.activeMeasurement);
+      setSelectedMeasurement(null);
+      setSelectedMeasurements([]);
+      setGuides(artifacts.guides);
+      setSelectedGuideIds(artifacts.selectedGuideIds);
+      setArrows(artifacts.arrows);
+      setSelectedArrowIds(artifacts.selectedArrowIds);
+      setPenStrokes(artifacts.penStrokes);
+      setSelectedPenStrokeIds(artifacts.selectedPenStrokeIds ?? []);
+      setTextAnnotations(artifacts.textAnnotations);
+      setSelectedTextIds(artifacts.selectedTextIds ?? []);
+      setHeldDistances(artifacts.heldDistances);
+      setComments(artifacts.comments ?? []);
+      setLayoutGuides(artifacts.layoutGuides ?? []);
+      setSelectedElement(null);
+      setHoverElement(null);
+      setHoverRect(null);
+      setHoverPointer(null);
+      clearSelectionRect();
+      closeScreenshotRef.current();
+    },
+    [
+      closeScreenshotRef,
+      enabledRef,
+      setActiveMeasurement,
+      setArrows,
+      setEnabled,
+      setGuideOrientation,
+      setGuides,
+      setHeldDistances,
+      setMeasurements,
+      setPenStrokes,
+      setRulersVisible,
+      setSelectedArrowIds,
+      setSelectedGuideIds,
+      setSelectedPenStrokeIds,
+      setSelectedTextIds,
+      setTextAnnotations,
+      setComments,
+      setLayoutGuides,
+      setToolMode,
+      setXrayVisible,
+      activeMeasurementRef,
+      arrowsRef,
+      guideOrientationRef,
+      guidesRef,
+      heldDistancesRef,
+      measurementsRef,
+      penStrokesRef,
+      selectedArrowIdsRef,
+      selectedGuideIdsRef,
+      selectedPenStrokeIdsRef,
+      selectedTextIdsRef,
+      textAnnotationsRef,
+      commentsRef,
+      toolModeRef,
+      xrayVisibleRef,
     ],
   );
 
@@ -329,7 +515,10 @@ export const useWorkspaceLifecycle = ({
         snapshot.workspace &&
         (nextSettings.persistOnReload ?? settings.persistOnReload)
       ) {
-        applyPersistedWorkspace(snapshot.workspace);
+        const workspace = isPagedWorkspaceStore(snapshot.workspace)
+          ? null
+          : snapshot.workspace
+        if (workspace) applyPersistedWorkspace(workspace)
       }
       ownerWindow.setTimeout(() => {
         applyingExternalPersistenceRef.current = false;
@@ -450,7 +639,12 @@ export const useWorkspaceLifecycle = ({
     saveWorkspace,
     persistState,
     applyPersistenceSnapshot,
+    applyPersistedWorkspace,
+    applyPageArtifacts,
     clearWorkspace,
+    clearPageArtifacts,
+    readWorkspace,
+    readPageArtifacts,
     setEnabledPersisted,
     setToolModePersisted,
     setRulersVisiblePersisted,

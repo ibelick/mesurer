@@ -111,6 +111,7 @@ type ToolbarLayoutGuides = {
 type ToolbarProps = {
   eventTarget: Window;
   initialPosition: { x: number; y: number };
+  onPositionChange?: (position: { x: number; y: number }) => void;
   minimized: boolean;
   onInteract: () => void;
   onRestore: () => void;
@@ -281,6 +282,7 @@ function ToolbarComponent(
   {
     eventTarget,
     initialPosition,
+    onPositionChange,
     minimized,
     onInteract,
     onRestore,
@@ -356,6 +358,7 @@ function ToolbarComponent(
       setOpenMenu(null);
       setSettingsOpen(false);
     },
+    onPositionChange,
   );
   const {
     visibleTooltipId,
