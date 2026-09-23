@@ -433,6 +433,14 @@ export const useMesurerPointer = ({
     ]
   )
 
+  useEffect(() => {
+    if (!enabled || settingsOpen || toolMode === "none") return
+    const point = hover.hoverPointRef.current
+    if (!point) return
+    if (hoverHighlightEnabled) hover.updateHoverTarget(point)
+    else hover.updateHoverElement(point)
+  }, [altPressed, enabled, hover.hoverPointRef, hover.updateHoverElement, hover.updateHoverTarget, hoverHighlightEnabled, settingsOpen, toolMode])
+
   const handlePointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const commit = createActionCommit()

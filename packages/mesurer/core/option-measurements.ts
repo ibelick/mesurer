@@ -1,6 +1,7 @@
 import { GUIDE_SNAP_DISTANCE } from "./constants"
 import { getDistanceOverlay } from "./distances"
 import { getRectFromDom } from "./dom"
+import { getPaddingBoxRect } from "./geometry"
 import { getGuideDistance, getGuideRect } from "./guides"
 import type { Guide, InspectMeasurement, OptionTarget, Point } from "./types"
 
@@ -138,7 +139,7 @@ export const getOptionContainerLines = (params: {
     containerElement &&
     containerElement !== ownerDocument.body &&
     containerElement !== ownerDocument.documentElement
-      ? getRectFromDom(containerElement)
+      ? getPaddingBoxRect(getRectFromDom(containerElement), containerElement, ownerWindow)
       : {
           left: 0,
           top: 0,

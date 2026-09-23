@@ -122,6 +122,14 @@ export const getDistanceOverlay = (
   const bottomB = rectB.top + rectB.height
   const centerAX = rectA.left + rectA.width / 2
   const centerAY = rectA.top + rectA.height / 2
+  const horizontalAnchor =
+    Math.max(rectA.top, rectB.top) <= Math.min(bottomA, bottomB)
+      ? (Math.max(rectA.top, rectB.top) + Math.min(bottomA, bottomB)) / 2
+      : centerAY
+  const verticalAnchor =
+    Math.max(rectA.left, rectB.left) <= Math.min(rightA, rightB)
+      ? (Math.max(rectA.left, rectB.left) + Math.min(rightA, rightB)) / 2
+      : centerAX
 
   let horizontal: DistanceOverlay["horizontal"] = null
   let vertical: DistanceOverlay["vertical"] = null
@@ -134,7 +142,7 @@ export const getDistanceOverlay = (
     const aIsLeft = rightA <= rectB.left
     const x1 = aIsLeft ? rightA : rightB
     const x2 = aIsLeft ? rectB.left : rectA.left
-    const y = centerAY
+    const y = horizontalAnchor
     horizontal = { x1, x2, y, value: Math.abs(x2 - x1) }
 
     const edgeBX = aIsLeft ? rectB.left : rightB
@@ -149,7 +157,7 @@ export const getDistanceOverlay = (
     const aIsTop = bottomA <= rectB.top
     const y1 = aIsTop ? bottomA : bottomB
     const y2 = aIsTop ? rectB.top : rectA.top
-    const x = centerAX
+    const x = verticalAnchor
     vertical = { y1, y2, x, value: Math.abs(y2 - y1) }
 
     const edgeBY = aIsTop ? rectB.top : bottomB
