@@ -149,7 +149,7 @@ function HomeContent() {
     {
       icon: <RulerIcon size={16} weight="light" className="-rotate-90" />,
       title: "Guides mode",
-      description: "Add vertical or horizontal guides",
+      description: "Add column, row, and pixel grid guides",
     },
     {
       icon: <RulerIcon size={16} weight="light" />,
@@ -169,7 +169,7 @@ function HomeContent() {
     {
       icon: <LockKeyIcon size={16} weight="light" />,
       title: "Persist state",
-      description: "Keep guides, measurements, and annotations on reload",
+      description: "Keep page workspaces across reloads and navigation",
     },
     {
       icon: <EyedropperIcon size={16} weight="light" />,
@@ -194,7 +194,7 @@ function HomeContent() {
     {
       icon: <GearIcon size={16} weight="light" />,
       title: "Settings",
-      description: "Configure selection, guides, arrows, text, colors, and persistence",
+      description: "Configure themes, guides, tools, colors, and persistence",
     },
   ];
 
