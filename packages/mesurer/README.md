@@ -115,7 +115,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 - **Inspect mode** - Click elements to measure their bounds
 - **Annotation tools** - Draw arrows, freehand pen strokes, and text notes
 - **Annotation selection** - Select, move, resize, rotate, delete, and multi-select annotations
-- **Guides mode** - Add and drag vertical or horizontal guides
+- **Guides mode** - Add configurable column, row, and pixel grid guides
 - **Rulers** - Drag guides from pixel rulers along the top and left edges
 - **Typography** - Inspect typography styles and pin text details
 - **X-ray mode** - Reveal element structure without changing the page
@@ -125,7 +125,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 - **Undo/redo** - Command history for guides, measurements, arrows, pen strokes, and text annotations
 - **Comments** - Pin threads to live elements, add replies, move targets, search threads, and copy structured feedback for agents
 - **Settings** - Configure selection, guide, ruler, arrow, text, color, format, and persistence behavior
-- **Workspace controls** - Restore defaults or clear guides, measurements, and annotations; minimize Mesurer to a single toolbar button
+- **Workspace controls** - Persist page workspaces, restore defaults, clear annotations, and minimize Mesurer to a single toolbar button
 
 ## Requirements
 
