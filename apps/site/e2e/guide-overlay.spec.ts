@@ -1815,6 +1815,22 @@ test("persist keeps overlays after a full navigation back", async ({ page }) => 
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
 });
 
+test("persist keeps the minimized toolbar state after navigation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
+  await page.getByRole("switch", { name: "Persist" }).click();
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+
+  await page.goto("/e2e/fixtures/other-page.html");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+});
+
 test("guides and drawings stay on the page they were created on", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await page.getByRole("button", { name: "Guides (G)" }).click();

@@ -355,6 +355,7 @@ export function MesurerClient({
     setArrowPreviewEnd,
     toolbarActive,
     setToolbarActive,
+    minimizedRef,
     minimized,
     setMinimized,
     settingsOpen,
@@ -562,6 +563,7 @@ export function MesurerClient({
     clearPageArtifacts,
     readPageArtifacts,
     setEnabledPersisted,
+    setMinimizedPersisted,
     setToolModePersisted,
     setRulersVisiblePersisted,
     setGuideOrientationPersisted,
@@ -657,6 +659,7 @@ export function MesurerClient({
     getScrollOffset,
   );
   enabledRef.current = enabled;
+  minimizedRef.current = minimized;
   xrayVisibleRef.current = xrayVisible;
   toolModeRef.current = toolMode;
   rulersVisibleRef.current = rulersVisible;
@@ -834,7 +837,7 @@ export function MesurerClient({
     settings: settingsScreenshot,
     setEnabled: (value) => setEnabledWithHistory(value),
     setToolbarActive: (active) => {
-      if (active) setMinimized(false);
+      if (active) setMinimizedPersisted(false);
       setToolbarActive(active);
     },
     onPrepare: () => {
@@ -1290,9 +1293,9 @@ export function MesurerClient({
     setHeldDistancesPersisted,
   ]);
   const restoreToolbar = useCallback(() => {
-    setMinimized(false);
+    setMinimizedPersisted(false);
     setToolbarActive(true);
-  }, [setMinimized, setToolbarActive]);
+  }, [setMinimizedPersisted, setToolbarActive]);
   const minimizeMesurer = useCallback(() => {
     setSettingsOpen(false);
     setOpenMenu(null);
@@ -1305,7 +1308,7 @@ export function MesurerClient({
     setHoverRect(null);
     setHoverPointer(null);
     setHoverElement(null);
-    setMinimized(true);
+    setMinimizedPersisted(true);
   }, [
     cancelCommentDraft,
     clearSelection,
@@ -1315,7 +1318,7 @@ export function MesurerClient({
     setHoverElement,
     setHoverPointer,
     setHoverRect,
-    setMinimized,
+    setMinimizedPersisted,
     setOpenMenu,
     setSelectedCommentId,
     setSettingsOpen,

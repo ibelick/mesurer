@@ -612,7 +612,7 @@ function PrivacyContent() {
 export function App() {
   return (
     <main className="min-h-screen px-5 py-20">
-      <Mesurer initialState={{ minimized: true }} />
+      <Mesurer persistSession initialState={{ minimized: true }} />
       <div className="mx-auto flex max-w-2xl flex-col gap-14">
         <Header showDescription={!isDocsPage} linkToHome={isDocsPage} />
         {isChangelogPage ? (

@@ -88,6 +88,7 @@ export type MesurerStoredSettings = {
 
 export type MesurerSessionChrome = {
   enabled: boolean
+  minimized?: boolean
   xrayVisible: boolean
   toolMode: ToolMode
   rulersVisible: boolean
@@ -148,6 +149,7 @@ export const isPagedWorkspaceStore = (value: unknown): value is PagedWorkspaceSt
 
 export const toSessionChrome = (value: MesurerSessionChrome): MesurerSessionChrome => ({
   enabled: value.enabled,
+  ...(typeof value.minimized === "boolean" ? { minimized: value.minimized } : {}),
   xrayVisible: value.xrayVisible,
   toolMode: value.toolMode,
   rulersVisible: value.rulersVisible,
@@ -501,6 +503,7 @@ export const normalizeSessionChrome = (value: unknown): MesurerSessionChrome | n
   const toolMode = input.toolMode === "text-inspector" ? "select" : input.toolMode
   return {
     enabled: input.enabled,
+    ...(typeof input.minimized === "boolean" ? { minimized: input.minimized } : {}),
     xrayVisible: typeof input.xrayVisible === "boolean" ? input.xrayVisible : input.toolMode === "xray",
     toolMode,
     rulersVisible: input.rulersVisible,

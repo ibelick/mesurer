@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { captureCommentTarget, resolveCommentTarget } from "../../../../packages/mesurer/comments/dom";
+import { createActiveTabRegistry } from "../../../extension/src/active-tabs";
+
+export type ActiveTabTestApi = {
+  createActiveTabRegistry: typeof createActiveTabRegistry;
+};
 
 const stealPagePrompt = new URLSearchParams(location.search).has("prompt");
 
 Object.assign(window, {
   __mesurerCommentTargetTest: { captureCommentTarget, resolveCommentTarget },
+  __mesurerActiveTabTest: { createActiveTabRegistry },
 });
 
 function ShadowCommentTarget() {
