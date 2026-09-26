@@ -134,6 +134,17 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect(card).toContainText("Tracking");
 });
 
+test("Inspect can select text visually layered above a video", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const title = page.getByTestId("video-card-title");
+  const box = await title.boundingBox();
+  expect(box).not.toBeNull();
+  await expect(page.locator("[data-mesurer-overlay]")).toHaveCSS("pointer-events", "auto");
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("h3");
+});
+
 test("Option+S pins the current distance overlay", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);

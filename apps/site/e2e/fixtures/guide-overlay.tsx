@@ -31,6 +31,35 @@ function ShadowCommentTarget() {
   return <div ref={hostRef} id="shadow-comment-host" data-testid="shadow-comment-host" style={{ position: "absolute", left: 760, top: 240, width: 200, height: 100 }} />;
 }
 
+function VideoCardTarget() {
+  return (
+    <article
+      data-testid="video-card-target"
+      style={{
+        position: "absolute",
+        left: 760,
+        top: 40,
+        width: 280,
+        height: 180,
+        overflow: "hidden",
+        background: "#27272a",
+      }}
+    >
+      <video
+        data-testid="video-card-media"
+        muted
+        playsInline
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+      />
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", padding: 16 }}>
+        <h3 data-testid="video-card-title" style={{ color: "white", fontSize: 24 }}>
+          Gemini Audio
+        </h3>
+      </div>
+    </article>
+  );
+}
+
 function Fixture() {
   const [clicks, setClicks] = useState(0);
   const [promptValue, setPromptValue] = useState("");
@@ -51,6 +80,7 @@ function Fixture() {
         Underlying app button
       </button>
       <ShadowCommentTarget />
+      <VideoCardTarget />
       <div
         data-testid="layout-flex"
         style={{
