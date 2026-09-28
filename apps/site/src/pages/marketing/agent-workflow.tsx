@@ -13,27 +13,37 @@ const cards = [
   },
 ] as const;
 
-export default function AgentWorkflow() {
+export default function AgentWorkflow({
+  id = "agent-workflow-title",
+  title = "Stop describing what you can point at.",
+  description = "Select anything on your interface. Mesurer gives your coding agent the context to make the right change.",
+  cards: sectionCards = cards,
+}: {
+  id?: string;
+  title?: string;
+  description?: string;
+  cards?: ReadonlyArray<{ title: string; description?: string; image?: string }>;
+}) {
   return (
-    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-labelledby="agent-workflow-title">
+    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-labelledby={id}>
       <div className="mx-auto max-w-6xl">
         <div className="max-w-xl">
-          <h2 id="agent-workflow-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
-            Stop describing what you can point at.
+          <h2 id={id} className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
+            {title}
           </h2>
-          <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
-            Select anything on your interface. Mesurer gives your coding agent the context to make the right change.
-          </p>
+          <p className="mt-2 text-pretty text-base leading-normal text-muted">{description}</p>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <article key={card.title} className="flex min-w-0 flex-col rounded-[var(--radius)] bg-subtle p-2">
+          {sectionCards.map((card) => (
+            <article key={card.title} className="flex min-w-0 flex-col rounded-[16px] bg-[#fafafa] p-2">
               <div className="flex flex-col px-4 pb-5 pt-4">
                 <h3 className="text-base font-medium text-strong">{card.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p>
+                {card.description ? <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p> : null}
               </div>
-              <div aria-hidden="true" className="aspect-[4/3] bg-transparent" />
+              <div className="aspect-[4/3] overflow-hidden bg-transparent">
+                {card.image ? <img src={card.image} alt="" className="size-full object-cover" loading="lazy" /> : null}
+              </div>
             </article>
           ))}
         </div>

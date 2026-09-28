@@ -4,23 +4,28 @@ import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react";
 const slides = [
   {
     title: "Inspect",
-    description: "Understand every element before you change it.",
+    description: "Check any element’s value, style or spacing.",
+    image: "https://assets.querrel.com/mesurer/mesurer-1.webp",
+  },
+  {
+    title: "Design",
+    description: "Set guides and bring your canvas closer to production.",
+    image: "https://assets.querrel.com/mesurer/mesurer-2.webp",
   },
   {
     title: "Annotate",
-    description: "Make visual feedback precise and impossible to miss.",
+    description: "Scribble what you have in mind on the live interface.",
+    image: "https://assets.querrel.com/mesurer/mesurer-3.webp",
   },
   {
     title: "Direct",
-    description: "Turn observations into clear instructions for your agent.",
-  },
-  {
-    title: "Review",
-    description: "Track the details that make an interface feel finished.",
+    description: "Give feedback that points directly at the element.",
+    image: "https://assets.querrel.com/mesurer/mesurer-4.webp",
   },
   {
     title: "Share",
-    description: "Give your team one shared view of the work.",
+    description: "Interact seamlessly with human and agents.",
+    image: "https://assets.querrel.com/mesurer/mesurer-5.webp",
   },
 ] as const;
 
@@ -44,7 +49,7 @@ export default function ProductCarousel() {
   return (
     <section
       className="relative left-1/2 mt-12 w-screen -translate-x-1/2"
-      aria-label="Product videos"
+      aria-label="Product screenshots"
       aria-roledescription="carousel"
     >
       <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-clip [touch-action:pan-x_pan-y] overscroll-x-none scroll-smooth pb-1">
@@ -56,10 +61,15 @@ export default function ProductCarousel() {
               slideRefs.current[index] = element;
             }}
             className="w-[88%] shrink-0 snap-center sm:w-[76%] lg:w-[64%]"
-            aria-label={`${slide.title} video`}
+            aria-label={`${slide.title} screenshot`}
           >
-            <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border bg-subtle">
-              <span className="text-sm font-medium text-muted">{slide.title}</span>
+            <div className="aspect-[16/10] overflow-hidden rounded-[12px] bg-subtle">
+              <img
+                src={slide.image}
+                alt={`${slide.title} feature in Mesurer`}
+                className="size-full object-cover"
+                loading={index === 0 ? "eager" : "lazy"}
+              />
             </div>
             <figcaption className="mt-3 text-center text-sm">
               <span className="text-strong">{slide.title}.</span>{" "}

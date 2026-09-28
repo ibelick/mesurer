@@ -24,8 +24,6 @@ import Hero from "./hero";
 import ProductCarousel from "./product-carousel";
 import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
-import PlatformSection from "./platform-section";
-import Pricing from "./pricing";
 import FinalCta from "./final-cta";
 import SocialProof from "./social-proof";
 
@@ -39,24 +37,24 @@ export function Header({
 }) {
   return (
     <div className="flex flex-col gap-4">
-        {linkToHome ? (
-          <a href="/" className="w-fit">
+      {linkToHome ? (
+        <a href="/" className="w-fit">
           <img
-            src="/logo.webp"
+            src="/logo.png"
             alt="Mesurer"
-            className="h-9 w-9"
+            className="h-auto w-9"
             width={36}
-            height={36}
+            height={21}
             loading="eager"
           />
         </a>
       ) : (
         <img
-          src="/logo.webp"
+          src="/logo.png"
           alt="Mesurer"
-          className="h-9 w-9"
+          className="h-auto w-9"
           width={36}
-          height={36}
+          height={21}
           loading="eager"
         />
       )}
@@ -80,7 +78,7 @@ export function Header({
           href="https://github.com/ibelick/mesurer"
           target="_blank"
           rel="noreferrer"
-           aria-label="Mesurer on GitHub"
+          aria-label="Mesurer on GitHub"
           className="mb-0.5 inline-flex h-4 w-4 items-center justify-center text-muted transition-colors hover:text-strong"
         >
           <svg
@@ -100,7 +98,8 @@ export function Header({
             Inspect, annotate, and give feedback on any live interface
           </h2>
           <p className="leading-relaxed text-muted">
-            Mesurer runs directly where you build. Share feedback with your agents and your team.
+            Mesurer runs directly where you build. Share feedback with your
+            agents and your team.
           </p>
         </div>
       )}
@@ -193,7 +192,8 @@ export function HomeContent() {
     {
       icon: <GearIcon size={16} weight="light" />,
       title: "Settings",
-      description: "Configure selection, guides, arrows, text, colors, and persistence",
+      description:
+        "Configure selection, guides, arrows, text, colors, and persistence",
     },
   ];
 
@@ -259,8 +259,8 @@ export function HomeContent() {
       <div id="installation" className="flex flex-col gap-4">
         <p className="font-[450] text-strong">Installation</p>
         <InstallCommand>npm install mesurer</InstallCommand>
-         <p>Then render the component alongside your application:</p>
-         <CodeBlock as="pre">{`import { Mesurer } from "mesurer";
+        <p>Then render the component alongside your application:</p>
+        <CodeBlock as="pre">{`import { Mesurer } from "mesurer";
 
 function App() {
   return (
@@ -310,12 +310,20 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">arrowColor</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Base color for arrows</div>
+            <div className="font-mono text-strong">
+              <code className="code">arrowColor</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Base color for arrows
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">guideHighlightEnabled</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Highlights guides when hovered or selected</div>
+            <div className="font-mono text-strong">
+              <code className="code">guideHighlightEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Highlights guides when hovered or selected
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -326,8 +334,12 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">layoutDetailsEnabled</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Shows gap and padding details under selected dimensions</div>
+            <div className="font-mono text-strong">
+              <code className="code">layoutDetailsEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Shows gap and padding details under selected dimensions
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -346,32 +358,60 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">persistKey</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Optional key for isolating persisted workspaces</div>
+            <div className="font-mono text-strong">
+              <code className="code">persistKey</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Optional key for isolating persisted workspaces
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">portalTarget</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Element or shadow root where the overlay is mounted</div>
+            <div className="font-mono text-strong">
+              <code className="code">portalTarget</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Element or shadow root where the overlay is mounted
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">persistence</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Custom storage adapter for settings and workspace state</div>
+            <div className="font-mono text-strong">
+              <code className="code">persistence</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Custom storage adapter for settings and workspace state
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">onPersistenceError</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Called when persistence is unavailable or a write fails</div>
+            <div className="font-mono text-strong">
+              <code className="code">onPersistenceError</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Called when persistence is unavailable or a write fails
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">captureVisibleTab</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Provides a visible-tab PNG for Screenshot capture</div>
+            <div className="font-mono text-strong">
+              <code className="code">captureVisibleTab</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Provides a visible-tab PNG for Screenshot capture
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">features</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Enable or disable Screenshot, Rulers, and Settings</div>
+            <div className="font-mono text-strong">
+              <code className="code">features</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Enable or disable Screenshot, Rulers, and Settings
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">initialState</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Set initial workspace data and toolbar state; saved state wins</div>
+            <div className="font-mono text-strong">
+              <code className="code">initialState</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Set initial workspace data and toolbar state; saved state wins
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -390,12 +430,20 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">snapArrowsEnabled</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Snap arrow endpoints to nearby elements</div>
+            <div className="font-mono text-strong">
+              <code className="code">snapArrowsEnabled</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Snap arrow endpoints to nearby elements
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">arrowClickToPlace</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Place arrows with clicks instead of dragging</div>
+            <div className="font-mono text-strong">
+              <code className="code">arrowClickToPlace</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Place arrows with clicks instead of dragging
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -430,8 +478,12 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">textStyle</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Default text annotation font and color</div>
+            <div className="font-mono text-strong">
+              <code className="code">textStyle</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Default text annotation font and color
+            </div>
           </div>
         </div>
       </div>
@@ -456,28 +508,52 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">S</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Select mode for annotations</div>
+            <div className="font-mono text-strong">
+              <code className="code">S</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Toggle Select mode for annotations
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">A</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Typography mode</div>
+            <div className="font-mono text-strong">
+              <code className="code">A</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Toggle Typography mode
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">1 / 2</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Switch between Select &amp; Inspect and Annotate tools</div>
+            <div className="font-mono text-strong">
+              <code className="code">1 / 2</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Switch between Select &amp; Inspect and Annotate tools
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">D / N / T</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle Arrows, Pen, or Text mode</div>
+            <div className="font-mono text-strong">
+              <code className="code">D / N / T</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Toggle Arrows, Pen, or Text mode
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">P</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Open the native color sampler</div>
+            <div className="font-mono text-strong">
+              <code className="code">P</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Open the native color sampler
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">C</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Drag a screenshot region (Chrome extension)</div>
+            <div className="font-mono text-strong">
+              <code className="code">C</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Drag a screenshot region (Chrome extension)
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -488,12 +564,20 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">X</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle X-ray mode</div>
+            <div className="font-mono text-strong">
+              <code className="code">X</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Toggle X-ray mode
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">R</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Toggle pixel rulers</div>
+            <div className="font-mono text-strong">
+              <code className="code">R</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Toggle pixel rulers
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
             <div className="font-mono text-strong">
@@ -571,12 +655,20 @@ function App() {
             </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + ,</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Open Settings</div>
+            <div className="font-mono text-strong">
+              <code className="code">Cmd/Ctrl + ,</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Open Settings
+            </div>
           </div>
           <div className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-            <div className="font-mono text-strong"><code className="code">Cmd/Ctrl + K</code></div>
-            <div className="max-w-[60%] text-right text-balance text-muted">Copy comments for an agent</div>
+            <div className="font-mono text-strong">
+              <code className="code">Cmd/Ctrl + K</code>
+            </div>
+            <div className="max-w-[60%] text-right text-balance text-muted">
+              Copy comments for an agent
+            </div>
           </div>
         </div>
       </div>
@@ -591,10 +683,45 @@ export default function MarketingPage() {
       <div className="mx-auto flex flex-col gap-20 px-5">
         <Hero />
         <ProductCarousel />
-        <AgentWorkflow />
-        <PlatformSection />
+        <AgentWorkflow
+          id="design-workflow-title"
+          title="Design closer to production"
+          description="As designers work closer to the source, Mesurer brings all the essential tools they need to preserve quality in that new environment."
+          cards={[
+            {
+              title: "Inspect mode",
+              image: "https://assets.querrel.com/mesurer/inspector.webp?v=4",
+            },
+            {
+              title: "Measurements",
+              image: "https://assets.querrel.com/mesurer/measurement.webp?v=3",
+            },
+            {
+              title: "Layout guides",
+              image: "https://assets.querrel.com/mesurer/guides.webp?v=2",
+            },
+          ]}
+        />
+        <AgentWorkflow
+          id="agent-workflow-title"
+          title="Collaborate better with your team and agents"
+          description="Stop describing what you have in mind, show it instead. Mesurer helps you interact faster and in a more effective way with your coding agents."
+          cards={[
+            {
+              title: "Annotations",
+              image: "https://assets.querrel.com/mesurer/annotations.webp?v=3",
+            },
+            {
+              title: "Comments",
+              image: "https://assets.querrel.com/mesurer/comments.webp?v=2",
+            },
+            {
+              title: "Screenshot-paste",
+              image: "https://assets.querrel.com/mesurer/screenshot.webp?v=2",
+            },
+          ]}
+        />
         <SocialProof />
-        <Pricing />
         <FinalCta />
       </div>
       <MarketingFooter />
