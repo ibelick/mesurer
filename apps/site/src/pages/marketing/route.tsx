@@ -4,7 +4,12 @@ import MarketingPage from "./home";
 export default function MarketingRoute() {
   return (
     <>
-      <Mesurer initialState={{ minimized: true }} />
+      {/* Signing in to the platform is tried against the local one, on the dev server only: the
+          built site has none of it. */}
+      <Mesurer
+        platform={import.meta.env.DEV ? { environment: "development" } : false}
+        initialState={{ minimized: true }}
+      />
       <MarketingPage />
     </>
   );

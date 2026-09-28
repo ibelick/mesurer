@@ -2,6 +2,7 @@ import { PlatformAuthError } from "./types"
 
 const AUTHORIZATION_MESSAGE = "mesurer:authorization"
 const CODE_PATTERN = /^[A-Za-z0-9_-]{32,256}$/
+const POPUP_CLOSE_GRACE_MS = 500
 
 type AuthorizationMessage = {
   type?: unknown
@@ -43,11 +44,13 @@ export const waitForAuthorization = (
   timeoutMs = 120_000,
 ) => new Promise<string>((resolve, reject) => {
   let settled = false
+  let closeGrace: number | undefined
   const finish = (callback: () => void) => {
     if (settled) return
     settled = true
     ownerWindow.clearTimeout(timeout)
     ownerWindow.clearInterval(closedPoll)
+    if (closeGrace !== undefined) ownerWindow.clearTimeout(closeGrace)
     ownerWindow.removeEventListener("message", receiveMessage)
     signal.removeEventListener("abort", abort)
     callback()
@@ -75,8 +78,12 @@ export const waitForAuthorization = (
     finish(() => reject(new PlatformAuthError("authorization_timeout", "Mesurer authorization timed out.")))
   }, timeoutMs)
   const closedPoll = ownerWindow.setInterval(() => {
-    if (!popup.closed) return
-    finish(() => reject(new PlatformAuthError("popup_closed", "The authorization window was closed.")))
+    if (!popup.closed || closeGrace !== undefined) return
+    // postMessage is asynchronous. Keep the listener alive briefly when the
+    // authorization page posts its callback and immediately closes itself.
+    closeGrace = ownerWindow.setTimeout(() => {
+      finish(() => reject(new PlatformAuthError("popup_closed", "The authorization window was closed.")))
+    }, POPUP_CLOSE_GRACE_MS)
   }, 250)
   ownerWindow.addEventListener("message", receiveMessage)
   signal.addEventListener("abort", abort, { once: true })

@@ -146,6 +146,40 @@ test("disconnects stale identity without deleting a replacement grant", async ({
   expect(await page.evaluate(() => localStorage.getItem("mesurer-toolbar-grant"))).toBe(REPLACEMENT_GRANT_ID);
 });
 
+test("accepts a callback from a popup that closes immediately", async ({ page }) => {
+  await interceptAuthorizationPage(page);
+  await capturePopup(page);
+  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      capability: CAPABILITY,
+      expiresIn: 120,
+      grantId: GRANT_ID,
+      user: { id: "user-1", name: "Ada Lovelace", email: "ada@example.com", image: null },
+      project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
+    }),
+  }));
+
+  await page.goto(AUTH_PAGE);
+  await page.getByRole("button", { name: /Settings/ }).click();
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Connect to Mesurer" }).click();
+  const popupPage = await popupPromise;
+  await popupPage.waitForURL(/^https:\/\/mesurer\.dev\/toolbar\/authorize/);
+  const state = new URL(popupPage.url()).searchParams.get("state");
+  await popupPage.evaluate(({ callbackOrigin, state }) => {
+    window.opener?.postMessage({
+      type: "mesurer:authorization",
+      code: "valid-authorization-code-12345678901234567890",
+      state,
+    }, callbackOrigin);
+    window.close();
+  }, { callbackOrigin: new URL(page.url()).origin, state });
+
+  await expect(page.locator('[data-mesurer-platform-status="connected"]')).toContainText("Ada Lovelace");
+});
+
 test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
