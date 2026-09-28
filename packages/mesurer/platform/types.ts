@@ -18,10 +18,17 @@ export type PlatformConnection = {
   project: PlatformProject
 }
 
+export type PlatformShareState =
+  | { status: "idle" }
+  | { status: "creating" }
+  | { status: "created"; url: string }
+  | { status: "error"; error: PlatformAuthError }
+
 export type PlatformAuthState =
   | { status: "disconnected" }
+  | { status: "restoring" }
   | { status: "connecting" }
-  | ({ status: "connected" } & PlatformConnection)
+  | ({ status: "connected"; share: PlatformShareState } & PlatformConnection)
   | { status: "error"; error: PlatformAuthError }
 
 export type PlatformAuthErrorCode =
@@ -33,6 +40,8 @@ export type PlatformAuthErrorCode =
   | "invalid_callback"
   | "token_exchange_timeout"
   | "token_exchange_failed"
+  | "share_failed"
+  | "share_timeout"
   | "api_unavailable"
 
 export class PlatformAuthError extends Error {

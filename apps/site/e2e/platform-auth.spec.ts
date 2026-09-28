@@ -25,7 +25,8 @@ const capturePopup = async (page: Page) => {
 };
 
 test("Settings connects and signs out of the Mesurer platform", async ({ page }) => {
-  let codeVerifier = "";
+  const codeVerifiers: string[] = [];
+  let shareRequests = 0;
   await interceptAuthorizationPage(page);
   await capturePopup(page);
   await page.route("https://api.mesurer.dev/api/oauth/token", async (route) => {
@@ -33,7 +34,7 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
     expect(body.clientId).toBe("mesurer-npm-toolbar");
     expect(body.callbackOrigin).toBe("https://mesurer.dev");
     expect(body.codeVerifier).toEqual(expect.stringMatching(/^[A-Za-z0-9_-]{43,128}$/));
-    codeVerifier = body.codeVerifier as string;
+    codeVerifiers.push(body.codeVerifier as string);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -46,8 +47,42 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
       }),
     });
   });
+  await page.route("https://api.mesurer.dev/api/toolbar/share", async (route) => {
+    shareRequests += 1;
+    expect(await route.request().headerValue("authorization")).toBe(`Bearer ${CAPABILITY}`);
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    expect(body).toEqual({
+      version: 1,
+      pageUrl: "http://127.0.0.1:4173/e2e/fixtures/platform-auth.html?comment=1",
+      origin: "http://127.0.0.1:4173",
+      title: "Platform authentication fixture",
+      viewport: { width: 1280, height: 720 },
+      annotations: [],
+      comments: [{
+        id: "platform-auth-comment",
+        selector: "body",
+        text: "Review this test comment",
+        status: "open",
+        x: 12,
+        y: 24,
+        width: 160,
+        height: 48,
+      }],
+      selectedElements: [],
+      measurements: [],
+    });
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        shareId: `shr_test-link-${shareRequests}`,
+        url: `https://mesurer.dev/share/shr_test-link-${shareRequests}`,
+        project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
+      }),
+    });
+  });
 
-  await page.goto(AUTH_PAGE);
+  await page.goto(`${AUTH_PAGE}?comment=1`);
   await page.getByRole("button", { name: /Settings/ }).click();
   const popupPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Connect to Mesurer" }).click();
@@ -80,12 +115,29 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
   await expect(status).toContainText("Ada Lovelace");
   await expect(status).toContainText("ada@example.com");
   await expect(status).toContainText("Analytical Engine");
+  await page.getByRole("button", { name: "Create test review link" }).click();
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_test-link-1");
+  const repeatPopupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Create another test review link" }).click();
+  const repeatPopup = await repeatPopupPromise;
+  await repeatPopup.waitForURL(/^https:\/\/mesurer\.dev\/toolbar\/authorize/);
+  const repeatState = new URL(repeatPopup.url()).searchParams.get("state");
+  await page.evaluate(({ state }) => {
+    const authWindow = window as Window & { __mesurerAuthPopup?: Window };
+    window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://mesurer.dev",
+      source: authWindow.__mesurerAuthPopup ?? null,
+      data: { type: "mesurer:authorization", code: "second-authorization-code-123456789012345678", state },
+    }));
+  }, { state: repeatState });
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_test-link-2");
+  expect(shareRequests).toBe(2);
   const expectedChallenge = await page.evaluate(async (verifier) => {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     let value = "";
     for (const byte of new Uint8Array(digest)) value += String.fromCharCode(byte);
     return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-  }, codeVerifier);
+  }, codeVerifiers[0]);
   expect(authorizationUrl.searchParams.get("codeChallenge")).toBe(expectedChallenge);
   expect(await page.evaluate(() => ({
     grant: localStorage.getItem("mesurer-toolbar-grant"),
@@ -184,6 +236,7 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
   await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
+  await page.route("https://api.mesurer.dev/api/oauth/refresh", (route) => route.abort());
   let tokenRequests = 0;
   await page.route("https://api.mesurer.dev/api/oauth/token", async (route) => {
     tokenRequests += 1;
@@ -212,6 +265,27 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   expect(tokenRequests).toBe(0);
   expect(await page.evaluate(() => localStorage.getItem("mesurer-toolbar-grant"))).toBe(GRANT_ID);
+});
+
+test("restores a connected platform session from its saved grant", async ({ page }) => {
+  await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
+  await page.route("https://api.mesurer.dev/api/oauth/refresh", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      capability: CAPABILITY,
+      expiresIn: 120,
+      grantId: GRANT_ID,
+      user: { id: "user-1", name: "Ada Lovelace", email: "ada@example.com", image: null },
+      project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
+    }),
+  }));
+
+  await page.goto(AUTH_PAGE);
+  await page.getByRole("button", { name: /Settings/ }).click();
+
+  await expect(page.locator('[data-mesurer-platform-status="connected"]')).toContainText("Ada Lovelace");
+  await expect(page.getByRole("button", { name: "Create test review link" })).toBeVisible();
 });
 
 test("rejects a callback with the wrong state", async ({ page }) => {

@@ -2085,7 +2085,10 @@ export function MesurerClient({
                 arrowClickToPlace,
                 setArrowClickToPlace,
               }}
-              platform={platformEnvironment ? platformAuth : undefined}
+              platform={platformEnvironment ? {
+                ...platformAuth,
+                createTestReviewLink: () => platformAuth.createTestReviewLink(comments),
+              } : undefined}
               general={{
                 persistOnReload: settings.persistOnReload,
                 setPersistOnReload: settings.setPersistOnReload,

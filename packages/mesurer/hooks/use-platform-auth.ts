@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { PlatformAuthClient } from "../platform/auth-client"
+import type { CommentThread } from "../core/types"
 import type { PlatformEnvironment } from "../platform/types"
 
 const disconnected = { status: "disconnected" } as const
@@ -18,12 +19,15 @@ export const usePlatformAuth = (ownerWindow: Window, environment: PlatformEnviro
   )
 
   useEffect(() => {
+    void client?.restore()
     return () => client?.dispose()
   }, [client])
 
   return {
     state,
     connect: client?.connect ?? (async () => null),
+    createTestReviewLink: client?.createTestReviewLink ?? (async (_comments: CommentThread[] = []) => null),
+    canCreateTestReviewLink: state.status === "connected" && state.share.status !== "creating",
     disconnect: client?.disconnect ?? (() => undefined),
   }
 }
