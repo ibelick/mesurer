@@ -18,16 +18,14 @@ export const usePlatformAuth = (ownerWindow: Window, environment: PlatformEnviro
     client?.getState ?? getDisconnected,
   )
 
-  useEffect(() => {
-    void client?.restore()
-    return () => client?.dispose()
-  }, [client])
+  useEffect(() => () => client?.dispose(), [client])
 
   return {
     state,
     connect: client?.connect ?? (async () => null),
     createTestReviewLink: client?.createTestReviewLink ?? (async (_comments: CommentThread[] = []) => null),
     canCreateTestReviewLink: state.status === "connected" && state.share.status !== "creating",
+    hasSavedGrant: client?.hasSavedGrant() ?? false,
     disconnect: client?.disconnect ?? (() => undefined),
   }
 }

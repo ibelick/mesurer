@@ -236,7 +236,6 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
   await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
-  await page.route("https://api.mesurer.dev/api/oauth/refresh", (route) => route.abort());
   let tokenRequests = 0;
   await page.route("https://api.mesurer.dev/api/oauth/token", async (route) => {
     tokenRequests += 1;
@@ -246,7 +245,7 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await page.goto(AUTH_PAGE);
   await page.getByRole("button", { name: /Settings/ }).click();
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Connect to Mesurer" }).click();
+  await page.getByRole("button", { name: "Create test review link" }).click();
   const popupPage = await popupPromise;
   await popupPage.waitForURL(/^https:\/\/mesurer\.dev\/toolbar\/authorize/);
   const authorizationUrl = new URL(popupPage.url());
@@ -267,9 +266,11 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("mesurer-toolbar-grant"))).toBe(GRANT_ID);
 });
 
-test("restores a connected platform session from its saved grant", async ({ page }) => {
+test("reuses a saved grant through the Mesurer popup after reload", async ({ page }) => {
   await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
-  await page.route("https://api.mesurer.dev/api/oauth/refresh", (route) => route.fulfill({
+  await interceptAuthorizationPage(page);
+  await capturePopup(page);
+  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -280,12 +281,33 @@ test("restores a connected platform session from its saved grant", async ({ page
       project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
     }),
   }));
+  await page.route("https://api.mesurer.dev/api/toolbar/share", (route) => route.fulfill({
+    status: 201,
+    contentType: "application/json",
+    body: JSON.stringify({ url: "https://mesurer.dev/share/shr_reused-grant" }),
+  }));
 
   await page.goto(AUTH_PAGE);
   await page.getByRole("button", { name: /Settings/ }).click();
+  await expect(page.locator('[data-mesurer-platform-status="disconnected"]')).toBeVisible();
+
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Create test review link" }).click();
+  const popupPage = await popupPromise;
+  await popupPage.waitForURL(/^https:\/\/mesurer\.dev\/toolbar\/authorize/);
+  const authorizationUrl = new URL(popupPage.url());
+  expect(authorizationUrl.searchParams.get("grantId")).toBe(GRANT_ID);
+  await page.evaluate(({ state }) => {
+    const authWindow = window as Window & { __mesurerAuthPopup?: Window };
+    window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://mesurer.dev",
+      source: authWindow.__mesurerAuthPopup ?? null,
+      data: { type: "mesurer:authorization", code: "reused-grant-authorization-code-123456789012", state },
+    }));
+  }, { state: authorizationUrl.searchParams.get("state") });
 
   await expect(page.locator('[data-mesurer-platform-status="connected"]')).toContainText("Ada Lovelace");
-  await expect(page.getByRole("button", { name: "Create test review link" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_reused-grant");
 });
 
 test("rejects a callback with the wrong state", async ({ page }) => {

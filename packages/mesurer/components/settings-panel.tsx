@@ -106,6 +106,7 @@ type SettingsPanelProps = {
     connect: () => Promise<unknown>
     createTestReviewLink: () => Promise<string | null>
     canCreateTestReviewLink: boolean
+    hasSavedGrant: boolean
     disconnect: () => void
   }
   general: {
@@ -128,7 +129,7 @@ type SettingsPanelProps = {
   }
 }
 
-function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestReviewLink, disconnect }: NonNullable<SettingsPanelProps["platform"]>) {
+function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestReviewLink, hasSavedGrant, disconnect }: NonNullable<SettingsPanelProps["platform"]>) {
   if (state.status === "connected") {
     return (
       <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="connected">
@@ -180,11 +181,27 @@ function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestR
     )
   }
 
-  const connecting = state.status === "connecting" || state.status === "restoring"
+  if (state.status === "disconnected" && hasSavedGrant) {
+    return (
+      <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="disconnected">
+        <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700">
+          Your saved Mesurer consent will be reused to create a review link.
+        </p>
+        <SettingsButton className="msr:justify-self-start" onClick={() => void createTestReviewLink()}>
+          Create test review link
+        </SettingsButton>
+        <SettingsButton className="msr:justify-self-start" onClick={disconnect}>
+          Remove saved Mesurer connection
+        </SettingsButton>
+      </div>
+    )
+  }
+
+  const connecting = state.status === "connecting"
   return (
     <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status={state.status}>
       <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700" role={connecting ? "status" : undefined}>
-        {state.status === "restoring" ? "Restoring your Mesurer connection..." : connecting ? "Waiting for Mesurer authorization..." : "Connect your Mesurer account and choose a project for this site."}
+        {connecting ? "Waiting for Mesurer authorization..." : "Connect your Mesurer account and choose a project for this site."}
       </p>
       {state.status === "error" ? (
         <p className="msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">

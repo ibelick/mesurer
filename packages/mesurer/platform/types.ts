@@ -26,7 +26,6 @@ export type PlatformShareState =
 
 export type PlatformAuthState =
   | { status: "disconnected" }
-  | { status: "restoring" }
   | { status: "connecting" }
   | ({ status: "connected"; share: PlatformShareState } & PlatformConnection)
   | { status: "error"; error: PlatformAuthError }

@@ -1,4 +1,4 @@
-import { createTestReviewLink, exchangeAuthorizationCode, restorePlatformGrant } from "./api"
+import { createTestReviewLink, exchangeAuthorizationCode } from "./api"
 import type { CommentThread } from "../core/types"
 import { getPlatformConfig } from "./config"
 import { createPkce, randomBase64Url } from "./pkce"
@@ -16,11 +16,9 @@ export class PlatformAuthClient {
   private state: PlatformAuthState = { status: "disconnected" }
   private popup: Window | null = null
   private authorizationAbort: AbortController | null = null
-  private restoreAbort: AbortController | null = null
   private shareAbort: AbortController | null = null
   private capability: string | null = null
   private attempt = 0
-  private restoreAttempted = false
   private readonly storageListener = (event: StorageEvent) => {
     if (!isGrantStorageKey(event.key, this.environment)) return
     const storedGrantId = readGrantId(this.ownerWindow, this.environment)
@@ -38,6 +36,8 @@ export class PlatformAuthClient {
   }
 
   getState = () => this.state
+
+  hasSavedGrant = () => Boolean(readGrantId(this.ownerWindow, this.environment))
 
   subscribe = (listener: Listener) => {
     if (this.listeners.size === 0) {
@@ -57,7 +57,6 @@ export class PlatformAuthClient {
   connect = async () => {
     const attempt = ++this.attempt
     this.authorizationAbort?.abort()
-    this.restoreAbort?.abort()
     this.shareAbort?.abort()
     this.capability = null
     this.popup?.close()
@@ -138,39 +137,6 @@ export class PlatformAuthClient {
     removeGrantId(this.ownerWindow, this.environment)
   }
 
-  restore = async () => {
-    if (this.restoreAttempted) return
-    this.restoreAttempted = true
-    const grantId = readGrantId(this.ownerWindow, this.environment)
-    if (!grantId) return
-    const restoreAbort = new AbortController()
-    this.restoreAbort = restoreAbort
-    const config = getPlatformConfig(this.environment)
-    this.setState({ status: "restoring" })
-    try {
-      const connection = await restorePlatformGrant({
-        apiOrigin: config.apiOrigin,
-        callbackOrigin: config.callbackOrigin,
-        fetch: this.ownerWindow.fetch.bind(this.ownerWindow),
-        grantId,
-        signal: restoreAbort.signal,
-      })
-      if (restoreAbort.signal.aborted || connection.grantId !== grantId) return
-      this.capability = connection.capability
-      this.setState({
-        status: "connected",
-        share: { status: "idle" },
-        grantId: connection.grantId,
-        user: connection.user,
-        project: connection.project,
-      })
-    } catch {
-      if (!restoreAbort.signal.aborted) this.setState({ status: "disconnected" })
-    } finally {
-      if (this.restoreAbort === restoreAbort) this.restoreAbort = null
-    }
-  }
-
   createTestReviewLink = async (comments: CommentThread[] = []) => {
     if (!await this.ensureShareCapability()) return null
     const connectedState = this.state
@@ -215,8 +181,6 @@ export class PlatformAuthClient {
     this.attempt += 1
     this.authorizationAbort?.abort()
     this.authorizationAbort = null
-    this.restoreAbort?.abort()
-    this.restoreAbort = null
     this.shareAbort?.abort()
     this.shareAbort = null
     this.popup?.close()
@@ -232,8 +196,12 @@ export class PlatformAuthClient {
   }
 
   private async ensureShareCapability() {
-    if (this.state.status !== "connected" || this.state.share.status === "creating") return false
-    if (this.capability) return true
+    if (this.state.status === "connected") {
+      if (this.state.share.status === "creating") return false
+      if (this.capability) return true
+    } else if (this.state.status !== "disconnected" || !this.hasSavedGrant()) {
+      return false
+    }
     return Boolean(await this.connect()) && this.capability !== null
   }
 
@@ -241,8 +209,6 @@ export class PlatformAuthClient {
     this.attempt += 1
     this.authorizationAbort?.abort()
     this.authorizationAbort = null
-    this.restoreAbort?.abort()
-    this.restoreAbort = null
     this.shareAbort?.abort()
     this.shareAbort = null
     this.popup?.close()

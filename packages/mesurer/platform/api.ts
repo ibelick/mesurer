@@ -103,38 +103,6 @@ export const exchangeAuthorizationCode = async ({
   return readAuthorization(result)
 }
 
-export const restorePlatformGrant = async ({
-  apiOrigin,
-  callbackOrigin,
-  fetch,
-  grantId,
-  signal,
-}: {
-  apiOrigin: string
-  callbackOrigin: string
-  fetch: typeof globalThis.fetch
-  grantId: string
-  signal: AbortSignal
-}): Promise<PlatformAuthorization> => {
-  let response: Response
-  try {
-    response = await fetch(`${apiOrigin}/api/oauth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId: "mesurer-npm-toolbar", grantId, callbackOrigin }),
-      signal,
-    })
-  } catch (error) {
-    if (signal.aborted && signal.reason instanceof PlatformAuthError) throw signal.reason
-    throw new PlatformAuthError("api_unavailable", "The Mesurer authentication service is unavailable.", error)
-  }
-
-  const result: unknown = await response.json().catch(() => null)
-  if (!response.ok) throw new PlatformAuthError("token_exchange_failed", "Mesurer could not restore the authorization.")
-  return readAuthorization(result)
-}
-
 export const createTestReviewLink = async ({
   apiOrigin,
   capability,
