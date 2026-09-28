@@ -82,6 +82,8 @@ import {
   type CreateReviewViewer,
   type ReviewPublication,
 } from "./core/review";
+import { usePlatformAuth } from "./hooks/use-platform-auth";
+import type { PlatformEnvironment } from "./platform/types";
 
 const collectReviewComments = (
   comments: CommentThread[],
@@ -162,6 +164,7 @@ export type MesurerProps = {
   extensionRecordingPlayer?: string;
   features?: MesurerFeatures;
   reviewState?: import("./core/review").ReviewState;
+  platform?: { environment?: PlatformEnvironment } | false;
   initialState?: {
     enabled?: boolean;
     minimized?: boolean;
@@ -219,6 +222,7 @@ export function MesurerClient({
   extensionRecording,
   extensionRecordingPlayer,
   features,
+  platformEnvironment,
   initialState,
   reviewState,
 }: Required<
@@ -239,6 +243,7 @@ export function MesurerClient({
     | "extensionRecording"
     | "extensionRecordingPlayer"
     | "features"
+    | "platform"
     | "initialState"
     | "reviewState"
   >
@@ -263,9 +268,11 @@ export function MesurerClient({
     rulerSettings: RulerSettings;
     textStyle: TextStyleSettings;
     features: ResolvedMesurerFeatures;
+    platformEnvironment: PlatformEnvironment | null;
   }) {
   const ownerDocument = portalTarget.ownerDocument ?? document;
   const ownerWindow = ownerDocument.defaultView ?? window;
+  const platformAuth = usePlatformAuth(ownerWindow, platformEnvironment);
   const {
     pageKey,
     appliedPageKeyRef,
@@ -2078,6 +2085,7 @@ export function MesurerClient({
                 arrowClickToPlace,
                 setArrowClickToPlace,
               }}
+              platform={platformEnvironment ? platformAuth : undefined}
               general={{
                 persistOnReload: settings.persistOnReload,
                 setPersistOnReload: settings.setPersistOnReload,

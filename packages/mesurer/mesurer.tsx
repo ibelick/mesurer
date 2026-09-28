@@ -53,6 +53,7 @@ export function MesurerUnstyled({
   extensionRecording,
   extensionRecordingPlayer,
   features,
+  platform,
   initialState,
   reviewState,
 }: MesurerProps) {
@@ -110,6 +111,7 @@ export function MesurerUnstyled({
       extensionRecording={extensionRecording}
       extensionRecordingPlayer={extensionRecordingPlayer}
       features={resolveMesurerFeatures(features)}
+      platformEnvironment={platform === false ? null : platform?.environment ?? "production"}
       initialState={{ ...restoredReviewState, ...initialState }}
       portalTarget={resolvedPortalTarget ?? document.body}
     />

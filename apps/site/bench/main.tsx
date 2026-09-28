@@ -1083,7 +1083,7 @@ export function Bench() {
 
   return (
     <>
-      <Mesurer persistKey="mesurer-bench-initial-state" persistOnReload={false} initialState={seededInitialState} />
+      <Mesurer platform={{ environment: "development" }} persistKey="mesurer-bench-initial-state" persistOnReload={false} initialState={seededInitialState} />
       <main className="bench-page">
         <header className="bench-header">
           <div>

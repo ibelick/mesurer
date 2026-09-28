@@ -279,6 +279,7 @@ const mount = async () => {
     state.root = createRoot(container);
     state.root.render(
       <MesurerUnstyled
+        platform={false}
         portalTarget={shadowRoot}
         persistence={state.persistence}
         persistSession

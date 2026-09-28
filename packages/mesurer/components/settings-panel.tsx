@@ -21,6 +21,7 @@ import { Tooltip, useTooltip } from "./tooltip"
 import { TOOLBAR_DOCKS, type GuideStyle, type InfoCardMode, type RulerSettings, type ScreenshotSettings, type ThemeMode, type ToolbarDock } from "../core/persistence"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
+import type { PlatformAuthState } from "../platform/types"
 
 export type SettingsFocusSection =
   | "guides"
@@ -100,6 +101,11 @@ type SettingsPanelProps = {
     setArrowClickToPlace: Dispatch<SetStateAction<boolean>>
   }
   focusSection?: SettingsFocusSection
+  platform?: {
+    state: PlatformAuthState
+    connect: () => Promise<unknown>
+    disconnect: () => void
+  }
   general: {
     persistOnReload: boolean
     setPersistOnReload: Dispatch<SetStateAction<boolean>>
@@ -118,6 +124,45 @@ type SettingsPanelProps = {
     onSaveReview?: () => void | Promise<void>
     reviewSaveStatus: "idle" | "saving" | "saved" | "error"
   }
+}
+
+function PlatformSettings({ state, connect, disconnect }: NonNullable<SettingsPanelProps["platform"]>) {
+  if (state.status === "connected") {
+    return (
+      <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="connected">
+        <div className="msr:grid msr:gap-0.5 msr:text-[11px] msr:leading-4 msr:text-ink-700">
+          <strong className="msr:font-medium msr:text-ink-900">{state.user.name}</strong>
+          <span className="msr:break-all">{state.user.email}</span>
+          <span>Project: {state.project.name}</span>
+        </div>
+        <SettingsButton className="msr:justify-self-start" onClick={disconnect}>
+          Sign out from toolbar
+        </SettingsButton>
+      </div>
+    )
+  }
+
+  const connecting = state.status === "connecting"
+  return (
+    <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status={state.status}>
+      <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700" role={connecting ? "status" : undefined}>
+        {connecting ? "Waiting for Mesurer authorization..." : "Connect your Mesurer account and choose a project for this site."}
+      </p>
+      {state.status === "error" ? (
+        <p className="msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">
+          {state.error.message}
+        </p>
+      ) : null}
+      <SettingsButton
+        aria-busy={connecting}
+        className="msr:justify-self-start"
+        disabled={connecting}
+        onClick={() => void connect()}
+      >
+        {connecting ? "Connecting..." : state.status === "error" ? "Try again" : "Connect to Mesurer"}
+      </SettingsButton>
+    </div>
+  )
 }
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
@@ -392,6 +437,7 @@ export function SettingsPanel({
   rulers,
   arrows,
   focusSection,
+  platform,
   general,
 }: SettingsPanelProps) {
   const releaseChannel = getReleaseChannel()
@@ -633,6 +679,15 @@ export function SettingsPanel({
         <SliderControl label="Opacity" min={0.2} max={1} step={0.05} value={rulerSettings.opacity} formatValue={(value) => `${Math.round(value * 100)}%`} parseInput={(input) => Number.parseFloat(input) / 100} onChange={(value) => setRulerSettings((settings) => ({ ...settings, opacity: value }))} />
         <div className="msr:col-span-2"><SettingsSwitch label="Edge reveal" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
       </SettingsSection>
+
+      {platform ? (
+        <>
+          <SectionDivider />
+          <SettingsSection id="platform" title="Platform" ariaLabel="Mesurer platform settings">
+            <PlatformSettings {...platform} />
+          </SettingsSection>
+        </>
+      ) : null}
 
       <SectionDivider />
       <SettingsSection id="general" title="General" ariaLabel="General settings">
