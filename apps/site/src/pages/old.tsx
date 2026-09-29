@@ -1,4 +1,3 @@
-import { Mesurer } from "mesurer";
 import { XLogoIcon } from "@phosphor-icons/react";
 import { Header, HomeContent } from "./marketing/site";
 import MarketingFooter from "./marketing/footer";
@@ -7,7 +6,6 @@ import FinalCta from "./marketing/final-cta";
 export default function OldPage() {
   return (
     <main className="min-h-screen pb-0 pt-20">
-      <Mesurer initialState={{ minimized: true }} />
       <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5">
         <Header showDescription linkToHome={false} />
         <HomeContent />

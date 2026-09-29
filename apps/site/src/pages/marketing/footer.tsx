@@ -50,8 +50,9 @@ export default function MarketingFooter() {
           </div>
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Resources</h2>
-            <FooterLink href="/#installation">Getting started</FooterLink>
-            <FooterLink href="/docs">Shortcuts</FooterLink>
+            <FooterLink href="/docs">Getting started</FooterLink>
+            <FooterLink href="/docs/props">Props</FooterLink>
+            <FooterLink href="/docs/shortcuts">Shortcuts</FooterLink>
           </div>
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Connect</h2>
