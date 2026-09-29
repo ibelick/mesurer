@@ -146,13 +146,6 @@
   -webkit-user-select: none;
 }
 
-.mesurer-root .mesurer-settings-button-ghost,
-.mesurer-root .mesurer-settings-button-ghost:hover,
-.mesurer-root .mesurer-settings-button-ghost:focus,
-.mesurer-root .mesurer-settings-button-ghost:active {
-  background-color: transparent !important;
-}
-
 .mesurer-root .mesurer-settings-button-ghost {
   opacity: 0.7;
 }
@@ -626,9 +619,9 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-tooltips {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 110;
   overflow: visible;
   pointer-events: none;
 }
