@@ -1,24 +1,27 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react"
+import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react"
 import { cn } from "../core/utils"
 
 type MenuSurfaceProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
 }
 
-export function MenuSurface({ className, children, ...props }: MenuSurfaceProps) {
-  return (
-    <div
-      {...props}
-      className={cn(
-        "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
-        className,
-      )}
-      role="menu"
-    >
-      {children}
-    </div>
-  )
-}
+export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
+  function MenuSurface({ className, children, ...props }, ref) {
+    return (
+      <div
+        {...props}
+        ref={ref}
+        className={cn(
+          "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
+          className,
+        )}
+        role="menu"
+      >
+        {children}
+      </div>
+    )
+  },
+)
 
 type ToolbarMenuProps = MenuSurfaceProps & {
   side: "top" | "bottom"

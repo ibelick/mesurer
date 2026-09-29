@@ -383,6 +383,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     error,
     toggleSelection,
     confirmRecording,
+    cancelSelection,
     stop,
     discard,
     exportClip,

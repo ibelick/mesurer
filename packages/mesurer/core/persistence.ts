@@ -47,14 +47,18 @@ export const DEFAULT_RULER_SETTINGS: RulerSettings = {
   edgeReveal: false,
 }
 
+export type ShareMode = "screenshot" | "record"
+
 export type ScreenshotSettings = {
   copy: boolean
   download: boolean
+  shareMode: ShareMode
 }
 
 export const DEFAULT_SCREENSHOT_SETTINGS: ScreenshotSettings = {
   copy: true,
   download: false,
+  shareMode: "screenshot",
 }
 
 export const DEFAULT_TOOLBAR_POSITION = { x: 16, y: 16 }
@@ -261,8 +265,9 @@ const normalizeScreenshotSettings = (value: unknown): ScreenshotSettings | undef
   const copy = typeof input.copy === "boolean" ? input.copy : DEFAULT_SCREENSHOT_SETTINGS.copy
   const download =
     typeof input.download === "boolean" ? input.download : DEFAULT_SCREENSHOT_SETTINGS.download
-  if (!copy && !download) return { ...DEFAULT_SCREENSHOT_SETTINGS }
-  return { copy, download }
+  const shareMode = input.shareMode === "record" ? "record" : DEFAULT_SCREENSHOT_SETTINGS.shareMode
+  if (!copy && !download) return { ...DEFAULT_SCREENSHOT_SETTINGS, shareMode }
+  return { copy, download, shareMode }
 }
 
 const isFiniteNumber = (value: unknown): value is number =>

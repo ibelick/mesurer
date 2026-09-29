@@ -1,13 +1,7 @@
 import type { ScreenshotRect } from "../core/screenshot"
 import { ControlNumberInput, SettingsFieldRow } from "./control-field"
+import { RecordIcon } from "./icons"
 import { SettingsButton } from "./settings-button"
-
-const RecordIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" className="msr:block">
-    <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1" />
-    <circle cx="5" cy="5" r="1.75" fill="currentColor" />
-  </svg>
-)
 
 type RecordingSelectionPanelProps = {
   rect: ScreenshotRect
@@ -94,7 +88,7 @@ export function RecordingSelectionPanel({
         <SettingsButton
           type="button"
           className="msr:w-full msr:justify-center"
-          leftIcon={<RecordIcon />}
+          leftIcon={<RecordIcon size={10} />}
           onClick={onConfirm}
         >
           Start recording

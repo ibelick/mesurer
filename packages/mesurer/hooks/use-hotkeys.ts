@@ -90,6 +90,7 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onScreenshot: () => void
+  onScreenRecord: () => void
   onCopyComments: () => void | Promise<boolean>
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
@@ -324,6 +325,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
+      if (key === "v") {
+        if (!isFeatureAvailable("screenshot")) return
+        event.preventDefault()
+        current.onInteract()
+        current.onScreenRecord()
+        return
+      }
+
       if (key === "x" || key === "r") {
         if (key === "r" && !isFeatureAvailable("rulers")) return
         event.preventDefault()
@@ -377,11 +386,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
         if (key === "h") {
           current.setGuideOrientation("horizontal")
-          current.onInteract()
-        }
-
-        if (key === "v") {
-          current.setGuideOrientation("vertical")
           current.onInteract()
         }
       }

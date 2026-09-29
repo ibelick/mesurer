@@ -1407,6 +1407,7 @@ export function MesurerClient({
     setSelectedMeasurements,
     setSelectedMeasurement,
     screenshot,
+    screenRecording,
     colorPicker,
     undo,
     redo,
@@ -1848,6 +1849,7 @@ export function MesurerClient({
           previewUrl: screenshot.previewUrl,
           copy: settingsScreenshot.copy,
           download: settingsScreenshot.download,
+          shareMode: settingsScreenshot.shareMode,
           onClick: screenshot.toggleSelection,
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
@@ -1857,6 +1859,7 @@ export function MesurerClient({
           elapsed: screenRecording.elapsed,
           error: screenRecording.error,
           onClick: screenRecording.toggleSelection,
+          onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,
         },
          comments: {

@@ -77,9 +77,7 @@ export function App() {
     ) : path === "/docs" || path.startsWith("/docs/") ? (
       <DocsPage />
     ) : path === "/old" ? (
-      <Suspense fallback={null}>
-        <OldPage />
-      </Suspense>
+      <OldPage />
     ) : (
       <MarketingPage />
     );
