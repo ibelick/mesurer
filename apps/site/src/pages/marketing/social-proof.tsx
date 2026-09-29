@@ -1,46 +1,53 @@
 type Testimonial = {
   quote: string;
   name: string;
-  role: string;
-  initials: string;
+  handle: string;
+  url: string;
+  avatar: string;
 };
 
 const testimonials: Testimonial[] = [
   {
-    quote: "Mesurer gives our agents the missing visual context. We can point at the problem instead of trying to describe it.",
-    name: "Maya Chen",
-    role: "Product engineer",
-    initials: "MC",
+    quote: "bro....THANK YOU.",
+    name: "shadcn",
+    handle: "@shadcn",
+    url: "https://x.com/shadcn/status/2042512251077190037",
+    avatar: "https://unavatar.io/x/shadcn",
   },
   {
-    quote: "The fastest way for our team to turn a rough interface into a precise review is to open Mesurer and start annotating.",
-    name: "Jon Bell",
-    role: "Design systems lead",
-    initials: "JB",
+    quote: "Duuuuuuude this is exactly what I needed. Ty",
+    name: "David",
+    handle: "@drgdfyi",
+    url: "https://x.com/drgdfyi/status/2084931655937266160",
+    avatar: "https://unavatar.io/x/drgdfyi",
   },
   {
-    quote: "It feels like a shared language between the browser, the person reviewing it, and the coding agent making the change.",
-    name: "Sofia Martin",
-    role: "Founder, Northstar",
-    initials: "SM",
+    quote: "This is exactly what I've been looking for. Thanks",
+    name: "Moumen Soliman",
+    handle: "@moumensoliman",
+    url: "https://x.com/moumensoliman/status/2085015782019236262",
+    avatar: "https://unavatar.io/x/moumensoliman",
   },
   {
-    quote: "Comments pinned to the live interface make small visual fixes dramatically easier to understand and ship.",
-    name: "Theo Wright",
-    role: "Staff engineer",
-    initials: "TW",
+    quote: "oh nice! was working on something similar but i'm super glad i don't have to now lol",
+    name: "daniel petho",
+    handle: "@nonzeroexitcode",
+    url: "https://x.com/nonzeroexitcode/status/2084938082181169646",
+    avatar: "https://unavatar.io/x/nonzeroexitcode",
   },
   {
-    quote: "Mesurer keeps the feedback loop close to the thing we are building. No screenshots, tabs, or translation layer required.",
-    name: "Ari Patel",
-    role: "Independent builder",
-    initials: "AP",
+    quote: "woah was just wondering whether drag and multi-select could live side by side in a visual editor and then saw this. really well done :)",
+    name: "Sam Gorman",
+    handle: "@gormankind",
+    url: "https://x.com/gormankind/status/2042519642628067562",
+    avatar: "https://unavatar.io/x/gormankind",
   },
   {
-    quote: "Our review process is more direct now: inspect the element, leave the context, and let the agent take it from there.",
-    name: "Nora Adams",
-    role: "Frontend developer",
-    initials: "NA",
+    quote: "oh man this is awesome",
+    name: "OrcDev",
+    handle: "@orcdev",
+    url: "https://x.com/orcdev/status/2042584106593071310",
+    avatar: "https://unavatar.io/x/orcdev",
   },
 ];
 
@@ -48,33 +55,39 @@ export default function SocialProof() {
   return (
     <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 overflow-hidden px-5" aria-labelledby="social-proof-title">
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto mb-10 max-w-prose text-center">
+        <div className="mb-10 max-w-prose text-left">
           <h2 id="social-proof-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
-            The new way to build software.
+            The new way to build software
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
           {testimonials.map((testimonial, index) => (
-            <article
+            <a
               key={testimonial.name}
-              className={`${index > 2 ? "hidden md:flex" : "flex"} min-h-[180px] flex-col rounded-[var(--radius)] border border-border p-5`}
+              href={testimonial.url}
+              target="_blank"
+              rel="noreferrer"
+              className={`${index > 2 ? "hidden md:flex" : "flex"} h-full min-h-[180px] flex-col rounded-md border border-border p-5`}
             >
-              <figure className="flex h-full flex-col">
+              <article className="flex h-full flex-col">
                 <blockquote className="grow overflow-hidden">
                   <p className="line-clamp-5 text-pretty text-base leading-relaxed text-strong">“{testimonial.quote}”</p>
                 </blockquote>
-                <figcaption className="mt-8 flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius)] bg-subtle text-xs font-medium text-strong" aria-hidden="true">
-                    {testimonial.initials}
-                  </span>
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={testimonial.avatar}
+                    alt=""
+                    className="size-10 shrink-0 rounded-full object-cover"
+                    loading="lazy"
+                  />
                   <span className="text-sm text-strong">
                     {testimonial.name}
-                    <span className="block text-muted">{testimonial.role}</span>
+                    <span className="block text-muted">{testimonial.handle}</span>
                   </span>
-                </figcaption>
-              </figure>
-            </article>
+                </div>
+              </article>
+            </a>
           ))}
         </div>
       </div>
