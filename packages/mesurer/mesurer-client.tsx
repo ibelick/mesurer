@@ -1785,9 +1785,10 @@ export function MesurerClient({
         screenRecording={{
           recording: screenRecording.recording,
           rect: screenRecording.recordingRect,
-          panel: screenRecording.recording ? <section className="msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110] msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-floating" aria-label="Screen recording">
-            <div className="msr:flex msr:items-center msr:gap-2"><span className="msr:size-2 msr:animate-pulse msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" /><span className="msr:text-[11px] msr:font-medium msr:text-ink-900">Recording</span><span className="msr:ml-auto msr:font-mono msr:text-[11px] msr:text-ink-700">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span></div>
-            <SettingsButton className="msr:mt-3 msr:w-full msr:justify-center" variant="danger-solid" onClick={screenRecording.stop}>Stop recording</SettingsButton>
+          panel: screenRecording.recording ? <section className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110] msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-white msr:px-3 msr:py-2 msr:shadow-floating" aria-label="Screen recording">
+            <span className="msr:size-1.5 msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" />
+            <span className="msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-800">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span>
+            <SettingsButton variant="danger-solid" onClick={screenRecording.stop}>Stop</SettingsButton>
           </section> : screenRecording.video ? <div className="msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110]"><ScreenRecordingEditor url={screenRecording.video.url} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /></div> : null,
         }}
         toolbar={{

@@ -20,6 +20,27 @@ export function MenuSurface({ className, children, ...props }: MenuSurfaceProps)
   )
 }
 
+type ToolbarMenuProps = MenuSurfaceProps & {
+  side: "top" | "bottom"
+  align?: "left" | "right"
+}
+
+export function ToolbarMenu({ className, side, align = "left", children, ...props }: ToolbarMenuProps) {
+  return (
+    <MenuSurface
+      {...props}
+      className={cn(
+        "msr:absolute msr:z-[100] msr:flex msr:w-44 msr:flex-col msr:gap-px",
+        side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+        align === "left" ? "msr:left-0" : "msr:right-0",
+        className,
+      )}
+    >
+      {children}
+    </MenuSurface>
+  )
+}
+
 type MenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
   variant?: "neutral" | "accent"

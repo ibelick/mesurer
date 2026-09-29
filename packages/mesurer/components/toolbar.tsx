@@ -26,7 +26,7 @@ import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
 import { LayoutGuidesPanel } from "./layout-guides-panel";
 import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
-import { MenuItem, MenuSurface } from "./menu";
+import { MenuItem, MenuSurface, ToolbarMenu } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import type { LayoutGuide } from "../core/layout-guides";
 import {
@@ -337,7 +337,7 @@ function ToolbarComponent(
     onCancel: onCancelScreenshot,
     onPreviewExited: onScreenshotPreviewExited,
   } = screenshot;
-  const { recording, elapsed, error: recordingError, onClick: onScreenRecordingClick, onStop: onScreenRecordingStop } = screenRecording;
+  const { recording, error: recordingError, onClick: onScreenRecordingClick, onStop: onScreenRecordingStop } = screenRecording;
   const {
     count: commentCount,
     onCopy: onCopyComments,
@@ -382,10 +382,10 @@ function ToolbarComponent(
     useToolbarTooltip();
   const guideMenuOpen = openMenu?.type === "guide-orientation";
   const commentMenuOpen = openMenu?.type === "comments";
+  const captureMenuOpen = openMenu?.type === "capture";
   const [guideControl, setGuideControl] = useState<"guides" | "rulers">(
     rulersVisible ? "rulers" : "guides",
   );
-  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
   const toggleToolbarMenu = useCallback(
     (menu: Exclude<OpenMenu, null>) => {
@@ -1088,15 +1088,9 @@ function ToolbarComponent(
           anchorRef={guideMenuRef}
         />
         {guideMenuOpen ? (
-          <MenuSurface
-            className={cn(
-              "msr:absolute msr:z-[100] msr:w-44",
-              "msr:flex msr:flex-col msr:gap-px",
-              menuSide === "bottom"
-                ? "msr:top-full msr:mt-2"
-                : "msr:bottom-full msr:mb-2",
-              menuAlign === "left" ? "msr:left-0" : "msr:right-0",
-            )}
+          <ToolbarMenu
+            side={menuSide}
+            align={menuAlign}
             tabIndex={0}
             onKeyDown={(event) => {
               const key = event.key.toLowerCase();
@@ -1197,7 +1191,7 @@ function ToolbarComponent(
               <span className="msr:flex-1">Vertical</span>
               <span>V</span>
             </MenuItem>
-          </MenuSurface>
+          </ToolbarMenu>
         ) : null}
       </div>
       <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
@@ -1328,7 +1322,7 @@ function ToolbarComponent(
               label={recording ? "Stop recording" : "Screenshot"}
               shortcut={recording ? undefined : "C"}
               onClick={() => {
-                setCaptureMenuOpen(false)
+                if (openMenu?.type === "capture") setOpenMenu(null)
                 if (recording) onScreenRecordingStop()
                 else screenshotMode()
               }}
@@ -1363,19 +1357,58 @@ function ToolbarComponent(
             aria-label="Capture menu"
             aria-haspopup="menu"
             aria-expanded={captureMenuOpen}
-            className="msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
-            onClick={() => setCaptureMenuOpen((open) => !open)}
+            data-mesurer-menu-trigger
+            className={cn(
+              "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+              captureMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
+            )}
+            onClick={() => toggleToolbarMenu({ type: "capture" })}
           >
             <CaretDownIcon size={8} aria-hidden="true" />
           </button>
-        {captureMenuOpen ? <MenuSurface className="msr:absolute msr:left-full msr:top-0 msr:z-[110] msr:ml-1 msr:w-36">
-          <MenuItem className="msr:flex msr:w-full msr:items-center msr:gap-2 msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:hover:bg-ink-200" onClick={() => { setCaptureMenuOpen(false); screenshotMode() }}>
-            <CameraIcon size={14} /> Screenshot
-          </MenuItem>
-          <MenuItem className="msr:flex msr:w-full msr:items-center msr:gap-2 msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:hover:bg-ink-200" onClick={() => { setCaptureMenuOpen(false); recording ? onScreenRecordingStop() : onScreenRecordingClick() }}>
-            <span aria-hidden="true" className={`msr:size-2.5 msr:rounded-full ${recording ? "msr:bg-[var(--msr-danger-solid-bg)]" : "msr:border-2 msr:border-current"}`} /> {recording ? `Stop ${Math.floor(elapsed)}s` : "Screen record"}
-          </MenuItem>
-        </MenuSurface> : null}
+          {captureMenuOpen ? (
+            <ToolbarMenu
+              side={menuSide}
+              align="left"
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return
+                event.preventDefault()
+                event.stopPropagation()
+                setOpenMenu(null)
+              }}
+            >
+              <MenuItem
+                className="msr:gap-2"
+                onClick={() => {
+                  setOpenMenu(null)
+                  screenshotMode()
+                }}
+              >
+                <CameraIcon size={12} />
+                <span className="msr:flex-1">Screenshot</span>
+                <span>C</span>
+              </MenuItem>
+              <MenuItem
+                className="msr:gap-2"
+                onClick={() => {
+                  setOpenMenu(null)
+                  if (recording) onScreenRecordingStop()
+                  else onScreenRecordingClick()
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "msr:size-2.5",
+                    recording
+                      ? "msr:bg-[var(--msr-danger-solid-bg)]"
+                      : "msr:border-2 msr:border-current",
+                  )}
+                />
+                <span className="msr:flex-1">{recording ? "Stop recording" : "Screen record"}</span>
+              </MenuItem>
+            </ToolbarMenu>
+          ) : null}
         </div>
         </div>
         <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
