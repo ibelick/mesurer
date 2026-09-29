@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import { MIN_SCREENSHOT_SELECTION, normalizeScreenshotRect, type ScreenshotRect } from "../core/screenshot"
+import {
+  MIN_SCREENSHOT_SELECTION,
+  clampScreenshotRect,
+  moveScreenshotRect,
+  normalizeScreenshotRect,
+  pointInScreenshotRect,
+  resizeScreenshotRect,
+  type ScreenshotRect,
+} from "../core/screenshot"
+import { eventView, listenPointerDrag } from "../core/pointer-drag"
+import type { ResizeHandle } from "../core/text-transform"
 
 const MAX_RECORDING_MS = 60_000
 
@@ -49,7 +59,10 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const elapsedRef = useRef(0)
   const captureNodesRef = useRef<{ source: HTMLVideoElement; canvas: HTMLCanvasElement } | null>(null)
   const [selecting, setSelecting] = useState(false)
+  const [adjusting, setAdjusting] = useState(false)
   const [rect, setRect] = useState<ScreenshotRect | null>(null)
+  const rectRef = useRef<ScreenshotRect | null>(null)
+  rectRef.current = rect
   const [recordingRect, setRecordingRect] = useState<ScreenshotRect | null>(null)
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -88,8 +101,14 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const cancelSelection = useCallback(() => {
     originRef.current = null
     setSelecting(false)
+    setAdjusting(false)
     setRect(null)
   }, [])
+
+  const viewport = useCallback(
+    () => ({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight }),
+    [ownerWindow],
+  )
 
   const discard = useCallback(() => {
     release()
@@ -198,26 +217,108 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     if (selecting) return cancelSelection()
     discard()
     onPrepare()
+    setAdjusting(false)
+    setRect(null)
     setSelecting(true)
   }, [cancelSelection, discard, onPrepare, selecting])
 
-  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const confirmRecording = useCallback(() => {
+    const nextRect = rectRef.current
+    if (!nextRect || nextRect.width < MIN_SCREENSHOT_SELECTION || nextRect.height < MIN_SCREENSHOT_SELECTION) return
+    cancelSelection()
+    void start(nextRect)
+  }, [cancelSelection, start])
+
+  useEffect(() => {
+    if (!selecting) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        cancelSelection()
+        return
+      }
+      if (adjusting && event.key === "Enter") {
+        event.preventDefault()
+        confirmRecording()
+      }
+    }
+    ownerWindow.addEventListener("keydown", onKeyDown)
+    return () => ownerWindow.removeEventListener("keydown", onKeyDown)
+  }, [adjusting, cancelSelection, confirmRecording, ownerWindow, selecting])
+
+  const beginDraw = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    setAdjusting(false)
     originRef.current = { x: event.clientX, y: event.clientY }
     event.currentTarget.setPointerCapture(event.pointerId)
-    setRect(normalizeScreenshotRect(originRef.current, originRef.current, { width: ownerWindow.innerWidth, height: ownerWindow.innerHeight }))
-  }, [ownerWindow])
+    setRect(normalizeScreenshotRect(originRef.current, originRef.current, viewport()))
+  }, [viewport])
+
+  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (adjusting && rectRef.current && pointInScreenshotRect(rectRef.current, { x: event.clientX, y: event.clientY })) {
+      return
+    }
+    beginDraw(event)
+  }, [adjusting, beginDraw])
+
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!originRef.current) return
-    setRect(normalizeScreenshotRect(originRef.current, { x: event.clientX, y: event.clientY }, { width: ownerWindow.innerWidth, height: ownerWindow.innerHeight }))
-  }, [ownerWindow])
+    setRect(normalizeScreenshotRect(originRef.current, { x: event.clientX, y: event.clientY }, viewport()))
+  }, [viewport])
+
   const onPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
     const startPoint = originRef.current
     originRef.current = null
     if (!startPoint) return
-    const nextRect = normalizeScreenshotRect(startPoint, { x: event.clientX, y: event.clientY }, { width: ownerWindow.innerWidth, height: ownerWindow.innerHeight })
-    cancelSelection()
-    if (nextRect.width >= MIN_SCREENSHOT_SELECTION && nextRect.height >= MIN_SCREENSHOT_SELECTION) void start(nextRect)
-  }, [cancelSelection, ownerWindow, start])
+    const nextRect = normalizeScreenshotRect(startPoint, { x: event.clientX, y: event.clientY }, viewport())
+    if (nextRect.width < MIN_SCREENSHOT_SELECTION || nextRect.height < MIN_SCREENSHOT_SELECTION) {
+      setRect(null)
+      setAdjusting(false)
+      return
+    }
+    setRect(nextRect)
+    setAdjusting(true)
+  }, [viewport])
+
+  const onMoveStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const current = rectRef.current
+    const view = eventView(event)
+    if (!current || !view) return
+    const startRect = current
+    listenPointerDrag(event.pointerId, view, { x: event.clientX, y: event.clientY }, {
+      onMove: (dx, dy) => setRect(moveScreenshotRect(startRect, dx, dy, viewport())),
+      onEnd: () => {},
+    })
+  }, [viewport])
+
+  const setRectSize = useCallback((width: number, height: number) => {
+    setRect((current) =>
+      current ? clampScreenshotRect({ ...current, width, height }, viewport()) : current,
+    )
+  }, [viewport])
+
+  const setRectPosition = useCallback((left: number, top: number) => {
+    setRect((current) =>
+      current ? clampScreenshotRect({ ...current, left, top }, viewport()) : current,
+    )
+  }, [viewport])
+
+  const onResizeStart = useCallback((handle: ResizeHandle, event: ReactPointerEvent<HTMLButtonElement>) => {
+    const current = rectRef.current
+    const view = eventView(event)
+    if (!current || !view) return
+    const startRect = current
+    listenPointerDrag(event.pointerId, view, { x: event.clientX, y: event.clientY }, {
+      onMove: (_dx, _dy, pointer) => {
+        setRect(resizeScreenshotRect(startRect, handle, { x: pointer.clientX, y: pointer.clientY }, viewport()))
+      },
+      onEnd: () => {},
+    })
+  }, [viewport])
 
   const exportClip = useCallback(async (
     startTime: number,
@@ -271,5 +372,28 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     return { blob, filename }
   }, [ownerDocument, ownerWindow, video])
 
-  return { selecting, rect, recordingRect, recording, elapsed, video, error, toggleSelection, stop, discard, exportClip, onPointerDown, onPointerMove, onPointerUp, onPointerCancel: cancelSelection }
+  return {
+    selecting,
+    adjusting,
+    rect,
+    recordingRect,
+    recording,
+    elapsed,
+    video,
+    error,
+    toggleSelection,
+    confirmRecording,
+    stop,
+    discard,
+    exportClip,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel: cancelSelection,
+    onMoveStart,
+    onResizeStart,
+    setRectSize,
+    setRectPosition,
+    viewportSize: viewport,
+  }
 }

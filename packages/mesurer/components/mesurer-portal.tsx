@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { useEffect, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
 import { LayoutGuidesOverlay } from "./layout-guides-overlay";
-import { ScreenshotSelectOverlay } from "./screenshot-select-overlay";
+import { RegionDimMask, ScreenshotSelectOverlay } from "./screenshot-select-overlay";
 import { Toolbar } from "./toolbar";
 import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
@@ -99,9 +99,24 @@ export function MesurerPortal({
       ) : null}
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
-      {screenRecording.recording && screenRecording.rect ? <div className="msr:pointer-events-none msr:absolute msr:z-[86] msr:outline msr:outline-2 msr:outline-[var(--msr-danger-text)]" style={{ left: screenRecording.rect.left, top: screenRecording.rect.top, width: screenRecording.rect.width, height: screenRecording.rect.height }}>
-        <span className="msr:absolute msr:-top-6 msr:left-0 msr:rounded-control msr:bg-[var(--msr-danger-solid-bg)] msr:px-1.5 msr:py-0.5 msr:text-[10px] msr:font-medium msr:text-[var(--msr-danger-solid-text)]">REC</span>
-      </div> : null}
+      {screenRecording.recording && screenRecording.rect ? (
+        <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[86]">
+          <RegionDimMask rect={screenRecording.rect} />
+          <div
+            className="msr:absolute msr:outline msr:outline-2 msr:outline-[var(--msr-danger-text)]"
+            style={{
+              left: screenRecording.rect.left,
+              top: screenRecording.rect.top,
+              width: screenRecording.rect.width,
+              height: screenRecording.rect.height,
+            }}
+          >
+            <span className="msr:absolute msr:-top-6 msr:left-0 msr:rounded-control msr:bg-[var(--msr-danger-solid-bg)] msr:px-1.5 msr:py-0.5 msr:text-[10px] msr:font-medium msr:text-[var(--msr-danger-solid-text)]">
+              REC
+            </span>
+          </div>
+        </div>
+      ) : null}
       {screenRecording.panel}
       <Toolbar ref={toolbarRef} {...toolbar} />
     </div>,

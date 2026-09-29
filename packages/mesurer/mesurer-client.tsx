@@ -1769,7 +1769,15 @@ export function MesurerClient({
       }}
         screenshot={screenRecording.selecting ? {
           active: true,
+          mode: "recording",
+          adjusting: screenRecording.adjusting,
           rect: screenRecording.rect,
+          onConfirm: screenRecording.confirmRecording,
+          viewport: screenRecording.viewportSize(),
+          onSizeChange: screenRecording.setRectSize,
+          onPositionChange: screenRecording.setRectPosition,
+          onMoveStart: screenRecording.onMoveStart,
+          onResizeStart: screenRecording.onResizeStart,
           onPointerDown: screenRecording.onPointerDown,
           onPointerMove: screenRecording.onPointerMove,
           onPointerUp: screenRecording.onPointerUp,
