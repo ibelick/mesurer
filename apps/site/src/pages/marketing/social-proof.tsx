@@ -66,7 +66,7 @@ export default function SocialProof() {
             >
               <article className="flex h-full flex-col">
                 <blockquote className="grow overflow-hidden">
-                  <p className="line-clamp-5 text-pretty text-base leading-relaxed text-strong">“{testimonial.quote}”</p>
+                  <p className="line-clamp-5 text-pretty text-base leading-relaxed text-strong">{testimonial.quote}</p>
                 </blockquote>
                 <div className="mt-3 flex items-center gap-3">
                   <img
