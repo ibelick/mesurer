@@ -32,6 +32,9 @@ import { usePersistenceLifecycle } from "./hooks/use-persistence-lifecycle";
 import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
+import { useScreenRecording } from "./hooks/use-screen-recording";
+import { ScreenRecordingEditor } from "./components/screen-recording-editor";
+import { SettingsButton } from "./components/settings-button";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
 import { TypographyInspector, hasDirectRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
@@ -845,6 +848,15 @@ export function MesurerClient({
       setSettingsOpen(false);
     },
   });
+  const screenRecording = useScreenRecording({
+    ownerDocument,
+    ownerWindow,
+    onPrepare: () => {
+      colorPicker.setActive(false)
+      screenshot.closeUi()
+      setSettingsOpen(false)
+    },
+  })
   closeScreenshotRef.current = screenshot.closeUi;
   const openColorPicker = useCallback(() => {
     screenshot.closeUi();
@@ -1755,15 +1767,30 @@ export function MesurerClient({
            onDraftCancel: commentPointer.onDraftCancel,
         } : undefined,
       }}
-      screenshot={{
-        active: features.screenshot && screenshot.active,
-        rect: features.screenshot ? screenshot.rect : null,
-        onPointerDown: screenshot.handlePointerDown,
-        onPointerMove: screenshot.handlePointerMove,
-        onPointerUp: screenshot.handlePointerUp,
-        onPointerCancel: screenshot.handlePointerCancel,
-      }}
-      toolbar={{
+        screenshot={screenRecording.selecting ? {
+          active: true,
+          rect: screenRecording.rect,
+          onPointerDown: screenRecording.onPointerDown,
+          onPointerMove: screenRecording.onPointerMove,
+          onPointerUp: screenRecording.onPointerUp,
+          onPointerCancel: screenRecording.onPointerCancel,
+        } : {
+          active: features.screenshot && screenshot.active,
+          rect: features.screenshot ? screenshot.rect : null,
+          onPointerDown: screenshot.handlePointerDown,
+          onPointerMove: screenshot.handlePointerMove,
+          onPointerUp: screenshot.handlePointerUp,
+          onPointerCancel: screenshot.handlePointerCancel,
+        }}
+        screenRecording={{
+          recording: screenRecording.recording,
+          rect: screenRecording.recordingRect,
+          panel: screenRecording.recording ? <section className="msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110] msr:w-48 msr:rounded-lg msr:border msr:border-ink-200 msr:bg-white msr:p-3 msr:shadow-floating" aria-label="Screen recording">
+            <div className="msr:flex msr:items-center msr:gap-2"><span className="msr:size-2 msr:animate-pulse msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" /><span className="msr:text-[11px] msr:font-medium msr:text-ink-900">Recording</span><span className="msr:ml-auto msr:font-mono msr:text-[11px] msr:text-ink-700">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span></div>
+            <SettingsButton className="msr:mt-3 msr:w-full msr:justify-center" variant="danger-solid" onClick={screenRecording.stop}>Stop recording</SettingsButton>
+          </section> : screenRecording.video ? <div className="msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110]"><ScreenRecordingEditor url={screenRecording.video.url} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /></div> : null,
+        }}
+        toolbar={{
         eventTarget: ownerWindow,
         initialPosition: settingsToolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
         onPositionChange: setSettingsToolbarPosition,
@@ -1815,6 +1842,13 @@ export function MesurerClient({
           onClick: screenshot.toggleSelection,
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
+        },
+          screenRecording: {
+          recording: screenRecording.recording,
+          elapsed: screenRecording.elapsed,
+          error: screenRecording.error,
+          onClick: screenRecording.toggleSelection,
+          onStop: screenRecording.stop,
         },
          comments: {
           count: comments.length,
