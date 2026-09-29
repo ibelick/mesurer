@@ -714,7 +714,7 @@ export default function MarketingPage() {
             },
             {
               title: "Annotations",
-              image: "https://assets.querrel.com/mesurer/annotations.webp?v=4",
+              image: "https://assets.querrel.com/mesurer/annotations.webp?v=5",
             },
             {
               title: "Screenshot-paste",
