@@ -708,12 +708,12 @@ export default function MarketingPage() {
           description="Stop describing what you have in mind, show it instead. Mesurer helps you interact faster and in a more effective way with your coding agents."
           cards={[
             {
-              title: "Annotations",
-              image: "https://assets.querrel.com/mesurer/annotations.webp?v=3",
-            },
-            {
               title: "Comments",
               image: "https://assets.querrel.com/mesurer/comments.webp?v=2",
+            },
+            {
+              title: "Annotations",
+              image: "https://assets.querrel.com/mesurer/annotations.webp?v=3",
             },
             {
               title: "Screenshot-paste",

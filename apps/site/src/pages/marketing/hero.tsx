@@ -87,13 +87,13 @@ export default function Hero() {
   return (
     <section className="mx-auto mt-24 w-full max-w-2xl text-left" aria-labelledby="landing-title">
       <div className="flex max-w-[460px] flex-col">
-        <h1 id="landing-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
+        <h1 id="landing-title" className="text-balance text-[22px] font-medium leading-tight text-strong">
           Build precise software with your coding agent.
         </h1>
-        <p className="mt-2 text-pretty text-[22px] leading-[1.23] text-muted">
+        <p className="mt-2 text-pretty text-[22px] leading-tight text-muted">
           Inspect, annotate, and direct changes directly on your live interface.
         </p>
-        <div className="mt-[38px] flex flex-wrap items-center justify-start gap-[18px]" aria-label="Get Mesurer">
+        <div className="mt-[38px] flex flex-wrap items-center justify-start gap-3" aria-label="Get Mesurer">
           <Button
             href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
             target="_blank"
