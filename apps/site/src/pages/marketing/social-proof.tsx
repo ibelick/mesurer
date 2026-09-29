@@ -53,14 +53,8 @@ const testimonials: Testimonial[] = [
 
 export default function SocialProof() {
   return (
-    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 overflow-hidden px-5" aria-labelledby="social-proof-title">
+    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 overflow-hidden px-5" aria-label="Testimonials">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10 max-w-prose text-left">
-          <h2 id="social-proof-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
-            The new way to build software
-          </h2>
-        </div>
-
         <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
           {testimonials.map((testimonial, index) => (
             <a
