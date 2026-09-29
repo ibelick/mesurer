@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react"
 import { createPortal } from "react-dom"
 import { Mesurer } from "mesurer"
 import "./styles.css"
@@ -21,6 +21,8 @@ const agentLogos = [
   ["OpenClaw", "https://assets.querrel.com/logo/muted/openclaw.webp"],
   ["DeepSeek", "https://assets.querrel.com/logo/muted/deepseek.webp"],
 ] as const
+
+const transparentPixel = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
 
 const iframeSrcDoc = `<!doctype html>
 <html>
@@ -81,6 +83,141 @@ const iframeSrcDoc = `<!doctype html>
     </script>
   </body>
 </html>`
+
+function SelectionOverlayFixtures() {
+  const deeplyNestedImage = Array.from({ length: 12 }, (_, index) => index).reduce<ReactNode>(
+    (child, index) => <div data-image-wrapper={index}>{child}</div>,
+    <img
+      data-testid="deep-image-media"
+      alt=""
+      src={transparentPixel}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+    />,
+  )
+
+  return (
+    <>
+      <section
+        id="carousel-6fc272a2-263f-4f78-8994-a81f68e3ebbf"
+        className="bench-card"
+        aria-labelledby="deepmind-video-card-title"
+      >
+        <div aria-hidden="true" />
+        <div>
+          <div>
+            <div>
+              <article
+                className="card card--promo media--aspect-2-3 --text-color--auto card--has-background --background-color--surface-container"
+                style={{ position: "relative", width: 320, height: 420, overflow: "hidden", background: "#27272a" }}
+              >
+                <div className="card__background">
+                  <div className="w-block-video block-video">
+                    <figure className="media-video-figure">
+                      <div className="media-video-container has-dark-mode-alternative no-light-mode-mobile no-dark-mode-mobile media--aspect-inherit --scrim">
+                        <div className="video-wrapper">
+                          <div className="media-video-poster" style={{ opacity: 0, pointerEvents: "none" }}>
+                            <div className="media__container">
+                              <picture className="image --scrim media--aspect-inherit light-mode">
+                                <img className="picture__image" alt="" role="presentation" src={transparentPixel} />
+                              </picture>
+                            </div>
+                          </div>
+                          <video
+                            data-testid="video-card-media"
+                            className="media-video media-video--custom light-mode"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="metadata"
+                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                          >
+                            Your browser does not support the video tag.
+                            <source type="video/webm" data-theme="dark" />
+                          </video>
+                        </div>
+                      </div>
+                    </figure>
+                  </div>
+                  <div className="card__background-scrim" />
+                </div>
+                <div className="card__inner" style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", padding: 16 }}>
+                  <div className="card__content card__content--medium card__content--text-hierarchy-scaled card__content--text-size-small">
+                    <h3 id="deepmind-video-card-title" data-testid="video-card-title" className="card__title" style={{ color: "white", fontSize: 24 }}>
+                      Gemini Audio
+                    </h3>
+                    <div className="card__text"><p>Advanced real-time audio models, built on Gemini</p></div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bench-card" aria-labelledby="deep-image-title">
+        <article style={{ position: "relative", width: 320, height: 180, overflow: "hidden", background: "#0f766e" }}>
+          {deeplyNestedImage}
+          <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", padding: 20 }}>
+            <h3 id="deep-image-title" data-testid="deep-image-title" style={{ color: "white", fontSize: 24 }}>
+              Twelve levels above
+            </h3>
+          </div>
+        </article>
+      </section>
+
+      <section className="bench-card" aria-label="Non-text transparent overlay">
+        <div style={{ position: "relative", width: 320, height: 180 }}>
+          <canvas data-testid="overlay-canvas" width="320" height="180" style={{ width: 320, height: 180, background: "#dbeafe" }} />
+          <svg
+            viewBox="0 0 320 180"
+            aria-label="Pointer-transparent target mark"
+            style={{ position: "absolute", inset: 0, width: 320, height: 180, pointerEvents: "none" }}
+          >
+            <circle data-testid="transparent-overlay-mark" cx="160" cy="90" r="28" fill="#f97316" style={{ pointerEvents: "none" }} />
+          </svg>
+        </div>
+      </section>
+
+      <section className="bench-card" aria-label="Paint-order selection targets">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+          <div style={{ position: "relative", width: 320, height: 180 }}>
+            <h3 style={{ position: "absolute", zIndex: 0, inset: "70px 0 auto", margin: 0, pointerEvents: "none", textAlign: "center" }}>
+              Painted behind media
+            </h3>
+            <canvas
+              data-testid="paint-order-source"
+              width="320"
+              height="180"
+              style={{ position: "absolute", zIndex: 1, inset: 0, width: 320, height: 180, background: "#cbd5e1" }}
+            />
+          </div>
+
+          <div style={{ position: "relative", width: 320, height: 180 }}>
+            <canvas
+              data-testid="clipped-overlay-source"
+              width="320"
+              height="180"
+              style={{ position: "absolute", inset: 0, width: 320, height: 180, background: "#bfdbfe" }}
+            />
+            <div
+              style={{ position: "absolute", zIndex: 1, inset: 0, clipPath: "inset(0 240px 0 0)", pointerEvents: "none", background: "#f97316" }}
+            />
+          </div>
+
+          <div style={{ position: "relative", width: 320, height: 180, background: "#334155" }}>
+            <div style={{ position: "absolute", zIndex: 1, inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
+              <h3 style={{ margin: 0, color: "white", fontSize: 24 }}>Lower transparent title</h3>
+            </div>
+            <div style={{ position: "absolute", zIndex: 2, inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
+              <h3 data-testid="top-transparent-title" style={{ margin: 0, color: "white", fontSize: 24 }}>Top transparent title</h3>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  )
+}
 
 function TestCanvas({ count }: { count: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -198,6 +335,8 @@ function TestCanvas({ count }: { count: number }) {
             <circle cx="72" cy="57" r="18" fill="#f59e0b" /><rect x="190" y="28" width="74" height="52" fill="#86efac" transform="rotate(-8 227 54)" />
           </svg>
       </section>
+
+      <SelectionOverlayFixtures />
 
       <section className="bench-card" aria-labelledby="transform-title">
         <div className="bench-card-heading">

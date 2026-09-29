@@ -61,6 +61,7 @@ export const useWorkspaceLifecycle = ({
 }: Options) => {
   const {
     enabledRef,
+    minimizedRef,
     xrayVisibleRef,
     toolModeRef,
     rulersVisibleRef,
@@ -79,6 +80,7 @@ export const useWorkspaceLifecycle = ({
     commentsRef,
     layoutGuidesRef,
     setEnabled,
+    setMinimized,
     setXrayVisible,
     setToolMode,
     setRulersVisible,
@@ -138,6 +140,7 @@ export const useWorkspaceLifecycle = ({
 
   const readSessionChrome = useCallback((): MesurerSessionChrome => ({
     enabled: enabledRef.current,
+    minimized: minimizedRef.current,
     xrayVisible: xrayVisibleRef.current,
     toolMode: toolModeRef.current,
     rulersVisible: rulersVisibleRef.current,
@@ -148,6 +151,7 @@ export const useWorkspaceLifecycle = ({
     rulersVisibleRef,
     toolModeRef,
     xrayVisibleRef,
+    minimizedRef,
   ]);
 
   const readWorkspace = useCallback(
@@ -344,6 +348,7 @@ export const useWorkspaceLifecycle = ({
   const applyPersistedWorkspace = useCallback(
     (value: MesurerStoredWorkspace) => {
       enabledRef.current = value.enabled;
+      if (typeof value.minimized === "boolean") minimizedRef.current = value.minimized;
       toolModeRef.current = value.toolMode;
       rulersVisibleRef.current = value.rulersVisible;
       xrayVisibleRef.current = value.xrayVisible;
@@ -363,6 +368,7 @@ export const useWorkspaceLifecycle = ({
       layoutGuidesRef.current = value.layoutGuides ?? [];
       if (!value.enabled) closeScreenshotRef.current();
       setEnabled(value.enabled);
+      if (typeof value.minimized === "boolean") setMinimized(value.minimized);
       setToolMode(value.toolMode);
       setRulersVisible(value.rulersVisible);
       setXrayVisible(value.xrayVisible);
@@ -384,9 +390,11 @@ export const useWorkspaceLifecycle = ({
     [
       closeScreenshotRef,
       enabledRef,
+      minimizedRef,
       setActiveMeasurement,
       setArrows,
       setEnabled,
+      setMinimized,
       setGuideOrientation,
       setGuides,
       setHeldDistances,
@@ -584,6 +592,7 @@ export const useWorkspaceLifecycle = ({
     },
     [closeScreenshotRef, enabledRef, persistState, setEnabled],
   );
+  const setMinimizedPersisted = usePersistedSetter(minimizedRef, setMinimized);
   const setRulersVisiblePersisted = usePersistedSetter(
     rulersVisibleRef,
     setRulersVisible,
@@ -648,6 +657,7 @@ export const useWorkspaceLifecycle = ({
     readWorkspace,
     readPageArtifacts,
     setEnabledPersisted,
+    setMinimizedPersisted,
     setToolModePersisted,
     setRulersVisiblePersisted,
     setGuideOrientationPersisted,

@@ -112,7 +112,8 @@ export const useMesurerWorkspaceState = ({
   );
   const comments = useCommentState(initialComments ?? persistedState?.comments ?? initialState?.comments ?? [], onCommentsChange);
   const [toolbarActive, setToolbarActive] = useState(true);
-  const [minimized, setMinimized] = useState(initialState?.minimized ?? false);
+  const minimizedRef = useRef(persistedState?.minimized ?? initialState?.minimized ?? false);
+  const [minimized, setMinimized] = useState(minimizedRef.current);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [xrayVisible, setXrayVisible] = useState(xrayVisibleRef.current);
@@ -151,6 +152,7 @@ export const useMesurerWorkspaceState = ({
     ...comments,
     toolbarActive,
     setToolbarActive,
+    minimizedRef,
     minimized,
     setMinimized,
     openMenu,

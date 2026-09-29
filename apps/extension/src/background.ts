@@ -1,4 +1,5 @@
 import { CAPTURE_VISIBLE_MESSAGE, SAVE_WORKSPACE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+import { createActiveTabRegistry } from "./active-tabs";
 
 const ACTIVE_TABS_KEY = "mesurer:active-tabs";
 const restoreTimers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -33,11 +34,7 @@ const writeActiveTabs = async (ids: number[]) => {
   }
 };
 
-const setTabActive = async (tabId: number, open: boolean) => {
-  const ids = await readActiveTabs();
-  const next = open ? Array.from(new Set([...ids, tabId])) : ids.filter((id) => id !== tabId);
-  await writeActiveTabs(next);
-};
+const activeTabRegistry = createActiveTabRegistry(readActiveTabs, writeActiveTabs);
 
 const inject = async (tabId: number, boot: ExtensionBoot) => {
   await chrome.scripting.executeScript({
@@ -91,8 +88,11 @@ const restoreTab = (tabId: number, url?: string) => {
     tabId,
     setTimeout(() => {
       restoreTimers.delete(tabId);
-      void pingAlive(tabId)
-        .then(async (alive) => {
+      void activeTabRegistry.ready
+        .then(async () => {
+          if (!activeTabRegistry.isActive(tabId)) return;
+          const alive = await pingAlive(tabId);
+          if (!activeTabRegistry.isActive(tabId)) return;
           if (alive) {
             await chrome.scripting.executeScript({
               target: { tabId },
@@ -105,8 +105,8 @@ const restoreTab = (tabId: number, url?: string) => {
           return inject(tabId, "restore");
         })
         .catch((error) => {
-        console.error("Mesurer failed to restore", error);
-      });
+          console.error("Mesurer failed to restore", error);
+        });
     }, 50),
   );
 };
@@ -123,7 +123,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === SESSION_MESSAGE) {
     const tabId = sender.tab?.id;
     if (typeof tabId === "number" && typeof message.open === "boolean") {
-      void setTabActive(tabId, message.open);
+      void activeTabRegistry.setActive(tabId, message.open);
     }
     return false;
   }
@@ -168,15 +168,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete" && !changeInfo.url) return;
-  void readActiveTabs().then((ids) => {
-    if (!ids.includes(tabId)) return;
-    restoreTab(tabId, changeInfo.url ?? tab.url);
-  });
+  restoreTab(tabId, changeInfo.url ?? tab.url);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   const timer = restoreTimers.get(tabId);
   if (timer) clearTimeout(timer);
   restoreTimers.delete(tabId);
-  void setTabActive(tabId, false);
+  void activeTabRegistry.setActive(tabId, false);
 });

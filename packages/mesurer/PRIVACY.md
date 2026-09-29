@@ -23,10 +23,11 @@ Mesurer does not collect:
 
 Used only when the user explicitly activates the extension, to run Mesurer on the current tab.
 
-### optional host access
+### host permissions
 
-After you turn Mesurer on, Chrome may ask for access to that site so the toolbar can stay on
-through reloads and in-site navigations. This is not used to read or send page content off-device.
+Mesurer requests access to HTTP and HTTPS pages so it can run on any regular website and restore
+the toolbar across reloads and in-site navigations. This access is not used to read or send page
+content off-device.
 
 ### scripting
 

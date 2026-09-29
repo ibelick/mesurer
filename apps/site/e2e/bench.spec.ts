@@ -61,9 +61,11 @@ test("inspect resolves text inside a pointer-transparent card description", asyn
 });
 
 test("inspect resolves every UI Skills card target to its visual bounds", async ({ page }) => {
+  test.setTimeout(20_000);
   const targets: Array<{
     name: string;
     selector: string;
+    inspectSelector?: RegExp;
     point?: (box: { x: number; y: number; width: number; height: number }) => { x: number; y: number };
     tolerance?: number;
   }> = [
@@ -74,6 +76,16 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
     { name: "CLI copy icon", selector: '[data-card-href="/cli"] button[aria-label="Copy command"] svg', point: (box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 }), tolerance: 6 },
     { name: "MCP text", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-card-description div:first-child' },
     { name: "MCP logo", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-agent-track-inner img' },
+    {
+      name: "DeepMind video card title",
+      selector: '#carousel-6fc272a2-263f-4f78-8994-a81f68e3ebbf > div:nth-of-type(2) > div > div:nth-of-type(1) > article > div.card__inner h3.card__title',
+      inspectSelector: /h3/,
+    },
+    { name: "deep image overlay title", selector: '[data-testid="deep-image-title"]', inspectSelector: /h3/ },
+    { name: "non-text transparent SVG mark", selector: '[data-testid="transparent-overlay-mark"]', inspectSelector: /circle/ },
+    { name: "media painted above transparent text", selector: '[data-testid="paint-order-source"]', inspectSelector: /canvas/ },
+    { name: "media below clipped overlay bounds", selector: '[data-testid="clipped-overlay-source"]', inspectSelector: /canvas/ },
+    { name: "highest transparent stacking layer", selector: '[data-testid="top-transparent-title"]', inspectSelector: /h3/ },
   ]
 
   for (const targetCase of targets) {
@@ -96,6 +108,9 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
     }, { message: `${targetCase.name} hover bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
 
     await page.mouse.click(point.x, point.y);
+    if (targetCase.inspectSelector) {
+      await expect(page.locator("[data-mesurer-inspect-selector]"), `${targetCase.name} exact element`).toContainText(targetCase.inspectSelector);
+    }
     const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
     await expect(selected, `${targetCase.name} selection`).toBeVisible();
     await expect.poll(async () => {

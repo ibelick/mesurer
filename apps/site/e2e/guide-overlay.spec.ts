@@ -134,6 +134,17 @@ test("Inspect shows typography details in the info card", async ({ page }) => {
   await expect(card).toContainText("Tracking");
 });
 
+test("Inspect can select text visually layered above a video", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const title = page.getByTestId("video-card-title");
+  const box = await title.boundingBox();
+  expect(box).not.toBeNull();
+  await expect(page.locator("[data-mesurer-overlay]")).toHaveCSS("pointer-events", "auto");
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("h3");
+});
+
 test("Option+S pins the current distance overlay", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await activateSelect(page);
@@ -1813,6 +1824,22 @@ test("persist keeps overlays after a full navigation back", async ({ page }) => 
 
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await expect(page.locator("[data-mesurer-guide]")).toHaveCount(1);
+});
+
+test("persist keeps the minimized toolbar state after navigation", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.getByRole("button", { name: /Settings \((?:⌘ ,|Ctrl \+ ,)\)/ }).click();
+  await page.getByRole("switch", { name: "Persist" }).click();
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+
+  await page.goto("/e2e/fixtures/other-page.html");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
+
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await expect(page.getByRole("button", { name: "Show Mesurer toolbar" })).toBeVisible();
 });
 
 test("guides and drawings stay on the page they were created on", async ({ page }) => {
