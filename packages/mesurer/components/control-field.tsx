@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { colorToHex, parseCssColor } from "../core/colors"
+import { cn } from "../core/utils"
 
 export const SETTINGS_COLUMNS = "msr:grid-cols-[78px_150px]"
 
@@ -99,13 +100,24 @@ export function SettingsFieldRow({
 }
 
 export function ControlShell({ left, right }: { left: ReactNode; right?: ReactNode }) {
+  const split = Boolean(right)
   return (
-    <div className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200">
-      <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">
+    <div
+      className={cn(
+        "mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200",
+        split ? "msr:overflow-visible" : "msr:overflow-hidden msr:focus-within:border-[#0d99ff] msr:hover:focus-within:border-[#0d99ff]",
+      )}
+    >
+      <div
+        className={cn(
+          "mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center",
+          split && "msr:focus-within:relative msr:focus-within:z-[1] msr:focus-within:rounded-l-[5px] msr:focus-within:shadow-[0_0_0_1px_#0d99ff]",
+        )}
+      >
         {left}
       </div>
       {right ? (
-        <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">
+        <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:relative msr:focus-within:z-[1] msr:focus-within:rounded-r-[5px] msr:focus-within:shadow-[0_0_0_1px_#0d99ff]">
           {right}
         </div>
       ) : null}
