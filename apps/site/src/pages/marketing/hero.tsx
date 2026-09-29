@@ -68,7 +68,7 @@ function DownloadCount() {
       : "Loading download count";
 
   return (
-    <span className="inline-flex items-center font-medium leading-none text-strong tabular-nums lining-nums">
+    <span className="inline-flex min-w-[7ch] items-center font-medium leading-none text-strong tabular-nums lining-nums">
       <span className="sr-only">{accessibleCount}</span>
       <span aria-hidden="true" className="inline-flex items-center leading-none">
         {formattedCount === null

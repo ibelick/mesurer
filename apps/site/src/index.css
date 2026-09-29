@@ -4,7 +4,7 @@
   font-family: "Inter";
   font-style: normal;
   font-weight: 400 600;
-  font-display: swap;
+  font-display: optional;
   src: url("/inter-latin.woff2") format("woff2");
 }
 
@@ -12,7 +12,7 @@
   font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: optional;
   src: url("/ibm-plex-mono-400-latin.woff2") format("woff2");
 }
 
@@ -20,7 +20,7 @@
   font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 500;
-  font-display: swap;
+  font-display: optional;
   src: url("/ibm-plex-mono-500-latin.woff2") format("woff2");
 }
 
