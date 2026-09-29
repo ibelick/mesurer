@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import Button from "./components/button";
 import AgentPromptButton from "./components/agent-prompt-button";
+import { getPackageVersion } from "../../utils/get-package-version";
+
+const version = getPackageVersion();
 
 const formatDownloads = (value: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
@@ -105,8 +108,8 @@ export default function Hero() {
           <AgentPromptButton />
         </div>
         <p className="mt-4 text-pretty text-xs leading-[1.35] text-muted">
-          <a href="#features" className="font-medium text-strong underline decoration-border underline-offset-2 transition-opacity duration-150 ease-out hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
-            See how it works
+          <a href="https://www.npmjs.com/package/mesurer" target="_blank" rel="noreferrer" className="font-medium text-strong underline decoration-border underline-offset-2 transition-opacity duration-150 ease-out hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
+            v{version}
           </a>
           <span aria-hidden="true"> · </span>
           <DownloadCount /> downloads

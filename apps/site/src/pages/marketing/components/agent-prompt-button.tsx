@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const setupPrompt = "Set up Mesurer in this project: install the `mesurer` package, add `<Mesurer />` to the app, and explain how to use it.";
+export const setupPrompt = "Set up Mesurer in this project: install the `mesurer` package, add `<Mesurer />` to the app, and explain how to use it.";
 
 export default function AgentPromptButton() {
   const [state, setState] = useState<"idle" | "copied" | "error">("idle");

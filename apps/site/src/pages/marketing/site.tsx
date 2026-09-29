@@ -24,6 +24,7 @@ import Hero from "./hero";
 import ProductCarousel from "./product-carousel";
 import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
+import BrowserSection from "./browser-section";
 import FinalCta from "./final-cta";
 import SocialProof from "./social-proof";
 
@@ -721,6 +722,7 @@ export default function MarketingPage() {
             },
           ]}
         />
+        <BrowserSection />
         <SocialProof />
         <FinalCta />
       </div>
