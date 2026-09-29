@@ -81,16 +81,20 @@ function App() {
 
 function DocsLayout({
   title,
+  description,
   current,
   children,
 }: {
   title: string;
+  description: string;
   current: string;
   children: ReactNode;
 }) {
   return (
     <main className="min-h-dvh pb-0 pt-20">
       <title>{`${title} | Mesurer`}</title>
+      <meta name="description" content={description} />
+      <meta property="og:title" content={`${title} | Mesurer`} />
       <div className="mx-auto max-w-5xl px-5 pb-40">
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:gap-16">
           <aside className="md:sticky md:top-20 md:w-44 md:shrink-0">
@@ -118,13 +122,28 @@ export default function DocsPage() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const page =
     path === "/docs/props"
-      ? { href: "/docs/props", title: "Props", children: <PropList /> }
+      ? {
+          href: "/docs/props",
+          title: "Props",
+          description: "All Mesurer component props.",
+          children: <PropList />,
+        }
       : path === "/docs/shortcuts"
-        ? { href: "/docs/shortcuts", title: "Shortcuts", children: <ShortcutList /> }
-        : { href: "/docs", title: "Getting started", children: <GettingStarted /> };
+        ? {
+            href: "/docs/shortcuts",
+            title: "Shortcuts",
+            description: "Keyboard commands for the Mesurer toolbar.",
+            children: <ShortcutList />,
+          }
+        : {
+            href: "/docs",
+            title: "Getting started",
+            description: "Install Mesurer in Chrome or in your project.",
+            children: <GettingStarted />,
+          };
 
   return (
-    <DocsLayout title={page.title} current={page.href}>
+    <DocsLayout title={page.title} description={page.description} current={page.href}>
       {page.children}
     </DocsLayout>
   );

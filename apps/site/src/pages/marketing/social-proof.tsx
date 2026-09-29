@@ -74,7 +74,10 @@ export default function SocialProof() {
                     src={testimonial.avatar}
                     alt=""
                     className="size-10 shrink-0 rounded-full object-cover"
+                    width={40}
+                    height={40}
                     loading="lazy"
+                    decoding="async"
                   />
                   <span className="text-sm text-strong">
                     {testimonial.name}

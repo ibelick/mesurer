@@ -69,7 +69,11 @@ export default function ProductCarousel() {
                 src={slide.image}
                 alt={`${slide.title} feature in Mesurer`}
                 className="size-full object-cover"
+                width={1600}
+                height={1000}
                 loading={index === 0 ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={index === 0 ? "high" : undefined}
               />
             </div>
             <figcaption className="mt-3 text-center text-sm">

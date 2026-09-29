@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --force",
-    "build": "pnpm --dir ../../packages/mesurer build && vite build",
+    "build": "pnpm --dir ../../packages/mesurer build && vite build && node scripts/prerender.mjs",
+    "prerender": "node scripts/prerender.mjs",
     "deploy:pages": "pnpm run build && npx wrangler pages deploy dist --project-name mesurer-site",
     "preview": "vite preview",
     "test": "pnpm --dir ../../packages/mesurer generate:styles && playwright test"
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "playwright": "^1.61.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

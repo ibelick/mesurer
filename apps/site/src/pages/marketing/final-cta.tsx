@@ -12,6 +12,8 @@ export default function FinalCta() {
         src="https://assets.querrel.com/mesurer/cta.webp"
         alt=""
         className="pointer-events-none absolute top-1/2 right-0 z-0 h-[480px] w-auto max-w-none -translate-y-1/2 lg:-right-10"
+        loading="lazy"
+        decoding="async"
       />
       <div className="relative z-10 mx-auto max-w-6xl">
         <h2
@@ -20,7 +22,7 @@ export default function FinalCta() {
         >
           Build precise software with your coding agent.
         </h2>
-        <div
+        <nav
           className="mt-[38px] flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center"
           aria-label="Get Mesurer"
         >
@@ -33,7 +35,7 @@ export default function FinalCta() {
             Add to Chrome
           </Button>
           <AgentPromptButton />
-        </div>
+        </nav>
       </div>
     </section>
   );

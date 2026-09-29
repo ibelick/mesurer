@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://mesurer.dev/</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/docs</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/docs/props</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/docs/shortcuts</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/changelog</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/privacy</loc>
+  </url>
+  <url>
+    <loc>https://mesurer.dev/terms</loc>
+  </url>
+</urlset>

@@ -60,17 +60,15 @@ function DownloadCount() {
       ? null
       : formatDownloads(downloadCount);
 
+  const accessibleCount = downloadError
+    ? "Download count unavailable"
+    : formattedCount
+      ? `${formattedCount} downloads`
+      : "Loading download count";
+
   return (
-    <span
-      className="inline-flex items-center font-medium leading-none text-strong tabular-nums lining-nums"
-      aria-label={
-        downloadError
-          ? "Download count unavailable"
-          : formattedCount
-            ? `${formattedCount} downloads`
-            : "Loading download count"
-      }
-    >
+    <span className="inline-flex items-center font-medium leading-none text-strong tabular-nums lining-nums">
+      <span className="sr-only">{accessibleCount}</span>
       <span aria-hidden="true" className="inline-flex items-center leading-none">
         {formattedCount === null
           ? "\u00a0"
@@ -96,7 +94,7 @@ export default function Hero() {
         <p className="mt-2 text-pretty text-[22px] leading-tight text-muted">
           Inspect, annotate, and direct changes directly on your live interface.
         </p>
-        <div className="mt-[38px] flex flex-wrap items-center justify-start gap-3" aria-label="Get Mesurer">
+        <nav className="mt-[38px] flex flex-wrap items-center justify-start gap-3" aria-label="Get Mesurer">
           <Button
             href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
             target="_blank"
@@ -106,13 +104,14 @@ export default function Hero() {
             Add to Chrome
           </Button>
           <AgentPromptButton />
-        </div>
+        </nav>
         <p className="mt-4 text-pretty text-xs leading-[1.35] text-muted">
           <a href="https://www.npmjs.com/package/mesurer" target="_blank" rel="noreferrer" className="font-medium text-strong underline decoration-border underline-offset-2 transition-opacity duration-150 ease-out hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
             v{version}
           </a>
           <span aria-hidden="true"> · </span>
-          <DownloadCount /> downloads
+          <DownloadCount />
+          <span aria-hidden="true"> downloads</span>
         </p>
       </div>
     </section>
