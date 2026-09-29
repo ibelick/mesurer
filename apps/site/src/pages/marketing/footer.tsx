@@ -30,7 +30,7 @@ export default function MarketingFooter() {
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col items-start gap-3">
-            <a href="#overview" className="inline-flex w-fit items-center gap-2 text-base font-medium text-strong transition-opacity hover:opacity-70">
+            <a href="/" className="inline-flex w-fit items-center gap-2 text-base font-medium text-strong transition-opacity hover:opacity-70">
               <img src="/logo.svg" alt="" draggable={false} className="size-6" />
               <span>Mesurer</span>
             </a>
@@ -39,7 +39,7 @@ export default function MarketingFooter() {
           <nav className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 xl:flex xl:flex-wrap" aria-label="Footer navigation">
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Product</h2>
-            <FooterLink href="#overview">Overview</FooterLink>
+            <FooterLink href="/#overview">Overview</FooterLink>
             <FooterLink href="/changelog">Changelog</FooterLink>
           </div>
           <div className="flex flex-col items-start gap-2">
@@ -50,8 +50,8 @@ export default function MarketingFooter() {
           </div>
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Resources</h2>
-            <FooterLink href="#installation">Getting started</FooterLink>
-            <FooterLink href="#commands">Shortcuts</FooterLink>
+            <FooterLink href="/#installation">Getting started</FooterLink>
+            <FooterLink href="/docs">Shortcuts</FooterLink>
           </div>
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Connect</h2>

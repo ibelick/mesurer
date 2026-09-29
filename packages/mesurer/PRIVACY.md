@@ -1,71 +1,72 @@
 # Privacy Policy
 
+Last updated: 29 September 2026
+
 ## Mesurer
 
-Mesurer is a lightweight tool to measure distances, check alignment, and display visual guides directly on web pages in the browser.
+Mesurer includes a browser tool, an npm package, a Chrome extension, and hosted platform features for reviewing deployed web projects.
 
-## Data Collection
+## Local browser features
 
-Mesurer does not collect, store, or transmit personal data.
+The browser tool and Chrome extension store settings, guides, measurements, comments, and page workspaces locally in your browser where possible. This local data is not sent to Mesurer servers by the extension's local features.
 
-Mesurer does not collect:
+Mesurer does not use the extension to sell or transfer your browsing history or website content for advertising.
 
-- personally identifiable information
-- authentication credentials
-- financial or health information
-- web history
-- user activity analytics
-- website content for external processing
+## Platform data
+
+When you use hosted platform features, Mesurer may process:
+
+- account details provided by your authentication provider, such as your name, email address, and profile image
+- project, deployment, and website origin information
+- comments, screenshots, review data, and content you choose to share
+- subscription and billing status
+
+This information is used to authenticate you, provide projects and reviews, share content at your direction, secure the service, and manage subscriptions.
+
+## Authentication and payments
+
+Mesurer may use GitHub or Google for sign-in. Those providers process information under their own privacy policies.
+
+Payments may be handled by third-party payment providers. Mesurer does not intend to store full payment card details on its own systems.
 
 ## Permissions
 
 ### activeTab
 
-Used only when the user explicitly activates the extension, to run Mesurer on the current tab.
+Used when you explicitly activate the extension to run Mesurer on the current tab.
 
 ### host permissions
 
-Mesurer requests access to HTTP and HTTPS pages so it can run on any regular website and restore
-the toolbar across reloads and in-site navigations. This access is not used to read or send page
-content off-device.
+Mesurer requests access to HTTP and HTTPS pages so it can run on regular websites and restore the toolbar across reloads and in-site navigations. This access is not used to send page content off-device by the local extension features.
 
 ### scripting
 
-Used to inject the extension script into the active page to render measurement overlays and guides.
-After you turn Mesurer on for a tab, the same script may be re-injected when that tab navigates so
-the toolbar can stay available.
+Used to inject the extension script into the active page to render measurement overlays and guides. The script may be re-injected when a tab navigates so the toolbar can stay available.
 
 ### storage
 
-Used to store Mesurer settings and page workspaces locally in Chrome. This data stays in the
-browser and is not sent to Mesurer servers. This includes comment threads and their replies.
+Used to store Mesurer settings and page workspaces locally in Chrome. This includes comment threads and replies created through local features.
 
 ### clipboardWrite
 
-Used when the user chooses to copy a selected screenshot or sampled color to the clipboard.
+Used when you choose to copy a selected screenshot or sampled color to the clipboard.
 
-## Screenshot Capture
+## Screenshot and recording capture
 
-Screenshot captures are initiated by the user and contain only the selected region of the
-currently visible tab. In the Chrome extension, capture is performed locally through Chrome's
-visible-tab capture API. In a React integration without the extension, Chrome may show its native
-tab-sharing prompt through `getDisplayMedia()`.
+Captures are initiated by you and contain only the region you select. In the Chrome extension, screenshots are captured locally through Chrome's visible-tab capture API. In a React integration without the extension, Chrome may show its native tab-sharing prompt through `getDisplayMedia()`.
 
-Screenshots are copied to the local clipboard or downloaded locally according to the user's
-settings. Mesurer does not upload or externally process screenshots.
+Screenshots and recordings are copied to the local clipboard or downloaded locally according to your settings. Mesurer does not upload or externally process these captures unless you explicitly share them through a hosted platform feature.
 
-## Remote Code
+## Data sharing and retention
 
-Mesurer does not use remote code.
+Mesurer shares hosted project and review content only as needed to provide a feature you request, such as a review link or project invitation. Anyone with access to a shared review link may be able to view the content included in that review.
 
-All JavaScript/Wasm executed by the extension is packaged with the extension bundle.
+Hosted data is retained while needed to provide the service, maintain account records, resolve disputes, and meet legal obligations. You may contact us to ask about your data or request deletion, subject to applicable legal and operational requirements.
 
-## Data Sharing
+## Remote code
 
-Mesurer does not sell or transfer user data to third parties.
+The Chrome extension does not use remote code. JavaScript and WebAssembly executed by the extension are packaged with the extension bundle.
 
 ## Contact
 
-For questions, open an issue on GitHub:
-
-https://github.com/ibelick/mesurer/issues
+For privacy questions or requests, contact [contact@interfaceoffice.com](mailto:contact@interfaceoffice.com).

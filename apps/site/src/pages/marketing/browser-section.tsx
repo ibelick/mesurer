@@ -30,7 +30,7 @@ const cards = [
   },
 ] as const;
 
-export default function BrowserSection() {
+export default function BrowserSection({ className = "" }: { className?: string }) {
   const [copied, setCopied] = useState(false);
 
   const copyPrompt = async () => {
@@ -40,7 +40,11 @@ export default function BrowserSection() {
   };
 
   return (
-    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-label="Ways to use Mesurer">
+    <section
+      id="installation"
+      className={`relative left-1/2 w-screen -translate-x-1/2 px-5 ${className || "mt-24"}`}
+      aria-label="Ways to use Mesurer"
+    >
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-12 lg:flex-row lg:gap-20">
         <article className="flex w-[340px] max-w-full flex-col items-center text-center">
           <div className="inline-flex h-[22px] items-center gap-1 rounded-full bg-[#E5F0FF] px-[10px] text-xs leading-none text-[#1F78FF]">

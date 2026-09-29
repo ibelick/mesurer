@@ -47,7 +47,7 @@ const plans: Plan[] = [
     description: "For building with Mesurer.",
     features: ["inspect", "annotate", "comments", "agent-context", "copy-for-agent"],
     cta: "Get started",
-    href: "#installation",
+    href: "/#installation",
   },
   {
     id: "pro",

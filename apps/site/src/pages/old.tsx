@@ -1,12 +1,14 @@
 import { Mesurer } from "mesurer";
 import { XLogoIcon } from "@phosphor-icons/react";
 import { Header, HomeContent } from "./marketing/site";
+import MarketingFooter from "./marketing/footer";
+import FinalCta from "./marketing/final-cta";
 
 export default function OldPage() {
   return (
-    <main className="min-h-screen px-5 py-20">
+    <main className="min-h-screen pb-0 pt-20">
       <Mesurer initialState={{ minimized: true }} />
-      <div className="mx-auto flex max-w-2xl flex-col gap-14">
+      <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5">
         <Header showDescription linkToHome={false} />
         <HomeContent />
         <div className="flex gap-4 pt-6 text-muted">
@@ -30,8 +32,11 @@ export default function OldPage() {
             <span>Follow</span>
           </a>
           <a href="/privacy" className="transition-colors hover:text-strong">Privacy</a>
+          <a href="/terms" className="transition-colors hover:text-strong">Terms</a>
         </div>
       </div>
+      <FinalCta />
+      <MarketingFooter />
     </main>
   );
 }

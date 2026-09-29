@@ -56,13 +56,13 @@ export default function SocialProof() {
     <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 overflow-hidden px-5" aria-label="Testimonials">
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
-          {testimonials.map((testimonial, index) => (
+          {testimonials.map((testimonial) => (
             <a
               key={testimonial.name}
               href={testimonial.url}
               target="_blank"
               rel="noreferrer"
-              className={`${index > 2 ? "hidden md:flex" : "flex"} h-full min-h-[180px] flex-col rounded-md border border-border p-5`}
+              className="flex h-full min-h-[180px] flex-col rounded-md border border-border p-5"
             >
               <article className="flex h-full flex-col">
                 <blockquote className="grow overflow-hidden">

@@ -7,6 +7,12 @@ export default function FinalCta() {
       className="relative left-1/2 mt-24 h-[420px] w-screen -translate-x-1/2 overflow-hidden bg-subtle px-5 py-24 text-left"
       aria-labelledby="final-cta-title"
     >
+      <img
+        draggable={false}
+        src="https://assets.querrel.com/mesurer/cta.webp"
+        alt=""
+        className="pointer-events-none absolute top-1/2 right-0 z-0 h-[480px] w-auto max-w-none -translate-y-1/2 lg:-right-10"
+      />
       <div className="relative z-10 mx-auto max-w-6xl">
         <h2
           id="final-cta-title"
@@ -29,12 +35,6 @@ export default function FinalCta() {
           <AgentPromptButton />
         </div>
       </div>
-      <img
-        draggable={false}
-        src="https://assets.querrel.com/mesurer/cta.webp"
-        alt=""
-        className="pointer-events-none absolute top-1/2 right-0 z-0 h-[480px] w-[62%] -translate-y-1/2 object-cover object-right sm:w-[52%] md:w-auto md:max-w-none lg:-right-10"
-      />
     </section>
   );
 }
