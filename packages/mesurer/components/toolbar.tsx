@@ -20,6 +20,7 @@ import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
 import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
+import { CaptureToast } from "./capture-toast";
 import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
 import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
@@ -85,7 +86,7 @@ type ToolbarScreenshot = {
 type ToolbarScreenRecording = {
   recording: boolean;
   elapsed: number;
-  error: string | null;
+  error: boolean;
   onClick: () => void;
   onCancel: () => void;
   onStop: () => void;
@@ -391,6 +392,10 @@ function ToolbarComponent(
     rulersVisible ? "rulers" : "guides",
   );
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
+  const dismissCaptureToasts = useCallback(() => {
+    onCancelScreenshot();
+    onScreenRecordingCancel();
+  }, [onCancelScreenshot, onScreenRecordingCancel]);
   const toggleToolbarMenu = useCallback(
     (menu: Exclude<OpenMenu, null>) => {
       if (openMenu?.type === menu.type) {
@@ -399,10 +404,10 @@ function ToolbarComponent(
       }
       setSettingsOpen(false);
       setColorPickerActive(false);
-      onCancelScreenshot();
+      dismissCaptureToasts();
       setOpenMenu(menu);
     },
-    [onCancelScreenshot, openMenu, setColorPickerActive, setOpenMenu, setSettingsOpen],
+    [dismissCaptureToasts, openMenu, setColorPickerActive, setOpenMenu, setSettingsOpen],
   );
   const [commentsCopied, setCommentsCopied] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
@@ -733,14 +738,14 @@ function ToolbarComponent(
     onInteract();
     setEnabled(true);
     setToolMode("none");
-    onCancelScreenshot();
+    dismissCaptureToasts();
     if (colorPickerActive) {
       setColorPickerActive(false);
     } else {
       setColorPickerActive(true);
       onColorPickerClick();
     }
-  }, [colorPickerActive, onCancelScreenshot, onCancelTransient, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+  }, [colorPickerActive, dismissCaptureToasts, onCancelTransient, onColorPickerClick, onInteract, setColorPickerActive, setEnabled, setToolMode]);
 
   const screenshotMode = useCallback(() => {
     onCancelTransient();
@@ -1223,8 +1228,8 @@ function ToolbarComponent(
           active={layoutGuides.visible}
           label="Layout guides"
           shortcut="L"
-          onClick={() => {
-            onCancelScreenshot();
+            onClick={() => {
+            dismissCaptureToasts();
             layoutGuides.onToggle();
           }}
           tooltip={toolbarTooltip}
@@ -1538,7 +1543,7 @@ function ToolbarComponent(
             label="Settings"
             shortcut={settingsShortcut}
             onClick={() => {
-              onCancelScreenshot();
+              dismissCaptureToasts();
               onToggleSettings();
             }}
             tooltip={toolbarTooltip}
@@ -1613,17 +1618,10 @@ function ToolbarComponent(
     )}
     </TooltipLayerContext.Provider>
       {screenshotError ? (
-        <div
-          role="status"
-          aria-live="polite"
-           className={`mesurer-toast-surface msr:pointer-events-none msr:absolute msr:top-full msr:z-10 msr:mt-2 msr:box-border msr:w-max msr:max-w-[min(240px,calc(100vw-16px))] msr:overflow-hidden msr:rounded-[10px] msr:bg-white msr:px-3 msr:py-2 msr:text-center msr:text-[12px] msr:leading-4 msr:text-ink-900 msr:whitespace-normal msr:text-pretty msr:line-clamp-2 ${toastAlignment}`}
-        >
-          Screenshot failed.
-          <br />
-          Check permissions and try again.
-        </div>
+        <CaptureToast align={toastAlignment} title="Screenshot failed." />
+      ) : recordingError ? (
+        <CaptureToast align={toastAlignment} title="Recording failed." />
       ) : null}
-      {recordingError ? <p className="msr:pointer-events-auto msr:absolute msr:bottom-0 msr:left-1/2 msr:-translate-x-1/2 msr:text-xs msr:text-[var(--msr-danger-text)]">{recordingError}</p> : null}
     </div>
     </div>
   );

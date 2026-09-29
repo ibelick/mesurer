@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
   MIN_SCREENSHOT_SELECTION,
   clampScreenshotRect,
@@ -67,7 +68,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [video, setVideo] = useState<{ url: string; duration: number; filename: string } | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, flashError, dismissError } = useCaptureErrorToast(ownerWindow)
 
   const release = useCallback(() => {
     if (drawFrameRef.current !== null) ownerWindow.cancelAnimationFrame(drawFrameRef.current)
@@ -103,7 +104,8 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     setSelecting(false)
     setAdjusting(false)
     setRect(null)
-  }, [])
+    dismissError()
+  }, [dismissError])
 
   const viewport = useCallback(
     () => ({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight }),
@@ -122,7 +124,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const stop = useCallback(() => recorderRef.current?.state === "recording" && recorderRef.current.stop(), [])
 
   const start = useCallback(async (nextRect: ScreenshotRect) => {
-    setError(null)
+    dismissError()
     try {
       setRecordingRect(nextRect)
       const stream = await ownerWindow.navigator.mediaDevices.getDisplayMedia({
@@ -209,18 +211,19 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
       timeoutRef.current = ownerWindow.setTimeout(stop, MAX_RECORDING_MS)
     } catch (caught) {
       release()
-      if (!(caught instanceof DOMException && caught.name === "AbortError")) setError("Screen recording was unavailable.")
+      if (!(caught instanceof DOMException && caught.name === "AbortError")) flashError()
     }
-  }, [ownerDocument, ownerWindow, release, stop])
+  }, [dismissError, flashError, ownerDocument, ownerWindow, release, stop])
 
   const toggleSelection = useCallback(() => {
     if (selecting) return cancelSelection()
+    dismissError()
     discard()
     onPrepare()
     setAdjusting(false)
     setRect(null)
     setSelecting(true)
-  }, [cancelSelection, discard, onPrepare, selecting])
+  }, [cancelSelection, discard, dismissError, onPrepare, selecting])
 
   const confirmRecording = useCallback(() => {
     const nextRect = rectRef.current
