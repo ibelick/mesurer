@@ -1485,7 +1485,7 @@ function ToolbarComponent(
       <button
         type="button"
         aria-label="Show Mesurer toolbar"
-         className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
+         className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:bg-transparent msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
         onClick={(event) => {
           if (event.defaultPrevented || consumeDragClick()) return;
           onRestore();

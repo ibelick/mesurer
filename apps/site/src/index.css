@@ -18,6 +18,7 @@
   --color-muted: #888888;
   --color-subtle: #f0f0f0;
   --color-border: #ededed;
+  --radius: 4px;
 }
 
 html {
@@ -43,9 +44,29 @@ html::selection {
   font-family: var(--font-mono);
   background: var(--color-subtle);
   color: var(--color-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 1px 4px;
   font-size: 13px;
+}
+
+@keyframes mesurer-digit-reel {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, var(--mesurer-digit-offset), 0);
+  }
+}
+
+.mesurer-digit-reel {
+  animation: mesurer-digit-reel 1s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesurer-digit-reel {
+    animation: none;
+    transform: translate3d(0, var(--mesurer-digit-offset), 0);
+  }
 }
 
 * {
