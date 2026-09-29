@@ -7,7 +7,7 @@ type ButtonProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
 
 export default function Button({ variant = "primary", className = "", children, ...props }: ButtonProps) {
   const variantClassName = variant === "primary"
-    ? "min-h-9 gap-1 px-[17px] font-medium transition-opacity bg-strong text-bg shadow-[inset_0_1px_rgb(255_255_255_/_8%)] hover:opacity-90"
+    ? "min-h-9 gap-1 px-4 font-medium transition-opacity bg-strong text-bg shadow-[inset_0_1px_rgb(255_255_255_/_8%)] hover:opacity-90"
     : variant === "muted"
       ? "gap-1.5 px-5 py-2.5 font-[450] transition-colors bg-subtle text-strong border border-border hover:bg-neutral-200"
       : "gap-1.5 px-5 py-2.5 font-[450] transition-colors bg-white text-neutral-900 border border-neutral-200 hover:bg-neutral-100";
