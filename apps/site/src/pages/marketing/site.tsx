@@ -41,6 +41,7 @@ export function Header({
       {linkToHome ? (
         <a href="/" className="w-fit">
           <img
+            draggable={false}
             src="/logo.png"
             alt="Mesurer"
             className="h-auto w-9"
@@ -51,6 +52,7 @@ export function Header({
         </a>
       ) : (
         <img
+          draggable={false}
           src="/logo.png"
           alt="Mesurer"
           className="h-auto w-9"
@@ -220,7 +222,7 @@ export function HomeContent() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
-              <img src="/chrome.svg" alt="" className="h-6 w-6" />
+              <img src="/chrome.svg" alt="" draggable={false} className="h-6 w-6" />
             </div>
             <p className="mt-3 text-[15px] font-medium text-strong">
               Chrome extension
@@ -239,7 +241,7 @@ export function HomeContent() {
           </div>
           <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
-              <img src="/npm.svg" alt="" className="h-5 w-5" />
+              <img src="/npm.svg" alt="" draggable={false} className="h-5 w-5" />
             </div>
             <p className="mt-3 text-[15px] font-medium text-strong">
               npm package

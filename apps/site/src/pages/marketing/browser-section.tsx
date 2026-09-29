@@ -49,14 +49,14 @@ export default function BrowserSection() {
             <span>{cards[0].badge}</span>
           </div>
           <div className="mt-5 flex h-[56px] items-center">
-            <img src={cards[0].image} alt="" className="h-[56px] w-auto" loading="lazy" />
+            <img src={cards[0].image} alt="" draggable={false} className="h-[56px] w-auto" loading="lazy" />
           </div>
           <h2 className="mt-3 text-balance text-[22px] font-medium leading-tight text-strong">{cards[0].title}</h2>
           <p className="mt-2 text-pretty text-base leading-normal text-muted">{cards[0].description}</p>
           <button
             type="button"
             onClick={() => void copyPrompt()}
-            className="mt-4 inline-flex items-center gap-1 text-base leading-normal text-strong underline decoration-border underline-offset-2 transition-opacity hover:opacity-70"
+            className="mt-4 inline-flex select-none items-center gap-1 text-base leading-normal text-strong underline decoration-border underline-offset-2 transition-opacity hover:opacity-70"
           >
             <RemixIcon path={remixPaths.copy} size={16} />
             {copied ? "Prompt copied" : "Copy setup prompt"}
@@ -69,7 +69,7 @@ export default function BrowserSection() {
             <span>{cards[1].badge}</span>
           </div>
           <div className="mt-5 flex h-[56px] items-center">
-            <img src={cards[1].image} alt="" className="h-[40px] w-auto" loading="lazy" />
+            <img src={cards[1].image} alt="" draggable={false} className="h-[40px] w-auto" loading="lazy" />
           </div>
           <h2 className="mt-3 text-balance text-[22px] font-medium leading-tight text-strong">{cards[1].title}</h2>
           <p className="mt-2 text-pretty text-base leading-normal text-muted">{cards[1].description}</p>
@@ -77,7 +77,7 @@ export default function BrowserSection() {
             href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-1 text-base leading-normal text-strong underline decoration-border underline-offset-2 transition-opacity hover:opacity-70"
+            className="mt-4 inline-flex select-none items-center gap-1 text-base leading-normal text-strong underline decoration-border underline-offset-2 transition-opacity hover:opacity-70"
           >
             <RemixIcon path={remixPaths.arrow} size={16} />
             Install chrome extension

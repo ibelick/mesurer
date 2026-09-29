@@ -102,7 +102,7 @@ export default function Hero() {
             target="_blank"
             rel="noreferrer"
           >
-            <img src="/chrome.svg" alt="" className="size-4 brightness-0 invert" />
+            <img src="/chrome.svg" alt="" draggable={false} className="size-4 brightness-0 invert" />
             Add to Chrome
           </Button>
           <AgentPromptButton />

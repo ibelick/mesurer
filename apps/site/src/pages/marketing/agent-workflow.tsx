@@ -42,7 +42,7 @@ export default function AgentWorkflow({
                 {card.description ? <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p> : null}
               </div>
               <div className="aspect-[4/3] overflow-hidden bg-transparent">
-                {card.image ? <img src={card.image} alt="" className="size-full object-cover" loading="lazy" /> : null}
+                {card.image ? <img src={card.image} alt="" draggable={false} className="size-full object-cover" loading="lazy" /> : null}
               </div>
             </article>
           ))}

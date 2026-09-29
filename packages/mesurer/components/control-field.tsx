@@ -94,14 +94,10 @@ export function ColorField({
               style={{ backgroundColor: swatchColor }}
             >
               <input
-                ref={(input) => {
-                  if (!input) return
-                  input.oninput = () => handleNativeColorInput(input)
-                  input.onchange = () => handleNativeColorInput(input)
-                }}
                 type="color"
                 aria-label={`${label} color picker`}
                 value={inputValue}
+                onChange={(event) => handleNativeColorInput(event.currentTarget)}
                 className="msr:absolute msr:inset-0 msr:size-full msr:cursor-pointer msr:opacity-0"
               />
             </span>
@@ -126,10 +122,7 @@ export function ColorField({
           </>
         }
         right={
-          <input
-            ref={(input) => {
-              if (input) input.oninput = () => handleAlphaInput(input)
-            }}
+            <input
             aria-label={`${label} opacity value`}
             type="text"
             inputMode="numeric"

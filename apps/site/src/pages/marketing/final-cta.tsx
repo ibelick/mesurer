@@ -14,13 +14,14 @@ export default function FinalCta() {
             target="_blank"
             rel="noreferrer"
           >
-            <img src="/chrome.svg" alt="" className="size-4 brightness-0 invert" />
+            <img src="/chrome.svg" alt="" draggable={false} className="size-4 brightness-0 invert" />
             Add to Chrome
           </Button>
           <AgentPromptButton />
         </div>
       </div>
       <img
+        draggable={false}
         src="https://assets.querrel.com/mesurer/cta.webp"
         alt=""
         className="pointer-events-none absolute -right-10 top-1/2 z-0 h-[480px] w-auto -translate-y-1/2"

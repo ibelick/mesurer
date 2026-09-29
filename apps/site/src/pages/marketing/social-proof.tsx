@@ -70,6 +70,7 @@ export default function SocialProof() {
                 </blockquote>
                 <div className="mt-3 flex items-center gap-3">
                   <img
+                    draggable={false}
                     src={testimonial.avatar}
                     alt=""
                     className="size-10 shrink-0 rounded-full object-cover"

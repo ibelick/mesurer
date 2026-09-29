@@ -529,7 +529,7 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-restore svg {
-  transform: translate(-1.5px, -0.5px);
+  transform: translate(-0.5px, 0.5px);
 }
 
 .mesurer-toolbar-tool-stage {

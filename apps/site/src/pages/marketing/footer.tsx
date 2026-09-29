@@ -31,7 +31,7 @@ export default function MarketingFooter() {
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col items-start gap-3">
             <a href="#overview" className="inline-flex w-fit items-center gap-2 text-base font-medium text-strong transition-opacity hover:opacity-70">
-              <img src="/logo.svg" alt="" className="size-6" />
+              <img src="/logo.svg" alt="" draggable={false} className="size-6" />
               <span>Mesurer</span>
             </a>
             <span className="text-sm text-muted">© {currentYear}</span>

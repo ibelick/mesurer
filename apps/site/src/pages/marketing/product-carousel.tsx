@@ -65,6 +65,7 @@ export default function ProductCarousel() {
           >
             <div className="aspect-[16/10] overflow-hidden rounded-[12px] bg-subtle">
               <img
+                draggable={false}
                 src={slide.image}
                 alt={`${slide.title} feature in Mesurer`}
                 className="size-full object-cover"

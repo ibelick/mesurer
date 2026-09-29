@@ -15,7 +15,7 @@ export default function Button({ variant = "primary", className = "", children, 
   return (
     <a
       {...props}
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-full text-base leading-none duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-strong active:opacity-75 ${variantClassName} ${className}`}
+      className={`inline-flex select-none items-center justify-center whitespace-nowrap rounded-full text-base leading-none duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-strong active:opacity-75 ${variantClassName} ${className}`}
     >
       {children}
     </a>
