@@ -8,16 +8,23 @@ const sameDocumentUrl = (url: URL) =>
   url.origin === window.location.origin &&
   !FULL_PAGE_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
 
+const scrollInstant: ScrollIntoViewOptions = { behavior: "instant", block: "start" };
+
+const jumpToHash = (hash: string) => {
+  if (hash && hash !== "#") {
+    const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (target) {
+      target.scrollIntoView(scrollInstant);
+      return;
+    }
+  }
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+};
+
 const scrollAfterNavigate = (hash: string) => {
   window.requestAnimationFrame(() => {
-    if (hash && hash !== "#") {
-      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
-      if (target) {
-        target.scrollIntoView();
-        return;
-      }
-    }
-    window.scrollTo(0, 0);
+    jumpToHash(hash);
+    window.requestAnimationFrame(() => jumpToHash(hash));
   });
 };
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import MarketingFooter from "../pages/marketing/footer";
+import PageMetadata from "./page-metadata";
 
 export default function DocPage({
   title,
@@ -14,9 +15,7 @@ export default function DocPage({
 }) {
   return (
     <main className="min-h-screen pb-0 pt-20">
-      <title>{`${title} | Mesurer`}</title>
-      <meta name="description" content={description} />
-      <meta property="og:title" content={`${title} | Mesurer`} />
+      <PageMetadata title={`${title} | Mesurer`} description={description} />
       <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5 pb-40">
         <a href="/" aria-label="Mesurer home" className="inline-flex w-fit transition-opacity hover:opacity-70">
           <img src="/logo.svg" alt="" draggable={false} className="size-6" />

@@ -3,6 +3,7 @@ import CodeBlock from "../components/code-block";
 import InstallCommand from "../components/install-command";
 import PropList from "../components/prop-list";
 import ShortcutList from "../components/shortcut-list";
+import PageMetadata from "../components/page-metadata";
 import MarketingFooter from "./marketing/footer";
 
 const chromeStoreUrl =
@@ -92,9 +93,7 @@ function DocsLayout({
 }) {
   return (
     <main className="min-h-dvh pb-0 pt-20">
-      <title>{`${title} | Mesurer`}</title>
-      <meta name="description" content={description} />
-      <meta property="og:title" content={`${title} | Mesurer`} />
+      <PageMetadata title={`${title} | Mesurer`} description={description} />
       <div className="mx-auto max-w-5xl px-5 pb-40">
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:gap-16">
           <aside className="md:sticky md:top-20 md:w-44 md:shrink-0">

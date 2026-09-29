@@ -1,36 +1,64 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import MarketingPage from "./pages/marketing/site";
-import ChangelogPage from "./pages/changelog";
-import PrivacyPage from "./pages/privacy";
-import TermsPage from "./pages/terms";
-import DocsPage from "./pages/docs";
-import OldPage from "./pages/old";
+import MarketingPage from "./pages/marketing/home";
 import { useClientPath } from "./use-client-path";
 
 const Mesurer = lazy(() => import("mesurer").then((mod) => ({ default: mod.Mesurer })));
+const routeLoaders = {
+  changelog: () => import("./pages/changelog"),
+  privacy: () => import("./pages/privacy"),
+  terms: () => import("./pages/terms"),
+  docs: () => import("./pages/docs"),
+} as const;
+const ChangelogPage = lazy(routeLoaders.changelog);
+const PrivacyPage = lazy(routeLoaders.privacy);
+const TermsPage = lazy(routeLoaders.terms);
+const DocsPage = lazy(routeLoaders.docs);
+const OldPage = lazy(() => import("./pages/old"));
+
+const prefetchRoute = (pathname: string) => {
+  if (pathname === "/changelog") return routeLoaders.changelog();
+  if (pathname === "/privacy") return routeLoaders.privacy();
+  if (pathname === "/terms") return routeLoaders.terms();
+  if (pathname === "/docs" || pathname.startsWith("/docs/")) return routeLoaders.docs();
+  return null;
+};
+
+function RoutePrefetcher() {
+  useEffect(() => {
+    if (window.__MESURER_PRERENDER__) return;
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
+    const preloadOnIntent = (event: Event) => {
+      const anchor = (event.target as Element | null)?.closest("a");
+      if (!anchor || anchor.target === "_blank") return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin === window.location.origin) void prefetchRoute(url.pathname);
+    };
+    document.addEventListener("pointerover", preloadOnIntent, { passive: true });
+    document.addEventListener("focusin", preloadOnIntent);
+    return () => {
+      document.removeEventListener("pointerover", preloadOnIntent);
+      document.removeEventListener("focusin", preloadOnIntent);
+    };
+  }, []);
+  return null;
+}
 
 function MesurerToolbar() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (window.__MESURER_PRERENDER__) return;
-    let cancelled = false;
-    const start = () => {
-      if (!cancelled) setReady(true);
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(start, { timeout: 2000 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(id);
-      };
-    }
-    const id = window.setTimeout(start, 1);
+    if (window.__MESURER_PRERENDER__ || ready) return;
+    const start = () => setReady(true);
+    const options: AddEventListenerOptions = { once: true, passive: true };
+    window.addEventListener("pointerdown", start, options);
+    window.addEventListener("keydown", start, options);
+    window.addEventListener("touchstart", start, options);
     return () => {
-      cancelled = true;
-      window.clearTimeout(id);
+      window.removeEventListener("pointerdown", start, options);
+      window.removeEventListener("keydown", start, options);
+      window.removeEventListener("touchstart", start, options);
     };
-  }, []);
+  }, [ready]);
 
   if (!ready) return null;
   return (
@@ -40,13 +68,32 @@ function MesurerToolbar() {
   );
 }
 
+function Analytics() {
+  useEffect(() => {
+    if (window.__MESURER_PRERENDER__) return;
+    const add = () => {
+      if (document.querySelector('script[src="https://assets.onedollarstats.com/stonks.js"]')) return;
+      const script = document.createElement("script");
+      script.src = "https://assets.onedollarstats.com/stonks.js";
+      script.defer = true;
+      document.head.appendChild(script);
+    };
+    const options: AddEventListenerOptions = { once: true, passive: true };
+    window.addEventListener("pointerdown", add, options);
+    window.addEventListener("keydown", add, options);
+    return () => {
+      window.removeEventListener("pointerdown", add, options);
+      window.removeEventListener("keydown", add, options);
+    };
+  }, []);
+  return null;
+}
+
 export function App() {
   const path = useClientPath();
   const canonical = `https://mesurer.dev${path === "/" ? "" : path}`;
   const page =
-    path === "/old" ? (
-      <OldPage />
-    ) : path === "/changelog" ? (
+    path === "/changelog" ? (
       <ChangelogPage />
     ) : path === "/privacy" ? (
       <PrivacyPage />
@@ -54,6 +101,10 @@ export function App() {
       <TermsPage />
     ) : path === "/docs" || path.startsWith("/docs/") ? (
       <DocsPage />
+    ) : path === "/old" ? (
+      <Suspense fallback={null}>
+        <OldPage />
+      </Suspense>
     ) : (
       <MarketingPage />
     );
@@ -62,8 +113,10 @@ export function App() {
     <>
       <link rel="canonical" href={canonical} />
       <meta property="og:url" content={canonical} />
+      <Analytics />
+      <RoutePrefetcher />
       <MesurerToolbar />
-      {page}
+      <Suspense fallback={null}>{page}</Suspense>
     </>
   );
 }

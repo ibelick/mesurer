@@ -55,6 +55,9 @@ try {
       keepLast('link[rel="canonical"]');
       keepLast('meta[property="og:url"]');
       keepLast('meta[property="og:title"]');
+      keepLast('meta[property="og:description"]');
+      keepLast('meta[name="twitter:title"]');
+      keepLast('meta[name="twitter:description"]');
     });
     const html = await page.content();
     if (!html.includes("<h1")) {

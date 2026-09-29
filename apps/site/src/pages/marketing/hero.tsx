@@ -35,6 +35,7 @@ function DownloadCount() {
   const [downloadError, setDownloadError] = useState(false);
 
   useEffect(() => {
+    if (window.__MESURER_PRERENDER__) return;
     const controller = new AbortController();
     void fetch("https://api.npmjs.org/downloads/point/last-year/mesurer", {
       signal: controller.signal,

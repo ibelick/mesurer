@@ -1,0 +1,23 @@
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/og.png
+  Cache-Control: public, max-age=86400
+
+/x-og.png
+  Cache-Control: public, max-age=86400
+
+/bench*
+  X-Robots-Tag: noindex, nofollow
+
+/old*
+  X-Robots-Tag: noindex, nofollow
+
+https://mesurer-site.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.mesurer-site.pages.dev/*
+  X-Robots-Tag: noindex
