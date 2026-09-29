@@ -453,15 +453,15 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   return (
     <section
       className={cn(
-        "mesurer-menu-surface msr:rounded-lg msr:bg-white msr:shadow-floating",
+        "mesurer-menu-surface msr:overflow-hidden msr:rounded-wide-card msr:bg-white msr:shadow-floating",
         expanded ? "msr:w-[min(36rem,calc(100vw-24px))]" : "msr:w-[min(22rem,calc(100vw-24px))]",
       )}
       aria-label="Screen recording editor"
       aria-busy={exporting}
       onMouseLeave={tooltip.onToolbarLeave}
     >
-      <div className="msr:relative msr:p-3">
-        <div className="msr:relative msr:flex msr:w-full msr:justify-center msr:overflow-hidden msr:bg-ink-100">
+      <div className="msr:relative msr:p-2">
+        <div className="msr:relative msr:flex msr:w-full msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100">
           <div className="msr:absolute msr:top-1.5 msr:right-1.5 msr:z-10">
             <PlayerIconButton
               label="Close"

@@ -44,8 +44,11 @@ export default function Mesurer({
   features,
   initialState,
 }: MesurerProps) {
-  if (typeof document !== "undefined") {
-    ensureMesurerStyles(MESURER_STYLES, portalTarget);
+  const resolvedPortalTarget =
+    portalTarget ?? (typeof document !== "undefined" ? document.body : undefined);
+
+  if (typeof document !== "undefined" && resolvedPortalTarget) {
+    ensureMesurerStyles(MESURER_STYLES, resolvedPortalTarget);
   }
 
   const hydrated = useHydrated();
@@ -80,7 +83,7 @@ export default function Mesurer({
       captureVisibleTab={captureVisibleTab}
       features={resolveMesurerFeatures(features)}
       initialState={initialState}
-      portalTarget={portalTarget ?? document.body}
+      portalTarget={resolvedPortalTarget ?? document.body}
     />
   );
 }
