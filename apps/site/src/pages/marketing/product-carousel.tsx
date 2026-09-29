@@ -81,7 +81,7 @@ export default function ProductCarousel() {
         <div aria-hidden="true" className="w-[calc(6%-1rem)] shrink-0 sm:w-[calc(12%-1rem)] lg:w-[calc(18%-1rem)]" />
       </div>
 
-      <div className="mx-auto mt-6 flex w-full max-w-2xl justify-end gap-2">
+      <div className="mx-auto mt-6 flex w-full max-w-2xl justify-end gap-2 px-5">
         <button
           type="button"
           aria-label="Previous product video"

@@ -28,7 +28,7 @@ export default function MarketingFooter() {
   return (
     <footer className="relative left-1/2 mt-12 mb-12 w-screen -translate-x-1/2 px-5 pb-8 pt-8" aria-label="Site footer">
       <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col items-start gap-3">
             <a href="#overview" className="inline-flex w-fit items-center gap-2 text-base font-medium text-strong transition-opacity hover:opacity-70">
               <img src="/logo.svg" alt="" draggable={false} className="size-6" />
@@ -36,7 +36,7 @@ export default function MarketingFooter() {
             </a>
             <span className="text-sm text-muted">© {currentYear}</span>
           </div>
-          <nav className="flex flex-wrap gap-x-8 gap-y-6" aria-label="Footer navigation">
+          <nav className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 xl:flex xl:flex-wrap" aria-label="Footer navigation">
           <div className="flex flex-col items-start gap-2">
             <h2 className="mb-1 text-sm font-medium text-strong">Product</h2>
             <FooterLink href="#overview">Overview</FooterLink>

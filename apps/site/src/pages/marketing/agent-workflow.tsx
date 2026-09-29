@@ -27,14 +27,14 @@ export default function AgentWorkflow({
   return (
     <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-labelledby={id}>
       <div className="mx-auto max-w-6xl">
-        <div className="flex max-w-none flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex max-w-none flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <h2 id={id} className="max-w-xl text-balance text-[22px] font-medium leading-[1.2] text-strong">
             {title}
           </h2>
-          <p className="max-w-xl text-pretty text-base leading-normal text-muted md:text-right">{description}</p>
+          <p className="max-w-xl text-pretty text-base leading-normal text-muted lg:text-right">{description}</p>
         </div>
 
-        <div className="mt-20 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 lg:mt-20 lg:grid-cols-3">
           {sectionCards.map((card) => (
             <article key={card.title} className="flex min-w-0 flex-col rounded-[16px] bg-[#fafafa] p-2">
               <div className="flex flex-col px-4 pb-5 pt-4">

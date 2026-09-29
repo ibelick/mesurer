@@ -3,12 +3,21 @@ import AgentPromptButton from "./components/agent-prompt-button";
 
 export default function FinalCta() {
   return (
-    <section className="relative left-1/2 mt-24 h-[420px] w-screen -translate-x-1/2 overflow-hidden bg-subtle px-5 py-24 text-left" aria-labelledby="final-cta-title">
+    <section
+      className="relative left-1/2 mt-24 h-[420px] w-screen -translate-x-1/2 overflow-hidden bg-subtle px-5 py-24 text-left"
+      aria-labelledby="final-cta-title"
+    >
       <div className="relative z-10 mx-auto max-w-6xl">
-        <h2 id="final-cta-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
+        <h2
+          id="final-cta-title"
+          className="max-w-[14rem] text-balance text-[22px] font-medium leading-[1.2] text-strong sm:max-w-xs md:max-w-sm lg:max-w-xl"
+        >
           Build precise software with your coding agent.
         </h2>
-        <div className="mt-[38px] flex flex-wrap items-center justify-start gap-3" aria-label="Get Mesurer">
+        <div
+          className="mt-[38px] flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+          aria-label="Get Mesurer"
+        >
           <Button
             href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
             target="_blank"
@@ -24,7 +33,7 @@ export default function FinalCta() {
         draggable={false}
         src="https://assets.querrel.com/mesurer/cta.webp"
         alt=""
-        className="pointer-events-none absolute -right-10 top-1/2 z-0 h-[480px] w-auto -translate-y-1/2"
+        className="pointer-events-none absolute top-1/2 right-0 z-0 h-[480px] w-[62%] -translate-y-1/2 object-cover object-right sm:w-[52%] md:w-auto md:max-w-none lg:-right-10"
       />
     </section>
   );
