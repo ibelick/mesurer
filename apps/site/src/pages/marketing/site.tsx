@@ -710,11 +710,11 @@ export default function MarketingPage() {
           cards={[
             {
               title: "Comments",
-              image: "https://assets.querrel.com/mesurer/comments.webp?v=2",
+              image: "https://assets.querrel.com/mesurer/comments.webp?v=3",
             },
             {
               title: "Annotations",
-              image: "https://assets.querrel.com/mesurer/annotations.webp?v=3",
+              image: "https://assets.querrel.com/mesurer/annotations.webp?v=4",
             },
             {
               title: "Screenshot-paste",
