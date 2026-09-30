@@ -73,6 +73,10 @@ html::selection {
   font-size: 13px;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 @keyframes mesurer-digit-reel {
   from {
     transform: translate3d(0, 0, 0);
@@ -91,10 +95,6 @@ html::selection {
     animation: none;
     transform: translate3d(0, var(--mesurer-digit-offset), 0);
   }
-}
-
-* {
-  box-sizing: border-box;
 }
 
 img {

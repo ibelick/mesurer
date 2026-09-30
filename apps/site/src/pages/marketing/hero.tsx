@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
 import Button from "./components/button";
 import AgentPromptButton from "./components/agent-prompt-button";
 import { getPackageVersion } from "../../utils/get-package-version";
 
 const version = getPackageVersion();
-
-const formatDownloads = (value: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
-
+const DOWNLOAD_COUNT = "330,601";
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
 function DigitReel({ digit, delay }: { digit: string; delay: number }) {
@@ -25,61 +21,6 @@ function DigitReel({ digit, delay }: { digit: string; delay: number }) {
             {value}
           </span>
         ))}
-      </span>
-    </span>
-  );
-}
-
-function DownloadCount() {
-  const [downloadCount, setDownloadCount] = useState<number | null>(null);
-  const [downloadError, setDownloadError] = useState(false);
-
-  useEffect(() => {
-    if (window.__MESURER_PRERENDER__) return;
-    const controller = new AbortController();
-    void fetch("https://api.npmjs.org/downloads/point/last-year/mesurer", {
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Could not load npm downloads");
-        return response.json() as Promise<{ downloads?: number }>;
-      })
-      .then((data) => {
-        if (typeof data.downloads === "number") setDownloadCount(data.downloads);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setDownloadError(true);
-      });
-
-    return () => controller.abort();
-  }, []);
-
-  const formattedCount = downloadError
-    ? "—"
-    : downloadCount === null
-      ? null
-      : formatDownloads(downloadCount);
-
-  const accessibleCount = downloadError
-    ? "Download count unavailable"
-    : formattedCount
-      ? `${formattedCount} downloads`
-      : "Loading download count";
-
-  return (
-    <span className="inline-flex min-w-[7ch] items-center font-medium leading-none text-strong tabular-nums lining-nums">
-      <span className="sr-only">{accessibleCount}</span>
-      <span aria-hidden="true" className="inline-flex items-center leading-none">
-        {formattedCount === null
-          ? "\u00a0"
-          : formattedCount.split("").map((character, index) =>
-              character === "," || character === "—" ? (
-                <span key={`separator-${index}`}>{character}</span>
-              ) : (
-                <DigitReel key={`digit-${index}`} digit={character} delay={index * 45} />
-              ),
-            )}
       </span>
     </span>
   );
@@ -111,8 +52,16 @@ export default function Hero() {
             v{version}
           </a>
           <span aria-hidden="true"> · </span>
-          <DownloadCount />
-          <span aria-hidden="true"> downloads</span>
+          <span className="inline-flex min-w-[7ch] items-center font-medium leading-none tabular-nums lining-nums text-strong">
+            {DOWNLOAD_COUNT.split("").map((character, index) =>
+              character === "," ? (
+                <span key={`separator-${index}`}>{character}</span>
+              ) : (
+                <DigitReel key={`digit-${index}`} digit={character} delay={index * 45} />
+              ),
+            )}
+          </span>
+          <span> downloads</span>
         </p>
       </div>
     </section>

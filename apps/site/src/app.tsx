@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { Mesurer } from "mesurer";
 import MarketingPage from "./pages/marketing/home";
 import { useClientPath } from "./use-client-path";
 
-const Mesurer = lazy(() => import("mesurer").then((mod) => ({ default: mod.Mesurer })));
 const routeLoaders = {
   changelog: () => import("./pages/changelog"),
   privacy: () => import("./pages/privacy"),
@@ -41,31 +41,6 @@ function RoutePrefetcher() {
     };
   }, []);
   return null;
-}
-
-function MesurerToolbar() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (window.__MESURER_PRERENDER__ || ready) return;
-    const start = () => setReady(true);
-    const options: AddEventListenerOptions = { once: true, passive: true };
-    window.addEventListener("pointerdown", start, options);
-    window.addEventListener("keydown", start, options);
-    window.addEventListener("touchstart", start, options);
-    return () => {
-      window.removeEventListener("pointerdown", start, options);
-      window.removeEventListener("keydown", start, options);
-      window.removeEventListener("touchstart", start, options);
-    };
-  }, [ready]);
-
-  if (!ready) return null;
-  return (
-    <Suspense fallback={null}>
-      <Mesurer initialState={{ minimized: true }} />
-    </Suspense>
-  );
 }
 
 function Analytics() {
@@ -115,7 +90,7 @@ export function App() {
       <meta property="og:url" content={canonical} />
       <Analytics />
       <RoutePrefetcher />
-      <MesurerToolbar />
+      <Mesurer initialState={{ minimized: true }} />
       <Suspense fallback={null}>{page}</Suspense>
     </>
   );
