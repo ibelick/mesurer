@@ -38,6 +38,12 @@ const scaleLabel = (scale: number, size: { width: number; height: number } | nul
   return `${scale}× (${formatValue(size.width * scale)} × ${formatValue(size.height * scale)})`
 }
 
+const exportMenuRowClass = (selected: boolean) =>
+  cn(
+    "msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-[11px] msr:leading-4 msr:text-ink-700",
+    selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100",
+  )
+
 const timestamp = (value: number) => {
   const seconds = Math.max(0, Math.floor(value))
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
@@ -325,10 +331,7 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   )
 
   useEffect(() => {
-    if (!playing) {
-      playClockRef.current = null
-      return
-    }
+    if (!playing) return
     const view = ownerDocument.defaultView
     if (!view) return
     let frame = 0
@@ -396,36 +399,46 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     return Math.min(duration, Math.max(0, ((clientX - bounds.left) / bounds.width) * duration))
   }
 
+  const seekToClipTime = (target: number, pause = false) => {
+    const video = videoRef.current
+    if (pause && video && !video.paused) {
+      video.pause()
+      playClockRef.current = null
+    }
+    if (video && Math.abs(video.currentTime - target) > 0.001) {
+      video.currentTime = target
+    }
+    setCurrentTime(target)
+    updatePlayheadPosition(target)
+    if (video && !video.paused) syncPlayClock(target)
+  }
+
   const seek = (value: number) => {
     const next = Math.min(endRef.current, Math.max(startRef.current, value))
-    const video = videoRef.current
-    if (video) {
-      video.pause()
-      video.currentTime = next
-    }
-    playClockRef.current = null
-    setCurrentTime(next)
-    updatePlayheadPosition(next)
+    seekToClipTime(next, true)
   }
 
-  const updateStart = (value: number) => {
-    const next = Math.min(Math.max(0, value), endRef.current - MIN_CLIP_SECONDS)
+  const updateStart = (value: number, options?: { previewEdge?: boolean }) => {
+    const clipEnd = endRef.current
+    const next = Math.min(Math.max(0, value), clipEnd - MIN_CLIP_SECONDS)
     setStart(next)
-    const video = videoRef.current
-    if (video && video.currentTime < next) {
-      video.currentTime = next
-      setCurrentTime(next)
-    }
+    const current = videoRef.current?.currentTime ?? next
+    const target = options?.previewEdge ? next : Math.min(clipEnd, Math.max(next, current))
+    seekToClipTime(target, Boolean(options?.previewEdge))
   }
 
-  const updateEnd = (value: number) => {
-    const next = Math.max(Math.min(duration, value), startRef.current + MIN_CLIP_SECONDS)
+  const updateEnd = (value: number, options?: { previewEdge?: boolean }) => {
+    const clipStart = startRef.current
+    const next = Math.max(Math.min(duration, value), clipStart + MIN_CLIP_SECONDS)
     setEnd(next)
-    if (videoRef.current && videoRef.current.currentTime > next) {
-      videoRef.current.pause()
-      videoRef.current.currentTime = startRef.current
-      setCurrentTime(startRef.current)
-    }
+    const current = videoRef.current?.currentTime ?? clipStart
+    const pastEnd = current > next
+    const target = options?.previewEdge
+      ? next
+      : pastEnd
+        ? clipStart
+        : Math.min(next, Math.max(clipStart, current))
+    seekToClipTime(target, Boolean(options?.previewEdge || pastEnd))
   }
 
   const beginDrag = (kind: DragKind, event: ReactPointerEvent<HTMLElement>, timeFromClientX: (clientX: number) => number) => {
@@ -435,8 +448,8 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     if (!view) return
     const apply = (clientX: number) => {
       const time = timeFromClientX(clientX)
-      if (kind === "start") updateStart(time)
-      else if (kind === "end") updateEnd(time)
+      if (kind === "start") updateStart(time, { previewEdge: true })
+      else if (kind === "end") updateEnd(time, { previewEdge: true })
       else seek(time)
     }
     apply(event.clientX)
@@ -452,21 +465,34 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     if (!video || exporting) return
     if (!video.paused) {
       video.pause()
+      playClockRef.current = null
       return
     }
     video.muted = true
+    const clipStart = startRef.current
+    const clipEnd = endRef.current
     const from =
-      video.currentTime < start || video.currentTime >= end ? start : video.currentTime
+      video.currentTime < clipStart || video.currentTime >= clipEnd
+        ? clipStart
+        : video.currentTime
     video.currentTime = from
     setCurrentTime(from)
-    syncPlayClock(from)
-    try {
-      await video.play()
-    } catch {
-      playClockRef.current = null
-      setError("Could not play the recording.")
+    updatePlayheadPosition(from)
+    const beginPlay = () => {
+      syncPlayClock(video.currentTime)
+      void video.play().catch((error: unknown) => {
+        if (!video.paused) return
+        playClockRef.current = null
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setError("Could not play the recording.")
+      })
     }
-  }, [end, exporting, start])
+    if (video.seeking) {
+      video.addEventListener("seeked", beginPlay, { once: true })
+    } else {
+      beginPlay()
+    }
+  }, [exporting, updatePlayheadPosition])
 
   const downloadRecording = async () => {
     if (exporting) return
@@ -502,15 +528,21 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   const startPct = `${ratio(start) * 100}%`
   const endPct = `${ratio(end) * 100}%`
   const hoverPct = hoverTime === null ? null : `${ratio(hoverTime) * 100}%`
+  const previewAspect =
+    frameSize && frameSize.width > 0 && frameSize.height > 0
+      ? `${frameSize.width} / ${frameSize.height}`
+      : "16 / 9"
 
   return (
     <section
       ref={cardRef}
       tabIndex={0}
       aria-keyshortcuts="Space"
+      data-expanded={expanded ? "true" : "false"}
       className={cn(
-        "mesurer-menu-surface msr:relative msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",
-        expanded ? "msr:w-[min(36rem,calc(100vw-24px))]" : "msr:w-[min(22rem,calc(100vw-24px))]",
+        "mesurer-menu-surface msr:relative msr:box-border msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none",
+        "msr:w-[22rem] msr:max-w-[calc(100vw-24px)] msr:transition-[width] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
+        expanded && "msr:w-[36rem]",
       )}
       aria-label="Screen recording editor"
       aria-busy={exporting}
@@ -521,19 +553,25 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
       }}
     >
       <div className="msr:relative msr:p-2">
-        <div className="msr:group msr:relative msr:flex msr:w-full msr:justify-center">
+        <div className="msr:relative msr:flex msr:w-full msr:justify-center">
           <div
-            className="msr:relative msr:flex msr:w-full msr:cursor-default msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100"
+            className="msr:group/video msr:relative msr:flex msr:w-full msr:cursor-default msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100"
             onClick={(event) => {
               if ((event.target as HTMLElement).closest("button")) return
               void togglePlayback()
             }}
           >
+            <div
+              className={cn(
+                "msr:mx-auto msr:w-full msr:max-w-full msr:min-h-[4.5rem] msr:max-h-36",
+                "msr:transition-[max-height] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
+                expanded && "msr:max-h-[28rem]",
+              )}
+              style={{ aspectRatio: previewAspect }}
+            >
             <video
             ref={videoRef}
-            className={expanded
-              ? "msr:block msr:h-auto msr:max-h-[min(28rem,calc(100vh-12rem))] msr:w-auto msr:max-w-full msr:object-contain"
-              : "msr:block msr:h-auto msr:max-h-36 msr:w-auto msr:max-w-full msr:object-contain"}
+            className="msr:block msr:size-full msr:max-h-full msr:max-w-full msr:object-contain"
             src={url}
             muted
             playsInline
@@ -549,43 +587,74 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               const video = videoRef.current
               if (video && !playClockRef.current) syncPlayClock(video.currentTime)
             }}
-            onPause={() => setPlaying(false)}
-            onTimeUpdate={(event) => {
-              if (!event.currentTarget.paused) return
-              setCurrentTime(event.currentTarget.currentTime)
+            onPause={() => {
+              playClockRef.current = null
+              setPlaying(false)
             }}
-            onEnded={() => setCurrentTime(start)}
+            onTimeUpdate={(event) => {
+              const video = event.currentTarget
+              if (video.paused) {
+                setCurrentTime(video.currentTime)
+                return
+              }
+              const clipStart = startRef.current
+              const clipEnd = endRef.current
+              if (video.currentTime >= clipEnd - 0.02) {
+                video.pause()
+                video.currentTime = clipStart
+                setCurrentTime(clipStart)
+                updatePlayheadPosition(clipStart)
+                playClockRef.current = null
+                return
+              }
+              if (video.currentTime < clipStart) {
+                video.currentTime = clipStart
+                setCurrentTime(clipStart)
+                syncPlayClock(clipStart)
+              }
+            }}
+            onEnded={() => {
+              const clipStart = startRef.current
+              const video = videoRef.current
+              if (video) video.currentTime = clipStart
+              setCurrentTime(clipStart)
+              updatePlayheadPosition(clipStart)
+            }}
             />
+            </div>
             {exporting ? (
               <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-ink-900/45 msr:text-[11px] msr:text-white">
                 <StatusEllipsis label="Exporting" />
               </div>
             ) : null}
-          </div>
-          <div
-            ref={closeAnchorRef}
-            className="msr:pointer-events-none msr:absolute msr:top-1.5 msr:right-1.5 msr:z-10 msr:opacity-0 msr:group-hover:pointer-events-auto msr:group-hover:opacity-100 msr:focus-within:pointer-events-auto msr:focus-within:opacity-100"
-            onMouseEnter={() => tooltip.onTooltipEnter("recording-close")}
-            onMouseLeave={() => tooltip.onTooltipLeave("recording-close")}
-            onFocus={() => tooltip.onTooltipEnter("recording-close")}
-            onBlur={() => tooltip.onTooltipLeave("recording-close")}
-          >
-            <SettingsButton
-              shape="icon"
-              variant="ghost"
-              type="button"
-              aria-label="Close"
-              onClick={onDiscard}
+            <div
+              ref={closeAnchorRef}
+              className="msr:pointer-events-none msr:absolute msr:top-1.5 msr:right-1.5 msr:z-40 msr:opacity-0 msr:group-hover/video:pointer-events-auto msr:group-hover/video:opacity-100 msr:focus-within:pointer-events-auto msr:focus-within:opacity-100"
+              onMouseEnter={() => tooltip.onTooltipEnter("recording-close")}
+              onMouseLeave={() => tooltip.onTooltipLeave("recording-close")}
+              onFocus={() => tooltip.onTooltipEnter("recording-close")}
+              onBlur={() => tooltip.onTooltipLeave("recording-close")}
             >
-              <CloseIcon size={12} />
-            </SettingsButton>
-            <Tooltip
-              label="Close"
-              visible={tooltip.visibleTooltipId === "recording-close"}
-              instant={tooltip.tooltipInstant}
-              side="top"
-              anchorRef={closeAnchorRef}
-            />
+              <SettingsButton
+                shape="icon"
+                variant="overlay"
+                type="button"
+                aria-label="Close"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDiscard()
+                }}
+              >
+                <CloseIcon size={12} />
+              </SettingsButton>
+              <Tooltip
+                label="Close"
+                visible={tooltip.visibleTooltipId === "recording-close"}
+                instant={tooltip.tooltipInstant}
+                side="top"
+                anchorRef={closeAnchorRef}
+              />
+            </div>
           </div>
         </div>
         <div className="msr:mt-2 msr:flex msr:h-5 msr:items-center msr:gap-1.5">
@@ -629,7 +698,7 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               className={cn(
                 "mesurer-recording-playhead msr:pointer-events-none msr:absolute msr:top-1/2 msr:left-0 msr:z-[25] msr:w-0.5 msr:rounded-full msr:bg-ink-900 msr:will-change-transform",
                 TIMELINE_BAR_MOTION,
-                playing || trimActive === "playhead" ? "msr:h-3" : "msr:h-2.5",
+                playing || trimActive === "playhead" ? "msr:h-2" : "msr:h-1.5",
               )}
             />
             <TrimHandle
@@ -640,7 +709,7 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               active={trimActive === "start"}
               style={{ left: startPct }}
               onPointerDown={(event) => beginDrag("start", event, timeAtTrack)}
-              onNudge={updateStart}
+              onNudge={(value) => updateStart(value, { previewEdge: true })}
             />
             <TrimHandle
               label="Trim end"
@@ -650,7 +719,7 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               active={trimActive === "end"}
               style={{ left: endPct }}
               onPointerDown={(event) => beginDrag("end", event, timeAtTrack)}
-              onNudge={updateEnd}
+              onNudge={(value) => updateEnd(value, { previewEdge: true })}
             />
           </div>
           <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">
@@ -693,41 +762,43 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
                 >
                   <MenuSurface className="msr:w-max msr:min-w-44">
                     <p className="msr:px-2 msr:py-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Format</p>
-                    {formats.map((item) => (
-                      <MenuItem
-                        key={item}
-                        variant="neutral"
-                        className="msr:gap-2"
-                        onClick={() => {
-                          setFormat(item)
-                          setExportMenuOpen(false)
-                        }}
-                      >
-                        <CheckIcon
-                          size={10}
-                          className={item === format ? "msr:opacity-100" : "msr:opacity-0"}
-                        />
-                        {FORMAT_LABEL[item]}
-                      </MenuItem>
-                    ))}
+                    {formats.map((item) => {
+                      const selected = item === format
+                      return (
+                        <MenuItem
+                          key={item}
+                          variant="neutral"
+                          className={exportMenuRowClass(selected)}
+                          aria-checked={selected}
+                          onClick={() => setFormat(item)}
+                        >
+                          <CheckIcon
+                            size={12}
+                            className={cn("msr:shrink-0", selected ? "msr:opacity-100" : "msr:opacity-0")}
+                          />
+                          <span className="msr:flex-1">{FORMAT_LABEL[item]}</span>
+                        </MenuItem>
+                      )
+                    })}
                     <p className="msr:px-2 msr:pt-1.5 msr:pb-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Size</p>
-                    {SCALE_OPTIONS.map((item) => (
-                      <MenuItem
-                        key={item}
-                        variant="neutral"
-                        className="msr:gap-2"
-                        onClick={() => {
-                          setScale(item)
-                          setExportMenuOpen(false)
-                        }}
-                      >
-                        <CheckIcon
-                          size={10}
-                          className={item === scale ? "msr:opacity-100" : "msr:opacity-0"}
-                        />
-                        {scaleLabel(item, frameSize)}
-                      </MenuItem>
-                    ))}
+                    {SCALE_OPTIONS.map((item) => {
+                      const selected = item === scale
+                      return (
+                        <MenuItem
+                          key={item}
+                          variant="neutral"
+                          className={exportMenuRowClass(selected)}
+                          aria-checked={selected}
+                          onClick={() => setScale(item)}
+                        >
+                          <CheckIcon
+                            size={12}
+                            className={cn("msr:shrink-0", selected ? "msr:opacity-100" : "msr:opacity-0")}
+                          />
+                          <span className="msr:flex-1">{scaleLabel(item, frameSize)}</span>
+                        </MenuItem>
+                      )
+                    })}
                   </MenuSurface>
                 </div>
               </OverlayPortal>

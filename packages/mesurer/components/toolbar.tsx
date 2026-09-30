@@ -27,7 +27,7 @@ import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
 import { LayoutGuidesPanel } from "./layout-guides-panel";
 import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
-import { MenuItem, MenuSurface, ToolbarMenu } from "./menu";
+import { MenuItem, MenuSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import type { LayoutGuide } from "../core/layout-guides";
 import {
@@ -633,11 +633,6 @@ function ToolbarComponent(
       fixed: true,
       align: "left",
     });
-  const captureMenuSide = recordingPanelOpen
-    ? recordingPlacement.side === "bottom"
-      ? "top"
-      : "bottom"
-    : menuSide;
   const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
     useSettingsMenuPlacement({
       anchorRef: layoutGuidesAnchorRef,
@@ -971,7 +966,7 @@ function ToolbarComponent(
 
   return (
     <div
-      className="msr:absolute msr:z-[90]"
+      className="msr:absolute msr:z-[100]"
       style={{
         left: position.x,
         top: position.y,
@@ -1413,7 +1408,7 @@ function ToolbarComponent(
           </button>
           {captureMenuOpen ? (
             <ToolbarMenu
-              side={captureMenuSide}
+              side={menuSide}
               align="right"
               onKeyDown={(event) => {
                 if (event.key !== "Escape") return
@@ -1422,51 +1417,27 @@ function ToolbarComponent(
                 setOpenMenu(null)
               }}
             >
-              <MenuItem
-                className={cn(
-                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                  !recording && shareMode === "screenshot"
-                    ? "msr:bg-[#0d99ff] msr:text-white"
-                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                )}
+              <ToolbarMenuItem
                 onClick={() => {
                   setOpenMenu(null)
                   screenshotMode()
                 }}
               >
-                <CheckIcon
-                  size={12}
-                  className={cn(
-                    !recording && shareMode === "screenshot" ? "msr:opacity-100" : "msr:opacity-0",
-                  )}
-                />
                 <CameraIcon size={12} />
                 <span className="msr:flex-1">Screenshot</span>
                 <span>C</span>
-              </MenuItem>
-              <MenuItem
-                className={cn(
-                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                  recording || shareMode === "record"
-                    ? "msr:bg-[#0d99ff] msr:text-white"
-                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                )}
+              </ToolbarMenuItem>
+              <ToolbarMenuItem
                 onClick={() => {
                   setOpenMenu(null)
                   if (recording) onScreenRecordingStop()
                   else recordMode()
                 }}
               >
-                <CheckIcon
-                  size={12}
-                  className={cn(
-                    recording || shareMode === "record" ? "msr:opacity-100" : "msr:opacity-0",
-                  )}
-                />
                 <RecordIcon size={12} />
                 <span className="msr:flex-1">{recording ? "Stop recording" : "Screen record"}</span>
                 <span>V</span>
-              </MenuItem>
+              </ToolbarMenuItem>
             </ToolbarMenu>
           ) : null}
         </div>
@@ -1571,7 +1542,7 @@ function ToolbarComponent(
           <div
             ref={settingsMenuRef}
             className={cn(
-              "mesurer-menu-surface msr:absolute msr:z-[70] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
+              "mesurer-menu-surface msr:absolute msr:z-[95] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
               settingsPlacement.side === "bottom"
                 ? "msr:top-full msr:mt-2"
                 : "msr:bottom-full msr:mb-2",
@@ -1636,7 +1607,7 @@ function ToolbarComponent(
       ? createPortal(
           <div
             ref={recordingPanelRef}
-            className="msr:pointer-events-auto msr:fixed msr:z-80 msr:max-w-[calc(100vw-16px)]"
+            className="msr:pointer-events-auto msr:fixed msr:z-[98] msr:w-max msr:max-w-[calc(100vw-16px)]"
             style={{
               top: recordingPlacement.top,
               bottom: recordingPlacement.bottom,

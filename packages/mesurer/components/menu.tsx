@@ -74,3 +74,23 @@ export function MenuItem({
     </button>
   )
 }
+
+/** Toolbar dropdown row: icon, label, shortcut — blue hover like guide/capture menus. */
+export function ToolbarMenuItem({
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return (
+    <MenuItem
+      {...props}
+      variant="accent"
+      className={cn(
+        "msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+        className,
+      )}
+    >
+      {children}
+    </MenuItem>
+  )
+}

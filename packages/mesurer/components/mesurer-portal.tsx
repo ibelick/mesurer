@@ -8,7 +8,6 @@ import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
 
-// Leave enough clear space for video compression at the crop boundary.
 const RECORDING_MASK_GUTTER = 24;
 
 type MesurerPortalProps = {
@@ -111,7 +110,7 @@ export function MesurerPortal({
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
       {screenRecording.recording && recordingMaskRect ? (
-        <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[86]">
+        <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[80]">
           <RegionDimMask rect={recordingMaskRect} />
         </div>
       ) : null}
