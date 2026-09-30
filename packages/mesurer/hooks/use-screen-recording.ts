@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
+  isFullClipExport,
+  readBlobVideoDuration,
+  reencodeVideoClip,
+  requestDisplayMediaStream,
+  resolveRecordingDuration,
+  screenshotRectToVideoCrop,
+} from "../core/screen-recording"
+import {
   MIN_SCREENSHOT_SELECTION,
   clampScreenshotRect,
   moveScreenshotRect,
@@ -127,12 +135,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     dismissError()
     try {
       setRecordingRect(nextRect)
-      const stream = await ownerWindow.navigator.mediaDevices.getDisplayMedia({
-        audio: false,
-        video: { displaySurface: "browser" },
-        preferCurrentTab: true,
-        selfBrowserSurface: "include",
-      } as DisplayMediaStreamOptions)
+      const stream = await requestDisplayMediaStream(ownerWindow)
       const track = stream.getVideoTracks()[0]
       if (!track) throw new Error("No video track was selected")
       const source = ownerDocument.createElement("video")
@@ -151,14 +154,12 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
           source.onerror = () => reject(new Error("No video track was selected"))
         })
       }
-      const scaleX = source.videoWidth / ownerWindow.innerWidth
-      const scaleY = source.videoHeight / ownerWindow.innerHeight
-      const sx = Math.max(0, Math.round(nextRect.left * scaleX))
-      const sy = Math.max(0, Math.round(nextRect.top * scaleY))
-      const ex = Math.min(source.videoWidth, Math.round((nextRect.left + nextRect.width) * scaleX))
-      const ey = Math.min(source.videoHeight, Math.round((nextRect.top + nextRect.height) * scaleY))
-      const sw = Math.max(1, ex - sx)
-      const sh = Math.max(1, ey - sy)
+      const { sx, sy, sw, sh } = screenshotRectToVideoCrop(
+        nextRect,
+        source.videoWidth,
+        source.videoHeight,
+        ownerWindow,
+      )
       const canvas = ownerDocument.createElement("canvas")
       canvas.width = sw
       canvas.height = sh
@@ -184,14 +185,26 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
       const chunks: Blob[] = []
       recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data)
       recorder.onstop = () => {
-        const recordedDuration = Math.max(elapsedRef.current, 0.1)
+        const elapsedSeconds = elapsedRef.current
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" })
         release()
-        if (!blob.size) return
-        const url = URL.createObjectURL(blob)
-        if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-        urlRef.current = url
-        setVideo({ url, duration: recordedDuration, filename: createFilename("webm") })
+        void (async () => {
+          if (!blob.size) {
+            flashError()
+            return
+          }
+          let duration = resolveRecordingDuration(0, elapsedSeconds)
+          try {
+            const mediaDuration = await readBlobVideoDuration(blob, ownerDocument)
+            duration = resolveRecordingDuration(mediaDuration, elapsedSeconds)
+          } catch {
+            duration = resolveRecordingDuration(0, elapsedSeconds)
+          }
+          const url = URL.createObjectURL(blob)
+          if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+          urlRef.current = url
+          setVideo({ url, duration, filename: createFilename("webm") })
+        })()
       }
       track.addEventListener("ended", stop, { once: true })
       streamRef.current = stream
@@ -331,46 +344,21 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     const format = options.format ?? "webm"
     const scale = Math.min(3, Math.max(1, options.scale ?? 1))
     const filename = createFilename(extensionFor(format))
-    if (format === "webm" && scale === 1 && startTime <= 0.05 && endTime >= video.duration - 0.05) {
+    if (format === "webm" && scale === 1 && isFullClipExport(startTime, endTime, video.duration)) {
       const blob = await fetch(video.url).then((response) => response.blob())
       return { blob, filename }
     }
-    const source = ownerDocument.createElement("video")
-    source.muted = true
-    source.playsInline = true
-    source.src = video.url
-    await new Promise<void>((resolve, reject) => {
-      source.onloadedmetadata = () => {
-        if (startTime <= 0) resolve()
-        else source.currentTime = startTime
-      }
-      source.onseeked = () => resolve()
-      source.onerror = () => reject(new Error("Could not trim recording"))
-    })
-    const canvas = ownerDocument.createElement("canvas")
-    canvas.width = Math.max(1, Math.round(source.videoWidth * scale))
-    canvas.height = Math.max(1, Math.round(source.videoHeight * scale))
-    const context = canvas.getContext("2d")
-    if (!context) throw new Error("Could not trim recording")
     const mimeType = format === "mp4" ? mp4MimeType() : supportedMimeType()
     if (format === "mp4" && !mimeType) throw new Error("MP4 export is unavailable")
-    const recorder = new MediaRecorder(canvas.captureStream(30), mimeType ? { mimeType } : undefined)
-    const chunks: Blob[] = []
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      const draw = () => {
-        context.drawImage(source, 0, 0, canvas.width, canvas.height)
-        if (source.currentTime >= endTime || source.ended) recorder.stop()
-        else ownerWindow.requestAnimationFrame(draw)
-      }
-      recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data)
-      recorder.onstop = () => {
-        source.pause()
-        resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || "video/webm" }))
-      }
-      recorder.onerror = () => reject(new Error("Could not trim recording"))
-      recorder.start()
-      void source.play().then(draw, reject)
-    })
+    const blob = await reencodeVideoClip(
+      ownerDocument,
+      ownerWindow,
+      video.url,
+      startTime,
+      endTime,
+      scale,
+      mimeType,
+    )
     return { blob, filename }
   }, [ownerDocument, ownerWindow, video])
 

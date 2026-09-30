@@ -373,6 +373,24 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   currentTimeRef.current = currentTime
 
   useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    const syncFromMedia = () => {
+      const mediaDuration = el.duration
+      if (!Number.isFinite(mediaDuration) || mediaDuration <= 0) return
+      if (Math.abs(mediaDuration - duration) < 0.05) return
+      setEnd(mediaDuration)
+      setStart((value) => Math.min(value, Math.max(0, mediaDuration - MIN_CLIP_SECONDS)))
+      const nextTime = Math.min(currentTimeRef.current, mediaDuration)
+      setCurrentTime(nextTime)
+      updatePlayheadPosition(nextTime)
+    }
+    el.addEventListener("loadedmetadata", syncFromMedia)
+    if (el.readyState >= 1) syncFromMedia()
+    return () => el.removeEventListener("loadedmetadata", syncFromMedia)
+  }, [duration, updatePlayheadPosition, url])
+
+  useEffect(() => {
     const track = trackRef.current
     if (!track) return
     const measure = () => {
