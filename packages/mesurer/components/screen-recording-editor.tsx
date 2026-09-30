@@ -10,6 +10,7 @@ import { CheckIcon } from "./icons/menu-icons"
 import { MenuItem, MenuSurface } from "./menu"
 import { SettingsButton } from "./settings-button"
 import { StatusEllipsis } from "./status-ellipsis"
+import { clampOverlayPosition } from "../core/overlay-position"
 import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
 
 type ScreenRecordingEditorProps = {
@@ -253,7 +254,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const closeAnchorRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLElement>(null)
   const togglePlaybackRef = useRef<() => void>(() => {})
-  const [exportMenuBox, setExportMenuBox] = useState<{ right: number; bottom: number } | null>(null)
+  const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number } | null>(null)
   startRef.current = start
   endRef.current = end
 
@@ -316,13 +317,29 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     if (!exportMenuOpen || !overlayLayer) return
     const update = () => {
       const anchor = exportScaleAnchorRef.current
-      if (!anchor) return
+      const menu = exportMenuSurfaceRef.current
+      if (!anchor || !menu) return
       const rect = anchor.getBoundingClientRect()
       const origin = overlayLayer.getBoundingClientRect()
-      setExportMenuBox({
-        right: origin.right - rect.right,
-        bottom: origin.bottom - rect.top + 4,
-      })
+      const width = menu.offsetWidth
+      const height = menu.offsetHeight
+      const gap = 4
+      const padding = 8
+      const spaceAbove = rect.top - origin.top - padding
+      const spaceBelow = origin.bottom - rect.bottom - padding
+      const openAbove = spaceAbove >= height || spaceAbove >= spaceBelow
+      const preferredTop = openAbove
+        ? rect.top - origin.top - height - gap
+        : rect.bottom - origin.top + gap
+      setExportMenuBox(clampOverlayPosition({
+        left: rect.right - origin.left - width,
+        top: preferredTop,
+        width,
+        height,
+        viewportWidth: origin.width,
+        viewportHeight: origin.height,
+        padding,
+      }))
     }
     update()
     const view = ownerDocument.defaultView
@@ -332,7 +349,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       view?.removeEventListener("resize", update)
       view?.removeEventListener("scroll", update, true)
     }
-  }, [exportMenuOpen, expanded, overlayLayer, ownerDocument])
+  }, [exportMenuOpen, expanded, format, frameSize, overlayLayer, ownerDocument, scale])
 
   const syncPlayClock = (time: number) => {
     const view = ownerDocument.defaultView
@@ -794,12 +811,12 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                 anchorRef={exportScaleAnchorRef}
               />
             </div>
-            {exportMenuOpen && exportMenuBox ? (
+            {exportMenuOpen ? (
               <OverlayPortal>
                 <div
                   ref={exportMenuSurfaceRef}
                   className="msr:pointer-events-auto msr:absolute"
-                  style={{ right: exportMenuBox.right, bottom: exportMenuBox.bottom }}
+                  style={exportMenuBox ? { left: exportMenuBox.left, top: exportMenuBox.top } : { left: 0, top: 0, visibility: "hidden" }}
                 >
                   <MenuSurface className="msr:w-max msr:min-w-44">
                     <p className="msr:px-2 msr:py-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Format</p>

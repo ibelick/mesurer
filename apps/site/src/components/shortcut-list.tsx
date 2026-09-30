@@ -7,6 +7,7 @@ const shortcuts = [
   { keys: "D / N / T", description: "Toggle Arrows, Pen, or Text mode" },
   { keys: "P", description: "Open the native color sampler" },
   { keys: "C", description: "Drag a screenshot region (Chrome extension)" },
+  { keys: "V", description: "Drag a region to record a video (Chrome extension)" },
   { keys: "L", description: "Toggle layout guides" },
   { keys: "G", description: "Toggle Guides mode" },
   { keys: "X", description: "Toggle X-ray mode" },
