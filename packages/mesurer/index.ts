@@ -35,6 +35,7 @@ export type {
   GuideStyle,
   RulerSettings,
   ScreenshotSettings,
+  ShareMode,
   TextFont,
   TextStyleSettings,
 } from "./core/persistence";

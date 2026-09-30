@@ -1,22 +1,46 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react"
+import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react"
 import { cn } from "../core/utils"
 
 type MenuSurfaceProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
 }
 
-export function MenuSurface({ className, children, ...props }: MenuSurfaceProps) {
+export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
+  function MenuSurface({ className, children, ...props }, ref) {
+    return (
+      <div
+        {...props}
+        ref={ref}
+        className={cn(
+          "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
+          className,
+        )}
+        role="menu"
+      >
+        {children}
+      </div>
+    )
+  },
+)
+
+type ToolbarMenuProps = MenuSurfaceProps & {
+  side: "top" | "bottom"
+  align?: "left" | "right"
+}
+
+export function ToolbarMenu({ className, side, align = "left", children, ...props }: ToolbarMenuProps) {
   return (
-    <div
+    <MenuSurface
       {...props}
       className={cn(
-        "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
+        "msr:absolute msr:z-[100] msr:flex msr:w-44 msr:flex-col msr:gap-px",
+        side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+        align === "left" ? "msr:left-0" : "msr:right-0",
         className,
       )}
-      role="menu"
     >
       {children}
-    </div>
+    </MenuSurface>
   )
 }
 
@@ -48,5 +72,25 @@ export function MenuItem({
     >
       {children}
     </button>
+  )
+}
+
+/** Toolbar dropdown row: icon, label, shortcut — blue hover like guide/capture menus. */
+export function ToolbarMenuItem({
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return (
+    <MenuItem
+      {...props}
+      variant="accent"
+      className={cn(
+        "msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+        className,
+      )}
+    >
+      {children}
+    </MenuItem>
   )
 }

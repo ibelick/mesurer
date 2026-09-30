@@ -782,6 +782,7 @@ export function SettingsPanel({
             checked={screenshotSettings.copy}
             onChange={(copy) =>
               setScreenshotSettings((settings) => ({
+                ...settings,
                 copy,
                 download: copy ? settings.download : true,
               }))
@@ -794,6 +795,7 @@ export function SettingsPanel({
             checked={screenshotSettings.download}
             onChange={(download) =>
               setScreenshotSettings((settings) => ({
+                ...settings,
                 download,
                 copy: download ? settings.copy : true,
               }))
@@ -810,6 +812,26 @@ export function SettingsPanel({
 
       <SectionDivider />
       <SettingsSection id="general" title="General" ariaLabel="General settings">
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Capture</span>
+          <span className="msr:relative msr:block msr:w-full">
+            <select
+              aria-label="Capture"
+              value={screenshotSettings.shareMode}
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+              onChange={(event) =>
+                setScreenshotSettings((settings) => ({
+                  ...settings,
+                  shareMode: event.target.value === "record" ? "record" : "screenshot",
+                }))
+              }
+            >
+              <option value="screenshot">Screenshot</option>
+              <option value="record">Record</option>
+            </select>
+            <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
+          </span>
+        </label>
         <div className="msr:col-span-2"><SettingsSwitch label="Persist" checked={persistOnReload} onChange={setPersistOnReload} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>

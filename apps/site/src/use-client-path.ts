@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 const FULL_PAGE_PREFIXES = ["/bench", "/e2e"];
 
@@ -33,7 +33,9 @@ export function useClientPath() {
 
   useEffect(() => {
     const sync = (scroll: boolean) => {
-      setPath(normalizePath(window.location.pathname));
+      startTransition(() => {
+        setPath(normalizePath(window.location.pathname));
+      });
       if (scroll) scrollAfterNavigate(window.location.hash);
     };
 

@@ -5,6 +5,7 @@
 
 @theme {
   --radius-control: 5px;
+  --radius-wide-card: 13px;
   --shadow-toolbar:
     drop-shadow(0 0 0.4px rgba(0, 0, 0, 0.22))
     drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
@@ -49,6 +50,10 @@
 @layer utilities {
   .msr\:rounded-control {
     border-radius: var(--msr-radius-control);
+  }
+
+  .msr\:rounded-wide-card {
+    border-radius: var(--msr-radius-wide-card);
   }
 }
 
@@ -139,6 +144,28 @@
   cursor: default !important;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.mesurer-root .mesurer-settings-button-ghost {
+  opacity: 0.7;
+}
+
+.mesurer-root .mesurer-settings-button-ghost:hover,
+.mesurer-root .mesurer-settings-button-ghost:focus-visible {
+  opacity: 1;
+}
+
+.mesurer-root [data-mesurer-recording-timeline] .mesurer-recording-track-rail {
+  background-color: var(--msr-color-ink-200);
+}
+
+.mesurer-root [data-mesurer-recording-timeline] .mesurer-recording-track-clip {
+  background-color: var(--msr-color-ink-300);
+}
+
+.mesurer-root [data-mesurer-recording-timeline] .mesurer-recording-playhead,
+.mesurer-root [data-mesurer-recording-timeline] .mesurer-recording-trim-bar {
+  background-color: var(--msr-color-ink-900);
 }
 
 .mesurer-root .mesurer-switch-thumb[data-checked="false"] {
@@ -592,9 +619,9 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-tooltips {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 110;
   overflow: visible;
   pointer-events: none;
 }
@@ -682,9 +709,27 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   animation: mesurer-comment-nudge 150ms ease-out;
 }
 
+@keyframes mesurer-status-ellipsis {
+  0%, 32% { content: "."; }
+  33%, 65% { content: ".."; }
+  66%, 100% { content: "..."; }
+}
+
+.mesurer-status-ellipsis {
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+}
+
+.mesurer-status-ellipsis::after {
+  content: "...";
+  animation: mesurer-status-ellipsis 1.2s steps(1, end) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .mesurer-comment-nudge {
+  .mesurer-status-ellipsis::after {
     animation: none;
+    content: "...";
   }
 }
 

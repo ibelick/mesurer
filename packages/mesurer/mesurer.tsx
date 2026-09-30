@@ -41,11 +41,16 @@ export default function Mesurer({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  extensionRecording,
+  extensionRecordingPlayer,
   features,
   initialState,
 }: MesurerProps) {
-  if (typeof document !== "undefined") {
-    ensureMesurerStyles(MESURER_STYLES, portalTarget);
+  const resolvedPortalTarget =
+    portalTarget ?? (typeof document !== "undefined" ? document.body : undefined);
+
+  if (typeof document !== "undefined" && resolvedPortalTarget) {
+    ensureMesurerStyles(MESURER_STYLES, resolvedPortalTarget);
   }
 
   const hydrated = useHydrated();
@@ -78,9 +83,11 @@ export default function Mesurer({
       persistence={persistence}
       onPersistenceError={onPersistenceError}
       captureVisibleTab={captureVisibleTab}
+      extensionRecording={extensionRecording}
+      extensionRecordingPlayer={extensionRecordingPlayer}
       features={resolveMesurerFeatures(features)}
       initialState={initialState}
-      portalTarget={portalTarget ?? document.body}
+      portalTarget={resolvedPortalTarget ?? document.body}
     />
   );
 }

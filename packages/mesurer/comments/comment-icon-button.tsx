@@ -7,6 +7,7 @@ import { cn } from "../core/utils"
 type CommentIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
   tooltip?: string
+  shortcut?: string
   tooltipId: string
   tooltipGroup: ToolbarTooltip
   wrapperClassName?: string
@@ -16,6 +17,7 @@ type CommentIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export function CommentIconButton({
   label,
   tooltip = label,
+  shortcut,
   tooltipId,
   tooltipGroup,
   className,
@@ -52,6 +54,7 @@ export function CommentIconButton({
       </SettingsButton>
       <Tooltip
         label={tooltip}
+        shortcut={shortcut}
         visible={tooltipGroup.visibleTooltipId === tooltipId}
         instant={tooltipGroup.tooltipInstant}
         side="top"

@@ -2,10 +2,11 @@ import { createPortal } from "react-dom";
 import { useEffect, type ComponentPropsWithoutRef, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
 import { LayoutGuidesOverlay } from "./layout-guides-overlay";
-import { ScreenshotSelectOverlay } from "./screenshot-select-overlay";
+import { RegionDimMask, ScreenshotSelectOverlay } from "./screenshot-select-overlay";
 import { Toolbar } from "./toolbar";
 import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
+import type { ScreenshotRect } from "../core/screenshot";
 
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
@@ -27,6 +28,7 @@ type MesurerPortalProps = {
   };
   overlay: ComponentPropsWithoutRef<typeof MesurerOverlay>;
   screenshot: ComponentPropsWithoutRef<typeof ScreenshotSelectOverlay>;
+  screenRecording: { recording: boolean; rect: ScreenshotRect | null };
   toolbar: ComponentPropsWithoutRef<typeof Toolbar>;
   theme: "system" | "light" | "dark";
   enabled: boolean;
@@ -42,6 +44,7 @@ export function MesurerPortal({
   rulers,
   overlay,
   screenshot,
+  screenRecording,
   toolbar,
   theme,
   enabled,
@@ -96,6 +99,11 @@ export function MesurerPortal({
       ) : null}
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
+      {screenRecording.recording && screenRecording.rect ? (
+        <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[80]">
+          <RegionDimMask rect={screenRecording.rect} />
+        </div>
+      ) : null}
       <Toolbar ref={toolbarRef} {...toolbar} />
     </div>,
     portalTarget,

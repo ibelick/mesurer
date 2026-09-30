@@ -90,9 +90,12 @@ type HotkeyOptions = {
   onInteract: () => void
   onColorPicker: () => void
   onScreenshot: () => void
+  onScreenRecord: () => void
   onCopyComments: () => void | Promise<boolean>
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
+  isScreenRecording: () => boolean
+  onStopScreenRecording: () => void
   onToggleXray: () => void
   onToggleRulers: () => void
   onToggleSettings: () => void
@@ -156,16 +159,27 @@ export const useHotkeys = (options: HotkeyOptions) => {
           lastEscapeAtRef.current = null
           return
         }
+        const now = performance.now()
+        const doubleEscape =
+          lastEscapeAtRef.current !== null &&
+          now - lastEscapeAtRef.current < DOUBLE_ESCAPE_MS
+        if (current.isScreenRecording()) {
+          event.preventDefault()
+          if (doubleEscape) {
+            lastEscapeAtRef.current = null
+            current.minimizeMesurer()
+            return
+          }
+          lastEscapeAtRef.current = now
+          current.onStopScreenRecording()
+          return
+        }
         const pageOwnsKeyboard =
           isTypingInPage(target) && !isMesurerKeyboardOwned(target)
         if (pageOwnsKeyboard) {
           lastEscapeAtRef.current = null
           if (current.isToolbarIdle()) return
         }
-        const now = performance.now()
-        const doubleEscape =
-          lastEscapeAtRef.current !== null &&
-          now - lastEscapeAtRef.current < DOUBLE_ESCAPE_MS
         if (doubleEscape) {
           event.preventDefault()
           lastEscapeAtRef.current = null
@@ -324,6 +338,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
+      if (key === "v") {
+        if (!isFeatureAvailable("screenshot")) return
+        event.preventDefault()
+        current.onInteract()
+        current.onScreenRecord()
+        return
+      }
+
       if (key === "x" || key === "r") {
         if (key === "r" && !isFeatureAvailable("rulers")) return
         event.preventDefault()
@@ -377,11 +399,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
         if (key === "h") {
           current.setGuideOrientation("horizontal")
-          current.onInteract()
-        }
-
-        if (key === "v") {
-          current.setGuideOrientation("vertical")
           current.onInteract()
         }
       }

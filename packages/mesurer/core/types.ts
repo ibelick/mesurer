@@ -185,6 +185,7 @@ export type OpenMenu =
   | { type: "settings" }
   | { type: "comments"; panel: boolean }
   | { type: "guide-orientation" }
+  | { type: "capture" }
   | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
   | { type: "layout-guides" }
   | null

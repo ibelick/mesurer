@@ -7,7 +7,7 @@ import {
   recoverHost,
   setHostInvalidatedHandler,
 } from "./host";
-import { BOOT_KEY, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+import { BOOT_KEY, RECORDING_ABORT_MESSAGE, RECORDING_PREPARED_MESSAGE, RECORDING_PREPARE_MESSAGE, RECORDING_READY_MESSAGE, RECORDING_STARTED_MESSAGE, RECORDING_START_MESSAGE, RECORDING_STOP_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
 import { createExtensionPersistence } from "./storage";
 import { captureVisibleTabPng } from "./capture-visible-tab";
 
@@ -30,6 +30,88 @@ type ExtensionGlobal = typeof globalThis & {
 };
 
 const extensionGlobal = globalThis as ExtensionGlobal;
+
+const createExtensionRecording = () => {
+  let ready: ((value: { id: string; duration: number }) => void) | null = null;
+  let failed: ((error: Error) => void) | null = null;
+  let prepared: (() => void) | null = null;
+  let prepareFailed: ((error: Error) => void) | null = null;
+  let started: (() => void) | null = null;
+  let startFailed: ((error: Error) => void) | null = null;
+  const onMessage = (message: { type?: string; error?: string; id?: string; duration?: number }, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+    if (message?.type === RECORDING_PREPARED_MESSAGE) {
+      if (message.error) prepareFailed?.(new Error(message.error));
+      else prepared?.();
+      prepared = null;
+      prepareFailed = null;
+      return;
+    }
+    if (message?.type === RECORDING_STARTED_MESSAGE) {
+      if (message.error) startFailed?.(new Error(message.error));
+      else started?.();
+      started = null;
+      startFailed = null;
+      return;
+    }
+    if (message?.type !== RECORDING_READY_MESSAGE) return;
+    if (message.error) {
+      startFailed?.(new Error(message.error));
+      failed?.(new Error(message.error));
+    }
+    else if (typeof message.id === "string" && typeof message.duration === "number") ready?.({ id: message.id, duration: message.duration });
+    else failed?.(new Error("Recording failed"));
+    ready = null;
+    failed = null;
+  };
+  chrome.runtime.onMessage.addListener(onMessage);
+  return {
+    prepare: () => new Promise<void>((resolve, reject) => {
+      prepared = resolve;
+      prepareFailed = reject;
+      chrome.runtime.sendMessage({ type: RECORDING_PREPARE_MESSAGE }, (response) => {
+        const error = chrome.runtime.lastError?.message;
+        if (error || !response?.ok) {
+          prepared = null;
+          prepareFailed = null;
+          reject(new Error(error ?? response?.error ?? "Tab capture unavailable"));
+        }
+      });
+    }),
+    start: async (input: { rect: { left: number; top: number; width: number; height: number }; viewport: { width: number; height: number } }) => {
+      await new Promise<void>((resolve, reject) => {
+        started = resolve;
+        startFailed = reject;
+        chrome.runtime.sendMessage({ type: RECORDING_START_MESSAGE, ...input }, (response) => {
+          const error = chrome.runtime.lastError?.message;
+          if (error || !response?.ok) {
+            started = null;
+            startFailed = null;
+            reject(new Error(error ?? response?.error ?? "Recording failed"));
+          }
+        });
+      });
+    },
+    stop: () => new Promise<{ id: string; duration: number }>((resolve, reject) => {
+      ready = resolve;
+      failed = reject;
+      void chrome.runtime.sendMessage({ type: RECORDING_STOP_MESSAGE }).catch(() => undefined);
+    }),
+    abort: () => {
+      startFailed?.(new DOMException("Recording was cancelled", "AbortError"));
+      prepareFailed?.(new DOMException("Recording was cancelled", "AbortError"));
+      ready = null;
+      failed = null;
+      prepared = null;
+      prepareFailed = null;
+      started = null;
+      startFailed = null;
+      void chrome.runtime.sendMessage({ type: RECORDING_ABORT_MESSAGE }).catch(() => undefined);
+    },
+    dispose: () => {
+      chrome.runtime.onMessage.removeListener(onMessage);
+    },
+  };
+};
 
 const getTabId = () => {
   try {
@@ -139,6 +221,8 @@ const mount = async () => {
         persistSession
         persistOnReload={new URLSearchParams(location.search).has("persist")}
         captureVisibleTab={captureVisibleTabPng}
+        extensionRecording={createExtensionRecording()}
+        extensionRecordingPlayer={chrome.runtime.getURL("recording-player.html")}
       />,
     );
     state.mounted = true;

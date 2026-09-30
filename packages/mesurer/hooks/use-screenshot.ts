@@ -23,8 +23,7 @@ import {
   prepareScreenshotCapture,
   releaseScreenshotCapture,
 } from "../core/screenshot-capture"
-
-const SCREENSHOT_ERROR_MS = 2500
+import { useCaptureErrorToast } from "./use-capture-error-toast"
 
 type UseScreenshotOptions = {
   ownerDocument: Document
@@ -54,23 +53,10 @@ export const useScreenshot = ({
   const captureOperationRef = useRef(0)
   const capturingOperationRef = useRef<number | null>(null)
   const screenshotPreviewUrlRef = useRef<string | null>(null)
-  const screenshotErrorTimeoutRef = useRef<number | null>(null)
-
-  const [error, setError] = useState(false)
+  const { error, flashError, dismissError } = useCaptureErrorToast(ownerWindow)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [active, setActive] = useState(false)
   const [rect, setRect] = useState<ScreenshotRect | null>(null)
-
-  const flashError = useCallback(() => {
-    setError(true)
-    if (screenshotErrorTimeoutRef.current !== null) {
-      ownerWindow.clearTimeout(screenshotErrorTimeoutRef.current)
-    }
-    screenshotErrorTimeoutRef.current = ownerWindow.setTimeout(() => {
-      screenshotErrorTimeoutRef.current = null
-      setError(false)
-    }, SCREENSHOT_ERROR_MS)
-  }, [ownerWindow])
 
   const cancelSelection = useCallback(() => {
     screenshotOriginRef.current = null
@@ -88,17 +74,15 @@ export const useScreenshot = ({
 
   const closeUi = useCallback(() => {
     captureOperationRef.current += 1
+    dismissError()
     cancelSelection()
     dismissPreview()
     releaseScreenshotCapture(ownerWindow)
-  }, [cancelSelection, dismissPreview, ownerWindow])
+  }, [cancelSelection, dismissError, dismissPreview, ownerWindow])
 
   useLayoutEffect(() => {
     return () => {
       captureOperationRef.current += 1
-      if (screenshotErrorTimeoutRef.current !== null) {
-        ownerWindow.clearTimeout(screenshotErrorTimeoutRef.current)
-      }
       const url = screenshotPreviewUrlRef.current
       if (url) URL.revokeObjectURL(url)
       releaseScreenshotCapture(ownerWindow)
@@ -111,7 +95,7 @@ export const useScreenshot = ({
       capturingScreenshotRef.current = true
       const operationId = ++captureOperationRef.current
       capturingOperationRef.current = operationId
-      setError(false)
+      dismissError()
       const restore = hideNodesForCapture([
         screenshotOverlayRef.current,
         overlayRef.current?.querySelector<HTMLElement>(".mesurer-color-picker") ??
@@ -197,6 +181,7 @@ export const useScreenshot = ({
     [
       cancelSelection,
       captureVisibleTab,
+      dismissError,
       flashError,
       ownerDocument,
       ownerWindow,
@@ -221,7 +206,7 @@ export const useScreenshot = ({
       setEnabled(true)
       setToolbarActive(true)
       onPrepare()
-      setError(false)
+      dismissError()
       screenshotOriginRef.current = null
       setRect(null)
       setActive(true)
@@ -236,6 +221,7 @@ export const useScreenshot = ({
     active,
     captureVisibleTab,
     closeUi,
+    dismissError,
     dismissPreview,
     flashError,
     onPrepare,

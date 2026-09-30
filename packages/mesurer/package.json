@@ -45,6 +45,7 @@
     "dev": "node scripts/dev.mjs",
     "pretypecheck": "pnpm run generate:styles",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "prepublishOnly": "npm run typecheck && npm run build"
   },
   "peerDependencies": {
@@ -59,7 +60,8 @@
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.2.2",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "keywords": [
     "measurement",

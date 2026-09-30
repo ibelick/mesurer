@@ -12,6 +12,11 @@ const requiredFiles = [
   "icons/icon-32.png",
   "icons/icon-48.png",
   "icons/icon-128.png",
+  "recording-player.html",
+  "recording-player.js",
+  "offscreen.html",
+  "offscreen-recording.js",
+  "mesurer.css",
 ].filter(Boolean);
 
 if ((manifest.content_scripts ?? []).some((script) => (script.js ?? []).includes("capture-bridge.js"))) {

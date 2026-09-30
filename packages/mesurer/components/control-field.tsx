@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { colorToHex, parseCssColor } from "../core/colors"
+import { cn } from "../core/utils"
 
 export const SETTINGS_COLUMNS = "msr:grid-cols-[78px_150px]"
 
@@ -15,14 +16,108 @@ export function SettingsSelectCaret() {
   )
 }
 
-export function ControlShell({ left, right }: { left: ReactNode; right?: ReactNode }) {
+export const controlNumberInputClassName =
+  "msr:h-full msr:w-full msr:min-w-0 msr:border-0 msr:bg-transparent msr:px-2 msr:font-mono msr:text-[12px] msr:font-medium msr:tabular-nums msr:text-ink-700 msr:outline-none"
+
+export function ControlNumberInput({
+  label,
+  value,
+  min = 0,
+  max = 99999,
+  onChange,
+}: {
+  label: string
+  value: number
+  min?: number
+  max?: number
+  onChange: (value: number) => void
+}) {
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  const commit = (input: string) => {
+    const next = Number(input.replace(/[^\d.-]/g, ""))
+    if (!Number.isFinite(next)) {
+      setDraft(String(value))
+      return
+    }
+    onChange(Math.min(max, Math.max(min, next)))
+  }
   return (
-    <div className="mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:overflow-hidden msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200">
-      <div className="mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center msr:focus-within:rounded-l-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">
+    <ControlShell
+      left={
+        <input
+          aria-label={label}
+          type="text"
+          inputMode="numeric"
+          value={focused ? draft : String(Math.round(value))}
+          className={controlNumberInputClassName}
+          onFocus={() => {
+            setDraft(String(Math.round(value)))
+            setFocused(true)
+          }}
+          onBlur={() => {
+            commit(draft)
+            setFocused(false)
+          }}
+          onChange={(event) => {
+            const next = event.currentTarget.value.replace(/[^\d.-]/g, "")
+            setDraft(next)
+            const parsed = Number(next)
+            if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+            event.preventDefault()
+            const current = Number(draft)
+            const base = Number.isFinite(current) ? current : value
+            const next = Math.min(max, Math.max(min, base + (event.key === "ArrowUp" ? 1 : -1)))
+            setDraft(String(next))
+            onChange(next)
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        />
+      }
+    />
+  )
+}
+
+export function SettingsFieldRow({
+  label,
+  children,
+  columns = "msr:grid-cols-[56px_minmax(0,1fr)]",
+}: {
+  label: string
+  children: ReactNode
+  columns?: string
+}) {
+  return (
+    <div className={`msr:grid msr:w-full msr:items-center msr:gap-2 ${columns} msr:text-[12px] msr:text-ink-700`}>
+      <span className="msr:text-[11px] msr:text-ink-500">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+export function ControlShell({ left, right }: { left: ReactNode; right?: ReactNode }) {
+  const split = Boolean(right)
+  return (
+    <div
+      className={cn(
+        "mesurer-control-shell msr:group msr:flex msr:h-6 msr:w-full msr:min-w-0 msr:items-center msr:rounded-control msr:border msr:border-transparent msr:bg-ink-50 msr:hover:border-ink-200",
+        split ? "msr:overflow-visible" : "msr:overflow-hidden msr:focus-within:border-[#0d99ff] msr:hover:focus-within:border-[#0d99ff]",
+      )}
+    >
+      <div
+        className={cn(
+          "mesurer-control-focus msr:flex msr:h-full msr:min-w-0 msr:flex-1 msr:items-center",
+          split && "msr:focus-within:relative msr:focus-within:z-[1] msr:focus-within:rounded-l-[5px] msr:focus-within:shadow-[0_0_0_1px_#0d99ff]",
+        )}
+      >
         {left}
       </div>
       {right ? (
-        <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:rounded-r-[5px] msr:focus-within:outline msr:focus-within:outline-1 msr:focus-within:outline-[var(--msr-accent)] msr:focus-within:outline-offset-[-1px]">
+        <div className="mesurer-control-focus msr:box-border msr:flex msr:h-full msr:w-12 msr:shrink-0 msr:items-center msr:border-l msr:border-ink-200 msr:focus-within:relative msr:focus-within:z-[1] msr:focus-within:rounded-r-[5px] msr:focus-within:shadow-[0_0_0_1px_#0d99ff]">
           {right}
         </div>
       ) : null}

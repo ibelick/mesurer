@@ -1,3 +1,5 @@
+import type { ResizeHandle } from "./text-transform";
+
 export const MIN_SCREENSHOT_SELECTION = 4;
 
 export type ScreenshotRect = {
@@ -26,6 +28,61 @@ export const normalizeScreenshotRect = (
     height: Math.max(0, bottom - top),
   };
 };
+
+export const clampScreenshotRect = (
+  rect: ScreenshotRect,
+  viewport: { width: number; height: number },
+  minSize = MIN_SCREENSHOT_SELECTION,
+): ScreenshotRect => {
+  const width = Math.max(minSize, Math.min(rect.width, viewport.width));
+  const height = Math.max(minSize, Math.min(rect.height, viewport.height));
+  const left = Math.max(0, Math.min(rect.left, viewport.width - width));
+  const top = Math.max(0, Math.min(rect.top, viewport.height - height));
+  return { left, top, width, height };
+};
+
+export const moveScreenshotRect = (
+  rect: ScreenshotRect,
+  dx: number,
+  dy: number,
+  viewport: { width: number; height: number },
+): ScreenshotRect =>
+  clampScreenshotRect(
+    { ...rect, left: rect.left + dx, top: rect.top + dy },
+    viewport,
+  );
+
+export const resizeScreenshotRect = (
+  start: ScreenshotRect,
+  handle: ResizeHandle,
+  pointer: { x: number; y: number },
+  viewport: { width: number; height: number },
+): ScreenshotRect => {
+  let left = start.left;
+  let top = start.top;
+  let right = start.left + start.width;
+  let bottom = start.top + start.height;
+  const x = Math.max(0, Math.min(pointer.x, viewport.width));
+  const y = Math.max(0, Math.min(pointer.y, viewport.height));
+  if (handle.includes("w")) left = x;
+  if (handle.includes("e")) right = x;
+  if (handle.includes("n")) top = y;
+  if (handle.includes("s")) bottom = y;
+  return normalizeScreenshotRect(
+    { x: left, y: top },
+    { x: right, y: bottom },
+    viewport,
+  );
+};
+
+export const pointInScreenshotRect = (
+  rect: ScreenshotRect,
+  point: { x: number; y: number },
+) =>
+  point.x >= rect.left &&
+  point.x <= rect.left + rect.width &&
+  point.y >= rect.top &&
+  point.y <= rect.top + rect.height;
 
 export const cropPngToViewportRect = async (
   blob: Blob,

@@ -6,8 +6,7 @@ import { CommentDeleteConfirmation, readDeleteAnchor, type DeleteAnchorRect } fr
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
-import { SettingsButton } from "./settings-button"
-import { CheckIcon, MoreIcon } from "./icons"
+import { CheckIcon, CopyIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
@@ -132,7 +131,7 @@ export function CommentsPanel({
       role="dialog"
       aria-label="Comments"
       className={cn(
-        "mesurer-menu-surface msr:right-0 msr:z-80 msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
+        "mesurer-menu-surface msr:right-0 msr:z-[100] msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
         fixed ? "msr:fixed" : "msr:absolute",
         openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden",
         !fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
@@ -140,7 +139,7 @@ export function CommentsPanel({
       style={{
         position: fixed ? "fixed" : "absolute",
         width: fixed ? "18rem" : undefined,
-        zIndex: fixed ? 80 : undefined,
+        zIndex: fixed ? 100 : undefined,
         pointerEvents: "auto",
         right: placement.right,
         top: placement.top,
@@ -152,23 +151,27 @@ export function CommentsPanel({
       onClick={(event) => event.stopPropagation()}
       onMouseLeave={tooltipGroup.onToolbarLeave}
     >
-      <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:px-3">
+      <div className="msr:flex msr:min-h-0 msr:flex-1 msr:flex-col msr:py-1">
+      <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:pl-3 msr:pr-2">
         <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
-        <SettingsButton
-          type="button"
-          className="msr:h-6 msr:gap-1.5"
-          aria-label={copied ? "Comments copied" : "Copy comments"}
-          rightIcon={copied ? <CheckIcon size={12} /> : <span className="msr:font-normal msr:text-[11px] msr:leading-none msr:text-ink-500">{copyShortcut}</span>}
+        <CommentIconButton
+          label={copied ? "Comments copied" : "Copy comments"}
+          tooltip={copied ? "Copied" : "Copy comments"}
+          shortcut={copied ? undefined : copyShortcut}
+          tooltipId="copy-comments"
+          tooltipGroup={tooltipGroup}
+          className="msr:size-6"
+          wrapperClassName="msr:h-6 msr:w-6"
           onClick={async () => {
             await onCopy()
             setCopied(true)
             window.setTimeout(() => setCopied(false), 1800)
           }}
         >
-          Copy comments
-        </SettingsButton>
+          {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+        </CommentIconButton>
       </div>
-      <div className="msr:shrink-0 msr:px-3 msr:pb-2">
+      <div className="msr:shrink-0 msr:pl-3 msr:pr-2 msr:pb-2">
         <div className="msr:relative msr:flex msr:items-center msr:gap-1.5">
           <TextInput
             type="search"
@@ -230,7 +233,7 @@ export function CommentsPanel({
             const selected = selectedId === comment.id
             return (
               <li key={comment.id} className="msr:relative">
-                  <div className={`msr:px-3 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100"}`}>
+                  <div className={`msr:pl-3 msr:pr-2 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100"}`}>
                   <div className="msr:flex msr:items-start msr:justify-between msr:gap-2">
                     <button type="button" className="msr:flex msr:min-w-0 msr:flex-1 msr:flex-col msr:items-start msr:gap-1 msr:text-left msr:outline-none msr:focus-visible:ring-2 msr:focus-visible:ring-inset msr:focus-visible:ring-ink-400" aria-current={selected ? "true" : undefined} onClick={() => onSelect(comment.id)}>
                       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">You</span>
@@ -292,7 +295,8 @@ export function CommentsPanel({
             )
           })}
         </ul>
-      ) : <p className="msr:px-3 msr:py-6 msr:text-center msr:text-[12px] msr:text-ink-500">{normalizedQuery ? "No matching comments." : statusFilter === "resolved" ? "No resolved comments." : statusFilter === "open" ? "No open comments." : "No comments yet."}</p>}
+      ) : <p className="msr:pl-3 msr:pr-2 msr:py-6 msr:text-center msr:text-[12px] msr:text-ink-500">{normalizedQuery ? "No matching comments." : statusFilter === "resolved" ? "No resolved comments." : statusFilter === "open" ? "No open comments." : "No comments yet."}</p>}
+      </div>
       {openMenuId && openMenuId !== "all" && commentMenuPosition ? (
         createPortal(<div
           role="menu"
