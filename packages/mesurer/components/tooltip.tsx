@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
@@ -15,6 +16,12 @@ import { clampOverlayPosition } from "../core/overlay-position"
 const TOOLTIP_DELAY_MS = 800
 
 export const TooltipLayerContext = createContext<HTMLElement | null>(null)
+
+export function OverlayPortal({ children }: { children: ReactNode }) {
+  const layer = useContext(TooltipLayerContext)
+  if (!layer) return null
+  return createPortal(children, layer)
+}
 
 export function Tooltip({
   label,

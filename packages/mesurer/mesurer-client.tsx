@@ -1794,11 +1794,6 @@ export function MesurerClient({
         screenRecording={{
           recording: screenRecording.recording,
           rect: screenRecording.recordingRect,
-          panel: screenRecording.recording ? <section className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110] msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-white msr:px-3 msr:py-2 msr:shadow-floating" aria-label="Screen recording">
-            <span className="msr:size-1.5 msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" />
-            <span className="msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-800">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span>
-            <SettingsButton variant="danger-solid" onClick={screenRecording.stop}>Stop</SettingsButton>
-          </section> : screenRecording.video ? <div className="msr:pointer-events-auto msr:fixed msr:bottom-6 msr:right-6 msr:z-[110]"><ScreenRecordingEditor url={screenRecording.video.url} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /></div> : null,
         }}
         toolbar={{
         eventTarget: ownerWindow,
@@ -1854,11 +1849,16 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-          screenRecording: {
-          recording: screenRecording.recording,
-          elapsed: screenRecording.elapsed,
-          error: screenRecording.error,
-          onClick: screenRecording.toggleSelection,
+           screenRecording: {
+           recording: screenRecording.recording,
+           elapsed: screenRecording.elapsed,
+           error: screenRecording.error,
+           panel: screenRecording.recording ? <section className="mesurer-menu-surface msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-white msr:px-3 msr:py-2 msr:shadow-floating" aria-label="Screen recording">
+             <span className="msr:size-1.5 msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" />
+             <span className="msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-800">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span>
+             <SettingsButton variant="danger-solid" onClick={screenRecording.stop}>Stop</SettingsButton>
+           </section> : screenRecording.video ? <ScreenRecordingEditor url={screenRecording.video.url} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /> : null,
+           onClick: screenRecording.toggleSelection,
           onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,
         },

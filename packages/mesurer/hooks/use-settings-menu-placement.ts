@@ -8,6 +8,7 @@ type SettingsMenuPlacement = {
   side: "top" | "bottom"
   height: number
   right: number
+  left?: number
   top?: number
   bottom?: number
 }
@@ -18,6 +19,7 @@ type UseSettingsMenuPlacementOptions = {
   open: boolean
   refreshKey?: string | number
   fixed?: boolean
+  align?: "left" | "right"
 }
 
 export const useSettingsMenuPlacement = ({
@@ -26,6 +28,7 @@ export const useSettingsMenuPlacement = ({
   open,
   refreshKey,
   fixed = false,
+  align = "right",
 }: UseSettingsMenuPlacementOptions) => {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [placement, setPlacement] = useState<SettingsMenuPlacement>({
@@ -53,13 +56,16 @@ export const useSettingsMenuPlacement = ({
           : "top"
       const availableHeight = side === "bottom" ? availableBottom : availableTop
       const menuWidth = menu.getBoundingClientRect().width
-      const desiredLeft = anchor.right + 4 - menuWidth
+      const desiredLeft = align === "left" ? anchor.left : anchor.right + 4 - menuWidth
       const minLeft = VIEWPORT_PADDING
       const maxLeft = Math.max(
         minLeft,
         eventTarget.innerWidth - VIEWPORT_PADDING - menuWidth,
       )
-      const menuLeft = Math.min(maxLeft, Math.max(minLeft, desiredLeft))
+      const menuLeft =
+        align === "left"
+          ? desiredLeft
+          : Math.min(maxLeft, Math.max(minLeft, desiredLeft))
       const containingRight = fixed
         ? eventTarget.innerWidth
         : anchorRef.current?.parentElement?.getBoundingClientRect().right ?? anchor.right
@@ -68,6 +74,7 @@ export const useSettingsMenuPlacement = ({
         side,
         height: Math.min(DEFAULT_HEIGHT, availableHeight),
         right: containingRight - menuLeft - menuWidth,
+        ...(align === "left" ? { left: menuLeft } : {}),
         ...(fixed
           ? side === "bottom"
             ? { top: anchor.bottom + MENU_GAP }
@@ -77,13 +84,17 @@ export const useSettingsMenuPlacement = ({
     }
 
     measure()
+    const resizeObserver =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null
+    if (menuRef.current) resizeObserver?.observe(menuRef.current)
     eventTarget.addEventListener("resize", measure)
     eventTarget.addEventListener("scroll", measure, true)
     return () => {
+      resizeObserver?.disconnect()
       eventTarget.removeEventListener("resize", measure)
       eventTarget.removeEventListener("scroll", measure, true)
     }
-  }, [anchorRef, eventTarget, fixed, open, refreshKey])
+  }, [align, anchorRef, eventTarget, fixed, open, refreshKey])
 
   return { menuRef, placement }
 }

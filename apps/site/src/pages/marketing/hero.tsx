@@ -61,7 +61,7 @@ export default function Hero() {
               ),
             )}
           </span>
-          <span> downloads</span>
+          <span>downloads</span>
         </p>
       </div>
     </section>

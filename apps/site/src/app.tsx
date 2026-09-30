@@ -1,14 +1,14 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Mesurer } from "mesurer";
-import MarketingPage from "./pages/marketing/home";
 import { useClientPath } from "./use-client-path";
 
 const routeLoaders = {
+  marketing: () => import("./pages/marketing/route"),
   changelog: () => import("./pages/changelog"),
   privacy: () => import("./pages/privacy"),
   terms: () => import("./pages/terms"),
   docs: () => import("./pages/docs"),
 } as const;
+const MarketingPage = lazy(routeLoaders.marketing);
 const ChangelogPage = lazy(routeLoaders.changelog);
 const PrivacyPage = lazy(routeLoaders.privacy);
 const TermsPage = lazy(routeLoaders.terms);
@@ -16,6 +16,7 @@ const DocsPage = lazy(routeLoaders.docs);
 const OldPage = lazy(() => import("./pages/old"));
 
 const prefetchRoute = (pathname: string) => {
+  if (pathname === "/") return routeLoaders.marketing();
   if (pathname === "/changelog") return routeLoaders.changelog();
   if (pathname === "/privacy") return routeLoaders.privacy();
   if (pathname === "/terms") return routeLoaders.terms();
@@ -27,6 +28,10 @@ function RoutePrefetcher() {
   useEffect(() => {
     if (window.__MESURER_PRERENDER__) return;
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
+    if (import.meta.env.DEV) {
+      void Promise.all(Object.values(routeLoaders).map((load) => load()));
+      return;
+    }
     const preloadOnIntent = (event: Event) => {
       const anchor = (event.target as Element | null)?.closest("a");
       if (!anchor || anchor.target === "_blank") return;
@@ -88,7 +93,6 @@ export function App() {
       <meta property="og:url" content={canonical} />
       <Analytics />
       <RoutePrefetcher />
-      <Mesurer initialState={{ minimized: true }} />
       <Suspense fallback={null}>{page}</Suspense>
     </>
   );

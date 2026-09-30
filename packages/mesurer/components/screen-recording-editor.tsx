@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { listenPointerDrag } from "../core/pointer-drag"
 import { cn, formatValue } from "../core/utils"
@@ -10,7 +10,7 @@ import { CheckIcon } from "./icons/menu-icons"
 import { MenuItem, MenuSurface } from "./menu"
 import { SettingsButton } from "./settings-button"
 import { StatusEllipsis } from "./status-ellipsis"
-import { Tooltip } from "./tooltip"
+import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
 
 type ScreenRecordingEditorProps = {
   url: string
@@ -161,7 +161,7 @@ function TrimHandle({
     <button
       type="button"
       className={cn(
-        "group msr:absolute msr:top-0 msr:z-20 msr:flex msr:h-full msr:-translate-x-1/2 msr:cursor-ew-resize msr:items-center msr:justify-center msr:border-0 msr:bg-transparent msr:px-1 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--color-ink-700)]",
+        "msr:group msr:absolute msr:top-0 msr:z-20 msr:flex msr:h-full msr:-translate-x-1/2 msr:cursor-ew-resize msr:items-center msr:justify-center msr:border-0 msr:bg-transparent msr:px-1 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--color-ink-700)]",
         !active && "msr:transition-[left] msr:duration-300 msr:ease-[cubic-bezier(0.22,1,0.36,1)]",
       )}
       style={style}
@@ -200,11 +200,13 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   const playheadRef = useRef<HTMLDivElement>(null)
   const trackWidthRef = useRef(0)
   const exportMenuRef = useRef<HTMLDivElement>(null)
+  const exportMenuSurfaceRef = useRef<HTMLDivElement>(null)
   const exportScaleAnchorRef = useRef<HTMLDivElement>(null)
   const startRef = useRef(0)
   const endRef = useRef(duration)
   const playClockRef = useRef<{ at: number; time: number } | null>(null)
   const tooltip = useToolbarTooltip()
+  const overlayLayer = useContext(TooltipLayerContext)
   const [start, setStart] = useState(0)
   const [end, setEnd] = useState(duration)
   const [currentTime, setCurrentTime] = useState(0)
@@ -219,6 +221,10 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
   const [hoverTime, setHoverTime] = useState<number | null>(null)
   const [trimActive, setTrimActive] = useState<DragKind | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const closeAnchorRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLElement>(null)
+  const togglePlaybackRef = useRef<() => void>(() => {})
+  const [exportMenuBox, setExportMenuBox] = useState<{ right: number; bottom: number } | null>(null)
   startRef.current = start
   endRef.current = end
 
@@ -235,16 +241,33 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
       if (!exportMenuOpen) return
       const path = event.composedPath()
       if (exportMenuRef.current && path.includes(exportMenuRef.current)) return
+      if (exportMenuSurfaceRef.current && path.includes(exportMenuSurfaceRef.current)) return
       setExportMenuOpen(false)
     }
-    const closeOnEscape = (event: Event) => {
-      if (!("key" in event) || (event as KeyboardEvent).key !== "Escape") return
-      event.preventDefault()
-      if (exportMenuOpen) {
-        setExportMenuOpen(false)
+    const onKeyDown = (event: Event) => {
+      if (!("key" in event)) return
+      const keyEvent = event as KeyboardEvent
+      if (keyEvent.key === "Escape") {
+        keyEvent.preventDefault()
+        if (exportMenuOpen) {
+          setExportMenuOpen(false)
+          return
+        }
+        onDiscard()
         return
       }
-      onDiscard()
+      if (keyEvent.repeat || (keyEvent.key !== " " && keyEvent.code !== "Space")) return
+      const card = cardRef.current
+      if (!card || !keyEvent.composedPath().includes(card)) return
+      const target = keyEvent.target
+      if (
+        target instanceof Element &&
+        target.closest("button, [role='menu'], [role='menuitem'], [role='slider']")
+      ) {
+        return
+      }
+      keyEvent.preventDefault()
+      togglePlaybackRef.current()
     }
     const detachWindow = exportMenuOpen
       ? addMesurerCaptureListener(view, view, "pointerdown", closeIfOutside)
@@ -252,13 +275,35 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     const detachDocument = exportMenuOpen
       ? addMesurerCaptureListener(view, ownerDocument, "pointerdown", closeIfOutside)
       : () => {}
-    const detachEscape = addMesurerCaptureListener(view, view, "keydown", closeOnEscape)
+    const detachKeys = addMesurerCaptureListener(view, view, "keydown", onKeyDown)
     return () => {
       detachWindow()
       detachDocument()
-      detachEscape()
+      detachKeys()
     }
   }, [exportMenuOpen, onDiscard, ownerDocument])
+
+  useLayoutEffect(() => {
+    if (!exportMenuOpen || !overlayLayer) return
+    const update = () => {
+      const anchor = exportScaleAnchorRef.current
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const origin = overlayLayer.getBoundingClientRect()
+      setExportMenuBox({
+        right: origin.right - rect.right,
+        bottom: origin.bottom - rect.top + 4,
+      })
+    }
+    update()
+    const view = ownerDocument.defaultView
+    view?.addEventListener("resize", update)
+    view?.addEventListener("scroll", update, true)
+    return () => {
+      view?.removeEventListener("resize", update)
+      view?.removeEventListener("scroll", update, true)
+    }
+  }, [exportMenuOpen, expanded, overlayLayer, ownerDocument])
 
   const syncPlayClock = (time: number) => {
     const view = ownerDocument.defaultView
@@ -402,9 +447,9 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     })
   }
 
-  const togglePlayback = async () => {
+  const togglePlayback = useCallback(async () => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || exporting) return
     if (!video.paused) {
       video.pause()
       return
@@ -421,7 +466,7 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
       playClockRef.current = null
       setError("Could not play the recording.")
     }
-  }
+  }, [end, exporting, start])
 
   const downloadRecording = async () => {
     if (exporting) return
@@ -446,33 +491,45 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
     }
   }
 
+  togglePlaybackRef.current = () => {
+    void togglePlayback()
+  }
+
+  useLayoutEffect(() => {
+    cardRef.current?.focus({ preventScroll: true })
+  }, [url])
+
   const startPct = `${ratio(start) * 100}%`
   const endPct = `${ratio(end) * 100}%`
   const hoverPct = hoverTime === null ? null : `${ratio(hoverTime) * 100}%`
 
   return (
     <section
+      ref={cardRef}
+      tabIndex={0}
+      aria-keyshortcuts="Space"
       className={cn(
-        "mesurer-menu-surface msr:overflow-hidden msr:rounded-wide-card msr:bg-white msr:shadow-floating",
+        "mesurer-menu-surface msr:relative msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",
         expanded ? "msr:w-[min(36rem,calc(100vw-24px))]" : "msr:w-[min(22rem,calc(100vw-24px))]",
       )}
       aria-label="Screen recording editor"
       aria-busy={exporting}
       onMouseLeave={tooltip.onToolbarLeave}
+      onPointerDown={(event) => {
+        if ((event.target as HTMLElement).closest("button, [role='slider']")) return
+        cardRef.current?.focus({ preventScroll: true })
+      }}
     >
       <div className="msr:relative msr:p-2">
-        <div className="msr:relative msr:flex msr:w-full msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100">
-          <div className="msr:absolute msr:top-1.5 msr:right-1.5 msr:z-10">
-            <PlayerIconButton
-              label="Close"
-              tooltipId="recording-close"
-              tooltip={tooltip}
-              onClick={onDiscard}
-            >
-              <CloseIcon size={12} />
-            </PlayerIconButton>
-          </div>
-          <video
+        <div className="msr:group msr:relative msr:flex msr:w-full msr:justify-center">
+          <div
+            className="msr:relative msr:flex msr:w-full msr:cursor-default msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100"
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest("button")) return
+              void togglePlayback()
+            }}
+          >
+            <video
             ref={videoRef}
             className={expanded
               ? "msr:block msr:h-auto msr:max-h-[min(28rem,calc(100vh-12rem))] msr:w-auto msr:max-w-full msr:object-contain"
@@ -498,12 +555,38 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               setCurrentTime(event.currentTarget.currentTime)
             }}
             onEnded={() => setCurrentTime(start)}
-          />
-          {exporting ? (
-            <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-ink-900/45 msr:text-[11px] msr:text-white">
-              <StatusEllipsis label="Exporting" />
-            </div>
-          ) : null}
+            />
+            {exporting ? (
+              <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-ink-900/45 msr:text-[11px] msr:text-white">
+                <StatusEllipsis label="Exporting" />
+              </div>
+            ) : null}
+          </div>
+          <div
+            ref={closeAnchorRef}
+            className="msr:pointer-events-none msr:absolute msr:top-1.5 msr:right-1.5 msr:z-10 msr:opacity-0 msr:group-hover:pointer-events-auto msr:group-hover:opacity-100 msr:focus-within:pointer-events-auto msr:focus-within:opacity-100"
+            onMouseEnter={() => tooltip.onTooltipEnter("recording-close")}
+            onMouseLeave={() => tooltip.onTooltipLeave("recording-close")}
+            onFocus={() => tooltip.onTooltipEnter("recording-close")}
+            onBlur={() => tooltip.onTooltipLeave("recording-close")}
+          >
+            <SettingsButton
+              shape="icon"
+              variant="ghost"
+              type="button"
+              aria-label="Close"
+              onClick={onDiscard}
+            >
+              <CloseIcon size={12} />
+            </SettingsButton>
+            <Tooltip
+              label="Close"
+              visible={tooltip.visibleTooltipId === "recording-close"}
+              instant={tooltip.tooltipInstant}
+              side="top"
+              anchorRef={closeAnchorRef}
+            />
+          </div>
         </div>
         <div className="msr:mt-2 msr:flex msr:h-5 msr:items-center msr:gap-1.5">
           <PlayerIconButton
@@ -595,53 +678,59 @@ export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, owne
               </SettingsButton>
               <Tooltip
                 label="Export options"
-                visible={tooltip.visibleTooltipId === "recording-export"}
+                visible={!exportMenuOpen && tooltip.visibleTooltipId === "recording-export"}
                 instant={tooltip.tooltipInstant}
                 side="top"
                 anchorRef={exportScaleAnchorRef}
               />
             </div>
-            {exportMenuOpen ? (
-              <div className="msr:absolute msr:right-0 msr:bottom-full msr:z-30 msr:mb-1">
-                <MenuSurface className="msr:w-max msr:min-w-44">
-                  <p className="msr:px-2 msr:py-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Format</p>
-                  {formats.map((item) => (
-                    <MenuItem
-                      key={item}
-                      variant="neutral"
-                      className="msr:gap-2"
-                      onClick={() => {
-                        setFormat(item)
-                        setExportMenuOpen(false)
-                      }}
-                    >
-                      <CheckIcon
-                        size={10}
-                        className={item === format ? "msr:opacity-100" : "msr:opacity-0"}
-                      />
-                      {FORMAT_LABEL[item]}
-                    </MenuItem>
-                  ))}
-                  <p className="msr:px-2 msr:pt-1.5 msr:pb-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Size</p>
-                  {SCALE_OPTIONS.map((item) => (
-                    <MenuItem
-                      key={item}
-                      variant="neutral"
-                      className="msr:gap-2"
-                      onClick={() => {
-                        setScale(item)
-                        setExportMenuOpen(false)
-                      }}
-                    >
-                      <CheckIcon
-                        size={10}
-                        className={item === scale ? "msr:opacity-100" : "msr:opacity-0"}
-                      />
-                      {scaleLabel(item, frameSize)}
-                    </MenuItem>
-                  ))}
-                </MenuSurface>
-              </div>
+            {exportMenuOpen && exportMenuBox ? (
+              <OverlayPortal>
+                <div
+                  ref={exportMenuSurfaceRef}
+                  className="msr:pointer-events-auto msr:absolute"
+                  style={{ right: exportMenuBox.right, bottom: exportMenuBox.bottom }}
+                >
+                  <MenuSurface className="msr:w-max msr:min-w-44">
+                    <p className="msr:px-2 msr:py-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Format</p>
+                    {formats.map((item) => (
+                      <MenuItem
+                        key={item}
+                        variant="neutral"
+                        className="msr:gap-2"
+                        onClick={() => {
+                          setFormat(item)
+                          setExportMenuOpen(false)
+                        }}
+                      >
+                        <CheckIcon
+                          size={10}
+                          className={item === format ? "msr:opacity-100" : "msr:opacity-0"}
+                        />
+                        {FORMAT_LABEL[item]}
+                      </MenuItem>
+                    ))}
+                    <p className="msr:px-2 msr:pt-1.5 msr:pb-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Size</p>
+                    {SCALE_OPTIONS.map((item) => (
+                      <MenuItem
+                        key={item}
+                        variant="neutral"
+                        className="msr:gap-2"
+                        onClick={() => {
+                          setScale(item)
+                          setExportMenuOpen(false)
+                        }}
+                      >
+                        <CheckIcon
+                          size={10}
+                          className={item === scale ? "msr:opacity-100" : "msr:opacity-0"}
+                        />
+                        {scaleLabel(item, frameSize)}
+                      </MenuItem>
+                    ))}
+                  </MenuSurface>
+                </div>
+              </OverlayPortal>
             ) : null}
           </div>
           <PlayerIconButton

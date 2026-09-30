@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from "react";
+import { useEffect, type ComponentPropsWithoutRef, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
 import { LayoutGuidesOverlay } from "./layout-guides-overlay";
 import { RegionDimMask, ScreenshotSelectOverlay } from "./screenshot-select-overlay";
@@ -7,6 +7,9 @@ import { Toolbar } from "./toolbar";
 import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
+
+// Leave enough clear space for video compression at the crop boundary.
+const RECORDING_MASK_GUTTER = 24;
 
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
@@ -28,7 +31,7 @@ type MesurerPortalProps = {
   };
   overlay: ComponentPropsWithoutRef<typeof MesurerOverlay>;
   screenshot: ComponentPropsWithoutRef<typeof ScreenshotSelectOverlay>;
-  screenRecording: { recording: boolean; rect: ScreenshotRect | null; panel: ReactNode };
+  screenRecording: { recording: boolean; rect: ScreenshotRect | null };
   toolbar: ComponentPropsWithoutRef<typeof Toolbar>;
   theme: "system" | "light" | "dark";
   enabled: boolean;
@@ -51,6 +54,14 @@ export function MesurerPortal({
   layoutGuides,
   layoutGuidesVisible = false,
 }: MesurerPortalProps) {
+  const recordingMaskRect = screenRecording.rect
+    ? {
+        left: Math.max(0, screenRecording.rect.left - RECORDING_MASK_GUTTER),
+        top: Math.max(0, screenRecording.rect.top - RECORDING_MASK_GUTTER),
+        width: screenRecording.rect.width + RECORDING_MASK_GUTTER * 2,
+        height: screenRecording.rect.height + RECORDING_MASK_GUTTER * 2,
+      }
+    : null;
   useEffect(() => {
     const ownerWindow = portalTarget.ownerDocument.defaultView;
     if (!ownerWindow) return;
@@ -99,25 +110,11 @@ export function MesurerPortal({
       ) : null}
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
-      {screenRecording.recording && screenRecording.rect ? (
+      {screenRecording.recording && recordingMaskRect ? (
         <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[86]">
-          <RegionDimMask rect={screenRecording.rect} />
-          <div
-            className="msr:absolute msr:outline msr:outline-2 msr:outline-[var(--msr-danger-text)]"
-            style={{
-              left: screenRecording.rect.left,
-              top: screenRecording.rect.top,
-              width: screenRecording.rect.width,
-              height: screenRecording.rect.height,
-            }}
-          >
-            <span className="msr:absolute msr:-top-6 msr:left-0 msr:rounded-control msr:bg-[var(--msr-danger-solid-bg)] msr:px-1.5 msr:py-0.5 msr:text-[10px] msr:font-medium msr:text-[var(--msr-danger-solid-text)]">
-              REC
-            </span>
-          </div>
+          <RegionDimMask rect={recordingMaskRect} />
         </div>
       ) : null}
-      {screenRecording.panel}
       <Toolbar ref={toolbarRef} {...toolbar} />
     </div>,
     portalTarget,

@@ -88,7 +88,7 @@ export function RecordingSelectionPanel({
         <SettingsButton
           type="button"
           className="msr:w-full msr:justify-center"
-          leftIcon={<RecordIcon size={10} />}
+          leftIcon={<RecordIcon size={12} />}
           onClick={onConfirm}
         >
           Start recording

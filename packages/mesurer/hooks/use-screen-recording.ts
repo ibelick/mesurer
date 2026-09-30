@@ -151,15 +151,14 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
           source.onerror = () => reject(new Error("No video track was selected"))
         })
       }
-      const viewport = ownerWindow.visualViewport
-      const viewWidth = viewport?.width ?? ownerWindow.innerWidth
-      const viewHeight = viewport?.height ?? ownerWindow.innerHeight
-      const scaleX = source.videoWidth / viewWidth
-      const scaleY = source.videoHeight / viewHeight
+      const scaleX = source.videoWidth / ownerWindow.innerWidth
+      const scaleY = source.videoHeight / ownerWindow.innerHeight
       const sx = Math.max(0, Math.round(nextRect.left * scaleX))
       const sy = Math.max(0, Math.round(nextRect.top * scaleY))
-      const sw = Math.max(1, Math.min(source.videoWidth - sx, Math.round(nextRect.width * scaleX)))
-      const sh = Math.max(1, Math.min(source.videoHeight - sy, Math.round(nextRect.height * scaleY)))
+      const ex = Math.min(source.videoWidth, Math.round((nextRect.left + nextRect.width) * scaleX))
+      const ey = Math.min(source.videoHeight, Math.round((nextRect.top + nextRect.height) * scaleY))
+      const sw = Math.max(1, ex - sx)
+      const sh = Math.max(1, ey - sy)
       const canvas = ownerDocument.createElement("canvas")
       canvas.width = sw
       canvas.height = sh

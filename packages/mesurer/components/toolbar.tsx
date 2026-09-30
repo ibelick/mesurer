@@ -87,6 +87,7 @@ type ToolbarScreenRecording = {
   recording: boolean;
   elapsed: number;
   error: boolean;
+  panel: ReactNode;
   onClick: () => void;
   onCancel: () => void;
   onStop: () => void;
@@ -622,6 +623,21 @@ function ToolbarComponent(
       refreshKey: `${position.x}:${position.y}`,
       fixed: true,
     });
+  const recordingPanelOpen = Boolean(screenRecording.panel);
+  const { menuRef: recordingPanelRef, placement: recordingPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: motionRef,
+      eventTarget,
+      open: recordingPanelOpen,
+      refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
+      align: "left",
+    });
+  const captureMenuSide = recordingPanelOpen
+    ? recordingPlacement.side === "bottom"
+      ? "top"
+      : "bottom"
+    : menuSide;
   const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
     useSettingsMenuPlacement({
       anchorRef: layoutGuidesAnchorRef,
@@ -1344,7 +1360,7 @@ function ToolbarComponent(
        <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-stretch">
        <ToolbarDivider />
         <ToolbarGroup label="Capture and settings" className="msr:px-1">
-       <div className="msr:relative msr:flex msr:flex-none">
+        <div className="msr:relative msr:flex msr:flex-none">
         {features.screenshot ? (
           <>
             <ToolbarButton
@@ -1397,7 +1413,7 @@ function ToolbarComponent(
           </button>
           {captureMenuOpen ? (
             <ToolbarMenu
-              side={menuSide}
+              side={captureMenuSide}
               align="right"
               onKeyDown={(event) => {
                 if (event.key !== "Escape") return
@@ -1616,6 +1632,24 @@ function ToolbarComponent(
       />,
       commentPanelPortalTarget,
     )}
+    {recordingPanelOpen
+      ? createPortal(
+          <div
+            ref={recordingPanelRef}
+            className="msr:pointer-events-auto msr:fixed msr:z-80 msr:max-w-[calc(100vw-16px)]"
+            style={{
+              top: recordingPlacement.top,
+              bottom: recordingPlacement.bottom,
+              left: recordingPlacement.left,
+              right: recordingPlacement.left == null ? recordingPlacement.right : undefined,
+            }}
+            data-mesurer-capture-ui
+          >
+            {screenRecording.panel}
+          </div>,
+          commentPanelPortalTarget,
+        )
+      : null}
     </TooltipLayerContext.Provider>
       {screenshotError ? (
         <CaptureToast align={toastAlignment} title="Screenshot failed." />
