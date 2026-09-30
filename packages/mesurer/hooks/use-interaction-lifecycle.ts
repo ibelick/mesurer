@@ -216,7 +216,8 @@ export const useInteractionLifecycle = (options: Options) => {
     options.clearSelection();
     options.colorPicker.setActive(false);
     options.screenshot.closeUi();
-    options.screenRecording.cancelSelection();
+    if (options.screenRecording.recording) options.screenRecording.stop();
+    else options.screenRecording.cancelSelection();
     options.setXrayVisible(false);
     options.setRulersVisible(false);
     options.setToolMode("none");
@@ -293,6 +294,8 @@ export const useInteractionLifecycle = (options: Options) => {
       options.screenshot.active ||
       Boolean(options.screenshot.previewUrl) ||
       options.screenRecording.selecting,
+    isScreenRecording: () => options.screenRecording.recording,
+    onStopScreenRecording: () => options.screenRecording.stop(),
     onToggleXray: () => {
       options.setEnabled(true);
       options.colorPicker.setActive(false);

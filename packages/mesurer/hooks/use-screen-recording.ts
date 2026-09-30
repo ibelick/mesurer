@@ -122,9 +122,14 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
     setAdjusting(false)
     setRect(null)
     extensionRecordingPreparingRef.current = false
+    if (extensionRecordingActiveRef.current || recorderRef.current?.state === "recording") {
+      release()
+      dismissError()
+      return
+    }
     extensionRecording?.abort()
     dismissError()
-  }, [dismissError, extensionRecording])
+  }, [dismissError, extensionRecording, release])
 
   const viewport = useCallback(
     () => getCaptureViewportMetrics(ownerWindow),

@@ -1334,6 +1334,8 @@ export function MesurerClient({
     commentRuntime.setHoverElement(null);
     colorPicker.setActive(false);
     screenshot.closeUi();
+    if (screenRecording.recording) screenRecording.stop();
+    else screenRecording.cancelSelection();
     clearSelection();
     setHoverRect(null);
     setHoverPointer(null);
@@ -1345,6 +1347,7 @@ export function MesurerClient({
     colorPicker,
     commentRuntime,
     screenshot,
+    screenRecording,
     setHoverElement,
     setHoverPointer,
     setHoverRect,
