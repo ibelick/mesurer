@@ -4,25 +4,17 @@ import {
   isFullClipExport,
   resolveRecordingDuration,
   screenshotRectToVideoCrop,
+  tabCaptureRectToVideoCrop,
 } from "./screen-recording"
 
 describe("getCaptureViewportMetrics", () => {
-  it("falls back to inner dimensions without visualViewport", () => {
-    const metrics = getCaptureViewportMetrics({
-      innerWidth: 1200,
-      innerHeight: 800,
-      visualViewport: null,
-    } as Window)
-    expect(metrics).toEqual({ width: 1200, height: 800 })
-  })
-
-  it("uses visual viewport dimensions when present", () => {
+  it("uses the layout viewport even when a visual viewport is present", () => {
     const metrics = getCaptureViewportMetrics({
       innerWidth: 1200,
       innerHeight: 800,
       visualViewport: { width: 1000, height: 700, offsetLeft: 12, offsetTop: 8 },
     } as Window)
-    expect(metrics).toEqual({ width: 1000, height: 700 })
+    expect(metrics).toEqual({ width: 1200, height: 800 })
   })
 })
 
@@ -43,7 +35,7 @@ describe("screenshotRectToVideoCrop", () => {
     expect(crop).toEqual({ sx: 200, sy: 100, sw: 400, sh: 300 })
   })
 
-  it("uses visual viewport dimensions for crop scaling", () => {
+  it("scales against the layout viewport, not the visual viewport", () => {
     const offsetWindow = {
       innerWidth: 1200,
       innerHeight: 900,
@@ -51,11 +43,43 @@ describe("screenshotRectToVideoCrop", () => {
     } as Window
     const crop = screenshotRectToVideoCrop(
       { left: 150, top: 75, width: 100, height: 100 },
-      1200,
-      900,
+      2400,
+      1800,
       offsetWindow,
     )
-    expect(crop).toEqual({ sx: 180, sy: 84, sw: 120, sh: 113 })
+    expect(crop).toEqual({ sx: 300, sy: 150, sw: 200, sh: 200 })
+  })
+})
+
+describe("tabCaptureRectToVideoCrop", () => {
+  const rect = { left: 100, top: 80, width: 200, height: 40 }
+  const viewport = { width: 1000, height: 800 }
+
+  it("uses one scale when the frame matches the viewport", () => {
+    expect(tabCaptureRectToVideoCrop(rect, 2000, 1600, viewport)).toEqual({
+      sx: 200,
+      sy: 160,
+      sw: 400,
+      sh: 80,
+    })
+  })
+
+  it("keeps the vertical scale equal to the horizontal scale when the frame is shorter", () => {
+    expect(tabCaptureRectToVideoCrop(rect, 2000, 1400, viewport)).toEqual({
+      sx: 200,
+      sy: 160,
+      sw: 400,
+      sh: 80,
+    })
+  })
+
+  it("centers leftover frame height so the selection is not shifted up", () => {
+    expect(tabCaptureRectToVideoCrop(rect, 2000, 1800, viewport)).toEqual({
+      sx: 200,
+      sy: 260,
+      sw: 400,
+      sh: 80,
+    })
   })
 })
 

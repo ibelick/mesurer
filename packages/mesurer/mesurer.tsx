@@ -41,6 +41,8 @@ export default function Mesurer({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  extensionRecording,
+  extensionRecordingPlayer,
   features,
   initialState,
 }: MesurerProps) {
@@ -81,6 +83,8 @@ export default function Mesurer({
       persistence={persistence}
       onPersistenceError={onPersistenceError}
       captureVisibleTab={captureVisibleTab}
+      extensionRecording={extensionRecording}
+      extensionRecordingPlayer={extensionRecordingPlayer}
       features={resolveMesurerFeatures(features)}
       initialState={initialState}
       portalTarget={resolvedPortalTarget ?? document.body}

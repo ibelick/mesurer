@@ -84,6 +84,7 @@ type ToolbarScreenshot = {
 };
 
 type ToolbarScreenRecording = {
+  selecting: boolean;
   recording: boolean;
   elapsed: number;
   error: boolean;
@@ -343,7 +344,7 @@ function ToolbarComponent(
     onCancel: onCancelScreenshot,
     onPreviewExited: onScreenshotPreviewExited,
   } = screenshot;
-  const { recording, error: recordingError, onClick: onScreenRecordingClick, onCancel: onScreenRecordingCancel, onStop: onScreenRecordingStop } = screenRecording;
+  const { selecting: recordingSelecting, recording, error: recordingError, onClick: onScreenRecordingClick, onCancel: onScreenRecordingCancel, onStop: onScreenRecordingStop } = screenRecording;
   const {
     count: commentCount,
     onCopy: onCopyComments,
@@ -626,7 +627,7 @@ function ToolbarComponent(
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const { menuRef: recordingPanelRef, placement: recordingPlacement } =
     useSettingsMenuPlacement({
-      anchorRef: motionRef,
+      anchorRef: settingsRef,
       eventTarget,
       open: recordingPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
@@ -984,7 +985,7 @@ function ToolbarComponent(
         }
       }}
       className="mesurer-toolbar-motion msr:pointer-events-auto"
-       style={{ visibility: screenshotActive ? "hidden" : undefined }}
+       style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
       onPointerDown={onDragPointerDown}
       onPointerMove={onDragPointerMove}
       onPointerUp={onDragPointerEnd}
@@ -1599,7 +1600,7 @@ function ToolbarComponent(
       <div
         ref={setTooltipLayer}
         className="mesurer-toolbar-tooltips"
-        style={{ visibility: screenshotActive ? "hidden" : undefined }}
+        style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
       />,
       commentPanelPortalTarget,
     )}
@@ -1607,12 +1608,11 @@ function ToolbarComponent(
       ? createPortal(
           <div
             ref={recordingPanelRef}
-            className="msr:pointer-events-auto msr:fixed msr:z-[98] msr:w-max msr:max-w-[calc(100vw-16px)]"
+            className="msr:pointer-events-auto msr:fixed msr:z-[101] msr:w-max msr:max-w-[calc(100vw-16px)]"
             style={{
               top: recordingPlacement.top,
               bottom: recordingPlacement.bottom,
-              left: recordingPlacement.left,
-              right: recordingPlacement.left == null ? recordingPlacement.right : undefined,
+               left: position.x,
             }}
             data-mesurer-capture-ui
           >

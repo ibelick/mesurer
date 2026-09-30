@@ -51,6 +51,14 @@ import { useAnnotationCallbacks } from "./hooks/use-annotation-callbacks";
 import type { ColorPickerFormat } from "./core/colors";
 import type { CommentThread, ToolMode } from "./core/types";
 import type { CommentFilter } from "./comments/types";
+
+export type ExtensionRecordingSession = {
+  prepare: () => Promise<void>;
+  start: (input: { rect: { left: number; top: number; width: number; height: number }; viewport: { width: number; height: number } }) => Promise<void>;
+  stop: () => Promise<{ id: string; duration: number }>;
+  abort: () => void;
+  dispose?: () => void;
+};
 import {
   createLocalStoragePersistence,
   createPageScopedPersistence,
@@ -102,6 +110,8 @@ export type MesurerProps = {
   persistence?: MesurerPersistence;
   onPersistenceError?: (error: unknown) => void;
   captureVisibleTab?: () => Promise<Blob>;
+  extensionRecording?: ExtensionRecordingSession;
+  extensionRecordingPlayer?: string;
   features?: MesurerFeatures;
   initialState?: {
     enabled?: boolean;
@@ -154,6 +164,8 @@ export function MesurerClient({
   persistence,
   onPersistenceError,
   captureVisibleTab,
+  extensionRecording,
+  extensionRecordingPlayer,
   features,
   initialState,
 }: Required<
@@ -167,6 +179,8 @@ export function MesurerClient({
     | "rulerSettings"
     | "textStyle"
     | "captureVisibleTab"
+    | "extensionRecording"
+    | "extensionRecordingPlayer"
     | "features"
     | "initialState"
   >
@@ -178,6 +192,8 @@ export function MesurerClient({
     | "persistence"
     | "onPersistenceError"
     | "captureVisibleTab"
+    | "extensionRecording"
+    | "extensionRecordingPlayer"
     | "initialState"
   > & {
     guideStyle: GuideStyle;
@@ -851,6 +867,8 @@ export function MesurerClient({
   const screenRecording = useScreenRecording({
     ownerDocument,
     ownerWindow,
+    extensionRecording,
+    extensionRecordingPlayer,
     onPrepare: () => {
       colorPicker.setActive(false)
       screenshot.closeUi()
@@ -1849,15 +1867,16 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-           screenRecording: {
-           recording: screenRecording.recording,
+            screenRecording: {
+            selecting: screenRecording.selecting,
+            recording: screenRecording.recording,
            elapsed: screenRecording.elapsed,
            error: screenRecording.error,
            panel: screenRecording.recording ? <section className="mesurer-menu-surface msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-white msr:px-3 msr:py-2 msr:shadow-floating" aria-label="Screen recording">
              <span className="msr:size-1.5 msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" />
              <span className="msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-800">{String(Math.floor(screenRecording.elapsed / 60)).padStart(2, "0")}:{String(Math.floor(screenRecording.elapsed % 60)).padStart(2, "0")}</span>
              <SettingsButton variant="danger-solid" onClick={screenRecording.stop}>Stop</SettingsButton>
-           </section> : screenRecording.video ? <ScreenRecordingEditor url={screenRecording.video.url} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /> : null,
+           </section> : screenRecording.video ? <ScreenRecordingEditor url={screenRecording.video.url} playerUrl={screenRecording.video.playerUrl} duration={screenRecording.video.duration} ownerDocument={ownerDocument} onDiscard={screenRecording.discard} onExport={screenRecording.exportClip} /> : null,
            onClick: screenRecording.toggleSelection,
           onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,

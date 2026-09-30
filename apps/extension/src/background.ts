@@ -1,4 +1,4 @@
-import { CAPTURE_VISIBLE_MESSAGE, SAVE_WORKSPACE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+import { CAPTURE_VISIBLE_MESSAGE, OFFSCREEN_RECORDING_ABORT_MESSAGE, OFFSCREEN_RECORDING_PREPARE_MESSAGE, OFFSCREEN_RECORDING_START_MESSAGE, OFFSCREEN_RECORDING_STOP_MESSAGE, RECORDING_ABORT_MESSAGE, RECORDING_PREPARED_MESSAGE, RECORDING_PREPARE_MESSAGE, RECORDING_READY_MESSAGE, RECORDING_STARTED_MESSAGE, RECORDING_START_MESSAGE, RECORDING_STOP_MESSAGE, SAVE_WORKSPACE_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
 import { createActiveTabRegistry } from "./active-tabs";
 
 const ACTIVE_TABS_KEY = "mesurer:active-tabs";
@@ -35,6 +35,23 @@ const writeActiveTabs = async (ids: number[]) => {
 };
 
 const activeTabRegistry = createActiveTabRegistry(readActiveTabs, writeActiveTabs);
+let offscreenReady: Promise<void> | null = null;
+
+const ensureOffscreen = () => {
+  if (!offscreenReady) {
+    offscreenReady = chrome.offscreen.hasDocument().then(async (hasDocument) => {
+      if (!hasDocument) await chrome.offscreen.createDocument({
+        url: "offscreen.html",
+        reasons: ["USER_MEDIA"],
+        justification: "Record the selected browser tab region.",
+      });
+    }).catch((error) => {
+      offscreenReady = null;
+      throw error;
+    });
+  }
+  return offscreenReady;
+};
 
 const inject = async (tabId: number, boot: ExtensionBoot) => {
   await chrome.scripting.executeScript({
@@ -120,6 +137,44 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === RECORDING_PREPARE_MESSAGE) {
+    const tabId = sender.tab?.id;
+    if (typeof tabId !== "number") {
+      sendResponse({ ok: false, error: "No tab to record" });
+      return true;
+    }
+    chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => {
+      if (chrome.runtime.lastError || !streamId) {
+        sendResponse({ ok: false, error: chrome.runtime.lastError?.message ?? "Tab capture unavailable" });
+        return;
+      }
+      void ensureOffscreen()
+        .then(() => chrome.runtime.sendMessage({ type: OFFSCREEN_RECORDING_PREPARE_MESSAGE, streamId, tabId }))
+        .then(() => sendResponse({ ok: true }))
+        .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Recording failed" }));
+    });
+    return true;
+  }
+  if (message?.type === RECORDING_START_MESSAGE) {
+    const tabId = sender.tab?.id;
+    if (typeof tabId !== "number") {
+      sendResponse({ ok: false, error: "No tab to record" });
+      return true;
+    }
+    void ensureOffscreen().then(() => chrome.runtime.sendMessage({ ...message, type: OFFSCREEN_RECORDING_START_MESSAGE, tabId })).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Recording failed" }));
+    return true;
+  }
+  if (message?.type === RECORDING_STOP_MESSAGE || message?.type === RECORDING_ABORT_MESSAGE) {
+    const type = message.type === RECORDING_STOP_MESSAGE ? OFFSCREEN_RECORDING_STOP_MESSAGE : OFFSCREEN_RECORDING_ABORT_MESSAGE;
+    void ensureOffscreen().then(() => chrome.runtime.sendMessage({ type })).catch(() => undefined);
+    return false;
+  }
+  if (message?.type === RECORDING_READY_MESSAGE || message?.type === RECORDING_STARTED_MESSAGE || message?.type === RECORDING_PREPARED_MESSAGE) {
+    const tabId = sender.tab?.id;
+    const targetTabId = typeof message.tabId === "number" ? message.tabId : tabId;
+    if (typeof targetTabId === "number") void chrome.tabs.sendMessage(targetTabId, message).catch(() => undefined);
+    return false;
+  }
   if (message?.type === SESSION_MESSAGE) {
     const tabId = sender.tab?.id;
     if (typeof tabId === "number" && typeof message.open === "boolean") {

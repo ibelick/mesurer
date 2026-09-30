@@ -3,7 +3,13 @@
   "name": "Mesurer - Inspect, annotate, and give feedback on any live interface",
   "description": "Mesurer runs directly where you build. Share feedback with your agents and your team.",
   "version": "0.0.0",
-  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],
+  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite", "tabCapture", "offscreen"],
+  "web_accessible_resources": [
+    {
+      "resources": ["recording-player.html", "recording-player.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "host_permissions": [
     "http://*/*",
     "https://*/*"

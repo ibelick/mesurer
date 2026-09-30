@@ -5,15 +5,8 @@ export type CaptureViewportMetrics = {
   height: number
 }
 
-/** Tab-capture frames map to the visible viewport, with client coordinates from its origin. */
+/** Selection and tab capture both use the layout viewport (same mapping as screenshots). */
 export function getCaptureViewportMetrics(ownerWindow: Window): CaptureViewportMetrics {
-  const visual = ownerWindow.visualViewport
-  if (visual) {
-    return {
-      width: visual.width,
-      height: visual.height,
-    }
-  }
   return {
     width: ownerWindow.innerWidth,
     height: ownerWindow.innerHeight,
@@ -25,6 +18,26 @@ export type VideoCropRect = {
   sy: number
   sw: number
   sh: number
+}
+
+/**
+ * Tab-capture frames often don't share the viewport aspect ratio.
+ * Width scale matches the page; leftover height is centered so the crop
+ * doesn't sit above the selection.
+ */
+export function tabCaptureRectToVideoCrop(
+  rect: ScreenshotRect,
+  videoWidth: number,
+  videoHeight: number,
+  viewport: { width: number; height: number },
+): VideoCropRect {
+  const scale = videoWidth / viewport.width
+  const padTop = Math.max(0, (videoHeight - viewport.height * scale) / 2)
+  const sx = Math.max(0, Math.min(videoWidth - 1, Math.round(rect.left * scale)))
+  const sy = Math.max(0, Math.min(videoHeight - 1, Math.round(padTop + rect.top * scale)))
+  const sw = Math.max(1, Math.min(videoWidth - sx, Math.round(rect.width * scale)))
+  const sh = Math.max(1, Math.min(videoHeight - sy, Math.round(rect.height * scale)))
+  return { sx, sy, sw, sh }
 }
 
 export function screenshotRectToVideoCrop(

@@ -20,6 +20,7 @@ import {
 } from "../core/screenshot"
 import { eventView, listenPointerDrag } from "../core/pointer-drag"
 import type { ResizeHandle } from "../core/text-transform"
+import type { ExtensionRecordingSession } from "../mesurer-client"
 
 const MAX_RECORDING_MS = 60_000
 
@@ -56,9 +57,11 @@ type UseScreenRecordingOptions = {
   ownerDocument: Document
   ownerWindow: Window
   onPrepare: () => void
+  extensionRecording?: ExtensionRecordingSession
+  extensionRecordingPlayer?: string
 }
 
-export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: UseScreenRecordingOptions) => {
+export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, extensionRecording, extensionRecordingPlayer }: UseScreenRecordingOptions) => {
   const originRef = useRef<{ x: number; y: number } | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -68,6 +71,8 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const urlRef = useRef<string | null>(null)
   const elapsedRef = useRef(0)
   const captureNodesRef = useRef<{ source: HTMLVideoElement; canvas: HTMLCanvasElement } | null>(null)
+  const extensionRecordingActiveRef = useRef(false)
+  const extensionRecordingPreparingRef = useRef(false)
   const [selecting, setSelecting] = useState(false)
   const [adjusting, setAdjusting] = useState(false)
   const [rect, setRect] = useState<ScreenshotRect | null>(null)
@@ -76,7 +81,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   const [recordingRect, setRecordingRect] = useState<ScreenshotRect | null>(null)
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
-  const [video, setVideo] = useState<{ url: string; duration: number; filename: string } | null>(null)
+  const [video, setVideo] = useState<{ url: string; duration: number; filename: string; playerUrl?: string } | null>(null)
   const { error, flashError, dismissError } = useCaptureErrorToast(ownerWindow)
 
   const release = useCallback(() => {
@@ -97,24 +102,29 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
       nodes.source.remove()
       nodes.canvas.remove()
     }
+    extensionRecording?.abort()
+    extensionRecordingActiveRef.current = false
     setRecording(false)
     setRecordingRect(null)
     elapsedRef.current = 0
     setElapsed(0)
-  }, [ownerWindow])
+  }, [extensionRecording, ownerWindow])
 
   useEffect(() => () => {
     release()
     if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-  }, [release])
+    extensionRecording?.dispose?.()
+  }, [extensionRecording, release])
 
   const cancelSelection = useCallback(() => {
     originRef.current = null
     setSelecting(false)
     setAdjusting(false)
     setRect(null)
+    extensionRecordingPreparingRef.current = false
+    extensionRecording?.abort()
     dismissError()
-  }, [dismissError])
+  }, [dismissError, extensionRecording])
 
   const viewport = useCallback(
     () => getCaptureViewportMetrics(ownerWindow),
@@ -130,12 +140,48 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
     })
   }, [release])
 
-  const stop = useCallback(() => recorderRef.current?.state === "recording" && recorderRef.current.stop(), [])
+  const stop = useCallback(() => {
+    if (extensionRecording) {
+      if (!extensionRecordingActiveRef.current) return
+      extensionRecordingActiveRef.current = false
+      void extensionRecording.stop().then(({ id, duration }) => {
+        setRecording(false)
+        setRecordingRect(null)
+        setVideo({
+          url: "",
+          duration,
+          filename: createFilename("webm"),
+          playerUrl: `${extensionRecordingPlayer}?id=${encodeURIComponent(id)}&duration=${encodeURIComponent(duration)}`,
+        })
+      }).catch(() => {
+        release()
+        flashError()
+      })
+      return
+    }
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop()
+  }, [extensionRecording, extensionRecordingPlayer, flashError, release])
 
   const start = useCallback(async (nextRect: ScreenshotRect) => {
     dismissError()
     try {
       setRecordingRect(nextRect)
+      if (extensionRecording) {
+        await extensionRecording.start({ rect: nextRect, viewport: viewport() })
+        extensionRecordingActiveRef.current = true
+        setRecording(true)
+        elapsedRef.current = 0
+        const startedAt = ownerWindow.performance.now()
+        const tick = () => {
+          const next = (ownerWindow.performance.now() - startedAt) / 1000
+          elapsedRef.current = next
+          setElapsed(next)
+          if (extensionRecordingActiveRef.current) elapsedFrameRef.current = ownerWindow.requestAnimationFrame(tick)
+        }
+        elapsedFrameRef.current = ownerWindow.requestAnimationFrame(tick)
+        timeoutRef.current = ownerWindow.setTimeout(stop, MAX_RECORDING_MS)
+        return
+      }
       const stream = await requestDisplayMediaStream(ownerWindow)
       const track = stream.getVideoTracks()[0]
       if (!track) throw new Error("No video track was selected")
@@ -230,24 +276,40 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
       release()
       if (!(caught instanceof DOMException && caught.name === "AbortError")) flashError()
     }
-  }, [dismissError, flashError, ownerDocument, ownerWindow, release, stop])
+  }, [dismissError, extensionRecording, flashError, ownerDocument, ownerWindow, release, stop, viewport])
 
   const toggleSelection = useCallback(() => {
     if (selecting) return cancelSelection()
+    if (extensionRecordingPreparingRef.current) return
     dismissError()
     discard()
     onPrepare()
     setAdjusting(false)
     setRect(null)
+    if (extensionRecording) {
+      extensionRecordingPreparingRef.current = true
+      void extensionRecording.prepare().then(() => {
+        extensionRecordingPreparingRef.current = false
+        setSelecting(true)
+      }).catch(() => {
+        extensionRecordingPreparingRef.current = false
+        release()
+        flashError()
+      })
+      return
+    }
     setSelecting(true)
-  }, [cancelSelection, discard, dismissError, onPrepare, selecting])
+  }, [cancelSelection, discard, dismissError, extensionRecording, flashError, onPrepare, release, selecting])
 
   const confirmRecording = useCallback(() => {
     const nextRect = rectRef.current
     if (!nextRect || nextRect.width < MIN_SCREENSHOT_SELECTION || nextRect.height < MIN_SCREENSHOT_SELECTION) return
-    cancelSelection()
+    originRef.current = null
+    setSelecting(false)
+    setAdjusting(false)
+    setRect(null)
     void start(nextRect)
-  }, [cancelSelection, start])
+  }, [start])
 
   useEffect(() => {
     if (!selecting) return

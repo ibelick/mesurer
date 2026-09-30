@@ -5,6 +5,8 @@ export default defineConfig({
     background: "src/background.ts",
     content: "src/content.tsx",
     "keyboard-gate": "src/keyboard-gate.ts",
+    "offscreen-recording": "src/offscreen-recording.ts",
+    "recording-player": "src/recording-player.tsx",
   },
   outDir: "dist",
   format: ["iife"],

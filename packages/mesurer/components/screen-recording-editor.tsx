@@ -14,6 +14,7 @@ import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
 
 type ScreenRecordingEditorProps = {
   url: string
+  playerUrl?: string
   duration: number
   onDiscard: () => void
   onExport: (start: number, end: number, options?: RecordingExportOptions) => Promise<RecordingExportResult>
@@ -200,7 +201,29 @@ function TrimHandle({
   )
 }
 
-export function ScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument }: ScreenRecordingEditorProps) {
+export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
+  if (props.playerUrl) {
+    return <ExtensionRecordingFrame {...props} />
+  }
+
+  return <StandardScreenRecordingEditor {...props} />
+}
+
+function ExtensionRecordingFrame({ playerUrl, onDiscard }: ScreenRecordingEditorProps) {
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source === frameRef.current?.contentWindow && event.data?.type === "mesurer:recording-discard") {
+        onDiscard()
+      }
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [onDiscard])
+  return <iframe ref={frameRef} title="Recording preview" src={playerUrl} className="msr:block msr:max-w-[calc(100vw-16px)] msr:border-0 msr:bg-transparent" style={{ width: "calc(36rem + 24px)", height: "calc(32rem + 24px)", margin: -12 }} />
+}
+
+function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument }: ScreenRecordingEditorProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
