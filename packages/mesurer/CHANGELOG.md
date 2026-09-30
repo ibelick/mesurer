@@ -1,5 +1,14 @@
 # mesurer
 
+## 0.2.1
+
+- add selected-region video recording with Chrome tab capture
+- add recording playback, trimming, scaling, and WebM/MP4 export where supported
+- add the Screenshot/Screen record capture menu
+- improve recording crop mapping, frame capture, lifecycle cleanup, and extension playback
+- improve toolbar persistence across reloads and same-tab navigation
+- improve transparent overlay selection and extension capture behavior
+
 ## 0.2.0
 
 - add configurable column, row, and pixel layout guides with selection, keyboard controls, persistence, and undo/redo

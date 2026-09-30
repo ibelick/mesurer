@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 29 September 2026
+Last updated: 30 September 2026
 
 ## Mesurer
 
@@ -51,11 +51,21 @@ Used to store Mesurer settings and page workspaces locally in Chrome. This inclu
 
 Used when you choose to copy a selected screenshot or sampled color to the clipboard.
 
+### tabCapture
+
+Used only after you explicitly choose the video recording feature. It captures the active browser tab so Mesurer can record the region you select. The captured stream is processed locally in the browser and is not sent to Mesurer or any third party.
+
+### offscreen
+
+Used to create the offscreen document required by Chrome Manifest V3 to process tab recordings. The offscreen document crops and encodes the selected region locally after you start recording. It does not collect or transmit page content.
+
 ## Screenshot and recording capture
 
 Captures are initiated by you and contain only the region you select. In the Chrome extension, screenshots are captured locally through Chrome's visible-tab capture API. In a React integration without the extension, Chrome may show its native tab-sharing prompt through `getDisplayMedia()`.
 
-Screenshots and recordings are copied to the local clipboard or downloaded locally according to your settings. Mesurer does not upload or externally process these captures unless you explicitly share them through a hosted platform feature.
+Screenshots and recordings are processed locally and are copied to the local clipboard, stored temporarily in local extension storage, or downloaded locally according to your actions. Mesurer does not upload or externally process these captures unless you explicitly share them through a hosted platform feature.
+
+Video recordings are stored temporarily in the extension's local IndexedDB storage so they can be previewed, trimmed, and exported. Recordings remain on the device and are not uploaded. They can be removed through the recording editor or by clearing the browser's extension storage.
 
 ## Data sharing and retention
 
