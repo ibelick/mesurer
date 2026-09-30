@@ -152,7 +152,7 @@ export const ScreenshotSelectOverlay = forwardRef<
           </div>
           {!recordingAdjust ? (
             <MeasureTag
-              className="msr:bg-[#0d99ff]"
+              className="msr:bg-black msr:text-white"
               style={{
                 left: rect.left + rect.width / 2,
                 top: rect.top + rect.height + 6,

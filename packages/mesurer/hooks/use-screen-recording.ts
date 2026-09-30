@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
   isFullClipExport,
+  getCaptureViewportMetrics,
   readBlobVideoDuration,
   reencodeVideoClip,
   requestDisplayMediaStream,
@@ -116,7 +117,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
   }, [dismissError])
 
   const viewport = useCallback(
-    () => ({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight }),
+    () => getCaptureViewportMetrics(ownerWindow),
     [ownerWindow],
   )
 
@@ -138,6 +139,10 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare }: Us
       const stream = await requestDisplayMediaStream(ownerWindow)
       const track = stream.getVideoTracks()[0]
       if (!track) throw new Error("No video track was selected")
+      if (track.getSettings().displaySurface && track.getSettings().displaySurface !== "browser") {
+        track.stop()
+        throw new Error("Select the browser tab to record")
+      }
       const source = ownerDocument.createElement("video")
       source.autoplay = true
       source.muted = true

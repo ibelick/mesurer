@@ -8,8 +8,6 @@ import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
 
-const RECORDING_MASK_GUTTER = 24;
-
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
   rootRef: RefObject<HTMLDivElement | null>;
@@ -53,14 +51,6 @@ export function MesurerPortal({
   layoutGuides,
   layoutGuidesVisible = false,
 }: MesurerPortalProps) {
-  const recordingMaskRect = screenRecording.rect
-    ? {
-        left: Math.max(0, screenRecording.rect.left - RECORDING_MASK_GUTTER),
-        top: Math.max(0, screenRecording.rect.top - RECORDING_MASK_GUTTER),
-        width: screenRecording.rect.width + RECORDING_MASK_GUTTER * 2,
-        height: screenRecording.rect.height + RECORDING_MASK_GUTTER * 2,
-      }
-    : null;
   useEffect(() => {
     const ownerWindow = portalTarget.ownerDocument.defaultView;
     if (!ownerWindow) return;
@@ -109,9 +99,9 @@ export function MesurerPortal({
       ) : null}
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
-      {screenRecording.recording && recordingMaskRect ? (
+      {screenRecording.recording && screenRecording.rect ? (
         <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[80]">
-          <RegionDimMask rect={recordingMaskRect} />
+          <RegionDimMask rect={screenRecording.rect} />
         </div>
       ) : null}
       <Toolbar ref={toolbarRef} {...toolbar} />

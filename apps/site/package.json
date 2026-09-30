@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --force",
-    "build": "pnpm --dir ../../packages/mesurer build && vite build && node scripts/prerender.mjs",
+    "build": "pnpm --dir ../../packages/mesurer build && vite build",
     "prerender": "node scripts/prerender.mjs",
     "deploy:pages": "pnpm run build && npx wrangler pages deploy dist --project-name mesurer-site",
     "preview": "vite preview",

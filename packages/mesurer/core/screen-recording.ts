@@ -3,26 +3,20 @@ import type { ScreenshotRect } from "./screenshot"
 export type CaptureViewportMetrics = {
   width: number
   height: number
-  offsetX: number
-  offsetY: number
 }
 
-/** Map client selection coords to tab-capture video pixels (visualViewport-aware). */
+/** Tab-capture frames map to the visible viewport, with client coordinates from its origin. */
 export function getCaptureViewportMetrics(ownerWindow: Window): CaptureViewportMetrics {
   const visual = ownerWindow.visualViewport
-  if (!visual) {
+  if (visual) {
     return {
-      width: ownerWindow.innerWidth,
-      height: ownerWindow.innerHeight,
-      offsetX: 0,
-      offsetY: 0,
+      width: visual.width,
+      height: visual.height,
     }
   }
   return {
-    width: visual.width,
-    height: visual.height,
-    offsetX: visual.offsetLeft,
-    offsetY: visual.offsetTop,
+    width: ownerWindow.innerWidth,
+    height: ownerWindow.innerHeight,
   }
 }
 
@@ -42,12 +36,10 @@ export function screenshotRectToVideoCrop(
   const metrics = getCaptureViewportMetrics(ownerWindow)
   const scaleX = videoWidth / metrics.width
   const scaleY = videoHeight / metrics.height
-  const left = rect.left - metrics.offsetX
-  const top = rect.top - metrics.offsetY
-  const sx = Math.max(0, Math.round(left * scaleX))
-  const sy = Math.max(0, Math.round(top * scaleY))
-  const ex = Math.min(videoWidth, Math.round((left + rect.width) * scaleX))
-  const ey = Math.min(videoHeight, Math.round((top + rect.height) * scaleY))
+  const sx = Math.max(0, Math.round(rect.left * scaleX))
+  const sy = Math.max(0, Math.round(rect.top * scaleY))
+  const ex = Math.min(videoWidth, Math.round((rect.left + rect.width) * scaleX))
+  const ey = Math.min(videoHeight, Math.round((rect.top + rect.height) * scaleY))
   return {
     sx,
     sy,

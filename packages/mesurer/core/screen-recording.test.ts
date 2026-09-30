@@ -13,16 +13,16 @@ describe("getCaptureViewportMetrics", () => {
       innerHeight: 800,
       visualViewport: null,
     } as Window)
-    expect(metrics).toEqual({ width: 1200, height: 800, offsetX: 0, offsetY: 0 })
+    expect(metrics).toEqual({ width: 1200, height: 800 })
   })
 
-  it("uses visual viewport size and offset when present", () => {
+  it("uses visual viewport dimensions when present", () => {
     const metrics = getCaptureViewportMetrics({
       innerWidth: 1200,
       innerHeight: 800,
       visualViewport: { width: 1000, height: 700, offsetLeft: 12, offsetTop: 8 },
     } as Window)
-    expect(metrics).toEqual({ width: 1000, height: 700, offsetX: 12, offsetY: 8 })
+    expect(metrics).toEqual({ width: 1000, height: 700 })
   })
 })
 
@@ -43,19 +43,19 @@ describe("screenshotRectToVideoCrop", () => {
     expect(crop).toEqual({ sx: 200, sy: 100, sw: 400, sh: 300 })
   })
 
-  it("applies visual viewport offset before scaling", () => {
+  it("uses visual viewport dimensions for crop scaling", () => {
     const offsetWindow = {
-      innerWidth: 1000,
-      innerHeight: 800,
+      innerWidth: 1200,
+      innerHeight: 900,
       visualViewport: { width: 1000, height: 800, offsetLeft: 50, offsetTop: 25 },
     } as Window
     const crop = screenshotRectToVideoCrop(
       { left: 150, top: 75, width: 100, height: 100 },
-      1000,
-      800,
+      1200,
+      900,
       offsetWindow,
     )
-    expect(crop).toEqual({ sx: 100, sy: 50, sw: 100, sh: 100 })
+    expect(crop).toEqual({ sx: 180, sy: 84, sw: 120, sh: 113 })
   })
 })
 
