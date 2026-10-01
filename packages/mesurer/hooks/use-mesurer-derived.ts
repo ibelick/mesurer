@@ -174,7 +174,6 @@ export const useMesurerDerived = ({
     return getOptionContainerLines({
       altPressed,
       primarySelectedMeasurement: effectivePrimarySelected,
-      optionPairOverlay,
       selectedGuideIds,
       selectedElement,
       hoverElement,
@@ -185,7 +184,6 @@ export const useMesurerDerived = ({
     altPressed,
     effectivePrimarySelected,
     hoverElement,
-    optionPairOverlay,
     selectedElement,
     selectedGuideIds,
   ])

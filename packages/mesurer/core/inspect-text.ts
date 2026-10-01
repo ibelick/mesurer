@@ -31,7 +31,7 @@ export const getDirectTextRangeAtPoint = (
   if (!range) return null
   const container = range.startContainer
   if (container.nodeType !== Node.TEXT_NODE) return null
-  if (container.parentElement !== control) return null
+  if (!control.contains(container)) return null
   const text = container.nodeValue ?? ""
   const trimmed = text.trim()
   if (!trimmed) return null

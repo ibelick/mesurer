@@ -1,4 +1,4 @@
-import { getDirectTextRangeAtPoint, getRectFromRange } from "./inspect-text"
+import { COMPOSITE_CONTROL_SELECTOR, getDirectTextRangeAtPoint, getRectFromRange } from "./inspect-text"
 import { withOverlayHitTesting } from "./overlay-hit-test"
 import { denormalizeRect, getViewportSize, normalizeRect } from "./geometry"
 import { isLayoutContainerDisplay } from "./layout-details"
@@ -36,6 +36,94 @@ const readLayoutGap = (style: CSSStyleDeclaration): LayoutGap | null => {
   return { row, column }
 }
 
+const readBoxEdges = (style: CSSStyleDeclaration, prefix: "padding" | "margin") => ({
+  top: parseEdge(style[`${prefix}Top` as keyof CSSStyleDeclaration] as string),
+  right: parseEdge(style[`${prefix}Right` as keyof CSSStyleDeclaration] as string),
+  bottom: parseEdge(style[`${prefix}Bottom` as keyof CSSStyleDeclaration] as string),
+  left: parseEdge(style[`${prefix}Left` as keyof CSSStyleDeclaration] as string),
+})
+
+const hasInspectableSpacing = (style: CSSStyleDeclaration) => {
+  const padding = readBoxEdges(style, "padding")
+  const margin = readBoxEdges(style, "margin")
+  const hasPadding = padding.top > 0 || padding.right > 0 || padding.bottom > 0 || padding.left > 0
+  const hasMargin = margin.top > 0 || margin.right > 0 || margin.bottom > 0 || margin.left > 0
+  return hasPadding || hasMargin || readLayoutGap(style) !== null
+}
+
+const hasLayoutContainerSpacing = (style: CSSStyleDeclaration) => {
+  if (!isLayoutContainerDisplay(style.display)) return false
+  const padding = readBoxEdges(style, "padding")
+  const hasPadding = padding.top > 0 || padding.right > 0 || padding.bottom > 0 || padding.left > 0
+  return hasPadding || readLayoutGap(style) !== null
+}
+
+const TYPOGRAPHIC_LEAF_SELECTOR =
+  "strong, em, span, small, i, b, cite, dfn, mark, sub, sup, time, var, p, h1, h2, h3, h4, h5, h6"
+
+const isTypographicLeaf = (element: Element) => element.matches(TYPOGRAPHIC_LEAF_SELECTOR)
+
+const readSpacingFromElement = (layoutElement: Element, ownerWindow: Window) => {
+  const view = layoutElement.ownerDocument.defaultView ?? ownerWindow
+  const style = view.getComputedStyle(layoutElement)
+  return {
+    style,
+    padding: readBoxEdges(style, "padding"),
+    margin: readBoxEdges(style, "margin"),
+    gap: readLayoutGap(style),
+  }
+}
+
+export const readInspectBoxSpacing = (layoutElement: Element, ownerWindow: Window) => {
+  const { padding, margin, gap } = readSpacingFromElement(layoutElement, ownerWindow)
+  return { padding, margin, gap }
+}
+
+const compositeControlFor = (element: Element, body: HTMLElement) => {
+  const composite = element.closest(COMPOSITE_CONTROL_SELECTOR)
+  if (!composite || composite === body) return null
+  return composite
+}
+
+/** Box model for CSS details: prefer controls and inner layout containers over outer fixture chrome. */
+export const resolveInspectLayoutElement = (
+  element: Element,
+  ownerWindow: Window,
+  textAnchor?: InspectTextAnchor | null,
+): Element => {
+  const view = element.ownerDocument.defaultView ?? ownerWindow
+  const body = element.ownerDocument.body
+
+  const fromSelection = compositeControlFor(element, body)
+  if (fromSelection) return fromSelection
+
+  if (textAnchor) {
+    let node: Node | null = textAnchor.node
+    while (node && node !== body) {
+      if (node.nodeType === Node.ELEMENT_NODE && (node as Element).matches(COMPOSITE_CONTROL_SELECTOR)) {
+        return node as Element
+      }
+      node = node.parentElement
+    }
+  }
+
+  const ownStyle = view.getComputedStyle(element)
+  if (hasLayoutContainerSpacing(ownStyle)) return element
+  if (!isTypographicLeaf(element) && hasInspectableSpacing(ownStyle)) return element
+
+  let layoutContainer: Element | null = null
+  let paddedAncestor: Element | null = null
+  let current: Element | null = element.parentElement
+  while (current && current !== body) {
+    const style = view.getComputedStyle(current)
+    if (!layoutContainer && hasLayoutContainerSpacing(style)) layoutContainer = current
+    if (!paddedAncestor && hasInspectableSpacing(style)) paddedAncestor = current
+    current = current.parentElement
+  }
+
+  return layoutContainer ?? paddedAncestor ?? element
+}
+
 export const getRectFromDom = getViewportRect
 
 let rectCacheFrame = -1
@@ -65,12 +153,12 @@ export const getInspectMeasurement = (
   ownerWindow: Window = window,
   options?: InspectMeasurementOptions,
 ): InspectMeasurement => {
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element) ?? ownerWindow.getComputedStyle(element)
   const elementRect = element.getBoundingClientRect()
   const textPoint = options?.mode === "text" ? options.point : undefined
+  const textControl = compositeControlFor(element, element.ownerDocument.body) ?? element
   const textRange = textPoint
     ? withOverlayHitTesting(options?.overlayNode ?? null, () =>
-        getDirectTextRangeAtPoint(element, textPoint, element.ownerDocument),
+        getDirectTextRangeAtPoint(textControl, textPoint, element.ownerDocument),
       )
     : null
   const textRect = textRange ? getRectFromRange(textRange) : null
@@ -87,29 +175,20 @@ export const getInspectMeasurement = (
     width: elementRect.width,
     height: elementRect.height,
   }
-  const padding = {
-    top: parseEdge(style.paddingTop),
-    right: parseEdge(style.paddingRight),
-    bottom: parseEdge(style.paddingBottom),
-    left: parseEdge(style.paddingLeft),
-  }
-  const margin = {
-    top: parseEdge(style.marginTop),
-    right: parseEdge(style.marginRight),
-    bottom: parseEdge(style.marginBottom),
-    left: parseEdge(style.marginLeft),
-  }
+  const layoutElement = resolveInspectLayoutElement(element, ownerWindow, textAnchor)
+  const { padding, margin, gap } = readSpacingFromElement(layoutElement, ownerWindow)
+  const layoutRect = layoutElement.getBoundingClientRect()
   const paddingRect = {
-    left: elementRect.left + padding.left,
-    top: elementRect.top + padding.top,
-    width: Math.max(0, elementRect.width - padding.left - padding.right),
-    height: Math.max(0, elementRect.height - padding.top - padding.bottom),
+    left: layoutRect.left + padding.left,
+    top: layoutRect.top + padding.top,
+    width: Math.max(0, layoutRect.width - padding.left - padding.right),
+    height: Math.max(0, layoutRect.height - padding.top - padding.bottom),
   }
   const marginRect = {
-    left: elementRect.left - margin.left,
-    top: elementRect.top - margin.top,
-    width: elementRect.width + margin.left + margin.right,
-    height: elementRect.height + margin.top + margin.bottom,
+    left: layoutRect.left - margin.left,
+    top: layoutRect.top - margin.top,
+    width: layoutRect.width + margin.left + margin.right,
+    height: layoutRect.height + margin.top + margin.bottom,
   }
   return {
     id: createId(),
@@ -118,9 +197,10 @@ export const getInspectMeasurement = (
     marginRect,
     padding,
     margin,
-    gap: readLayoutGap(style),
+    gap,
     label: getElementLabel(element),
     elementRef: element,
+    layoutSpacingElementRef: layoutElement,
     textAnchor,
   }
 }
@@ -140,7 +220,33 @@ export const refreshInspectMeasurement = (
     }
     const rect = getRectFromRange(range)
     if (!rect) return measurement
-    return { ...measurement, rect }
+    const element = measurement.elementRef
+    if (!element) return { ...measurement, rect }
+    const layoutElement = resolveInspectLayoutElement(element, ownerWindow, anchor)
+    const { padding, margin, gap } = readInspectBoxSpacing(layoutElement, ownerWindow)
+    const layoutRect = layoutElement.getBoundingClientRect()
+    const paddingRect = {
+      left: layoutRect.left + padding.left,
+      top: layoutRect.top + padding.top,
+      width: Math.max(0, layoutRect.width - padding.left - padding.right),
+      height: Math.max(0, layoutRect.height - padding.top - padding.bottom),
+    }
+    const marginRect = {
+      left: layoutRect.left - margin.left,
+      top: layoutRect.top - margin.top,
+      width: layoutRect.width + margin.left + margin.right,
+      height: layoutRect.height + margin.top + margin.bottom,
+    }
+    return {
+      ...measurement,
+      rect,
+      padding,
+      margin,
+      gap,
+      paddingRect,
+      marginRect,
+      layoutSpacingElementRef: layoutElement,
+    }
   }
   if (!measurement.elementRef || !isConnectedElement(measurement.elementRef)) return measurement
   const next = getInspectMeasurement(measurement.elementRef, ownerWindow)

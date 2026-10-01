@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { isConnectedElement, readInspectBoxSpacing, resolveInspectLayoutElement } from "../core/dom"
 import { getElementSelector } from "../core/selector"
 import type { InspectMeasurement, Rect } from "../core/types"
 import {
@@ -79,8 +80,13 @@ export function InspectInfoCard({
   )
   const cssParts = useMemo(() => {
     if (!layoutDetailsEnabled || !measurement || !element || !ownerWindow) return []
-    const style = ownerWindow.getComputedStyle(element)
-    return formatInspectCssParts(measurement, style)
+    const layoutElement =
+      measurement.layoutSpacingElementRef && isConnectedElement(measurement.layoutSpacingElementRef)
+        ? measurement.layoutSpacingElementRef
+        : resolveInspectLayoutElement(element, ownerWindow, measurement.textAnchor)
+    const spacing = readInspectBoxSpacing(layoutElement, ownerWindow)
+    const style = ownerWindow.getComputedStyle(layoutElement)
+    return formatInspectCssParts({ ...measurement, ...spacing }, style)
   }, [element, layoutDetailsEnabled, measurement, ownerWindow])
   const { visible: visibleCssParts, hiddenCount } = visibleInspectCssParts(
     cssParts,

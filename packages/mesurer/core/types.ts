@@ -115,6 +115,7 @@ export type InspectMeasurement = {
   gap: LayoutGap | null
   label: string
   elementRef?: Element | null
+  layoutSpacingElementRef?: Element | null
   originRect?: Rect
   textAnchor?: InspectTextAnchor | null
 }

@@ -109,36 +109,54 @@ export const getOptionPairOverlay = (params: {
   }
 }
 
+const containerForSelection = (
+  measurement: InspectMeasurement,
+  selectedElement: Element | null,
+  hoverElement: Element | null,
+) => {
+  if (measurement.textAnchor && selectedElement) return selectedElement
+
+  const layout = measurement.layoutSpacingElementRef
+  if (
+    layout &&
+    selectedElement &&
+    layout !== selectedElement &&
+    layout.contains(selectedElement)
+  ) {
+    return layout
+  }
+
+  let containerElement = selectedElement?.parentElement ?? null
+  if (
+    selectedElement &&
+    hoverElement &&
+    hoverElement !== selectedElement &&
+    hoverElement.contains(selectedElement)
+  ) {
+    containerElement = hoverElement
+  }
+  return containerElement
+}
+
 export const getOptionContainerLines = (params: {
   document?: Document
   window?: Window
   altPressed: boolean
   primarySelectedMeasurement: InspectMeasurement | null
-  optionPairOverlay: ReturnType<typeof getDistanceOverlay> | null
   selectedGuideIds: string[]
   selectedElement: Element | null
   hoverElement: Element | null
 }) => {
   const ownerDocument = params.document ?? document
   const ownerWindow = params.window ?? window
-  if (
-    !params.altPressed ||
-    !params.primarySelectedMeasurement ||
-    params.optionPairOverlay
-  )
-    return null
+  if (!params.altPressed || !params.primarySelectedMeasurement) return null
   if (params.selectedGuideIds.length > 0) return null
 
-  let containerElement: Element | null =
-    params.selectedElement?.parentElement ?? null
-  if (
-    params.selectedElement &&
-    params.hoverElement &&
-    params.hoverElement !== params.selectedElement &&
-    params.hoverElement.contains(params.selectedElement)
-  ) {
-    containerElement = params.hoverElement
-  }
+  const containerElement = containerForSelection(
+    params.primarySelectedMeasurement,
+    params.selectedElement,
+    params.hoverElement,
+  )
 
   const containerRect =
     containerElement &&

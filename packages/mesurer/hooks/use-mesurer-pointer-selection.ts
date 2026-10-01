@@ -372,13 +372,11 @@ export const useMesurerPointerSelection = ({
       }
     }
     if (target) {
-      const inspectMeasurement = getInspectMeasurement(
-        target,
-        ownerDocument.defaultView ?? window,
-        inspectMode === "text"
-          ? { mode: inspectMode, point: localPoint, overlayNode: overlayRef.current }
-          : undefined,
-      )
+      const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window, {
+        point: localPoint,
+        overlayNode: overlayRef.current,
+        ...(inspectMode === "text" ? { mode: inspectMode } : {}),
+      })
       clearTransientMeasurements()
       if (!additive) setSelectedGuideIds([])
       if (additive) {
