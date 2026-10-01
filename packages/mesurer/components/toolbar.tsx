@@ -396,8 +396,8 @@ function ToolbarComponent(
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
   const dismissCaptureToasts = useCallback(() => {
     onCancelScreenshot();
-    onScreenRecordingCancel();
-  }, [onCancelScreenshot, onScreenRecordingCancel]);
+    if (!recording) onScreenRecordingCancel();
+  }, [onCancelScreenshot, onScreenRecordingCancel, recording]);
   const toggleToolbarMenu = useCallback(
     (menu: Exclude<OpenMenu, null>) => {
       if (openMenu?.type === menu.type) {

@@ -23,6 +23,23 @@ export type DisplayRecordingCapture = {
   captureStream: MediaStream
 }
 
+const nextPresentedVideoFrame = (video: HTMLVideoElement, ownerWindow: Window) =>
+  new Promise<void>((resolve) => {
+    const withFrameCallback = video as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: () => void) => number
+    }
+    if (withFrameCallback.requestVideoFrameCallback) {
+      withFrameCallback.requestVideoFrameCallback(() => resolve())
+      return
+    }
+    ownerWindow.requestAnimationFrame(() => resolve())
+  })
+
+/**
+ * Region capture changes the frame size, and the first frame at that size is
+ * often the previous picture scaled into the new box. Wait until two presented
+ * frames agree on the cropped size so the recording does not open on that frame.
+ */
 export const waitForRegionCropDimensions = (
   video: HTMLVideoElement,
   rect: ScreenshotRect,
@@ -35,21 +52,38 @@ export const waitForRegionCropDimensions = (
     const ready = () =>
       Math.abs(video.videoWidth - expectedWidth) <= Math.max(4, expectedWidth * 0.08) &&
       Math.abs(video.videoHeight - expectedHeight) <= Math.max(4, expectedHeight * 0.08)
-    if (ready()) {
-      resolve()
-      return
-    }
+    let stableFrames = 0
+    let settled = false
     const finish = () => {
-      video.removeEventListener("resize", onResize)
+      if (settled) return
+      settled = true
       ownerWindow.clearTimeout(timer)
       resolve()
     }
-    const onResize = () => {
-      if (ready()) finish()
+    const watch = () => {
+      if (settled) return
+      if (ready()) stableFrames += 1
+      else stableFrames = 0
+      if (stableFrames >= 2) {
+        finish()
+        return
+      }
+      void nextPresentedVideoFrame(video, ownerWindow).then(watch)
     }
-    video.addEventListener("resize", onResize)
-    const timer = ownerWindow.setTimeout(finish, 400)
+    const timer = ownerWindow.setTimeout(finish, 500)
+    watch()
   })
+
+const openCanvasCaptureStream = (canvas: HTMLCanvasElement) => {
+  const manual = canvas.captureStream(0)
+  const manualTrack = manual.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void }
+  if (manualTrack?.requestFrame) return { capture: manual, captureTrack: manualTrack }
+  manualTrack?.stop()
+  const automatic = canvas.captureStream(30)
+  const captureTrack = automatic.getVideoTracks()[0]
+  if (!captureTrack) throw new Error("Video recording is unavailable")
+  return { capture: automatic, captureTrack }
+}
 
 export async function openDisplayRecordingCapture(
   ownerDocument: Document,
@@ -114,11 +148,7 @@ export async function openDisplayRecordingCapture(
   const context = canvas.getContext("2d", { alpha: false })
   if (!context) throw new Error("Video recording is unavailable")
 
-  const capture = canvas.captureStream(30)
-  const captureTrack = capture.getVideoTracks()[0]
-  if (!captureTrack) throw new Error("Video recording is unavailable")
-
-  return {
+  const prepared: DisplayRecordingCapture = {
     stream,
     track,
     source,
@@ -126,9 +156,19 @@ export async function openDisplayRecordingCapture(
     context,
     cropTarget: regionLocked ? cropTarget : null,
     regionLocked,
-    captureTrack,
-    captureStream: capture,
+    captureTrack: null as unknown as MediaStreamTrack,
+    captureStream: null as unknown as MediaStream,
   }
+  if (!regionLocked) await nextPresentedVideoFrame(source, ownerWindow)
+  paintDisplayRecordingFrame(prepared, rect, getViewport)
+  const { capture, captureTrack } = openCanvasCaptureStream(canvas)
+  prepared.captureTrack = captureTrack
+  prepared.captureStream = capture
+  const requestFrame = (captureTrack as MediaStreamTrack & { requestFrame?: () => void }).requestFrame
+  requestFrame?.call(captureTrack)
+  await new Promise<void>((resolve) => ownerWindow.requestAnimationFrame(() => resolve()))
+
+  return prepared
 }
 
 export function paintDisplayRecordingFrame(

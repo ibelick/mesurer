@@ -270,7 +270,9 @@ export const useInteractionLifecycle = (options: Options) => {
     onInteract: options.onInteract,
     onColorPicker: () => {
       options.screenshot.closeUi();
-      options.screenRecording.cancelSelection();
+      if (!options.screenRecording.recording) {
+        options.screenRecording.cancelSelection();
+      }
       void options.colorPicker.open();
     },
     onScreenshot: () => {

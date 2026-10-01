@@ -2,6 +2,15 @@
 
 import { useId, useLayoutEffect, useRef, useState, type Dispatch, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from "react"
 import packageManifest from "../package.json"
+
+const productHomepage = (packageManifest.homepage ?? "https://mesurer.dev").replace(/\/$/, "")
+const productSiteLabel = (() => {
+  try {
+    return new URL(productHomepage).hostname
+  } catch {
+    return "mesurer.dev"
+  }
+})()
 import type { ColorPickerFormat } from "../core/colors"
 import { cn } from "../core/utils"
 import { ColorField, ControlShell, SETTINGS_COLUMNS } from "./control-field"
@@ -857,6 +866,16 @@ export function SettingsPanel({
           <span className="msr:justify-self-end msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-700">
             {releaseChannel ? `${releaseChannel} ${packageManifest.version}` : packageManifest.version}
           </span>
+        </div>
+        <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Website</span>
+          <button
+            type="button"
+            className="msr:justify-self-end msr:cursor-pointer msr:border-0 msr:bg-transparent msr:p-0 msr:text-[11px] msr:text-ink-700 msr:underline-offset-2 msr:hover:underline"
+            onClick={() => ownerWindow.open(productHomepage, "_blank", "noopener,noreferrer")}
+          >
+            {productSiteLabel}
+          </button>
         </div>
         <div className="msr:col-span-2 msr:flex msr:h-8 msr:w-full msr:items-center msr:justify-end msr:gap-1">
           <SettingsButton
