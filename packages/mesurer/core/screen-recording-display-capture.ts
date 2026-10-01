@@ -23,16 +23,24 @@ export type DisplayRecordingCapture = {
   captureStream: MediaStream
 }
 
-const nextPresentedVideoFrame = (video: HTMLVideoElement, ownerWindow: Window) =>
+export const nextPresentedVideoFrame = (video: HTMLVideoElement, ownerWindow: Window) =>
   new Promise<void>((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      ownerWindow.clearTimeout(timer)
+      resolve()
+    }
+    const timer = ownerWindow.setTimeout(finish, 250)
     const withFrameCallback = video as HTMLVideoElement & {
       requestVideoFrameCallback?: (callback: () => void) => number
     }
     if (withFrameCallback.requestVideoFrameCallback) {
-      withFrameCallback.requestVideoFrameCallback(() => resolve())
+      withFrameCallback.requestVideoFrameCallback(() => finish())
       return
     }
-    ownerWindow.requestAnimationFrame(() => resolve())
+    ownerWindow.requestAnimationFrame(() => finish())
   })
 
 /**
@@ -74,15 +82,11 @@ export const waitForRegionCropDimensions = (
     watch()
   })
 
-const openCanvasCaptureStream = (canvas: HTMLCanvasElement) => {
-  const manual = canvas.captureStream(0)
-  const manualTrack = manual.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void }
-  if (manualTrack?.requestFrame) return { capture: manual, captureTrack: manualTrack }
-  manualTrack?.stop()
-  const automatic = canvas.captureStream(30)
-  const captureTrack = automatic.getVideoTracks()[0]
+export const openCanvasCaptureStream = (canvas: HTMLCanvasElement) => {
+  const capture = canvas.captureStream(30)
+  const captureTrack = capture.getVideoTracks()[0]
   if (!captureTrack) throw new Error("Video recording is unavailable")
-  return { capture: automatic, captureTrack }
+  return { capture, captureTrack }
 }
 
 export async function openDisplayRecordingCapture(

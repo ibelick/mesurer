@@ -25,6 +25,8 @@ export {
 
 export {
   openDisplayRecordingCapture,
+  openCanvasCaptureStream,
+  nextPresentedVideoFrame,
   paintDisplayRecordingFrame,
   runDisplayRecordingDrawLoop,
   waitForRegionCropDimensions,

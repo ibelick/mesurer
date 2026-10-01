@@ -117,18 +117,7 @@ chrome.runtime.onMessage.addListener((message) => {
       return;
     }
     const { stream, source } = capture;
-    const currentStartupId = startupId;
-    void (async () => {
     try {
-      await new Promise<void>((resolve) => {
-        const video = source as HTMLVideoElement & { requestVideoFrameCallback?: (callback: () => void) => number };
-        if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(() => resolve());
-        else requestAnimationFrame(() => resolve());
-      });
-      if (currentStartupId !== startupId) {
-        releaseCapture(capture);
-        return;
-      }
       const crop = tabCaptureRectToVideoCrop(
         message.rect,
         source.videoWidth,
@@ -142,35 +131,25 @@ chrome.runtime.onMessage.addListener((message) => {
       document.body.append(canvas);
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Recording is unavailable");
-      const paint = () => {
-        context.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
-      };
-      paint();
-      let output = canvas.captureStream(0);
-      let captureTrack = output.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
-      if (!captureTrack?.requestFrame) {
-        captureTrack?.stop();
-        output = canvas.captureStream(60);
-        captureTrack = output.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
-      }
+      const output = canvas.captureStream(60);
       const recorder = new MediaRecorder(output, { mimeType: "video/webm" });
       const chunks: Blob[] = [];
       recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
+      const captureTrack = output.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
       const draw = () => {
         if (session?.source !== source) return;
-        paint();
+        context.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
         captureTrack.requestFrame?.();
       };
       const timer = window.setInterval(draw, 1000 / 60);
-      captureTrack.requestFrame?.();
       session = { stream, output, source, recorder, canvas, chunks, startedAt: performance.now(), tabId: message.tabId, timer };
       recorder.start(250);
+      draw();
       void chrome.runtime.sendMessage({ type: RECORDING_STARTED_MESSAGE, tabId: message.tabId }).catch(() => undefined);
     } catch (error) {
       releaseCapture(capture);
       void chrome.runtime.sendMessage({ type: RECORDING_STARTED_MESSAGE, tabId: message.tabId, error: error instanceof Error ? error.message : "Recording failed" }).catch(() => undefined);
     }
-    })();
   } else if (message?.type === OFFSCREEN_RECORDING_STOP_MESSAGE) {
     const tabId = session?.tabId;
     void stop().catch((error) => void chrome.runtime.sendMessage({ type: RECORDING_READY_MESSAGE, tabId, error: error instanceof Error ? error.message : "Recording failed" }).catch(() => undefined));

@@ -21,6 +21,7 @@ type ExtensionState = {
   mounted: boolean;
   mounting: boolean;
   persistence?: MesurerPersistence;
+  extensionRecording?: ReturnType<typeof createExtensionRecording>;
   recover: () => void;
 };
 
@@ -31,7 +32,7 @@ type ExtensionGlobal = typeof globalThis & {
 
 const extensionGlobal = globalThis as ExtensionGlobal;
 
-const createExtensionRecording = () => {
+function createExtensionRecording() {
   let ready: ((value: { id: string; duration: number }) => void) | null = null;
   let failed: ((error: Error) => void) | null = null;
   let prepared: (() => void) | null = null;
@@ -111,7 +112,7 @@ const createExtensionRecording = () => {
       chrome.runtime.onMessage.removeListener(onMessage);
     },
   };
-};
+}
 
 const getTabId = () => {
   try {
@@ -213,6 +214,9 @@ const mount = async () => {
         state.persistence = undefined;
       }
     }
+    if (!state.extensionRecording) {
+      state.extensionRecording = createExtensionRecording();
+    }
     state.root = createRoot(container);
     state.root.render(
       <Mesurer
@@ -221,7 +225,7 @@ const mount = async () => {
         persistSession
         persistOnReload={new URLSearchParams(location.search).has("persist")}
         captureVisibleTab={captureVisibleTabPng}
-        extensionRecording={createExtensionRecording()}
+        extensionRecording={state.extensionRecording}
         extensionRecordingPlayer={chrome.runtime.getURL("recording-player.html")}
       />,
     );

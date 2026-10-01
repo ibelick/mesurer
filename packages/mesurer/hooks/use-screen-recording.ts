@@ -130,13 +130,12 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
   )
 
   const discard = useCallback(() => {
-    release()
     setVideo((current) => {
       if (current) URL.revokeObjectURL(current.url)
       urlRef.current = null
       return null
     })
-  }, [release])
+  }, [])
 
   const stop = useCallback(() => {
     if (extensionRecording) {
