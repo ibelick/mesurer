@@ -1,5 +1,12 @@
 # mesurer
 
+## 0.2.2
+
+- improve screen recording stability across browser resizing, first-frame capture, color picker usage, and export duration
+- restore reliable Chrome extension tab capture
+- improve Inspect info cards, scrolling, nested label and icon selection, and tooltip placement
+- preserve the active tool group when opening Comments and fix Alt-distance measurement wrapping
+
 ## 0.2.1
 
 - add selected-region video recording with Chrome tab capture
