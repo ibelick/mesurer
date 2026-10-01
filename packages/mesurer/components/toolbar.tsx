@@ -616,6 +616,7 @@ function ToolbarComponent(
       eventTarget,
       open: settingsOpen,
       refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
     });
   const { menuRef: commentsPanelRef, placement: commentsPlacement } =
     useSettingsMenuPlacement({
@@ -1541,32 +1542,32 @@ function ToolbarComponent(
           >
           <GearIcon size={20} aria-hidden="true" />
         </ToolbarButton>
-        {settingsOpen ? (
-          <div
-            ref={settingsMenuRef}
-            className={cn(
-              "mesurer-menu-surface msr:absolute msr:z-[95] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
-              settingsPlacement.side === "bottom"
-                ? "msr:top-full msr:mt-2"
-                : "msr:bottom-full msr:mb-2",
-            )}
-            style={{
-              right: settingsPlacement.right,
-              height: settingsPlacement.height,
-              maxHeight: settingsPlacement.height,
-            }}
-            data-mesurer-inspector-ui="true"
-            data-mesurer-settings-panel
-            role="dialog"
-            aria-label="Settings"
-            onPointerDown={(event) => event.stopPropagation()}
-            onPointerMove={(event) => event.stopPropagation()}
-            onPointerUp={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {settingsPanel}
-          </div>
-        ) : null}
+        {settingsOpen
+          ? createPortal(
+              <div
+                ref={settingsMenuRef}
+                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[120] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                style={{
+                  top: settingsPlacement.top,
+                  bottom: settingsPlacement.bottom,
+                  right: settingsPlacement.right,
+                  height: settingsPlacement.height,
+                  maxHeight: settingsPlacement.height,
+                }}
+                data-mesurer-inspector-ui="true"
+                data-mesurer-settings-panel
+                role="dialog"
+                aria-label="Settings"
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerMove={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {settingsPanel}
+              </div>,
+              commentPanelPortalTarget,
+            )
+          : null}
        </div> : null}
        </ToolbarGroup>
        </div>

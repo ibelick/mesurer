@@ -7,7 +7,12 @@ import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResu
 import { deleteRecording, readRecording } from "./recording-db";
 
 const root = document.getElementById("root");
-const id = new URLSearchParams(location.search).get("id");
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+const initialTheme = params.get("theme");
+if (root && (initialTheme === "light" || initialTheme === "dark" || initialTheme === "system")) {
+  root.setAttribute("data-theme", initialTheme);
+}
 
 const createFilename = (format: RecordingExportFormat) => `mesurer-recording-${new Date().toISOString().replace(/[:.]/g, "-")}.${format}`;
 
@@ -19,6 +24,56 @@ const Player = ({ blob, duration }: { blob: Blob; duration: number }) => {
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [blob]);
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "mesurer:recording-theme") return;
+      const theme = event.data.theme;
+      if (theme === "light" || theme === "dark" || theme === "system") {
+        document.getElementById("root")?.setAttribute("data-theme", theme);
+      }
+      if (event.data?.type === "mesurer:recording-anchor" && (event.data.side === "top" || event.data.side === "bottom")) {
+        document.getElementById("root")?.setAttribute("data-anchor", event.data.side);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+  useEffect(() => {
+    const rootNode = document.getElementById("root");
+    if (!rootNode) return;
+    const report = () => {
+      const card = rootNode.querySelector("section");
+      if (!(card instanceof HTMLElement)) return;
+      const rect = card.getBoundingClientRect();
+      if (rect.height < 32) return;
+      const expanded = card.getAttribute("data-expanded") === "true";
+      const width = expanded ? 36 * 16 : 22 * 16;
+      const menu = rootNode.querySelector("[role='menu']");
+      const menuExtra = menu instanceof HTMLElement && menu.offsetHeight > 0 ? Math.ceil(menu.offsetHeight + 8) : 0;
+      window.parent.postMessage(
+        {
+          type: "mesurer:recording-frame-size",
+          width,
+          height: Math.ceil(rect.height),
+          menuExtra,
+        },
+        "*",
+      );
+    };
+    const observer = new ResizeObserver(report);
+    const watch = () => {
+      const card = rootNode.querySelector("section");
+      if (card) observer.observe(card);
+      report();
+    };
+    watch();
+    const mutations = new MutationObserver(watch);
+    mutations.observe(rootNode, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, [url]);
   if (!url) return null;
   const exportClip = async (start: number, end: number, options: RecordingExportOptions = {}): Promise<RecordingExportResult> => {
     const format = options.format ?? "webm";
@@ -35,17 +90,15 @@ const Player = ({ blob, duration }: { blob: Blob; duration: number }) => {
   return (
     <TooltipLayerContext.Provider value={layer}>
       <div ref={setLayer} className="mesurer-toolbar-tooltips" />
-      <div className="msr:p-3">
-        <ScreenRecordingEditor
-          url={url}
-          duration={duration}
-          ownerDocument={document}
-          onDiscard={() => {
-            void deleteRecording(id!).catch(() => undefined).finally(() => window.parent.postMessage({ type: "mesurer:recording-discard", id }, "*"));
-          }}
-          onExport={exportClip}
-        />
-      </div>
+      <ScreenRecordingEditor
+        url={url}
+        duration={duration}
+        ownerDocument={document}
+        onDiscard={() => {
+          void deleteRecording(id!).catch(() => undefined).finally(() => window.parent.postMessage({ type: "mesurer:recording-discard", id }, "*"));
+        }}
+        onExport={exportClip}
+      />
     </TooltipLayerContext.Provider>
   );
 };

@@ -20,6 +20,7 @@ type ScreenRecordingEditorProps = {
   onDiscard: () => void
   onExport: (start: number, end: number, options?: RecordingExportOptions) => Promise<RecordingExportResult>
   ownerDocument: Document
+  fillFrame?: boolean
 }
 
 type DragKind = "start" | "end" | "playhead"
@@ -210,21 +211,82 @@ export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
   return <StandardScreenRecordingEditor {...props} />
 }
 
+const RECORDING_FRAME_WIDTH = 22 * 16
+
+const recordingTheme = () => {
+  const theme = document.querySelector("[data-mesurer-root]")?.getAttribute("data-theme")
+  return theme === "light" || theme === "dark" || theme === "system" ? theme : "system"
+}
+
 function ExtensionRecordingFrame({ playerUrl, onDiscard }: ScreenRecordingEditorProps) {
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const [frameSize, setFrameSize] = useState({ width: RECORDING_FRAME_WIDTH, height: 280, menuExtra: 0 })
+  const [anchorSide, setAnchorSide] = useState<"top" | "bottom">("top")
+  const src = useMemo(() => {
+    const url = new URL(playerUrl)
+    url.searchParams.set("theme", recordingTheme())
+    return url.toString()
+  }, [playerUrl])
+  const postFrameState = useCallback(() => {
+    const frame = frameRef.current
+    const panel = frame?.parentElement?.parentElement
+    const side = panel?.style.bottom ? "bottom" : "top"
+    setAnchorSide(side)
+    frame?.contentWindow?.postMessage({ type: "mesurer:recording-theme", theme: recordingTheme() }, "*")
+    frame?.contentWindow?.postMessage({ type: "mesurer:recording-anchor", side }, "*")
+  }, [])
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.source === frameRef.current?.contentWindow && event.data?.type === "mesurer:recording-discard") {
-        onDiscard()
+      if (event.source !== frameRef.current?.contentWindow) return
+      if (event.data?.type === "mesurer:recording-discard") onDiscard()
+      if (
+        event.data?.type === "mesurer:recording-frame-size" &&
+        typeof event.data.width === "number" &&
+        typeof event.data.height === "number" &&
+        event.data.width >= 32 &&
+        event.data.height >= 32
+      ) {
+        setFrameSize({
+          width: event.data.width,
+          height: event.data.height,
+          menuExtra: typeof event.data.menuExtra === "number" ? event.data.menuExtra : 0,
+        })
       }
     }
     window.addEventListener("message", onMessage)
-    return () => window.removeEventListener("message", onMessage)
-  }, [onDiscard])
-  return <iframe ref={frameRef} title="Recording preview" src={playerUrl} className="msr:block msr:max-w-[calc(100vw-16px)] msr:border-0 msr:bg-transparent" style={{ width: "calc(36rem + 24px)", height: "calc(32rem + 24px)", margin: -12 }} />
+    const root = frameRef.current?.closest("[data-mesurer-root]")
+    const panel = frameRef.current?.parentElement?.parentElement
+    const observer = new MutationObserver(postFrameState)
+    if (root) observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] })
+    if (panel) observer.observe(panel, { attributes: true, attributeFilter: ["style"] })
+    return () => {
+      window.removeEventListener("message", onMessage)
+      observer.disconnect()
+    }
+  }, [onDiscard, postFrameState])
+  const menuAbove = anchorSide === "bottom"
+  return (
+    <div
+      className="msr:relative msr:max-w-[calc(100vw-16px)] msr:rounded-wide-card"
+      style={{ width: frameSize.width, height: frameSize.height, boxShadow: "var(--msr-shadow-floating)" }}
+    >
+      <iframe
+        ref={frameRef}
+        title="Recording preview"
+        src={src}
+        onLoad={postFrameState}
+        className="msr:absolute msr:left-0 msr:border-0 msr:bg-transparent"
+        style={{
+          width: frameSize.width,
+          height: frameSize.height + frameSize.menuExtra,
+          top: menuAbove ? -frameSize.menuExtra : 0,
+        }}
+      />
+    </div>
+  )
 }
 
-function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument }: ScreenRecordingEditorProps) {
+function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument, fillFrame }: ScreenRecordingEditorProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
@@ -254,7 +316,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const closeAnchorRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLElement>(null)
   const togglePlaybackRef = useRef<() => void>(() => {})
-  const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number } | null>(null)
+  const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number; ready: boolean } | null>(null)
   startRef.current = start
   endRef.current = end
 
@@ -327,11 +389,12 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       const padding = 8
       const spaceAbove = rect.top - origin.top - padding
       const spaceBelow = origin.bottom - rect.bottom - padding
-      const openAbove = spaceAbove >= height || spaceAbove >= spaceBelow
+      const anchorSide = ownerDocument.getElementById("root")?.getAttribute("data-anchor")
+      const openAbove = anchorSide === "bottom" ? true : anchorSide === "top" ? false : spaceAbove >= height || spaceAbove >= spaceBelow
       const preferredTop = openAbove
         ? rect.top - origin.top - height - gap
         : rect.bottom - origin.top + gap
-      setExportMenuBox(clampOverlayPosition({
+      const placed = clampOverlayPosition({
         left: rect.right - origin.left - width,
         top: preferredTop,
         width,
@@ -339,13 +402,18 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
         viewportWidth: origin.width,
         viewportHeight: origin.height,
         padding,
-      }))
+      })
+      const ready = anchorSide ? (openAbove ? spaceAbove >= height : spaceBelow >= height) : true
+      setExportMenuBox({ left: placed.left, top: anchorSide ? preferredTop : placed.top, ready })
     }
     update()
     const view = ownerDocument.defaultView
     view?.addEventListener("resize", update)
     view?.addEventListener("scroll", update, true)
+    const observer = new ResizeObserver(update)
+    observer.observe(overlayLayer)
     return () => {
+      observer.disconnect()
       view?.removeEventListener("resize", update)
       view?.removeEventListener("scroll", update, true)
     }
@@ -598,11 +666,14 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       ref={cardRef}
       tabIndex={0}
       aria-keyshortcuts="Space"
+      data-mesurer-recording-card
       data-expanded={expanded ? "true" : "false"}
       className={cn(
         "mesurer-menu-surface msr:relative msr:box-border msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none",
-        "msr:w-[22rem] msr:max-w-[calc(100vw-24px)] msr:transition-[width] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
-        expanded && "msr:w-[36rem]",
+        fillFrame
+          ? "msr:w-full msr:max-w-none"
+          : "msr:w-[22rem] msr:max-w-[calc(100vw-24px)] msr:transition-[width] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
+        !fillFrame && expanded && "msr:w-[36rem]",
       )}
       aria-label="Screen recording editor"
       aria-busy={exporting}
@@ -818,7 +889,11 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                 <div
                   ref={exportMenuSurfaceRef}
                   className="msr:pointer-events-auto msr:absolute"
-                  style={exportMenuBox ? { left: exportMenuBox.left, top: exportMenuBox.top } : { left: 0, top: 0, visibility: "hidden" }}
+                  style={
+                    exportMenuBox?.ready
+                      ? { left: exportMenuBox.left, top: exportMenuBox.top }
+                      : { left: exportMenuBox?.left ?? 0, top: exportMenuBox?.top ?? 0, visibility: "hidden" }
+                  }
                 >
                   <MenuSurface className="msr:w-max msr:min-w-44">
                     <p className="msr:px-2 msr:py-1 msr:text-[10px] msr:font-medium msr:text-ink-500">Format</p>

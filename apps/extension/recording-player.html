@@ -1,11 +1,16 @@
 <!doctype html>
-<html>
+<html style="background:transparent">
   <body style="margin:0;background:transparent;overflow:hidden">
     <div id="root" class="mesurer-root"></div>
     <link rel="stylesheet" href="mesurer.css" />
     <style>
+      html, body, #root { height: 100%; background: transparent; }
       .mesurer-root p { margin: 0; }
       .mesurer-root button, .mesurer-root input, .mesurer-root select { font: inherit; }
+      #root [data-mesurer-recording-card] { box-shadow: none; width: 22rem; max-width: none; }
+      #root [data-mesurer-recording-card][data-expanded="true"] { width: 36rem; }
+      #root[data-anchor="bottom"] [data-mesurer-recording-card] { position: fixed; right: auto; bottom: 0; left: 0; }
+      #root[data-anchor="top"] [data-mesurer-recording-card] { position: fixed; top: 0; right: auto; left: 0; }
     </style>
     <script src="recording-player.js"></script>
   </body>
