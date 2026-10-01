@@ -97,6 +97,38 @@ function SelectionOverlayFixtures() {
 
   return (
     <>
+      <section className="bench-card" aria-labelledby="composite-button-title">
+        <div className="bench-card-heading">
+          <div>
+            <span className="bench-kicker">00 / control</span>
+            <h2 id="composite-button-title">Icon and label button</h2>
+          </div>
+        </div>
+        <p className="bench-card-instruction">Inspect the label and the icon separately. The label is a text node inside the button, matching the homepage prompt button.</p>
+        <nav aria-label="Composite inspect">
+          <button
+            type="button"
+            data-testid="composite-prompt-button"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              border: "1px solid #e5e5e5",
+              borderRadius: 999,
+              background: "white",
+              padding: "10px 16px",
+              fontSize: 16,
+              lineHeight: 1,
+              color: "#171717",
+            }}
+          >
+            <svg data-testid="composite-prompt-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="2" y="2" width="12" height="12" fill="currentColor" />
+            </svg>
+            Copy setup prompt
+          </button>
+        </nav>
+      </section>
       <section
         id="carousel-6fc272a2-263f-4f78-8994-a81f68e3ebbf"
         className="bench-card"

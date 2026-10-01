@@ -1,7 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
 import { updateDistanceForResize } from "../core/distances"
-import { getInspectMeasurement, isConnectedElement, updateMeasurementForResize } from "../core/dom"
+import { isConnectedElement, refreshInspectMeasurement, updateMeasurementForResize } from "../core/dom"
 import { getViewportSize } from "../core/geometry"
 import type {
   DistanceOverlay,
@@ -62,8 +62,8 @@ export const useResizeSync = (params: ResizeParams) => {
           current.selectedElementRef.current &&
           isConnectedElement(current.selectedElementRef.current)
         ) {
-          current.setSelectedMeasurement(
-            getInspectMeasurement(current.selectedElementRef.current, ownerWindow)
+          current.setSelectedMeasurement((prev) =>
+            prev ? refreshInspectMeasurement(prev, ownerWindow) : prev,
           )
         }
 

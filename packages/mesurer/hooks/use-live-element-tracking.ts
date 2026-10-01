@@ -1,7 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useLayoutEffect, useRef } from "react"
 import { applyPinCursor, getDistanceOverlay, withPin } from "../core/distances"
-import { getInspectMeasurement, getRectFromDom, isConnectedElement } from "../core/dom"
+import { getRectFromDom, isConnectedElement, refreshInspectMeasurement } from "../core/dom"
 import { getGuideRect } from "../core/guides"
 import { normalizeRect, rectAlmostEqual } from "../core/geometry"
 import type {
@@ -153,9 +153,10 @@ export const useLiveElementTracking = (params: LiveParams) => {
       const selected = current.selectedElementRef.current ?? current.selectedMeasurements[current.selectedMeasurements.length - 1]?.elementRef ?? null
       if (isConnectedElement(selected)) {
         current.setSelectedMeasurement((prev) => {
-          const rect = getRectFromDom(selected)
-          if (prev?.elementRef === selected && rectAlmostEqual(prev.rect, rect)) return prev
-          return getInspectMeasurement(selected, ownerWindow)
+          if (!prev) return prev
+          const next = refreshInspectMeasurement(prev, ownerWindow)
+          if (prev.elementRef === next.elementRef && rectAlmostEqual(prev.rect, next.rect)) return prev
+          return next
         })
       }
 
@@ -164,10 +165,10 @@ export const useLiveElementTracking = (params: LiveParams) => {
         let changed = false
         const next = prev.map((measurement) => {
           if (!measurement.elementRef || !isConnectedElement(measurement.elementRef)) return measurement
-          const rect = getRectFromDom(measurement.elementRef)
-          if (rectAlmostEqual(rect, measurement.rect)) return measurement
+          const refreshed = refreshInspectMeasurement(measurement, ownerWindow)
+          if (rectAlmostEqual(refreshed.rect, measurement.rect)) return measurement
           changed = true
-          return { ...getInspectMeasurement(measurement.elementRef, ownerWindow), id: measurement.id }
+          return refreshed
         })
         return changed ? next : prev
       })

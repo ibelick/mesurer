@@ -99,6 +99,12 @@ export type LayoutGap = {
   column: number
 }
 
+export type InspectTextAnchor = {
+  node: Text
+  start: number
+  end: number
+}
+
 export type InspectMeasurement = {
   id: string
   rect: Rect
@@ -110,6 +116,7 @@ export type InspectMeasurement = {
   label: string
   elementRef?: Element | null
   originRect?: Rect
+  textAnchor?: InspectTextAnchor | null
 }
 
 export type Guide = {

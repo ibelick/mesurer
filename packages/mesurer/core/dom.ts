@@ -1,6 +1,8 @@
+import { getDirectTextRangeAtPoint, getRectFromRange } from "./inspect-text"
+import { withOverlayHitTesting } from "./overlay-hit-test"
 import { denormalizeRect, getViewportSize, normalizeRect } from "./geometry"
 import { isLayoutContainerDisplay } from "./layout-details"
-import type { InspectMeasurement, LayoutGap, Measurement, Rect } from "./types"
+import type { InspectMeasurement, InspectTextAnchor, LayoutGap, Measurement, Rect } from "./types"
 import { createId } from "./utils"
 import { getFrameToken, getViewportRect, isConnectedElement } from "./document-tree"
 
@@ -52,13 +54,39 @@ export const getRectFromDomCached = (element: Element) => {
   return rect
 }
 
+export type InspectMeasurementOptions = {
+  mode?: "default" | "text"
+  point?: { x: number; y: number }
+  overlayNode?: HTMLDivElement | null
+}
+
 export const getInspectMeasurement = (
   element: Element,
   ownerWindow: Window = window,
+  options?: InspectMeasurementOptions,
 ): InspectMeasurement => {
   const style = element.ownerDocument.defaultView?.getComputedStyle(element) ?? ownerWindow.getComputedStyle(element)
-  const rect = element.getBoundingClientRect()
-  const translatedRect = getViewportRect(element)
+  const elementRect = element.getBoundingClientRect()
+  const textPoint = options?.mode === "text" ? options.point : undefined
+  const textRange = textPoint
+    ? withOverlayHitTesting(options?.overlayNode ?? null, () =>
+        getDirectTextRangeAtPoint(element, textPoint, element.ownerDocument),
+      )
+    : null
+  const textRect = textRange ? getRectFromRange(textRange) : null
+  const textAnchor: InspectTextAnchor | null = textRect && textRange?.startContainer.nodeType === Node.TEXT_NODE
+    ? {
+        node: textRange.startContainer as Text,
+        start: textRange.startOffset,
+        end: textRange.endOffset,
+      }
+    : null
+  const selectionRect = textRect ?? {
+    left: elementRect.left,
+    top: elementRect.top,
+    width: elementRect.width,
+    height: elementRect.height,
+  }
   const padding = {
     top: parseEdge(style.paddingTop),
     right: parseEdge(style.paddingRight),
@@ -72,34 +100,51 @@ export const getInspectMeasurement = (
     left: parseEdge(style.marginLeft),
   }
   const paddingRect = {
-    left: translatedRect.left + padding.left,
-    top: translatedRect.top + padding.top,
-    width: Math.max(0, rect.width - padding.left - padding.right),
-    height: Math.max(0, rect.height - padding.top - padding.bottom),
+    left: elementRect.left + padding.left,
+    top: elementRect.top + padding.top,
+    width: Math.max(0, elementRect.width - padding.left - padding.right),
+    height: Math.max(0, elementRect.height - padding.top - padding.bottom),
   }
   const marginRect = {
-    left: translatedRect.left - margin.left,
-    top: translatedRect.top - margin.top,
-    width: rect.width + margin.left + margin.right,
-    height: rect.height + margin.top + margin.bottom,
+    left: elementRect.left - margin.left,
+    top: elementRect.top - margin.top,
+    width: elementRect.width + margin.left + margin.right,
+    height: elementRect.height + margin.top + margin.bottom,
   }
-  const gap = readLayoutGap(style)
   return {
     id: createId(),
-    rect: {
-      left: translatedRect.left,
-      top: translatedRect.top,
-      width: rect.width,
-      height: rect.height,
-    },
+    rect: selectionRect,
     paddingRect,
     marginRect,
     padding,
     margin,
-    gap,
+    gap: readLayoutGap(style),
     label: getElementLabel(element),
     elementRef: element,
+    textAnchor,
   }
+}
+
+export const refreshInspectMeasurement = (
+  measurement: InspectMeasurement,
+  ownerWindow: Window,
+): InspectMeasurement => {
+  const anchor = measurement.textAnchor
+  if (anchor?.node.isConnected) {
+    const range = anchor.node.ownerDocument.createRange()
+    try {
+      range.setStart(anchor.node, anchor.start)
+      range.setEnd(anchor.node, anchor.end)
+    } catch {
+      return measurement
+    }
+    const rect = getRectFromRange(range)
+    if (!rect) return measurement
+    return { ...measurement, rect }
+  }
+  if (!measurement.elementRef || !isConnectedElement(measurement.elementRef)) return measurement
+  const next = getInspectMeasurement(measurement.elementRef, ownerWindow)
+  return { ...next, id: measurement.id }
 }
 
 export const updateMeasurementForResize = (

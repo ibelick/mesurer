@@ -7,6 +7,7 @@ import {
   getRectFromDomCached,
 } from "./dom"
 import { rectsOverlap } from "./geometry"
+import { COMPOSITE_CONTROL_SELECTOR, getDirectTextRangeAtPoint } from "./inspect-text"
 import { withOverlayHitTesting } from "./overlay-hit-test"
 import { pickMultiTargets, pickPointTarget } from "./targets"
 import type { Point, Rect } from "./types"
@@ -15,6 +16,8 @@ const SELECTION_BUCKET_SIZE = 160
 const MAX_INDEXED_BUCKET_SPAN = 32
 const MAX_TRANSPARENT_DESCENDANTS = 600
 const REPLACED_ELEMENT_SELECTOR = "audio, canvas, embed, iframe, img, input, object, picture, select, textarea, video"
+const COMPOSITE_PART_SELECTOR =
+  "svg, img, picture, video, canvas, path, circle, ellipse, line, polygon, polyline, rect, text, use, span, p, strong, em, small"
 
 type SelectionEntry = { element: Element; rect: Rect }
 type SelectionIndex = {
@@ -86,10 +89,34 @@ const getIndexedCandidates = (rect: Rect, ownerDocument: Document) => {
   return candidates
 }
 
+export type InspectCycleMode = "default" | "text"
+
 export type ClickCycleState = {
   point: Point
   index: number
   stack: Element[]
+  modes: InspectCycleMode[]
+}
+
+const expandCompositeTextInspectStack = (
+  stack: Element[],
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  ownerDocument: Document,
+): { stack: Element[]; modes: InspectCycleMode[] } => {
+  const modes = stack.map(() => "default" as InspectCycleMode)
+  const controlIndex = stack.findIndex((element) => element.matches(COMPOSITE_CONTROL_SELECTOR))
+  if (controlIndex < 0) return { stack, modes }
+  const control = stack[controlIndex]
+  const textRange = withOverlayHitTesting(overlayNode, () =>
+    getDirectTextRangeAtPoint(control, point, ownerDocument),
+  )
+  if (!textRange) return { stack, modes }
+  const nextStack = [...stack]
+  const nextModes = [...modes]
+  nextStack.splice(controlIndex + 1, 0, control)
+  nextModes.splice(controlIndex + 1, 0, "text")
+  return { stack: nextStack, modes: nextModes }
 }
 
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
@@ -412,6 +439,61 @@ const readElementsFromPoint = (
     ownerDocument.elementsFromPoint(point.x, point.y),
   )
 
+const getCompositeInspectablePartsAtPoint = (
+  control: Element,
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  overlayHost: Element | null,
+  ownerDocument: Document,
+) => {
+  const parts: Element[] = []
+  const seen = new Set<Element>()
+  for (const rawElement of readElementsFromPoint(point, overlayNode, ownerDocument)) {
+    const element = getDeepestElementAt(rawElement, point)
+    if (!control.contains(element) || element === control) continue
+    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
+    const isPart =
+      element.matches(COMPOSITE_PART_SELECTOR) ||
+      Array.from(element.childNodes).some(
+        (node) => node.nodeType === 3 && Boolean(node.nodeValue?.trim()),
+      )
+    if (!isPart) continue
+    if (seen.has(element)) continue
+    seen.add(element)
+    parts.push(element)
+  }
+  return parts
+}
+
+const enrichCompositeInspectStack = (
+  stack: Element[],
+  point: Point,
+  overlayNode: HTMLDivElement | null,
+  overlayHost: Element | null,
+  ownerDocument: Document,
+) => {
+  if (stack.length === 0) return stack
+  const head = stack[0]
+  const control = head.matches(COMPOSITE_CONTROL_SELECTOR)
+    ? head
+    : head.closest(COMPOSITE_CONTROL_SELECTOR)
+  if (!control) return stack
+
+  const parts = getCompositeInspectablePartsAtPoint(
+    control,
+    point,
+    overlayNode,
+    overlayHost,
+    ownerDocument,
+  )
+  const inside = stack.filter((element) => element !== control && control.contains(element))
+  for (const part of parts) {
+    if (part !== control && !inside.includes(part)) inside.push(part)
+  }
+  const outside = stack.filter((element) => element !== control && !control.contains(element))
+  return [control, ...inside, ...outside]
+}
+
 export const getElementsAtPoint = (
   point: Point,
   overlayNode: HTMLDivElement | null,
@@ -445,7 +527,13 @@ export const getElementsAtPoint = (
     elements.push(element)
   }
 
-  return elements
+  return enrichCompositeInspectStack(
+    elements,
+    point,
+    overlayNode,
+    overlayHost,
+    ownerDocument,
+  )
 }
 
 export const getTargetElement = (
@@ -540,7 +628,7 @@ export const getCycledClickTarget = (
   snapEnabled: boolean,
   ownerDocument: Document = document,
   cycle: ClickCycleState | null = null,
-): { target: Element | null; cycle: ClickCycleState | null } => {
+): { target: Element | null; cycle: ClickCycleState | null; mode: InspectCycleMode } => {
   if (
     cycle &&
     isSameClickSpot(point, cycle.point) &&
@@ -553,11 +641,19 @@ export const getCycledClickTarget = (
         point,
         index: nextIndex,
         stack: cycle.stack,
+        modes: cycle.modes,
       },
+      mode: cycle.modes[nextIndex] ?? "default",
     }
   }
 
-  const stack = getElementsAtPoint(point, overlayNode, ownerDocument)
+  const baseStack = getElementsAtPoint(point, overlayNode, ownerDocument)
+  const { stack, modes } = expandCompositeTextInspectStack(
+    baseStack,
+    point,
+    overlayNode,
+    ownerDocument,
+  )
   const initial = getSnappedTargetFromElements(
     point,
     stack,
@@ -565,9 +661,10 @@ export const getCycledClickTarget = (
     snapEnabled,
     ownerDocument,
   )
-  if (!initial) return { target: null, cycle: null }
+  if (!initial) return { target: null, cycle: null, mode: "default" }
 
   const cycleStack = stack.includes(initial) ? stack : [initial, ...stack]
+  const cycleModes = stack.includes(initial) ? modes : ["default", ...modes]
   const index = cycleStack.indexOf(initial)
 
   return {
@@ -576,7 +673,9 @@ export const getCycledClickTarget = (
       point,
       index: index >= 0 ? index : 0,
       stack: cycleStack,
+      modes: cycleModes,
     },
+    mode: cycleModes[index >= 0 ? index : 0] ?? "default",
   }
 }
 

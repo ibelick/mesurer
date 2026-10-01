@@ -14,6 +14,7 @@ import {
   getElementsInRectCached,
   getSnappedClickTarget,
   type ClickCycleState,
+  type InspectCycleMode,
 } from "../core/selection"
 import { getSelectedMeasurementHit } from "../core/selection-helpers"
 import type {
@@ -345,6 +346,7 @@ export const useMesurerPointerSelection = ({
     }
 
     let target: Element | null = null
+    let inspectMode: InspectCycleMode = "default"
     const ElementConstructor = ownerDocument.defaultView?.Element
     const eventTarget = ownerDocument !== document && ElementConstructor && event.target instanceof ElementConstructor && event.target.ownerDocument === ownerDocument
       ? event.target
@@ -366,10 +368,17 @@ export const useMesurerPointerSelection = ({
         )
         target = cycled.target
         clickCycleRef.current = cycled.cycle
+        inspectMode = cycled.mode
       }
     }
     if (target) {
-      const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window)
+      const inspectMeasurement = getInspectMeasurement(
+        target,
+        ownerDocument.defaultView ?? window,
+        inspectMode === "text"
+          ? { mode: inspectMode, point: localPoint, overlayNode: overlayRef.current }
+          : undefined,
+      )
       clearTransientMeasurements()
       if (!additive) setSelectedGuideIds([])
       if (additive) {

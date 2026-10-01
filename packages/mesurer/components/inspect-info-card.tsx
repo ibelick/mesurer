@@ -101,6 +101,18 @@ export function InspectInfoCard({
           ))}
         </div>
       ) : null}
+      {typography?.textSnippet ? (
+        <div className="msr:mt-1 msr:flex msr:w-full msr:items-baseline msr:justify-between msr:gap-2" data-mesurer-text-snippet="true">
+          <span className="msr:text-ink-500">Text</span>
+          <CopyableValue
+            id="text-snippet"
+            value={typography.textSnippet}
+            onCopy={() => copyValue(typography.textSnippet)}
+            tooltip={tooltip}
+            className="msr:min-w-0 msr:truncate msr:text-right msr:text-ink-900 msr:hover:underline"
+          />
+        </div>
+      ) : null}
       {typography ? (
         <div className="msr:mt-1 msr:flex msr:flex-col msr:gap-0.5" data-mesurer-typography-details="true">
           {typography.rows.map((row) => (

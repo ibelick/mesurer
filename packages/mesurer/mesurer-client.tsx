@@ -36,7 +36,7 @@ import { useScreenRecording } from "./hooks/use-screen-recording";
 import { ScreenRecordingEditor } from "./components/screen-recording-editor";
 import { SettingsButton } from "./components/settings-button";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
-import { TypographyInspector, hasDirectRenderableText, type TypographyInfo } from "./runtime/text-inspector-typography";
+import { TypographyInspector, resolveTypographyElement, type TypographyInfo } from "./runtime/text-inspector-typography";
 import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
@@ -1128,8 +1128,9 @@ export function MesurerClient({
     if (!selectedElement) return null;
     const ElementConstructor = selectedElement.ownerDocument.defaultView?.HTMLElement;
     if (!ElementConstructor || !(selectedElement instanceof ElementConstructor)) return null;
-    if (!hasDirectRenderableText(selectedElement)) return null;
-    return typographyInspector.getFast(selectedElement);
+    const typographyElement = resolveTypographyElement(selectedElement);
+    if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
+    return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);

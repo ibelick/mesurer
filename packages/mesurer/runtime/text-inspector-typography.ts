@@ -1,3 +1,5 @@
+import { COMPOSITE_CONTROL_SELECTOR } from "../core/inspect-text"
+
 const FONT_WEIGHT_KEYWORD: Record<string, string> = {
   "100": "thin",
   "200": "extralight",
@@ -101,6 +103,21 @@ export const hasDirectRenderableText = (element: Element) =>
   Array.from(element.childNodes).some(
     (node) => node.nodeType === 3 && Boolean(node.nodeValue?.trim()),
   )
+
+const COMPOSITE_VISUAL_LEAF_SELECTOR =
+  "svg, img, picture, video, canvas, path, circle, ellipse, line, polygon, polyline, rect, text, use"
+
+/** Element to read computed typography for (e.g. label text on a button when an icon is selected). */
+export const resolveTypographyElement = (element: Element): Element | null => {
+  if (hasDirectRenderableText(element)) return element
+  if (element.matches(COMPOSITE_VISUAL_LEAF_SELECTOR)) {
+    const host = element.closest(COMPOSITE_CONTROL_SELECTOR)
+    if (host && hasRenderableText(host)) return host
+    return null
+  }
+  if (hasRenderableText(element)) return element
+  return null
+}
 
 export class TypographyInspector {
   private rulesCache: FlatRule[] | null = null
