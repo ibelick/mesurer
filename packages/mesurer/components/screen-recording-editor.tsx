@@ -205,7 +205,7 @@ function TrimHandle({
 
 export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
   if (props.playerUrl) {
-    return <ExtensionRecordingFrame {...props} />
+    return <ExtensionRecordingFrame playerUrl={props.playerUrl} onDiscard={props.onDiscard} />
   }
 
   return <StandardScreenRecordingEditor {...props} />
@@ -218,7 +218,10 @@ const recordingTheme = () => {
   return theme === "light" || theme === "dark" || theme === "system" ? theme : "system"
 }
 
-function ExtensionRecordingFrame({ playerUrl, onDiscard }: ScreenRecordingEditorProps) {
+function ExtensionRecordingFrame({
+  playerUrl,
+  onDiscard,
+}: Pick<ScreenRecordingEditorProps, "onDiscard"> & { playerUrl: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [frameSize, setFrameSize] = useState({ width: RECORDING_FRAME_WIDTH, height: 280, menuExtra: 0 })
   const [anchorSide, setAnchorSide] = useState<"top" | "bottom">("top")
