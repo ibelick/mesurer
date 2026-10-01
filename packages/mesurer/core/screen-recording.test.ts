@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   getCaptureViewportMetrics,
   isFullClipExport,
+  placeScreenshotRectInVideo,
+  visibleSelectionSlice,
   resolveRecordingDuration,
   screenshotRectToVideoCrop,
   tabCaptureRectToVideoCrop,
@@ -48,6 +50,64 @@ describe("screenshotRectToVideoCrop", () => {
       offsetWindow,
     )
     expect(crop).toEqual({ sx: 300, sy: 150, sw: 200, sh: 200 })
+  })
+
+})
+
+describe("visibleSelectionSlice", () => {
+  it("covers the whole selection while it stays inside the window", () => {
+    expect(visibleSelectionSlice(
+      { left: 100, top: 80, width: 200, height: 40 },
+      { width: 1000, height: 800 },
+    )).toEqual({ dx: 0, dy: 0, dw: 1, dh: 1, visible: true })
+  })
+
+  it("keeps the on-screen part of the selection in place after a resize", () => {
+    expect(visibleSelectionSlice(
+      { left: 900, top: 80, width: 200, height: 40 },
+      { width: 1000, height: 800 },
+    )).toEqual({ dx: 0, dy: 0, dw: 0.5, dh: 1, visible: true })
+  })
+})
+
+describe("placeScreenshotRectInVideo", () => {
+  const rect = { left: 100, top: 80, width: 200, height: 40 }
+  const viewport = { width: 1000, height: 800 }
+
+  it("centers the viewport when a resized capture frame is taller than the page", () => {
+    expect(placeScreenshotRectInVideo(rect, 2000, 2000, viewport)).toMatchObject({
+      sx: 200,
+      sy: 360,
+      sw: 400,
+      sh: 80,
+      dx: 0,
+      dy: 0,
+      dw: 1,
+      dh: 1,
+    })
+  })
+
+  it("centers the viewport when a resized capture frame is wider than the page", () => {
+    expect(placeScreenshotRectInVideo(rect, 2400, 1600, viewport)).toMatchObject({
+      sx: 400,
+      sy: 160,
+      sw: 400,
+      sh: 80,
+    })
+  })
+
+  it("keeps the visible slice in place when the selection leaves the viewport", () => {
+    const placed = placeScreenshotRectInVideo(
+      { left: 900, top: 80, width: 200, height: 40 },
+      1000,
+      800,
+      viewport,
+    )
+    expect(placed.sx).toBe(900)
+    expect(placed.sw).toBe(100)
+    expect(placed.dx).toBe(0)
+    expect(placed.dw).toBeCloseTo(0.5)
+    expect(placed.dh).toBe(1)
   })
 })
 
