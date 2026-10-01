@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { Tooltip, useTooltip } from "./tooltip"
 
 type CopyableValueProps = {
@@ -16,12 +17,14 @@ export function CopyableValue({
   className,
 }: CopyableValueProps) {
   const copied = tooltip.copiedTooltipId === id
+  const anchorRef = useRef<HTMLButtonElement | null>(null)
 
   return (
     <span
       className="msr:relative msr:inline-flex msr:min-w-0"
     >
       <button
+        ref={anchorRef}
         type="button"
         className={className ?? "msr:truncate msr:text-right msr:text-ink-50 msr:hover:underline"}
         onMouseEnter={() => {
@@ -44,6 +47,7 @@ export function CopyableValue({
         visible={copied || tooltip.visibleTooltipId === id}
         instant={copied || tooltip.tooltipInstant}
         side="bottom"
+        anchorRef={anchorRef}
         className="msr:z-10"
       />
     </span>

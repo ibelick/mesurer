@@ -749,7 +749,7 @@ export function SettingsPanel({
       <SettingsSection id="inspect" title="Inspect" ariaLabel="Inspect settings" focused={focusSection === "inspect"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
-        <div className="msr:col-span-2"><SettingsSwitch label="Spacing" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
+        <div className="msr:col-span-2"><SettingsSwitch label="CSS details" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>

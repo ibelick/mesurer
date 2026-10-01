@@ -713,6 +713,88 @@ function CliCardFixture() {
   )
 }
 
+function CssInspectGallery() {
+  return (
+    <section className="bench-card" aria-labelledby="css-inspect-title">
+      <div className="bench-card-heading">
+        <div>
+          <span className="bench-kicker">00 / css inspect</span>
+          <h2 id="css-inspect-title">CSS detail fixtures</h2>
+        </div>
+        <span className="bench-coordinate">flex / grid / position / shadow</span>
+      </div>
+      <p className="bench-card-instruction">
+        Turn on <strong>CSS details</strong> in Settings → Inspect, then select each target. Most panels should exceed the default row cap and show <em>Show N more</em>.
+      </p>
+      <div className="bench-css-gallery">
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">01 / flex toolbar</span>
+          <div className="bench-css-flex-toolbar" data-testid="css-flex-toolbar">
+            <div>
+              <strong>Workspace actions</strong>
+              <span>flex · gap · padding · shadow</span>
+            </div>
+            <button type="button">Primary</button>
+          </div>
+        </div>
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">02 / grid dashboard</span>
+          <div className="bench-css-grid-board" data-testid="css-grid-board">
+            <div className="bench-css-grid-hero">Hero spans two rows</div>
+            <div>Metric A</div>
+            <div>Metric B</div>
+            <div className="bench-css-grid-footer">Footer spans full width</div>
+          </div>
+        </div>
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">03 / position &amp; inset</span>
+          <div className="bench-css-position-shell" data-testid="css-position-shell">
+            <span className="bench-css-position-badge">absolute badge</span>
+            <div className="bench-css-position-card">Relative card with an absolutely positioned badge in the corner.</div>
+          </div>
+        </div>
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">04 / elevation card</span>
+          <article className="bench-css-pricing-card" data-testid="css-pricing-card">
+            <h3>Pro workspace</h3>
+            <p>Large radius, layered box-shadow, margin, and padding for export-style cards.</p>
+            <div className="bench-css-pricing-meta">
+              <span className="bench-css-price-tag">$24 / mo</span>
+              <button type="button">Upgrade</button>
+            </div>
+          </article>
+        </div>
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">05 / chips &amp; borders</span>
+          <div className="bench-css-chip-row" data-testid="css-chip-row">
+            <span className="bench-css-chip">Shipped</span>
+            <span className="bench-css-chip bench-css-chip-muted">Draft</span>
+            <span className="bench-css-chip">Needs review</span>
+          </div>
+        </div>
+        <div className="bench-css-panel">
+          <span className="bench-css-panel-label">06 / overflow scroll</span>
+          <div className="bench-css-scroll-well" data-testid="css-scroll-well">
+            {Array.from({ length: 8 }, (_, index) => (
+              <p key={index} style={{ margin: index === 0 ? 0 : "8px 0 0" }}>
+                Scrollable paragraph {index + 1} — inspect overflow, padding, and line-height on this well.
+              </p>
+            ))}
+          </div>
+        </div>
+        <div className="bench-css-panel" style={{ gridColumn: "1 / -1" }}>
+          <span className="bench-css-panel-label">07 / z-index stack</span>
+          <div className="bench-css-stack-stage" data-testid="css-stack-stage">
+            <div className="bench-css-stack-layer bench-css-stack-layer-one">z-index 1</div>
+            <div className="bench-css-stack-layer bench-css-stack-layer-two">z-index 2</div>
+            <div className="bench-css-stack-layer bench-css-stack-layer-three">z-index 5</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function UiSkillsOpeningFixture() {
   const [copied, setCopied] = useState(false)
 
@@ -941,6 +1023,7 @@ export function Bench() {
           </div>
         </section>
         <UiSkillsOpeningFixture />
+        <CssInspectGallery />
         <CliCardFixture />
         <InspectorEdgeCaseLab />
         <section className="bench-card" aria-labelledby="initial-state-title">

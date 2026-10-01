@@ -199,4 +199,132 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-host-composer { max-width: 720px; }
 .bench-host-prompt { min-height: 72px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; color: #172033; background: #fff; font: 14px ui-sans-serif, system-ui, sans-serif; outline: none; }
 .bench-host-prompt:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgb(37 99 235 / 15%); }
-@media (max-width: 720px) { .bench-black-card-grid, .bench-cli-intro, .bench-uiskills-card-grid, .bench-edge-lab-grid { grid-template-columns: 1fr; } .bench-cli-intro { display: grid; } .bench-cli-status { margin-left: 0; } .bench-cli-body { padding: 16px; } .bench-cli-output, .bench-cli-input-row { margin-left: 0; padding-left: 0; } }
+.bench-css-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.bench-css-panel { min-width: 0; border: 1px solid #d6dbe2; border-radius: 8px; padding: 12px; background: #fff; }
+.bench-css-panel-label { display: block; margin-bottom: 10px; color: #657080; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; text-transform: uppercase; }
+.bench-css-flex-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 14px 18px 14px 22px;
+  overflow: hidden;
+  border: 2px solid #a5b4fc;
+  border-radius: 16px;
+  color: #312e81;
+  background: #eef2ff;
+  box-shadow: 0 12px 28px rgb(79 70 229 / 16%), inset 0 1px 0 rgb(255 255 255 / 80%);
+}
+.bench-css-flex-toolbar strong { font-size: 13px; letter-spacing: -.02em; }
+.bench-css-flex-toolbar span { color: #4f46e5; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-css-flex-toolbar button {
+  flex: 0 0 auto;
+  border: 1px solid #4338ca;
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: #fff;
+  background: #4f46e5;
+  font-size: 11px;
+}
+.bench-css-grid-board {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  grid-template-rows: 64px 64px 36px;
+  gap: 10px 12px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.bench-css-grid-board > * { display: grid; place-items: center; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px; color: #0f172a; background: #fff; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; }
+.bench-css-grid-board .bench-css-grid-hero { grid-row: 1 / span 2; align-content: center; justify-items: start; padding: 16px; font-size: 12px; }
+.bench-css-grid-board .bench-css-grid-footer { grid-column: 1 / -1; }
+.bench-css-position-shell { position: relative; min-height: 132px; margin-top: 4px; padding: 18px; overflow: hidden; border: 1px dashed #94a3b8; border-radius: 10px; background: repeating-linear-gradient(90deg, #f1f5f9 0 12px, #e2e8f0 12px 13px); }
+.bench-css-position-badge {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  right: 16px;
+  padding: 6px 10px;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #7c2d12;
+  background: rgb(255 237 213 / 92%);
+  box-shadow: 0 6px 16px rgb(234 88 12 / 18%);
+  font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  opacity: .96;
+}
+.bench-css-position-card {
+  position: relative;
+  z-index: 2;
+  max-width: 220px;
+  margin-top: 28px;
+  padding: 12px 14px;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+  color: #0f172a;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.bench-css-pricing-card {
+  margin: 6px 8px 0;
+  padding: 18px 20px 16px;
+  border: 1px solid #d4d4d8;
+  border-radius: 18px;
+  color: #18181b;
+  background: #fafafa;
+  box-shadow: 0 20px 40px rgb(24 24 27 / 12%), 0 2px 8px rgb(24 24 27 / 6%);
+}
+.bench-css-pricing-card h3 { margin: 0; font-size: 15px; letter-spacing: -.03em; }
+.bench-css-pricing-card p { margin: 6px 0 0; color: #52525b; font-size: 11px; line-height: 1.45; }
+.bench-css-pricing-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.bench-css-pricing-meta button { border: 1px solid #27272a; border-radius: 8px; padding: 7px 12px; color: #fff; background: #18181b; font-size: 11px; }
+.bench-css-price-tag { padding: 4px 8px; border-radius: 6px; color: #14532d; background: #dcfce7; font: 700 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-css-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.bench-css-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  color: #166534;
+  background: #f0fdf4;
+  font-size: 11px;
+}
+.bench-css-chip-muted {
+  border-color: #cbd5e1;
+  color: #475569;
+  background: #f8fafc;
+}
+.bench-css-scroll-well {
+  max-height: 108px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #334155;
+  background: #fff;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.bench-css-stack-stage { position: relative; min-height: 120px; margin-top: 4px; }
+.bench-css-stack-layer {
+  position: absolute;
+  width: 72%;
+  min-height: 64px;
+  border: 1px solid #172033;
+  border-radius: 10px;
+  padding: 12px;
+  color: #172033;
+  font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.bench-css-stack-layer-one { z-index: 1; top: 8px; left: 0; background: #fde68a; }
+.bench-css-stack-layer-two { z-index: 2; top: 28px; left: 14%; background: #bfdbfe; box-shadow: 0 8px 20px rgb(37 99 235 / 18%); }
+.bench-css-stack-layer-three { z-index: 5; top: 48px; left: 28%; background: #fecdd3; box-shadow: 0 14px 28px rgb(225 29 72 / 16%); }
+@media (max-width: 720px) { .bench-black-card-grid, .bench-cli-intro, .bench-uiskills-card-grid, .bench-edge-lab-grid, .bench-css-gallery { grid-template-columns: 1fr; } .bench-cli-intro { display: grid; } .bench-cli-status { margin-left: 0; } .bench-cli-body { padding: 16px; } .bench-cli-output, .bench-cli-input-row { margin-left: 0; padding-left: 0; } }
