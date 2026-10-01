@@ -157,6 +157,8 @@ const toolGroupForMode = (
   colorPickerActive: boolean,
 ): ToolGroup | null => {
   if (colorPickerActive) return "inspect";
+  // Comments sit in the trailing cluster; keep whichever inspect/annotate group is open.
+  if (mode === "comments") return null;
   if (
     mode === "select" ||
     mode === "guides" ||
@@ -169,8 +171,7 @@ const toolGroupForMode = (
     mode === "selection" ||
     mode === "arrows" ||
     mode === "pen" ||
-    mode === "text" ||
-    mode === "comments"
+    mode === "text"
   ) {
     return "annotate";
   }
@@ -704,6 +705,7 @@ function ToolbarComponent(
     setEnabled(true)
     setColorPickerActive(false)
     onCancelScreenshot()
+    preserveToolGroupRef.current = true
     setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
     setOpenMenu(null)
     onInteract()
