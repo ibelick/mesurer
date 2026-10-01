@@ -126,7 +126,7 @@ const containerForSelection = (
     return layout
   }
 
-  let containerElement = selectedElement?.parentElement ?? null
+  let containerElement: Element | null = selectedElement?.parentElement ?? null
   if (
     selectedElement &&
     hoverElement &&

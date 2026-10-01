@@ -664,7 +664,7 @@ export const getCycledClickTarget = (
   if (!initial) return { target: null, cycle: null, mode: "default" }
 
   const cycleStack = stack.includes(initial) ? stack : [initial, ...stack]
-  const cycleModes = stack.includes(initial) ? modes : ["default", ...modes]
+  const cycleModes: InspectCycleMode[] = stack.includes(initial) ? modes : ["default", ...modes]
   const index = cycleStack.indexOf(initial)
 
   return {

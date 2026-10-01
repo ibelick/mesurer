@@ -4,13 +4,13 @@ import { formatInspectCssParts, visibleInspectCssParts } from "./inspect-css"
 const emptyEdges = { top: 0, right: 0, bottom: 0, left: 0 }
 
 const styleStub = (values: Record<string, string>): CSSStyleDeclaration =>
-  new Proxy(values as CSSStyleDeclaration, {
+  new Proxy(values, {
     get(target, prop) {
       if (typeof prop !== "string") return undefined
       const key = prop in target ? prop : prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
-      return target[key] ?? target[prop] ?? ""
+      return target[key] ?? ""
     },
-  })
+  }) as unknown as CSSStyleDeclaration
 
 describe("formatInspectCssParts", () => {
   it("includes margin and skips empty values", () => {
