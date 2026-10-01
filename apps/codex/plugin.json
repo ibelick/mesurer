@@ -1,0 +1,38 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mesurer",
+  "version": "0.1.0",
+  "description": "Use Mesurer to inspect, measure, and annotate live interfaces in a supported browser session.",
+  "author": {
+    "name": "Julien Thibeaut",
+    "url": "https://mesurer.dev"
+  },
+  "homepage": "https://mesurer.dev",
+  "repository": "https://github.com/ibelick/mesurer",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "inspection",
+    "annotations"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Mesurer",
+        "shortDescription": "Inspect, measure, and annotate live interfaces",
+        "longDescription": "Mesurer browser launcher and visual feedback workflow. Requires a browser host that explicitly supports executing the bundled launcher, or a page with Mesurer already embedded. Installation alone does not grant browser injection access.",
+        "developerName": "Julien Thibeaut",
+        "category": "Developer Tools",
+        "websiteURL": "https://mesurer.dev",
+        "privacyPolicyURL": "https://mesurer.dev/privacy",
+        "termsOfServiceURL": "https://mesurer.dev/terms",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "defaultPrompt": [
+          "Use Mesurer on this browser page.",
+          "Read my Mesurer comments and prepare the requested changes."
+        ]
+      }
+    }
+  }
+}
