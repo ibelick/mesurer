@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
-  isFullClipExport,
+  correctWebmDuration,
   getCaptureViewportMetrics,
+  isFullClipExport,
+  openDisplayRecordingCapture,
   readBlobVideoDuration,
   reencodeVideoClip,
-  requestDisplayMediaStream,
   resolveRecordingDuration,
-  createRecordingCropTarget,
-  cropTrackToElement,
-  placeScreenshotRectInVideo,
-  visibleSelectionSlice,
+  runDisplayRecordingDrawLoop,
 } from "../core/screen-recording"
 import {
   MIN_SCREENSHOT_SELECTION,
@@ -24,64 +22,24 @@ import {
 import { eventView, listenPointerDrag } from "../core/pointer-drag"
 import type { ResizeHandle } from "../core/text-transform"
 import type { ExtensionRecordingSession } from "../mesurer-client"
+import {
+  type RecordingExportFormat,
+  type RecordingExportOptions,
+  type RecordingExportResult,
+  supportedMp4MimeType,
+  supportedRecordingFormats,
+  supportedWebmMimeType,
+} from "./screen-recording-export"
+
+export type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult }
+export { supportedRecordingFormats }
 
 const MAX_RECORDING_MS = 60_000
-
-const supportedMimeType = () => ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
-  .find((type) => MediaRecorder.isTypeSupported(type))
 
 const createFilename = (extension: string, now = new Date()) =>
   `mesurer-recording-${now.toISOString().replace(/[:.]/g, "-")}.${extension}`
 
-export type RecordingExportFormat = "webm" | "mp4"
-
-export type RecordingExportOptions = {
-  format?: RecordingExportFormat
-  scale?: number
-}
-
-export type RecordingExportResult = {
-  blob: Blob
-  filename: string
-}
-
-const mp4MimeType = () =>
-  ["video/mp4;codecs=avc1.42E01E", "video/mp4"].find((type) => MediaRecorder.isTypeSupported(type))
-
-export const supportedRecordingFormats = (): RecordingExportFormat[] => {
-  const formats: RecordingExportFormat[] = ["webm"]
-  if (typeof MediaRecorder !== "undefined" && mp4MimeType()) formats.push("mp4")
-  return formats
-}
-
 const extensionFor = (format: RecordingExportFormat) => format
-
-const waitForRegionFrame = (
-  video: HTMLVideoElement,
-  rect: ScreenshotRect,
-  ownerWindow: Window,
-) => new Promise<void>((resolve) => {
-  const ratio = ownerWindow.devicePixelRatio || 1
-  const expectedWidth = Math.max(1, Math.round(rect.width * ratio))
-  const expectedHeight = Math.max(1, Math.round(rect.height * ratio))
-  const ready = () =>
-    Math.abs(video.videoWidth - expectedWidth) <= Math.max(4, expectedWidth * 0.08) &&
-    Math.abs(video.videoHeight - expectedHeight) <= Math.max(4, expectedHeight * 0.08)
-  if (ready()) {
-    resolve()
-    return
-  }
-  const finish = () => {
-    video.removeEventListener("resize", onResize)
-    ownerWindow.clearTimeout(timer)
-    resolve()
-  }
-  const onResize = () => {
-    if (ready()) finish()
-  }
-  video.addEventListener("resize", onResize)
-  const timer = ownerWindow.setTimeout(finish, 400)
-})
 
 type UseScreenRecordingOptions = {
   ownerDocument: Document
@@ -222,144 +180,35 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
         timeoutRef.current = ownerWindow.setTimeout(stop, MAX_RECORDING_MS)
         return
       }
-      const stream = await requestDisplayMediaStream(ownerWindow)
-      const track = stream.getVideoTracks()[0]
-      if (!track) throw new Error("No video track was selected")
-      if (track.getSettings().displaySurface && track.getSettings().displaySurface !== "browser") {
-        track.stop()
-        throw new Error("Select the browser tab to record")
-      }
-      const source = ownerDocument.createElement("video")
-      source.autoplay = true
-      source.muted = true
-      source.playsInline = true
-      source.srcObject = stream
-      source.setAttribute("playsinline", "")
-      source.setAttribute("aria-hidden", "true")
-      source.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;border:0;overflow:hidden;opacity:0;visibility:hidden;pointer-events:none"
-      ownerDocument.body.append(source)
-      await source.play()
-      if (source.videoWidth <= 0 || source.videoHeight <= 0) {
-        await new Promise<void>((resolve, reject) => {
-          source.onloadeddata = () => resolve()
-          source.onerror = () => reject(new Error("No video track was selected"))
-        })
-      }
-      const cropTarget = createRecordingCropTarget(ownerDocument, nextRect)
-      captureNodesRef.current = { source, canvas: null, cropTarget }
-      let regionLocked = false
-      try {
-        regionLocked = await cropTrackToElement(track, cropTarget)
-      } catch {
-        regionLocked = false
-      }
-      if (!regionLocked) {
-        cropTarget.remove()
-        if (captureNodesRef.current) captureNodesRef.current.cropTarget = null
-      } else {
-        await waitForRegionFrame(source, nextRect, ownerWindow)
-      }
-      if (captureNodesRef.current?.source !== source) return
-      const pixelRatio = ownerWindow.devicePixelRatio || 1
-      const initialCrop = placeScreenshotRectInVideo(
+
+      const displayCapture = await openDisplayRecordingCapture(
+        ownerDocument,
+        ownerWindow,
         nextRect,
-        source.videoWidth,
-        source.videoHeight,
-        viewport(),
+        viewport,
       )
-      const canvas = ownerDocument.createElement("canvas")
-      canvas.width = regionLocked
-        ? Math.max(1, Math.round(nextRect.width * pixelRatio))
-        : initialCrop.sw
-      canvas.height = regionLocked
-        ? Math.max(1, Math.round(nextRect.height * pixelRatio))
-        : initialCrop.sh
-      canvas.setAttribute("aria-hidden", "true")
-      canvas.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;border:0;overflow:hidden;opacity:0;visibility:hidden;pointer-events:none"
-      ownerDocument.body.append(canvas)
-      const context = canvas.getContext("2d", { alpha: false })
-      if (!context) throw new Error("Video recording is unavailable")
-      captureNodesRef.current = { source, canvas, cropTarget: regionLocked ? cropTarget : null }
-      const capture = canvas.captureStream(30)
-      const captureTrack = capture.getVideoTracks()[0]
-      const draw = () => {
-        if (source.videoWidth <= 0 || source.videoHeight <= 0) {
-          drawFrameRef.current = ownerWindow.requestAnimationFrame(draw)
-          return
-        }
-        if (regionLocked) {
-          const box = cropTarget.getBoundingClientRect()
-          const slice = visibleSelectionSlice(box, viewport())
-          if (!slice.visible) {
-            context.fillStyle = "#000"
-            context.fillRect(0, 0, canvas.width, canvas.height)
-          } else if (slice.dw >= 0.999 && slice.dh >= 0.999) {
-            context.drawImage(source, 0, 0, canvas.width, canvas.height)
-          } else {
-            context.fillStyle = "#000"
-            context.fillRect(0, 0, canvas.width, canvas.height)
-            context.drawImage(
-              source,
-              0,
-              0,
-              source.videoWidth,
-              source.videoHeight,
-              slice.dx * canvas.width,
-              slice.dy * canvas.height,
-              slice.dw * canvas.width,
-              slice.dh * canvas.height,
-            )
-          }
-        } else {
-          const placed = placeScreenshotRectInVideo(
-            nextRect,
-            source.videoWidth,
-            source.videoHeight,
-            viewport(),
-          )
-          const coversFrame =
-            placed.dx <= 0.001 &&
-            placed.dy <= 0.001 &&
-            placed.dw >= 0.999 &&
-            placed.dh >= 0.999
-          const destX = coversFrame ? 0 : placed.dx * canvas.width
-          const destY = coversFrame ? 0 : placed.dy * canvas.height
-          const destW = coversFrame ? canvas.width : placed.dw * canvas.width
-          const destH = coversFrame ? canvas.height : placed.dh * canvas.height
-          if (!coversFrame) {
-            context.fillStyle = "#000"
-            context.fillRect(0, 0, canvas.width, canvas.height)
-          }
-          if (destW >= 1 && destH >= 1 && placed.dw > 0 && placed.dh > 0) {
-            context.drawImage(
-              source,
-              placed.sx,
-              placed.sy,
-              placed.sw,
-              placed.sh,
-              destX,
-              destY,
-              destW,
-              destH,
-            )
-          }
-        }
-        const requestFrame = captureTrack && "requestFrame" in captureTrack
-          ? (captureTrack as MediaStreamTrack & { requestFrame?: () => void }).requestFrame
-          : undefined
-        requestFrame?.call(captureTrack)
-        drawFrameRef.current = ownerWindow.requestAnimationFrame(draw)
+      captureNodesRef.current = {
+        source: displayCapture.source,
+        canvas: displayCapture.canvas,
+        cropTarget: displayCapture.cropTarget,
       }
-      draw()
-      const mimeType = supportedMimeType()
-      const recorder = new MediaRecorder(capture, mimeType ? { mimeType } : undefined)
+      runDisplayRecordingDrawLoop(ownerWindow, displayCapture, nextRect, viewport, drawFrameRef)
+
+      const mimeType = supportedWebmMimeType()
+      const recorder = new MediaRecorder(
+        displayCapture.captureStream,
+        mimeType ? { mimeType } : undefined,
+      )
       const chunks: Blob[] = []
       recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data)
       recorder.onstop = () => {
         const elapsedSeconds = elapsedRef.current
-        const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" })
-        release()
         void (async () => {
+          const blob = await correctWebmDuration(
+            new Blob(chunks, { type: recorder.mimeType || "video/webm" }),
+            elapsedSeconds,
+          )
+          release()
           if (!blob.size) {
             flashError()
             return
@@ -377,8 +226,8 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
           setVideo({ url, duration, filename: createFilename("webm") })
         })()
       }
-      track.addEventListener("ended", stop, { once: true })
-      streamRef.current = stream
+      displayCapture.track.addEventListener("ended", stop, { once: true })
+      streamRef.current = displayCapture.stream
       recorderRef.current = recorder
       recorder.start(250)
       setRecording(true)
@@ -535,7 +384,7 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
       const blob = await fetch(video.url).then((response) => response.blob())
       return { blob, filename }
     }
-    const mimeType = format === "mp4" ? mp4MimeType() : supportedMimeType()
+    const mimeType = format === "mp4" ? supportedMp4MimeType() : supportedWebmMimeType()
     if (format === "mp4" && !mimeType) throw new Error("MP4 export is unavailable")
     const blob = await reencodeVideoClip(
       ownerDocument,

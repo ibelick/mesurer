@@ -3,8 +3,8 @@ import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { listenPointerDrag } from "../core/pointer-drag"
 import { cn, formatValue } from "../core/utils"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
-import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../hooks/use-screen-recording"
-import { supportedRecordingFormats } from "../hooks/use-screen-recording"
+import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../hooks/screen-recording-export"
+import { supportedRecordingFormats } from "../hooks/screen-recording-export"
 import { CloseIcon } from "./icons"
 import { CheckIcon } from "./icons/menu-icons"
 import { MenuItem, MenuSurface } from "./menu"
@@ -418,6 +418,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     const syncFromMedia = () => {
       const mediaDuration = el.duration
       if (!Number.isFinite(mediaDuration) || mediaDuration <= 0) return
+      // A short container duration must not trim off the rest of the recording.
+      if (mediaDuration + 0.05 < duration) return
       if (Math.abs(mediaDuration - duration) < 0.05) return
       setEnd(mediaDuration)
       setStart((value) => Math.min(value, Math.max(0, mediaDuration - MIN_CLIP_SECONDS)))

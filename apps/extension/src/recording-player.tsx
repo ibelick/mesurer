@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ScreenRecordingEditor } from "../../../packages/mesurer/components/screen-recording-editor";
 import { TooltipLayerContext } from "../../../packages/mesurer/components/tooltip";
 import { isFullClipExport, reencodeVideoClip } from "../../../packages/mesurer/core/screen-recording";
-import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../../../packages/mesurer/hooks/use-screen-recording";
+import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../../../packages/mesurer/hooks/screen-recording-export";
 import { deleteRecording, readRecording } from "./recording-db";
 
 const root = document.getElementById("root");

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
   getCaptureViewportMetrics,
-  isFullClipExport,
   placeScreenshotRectInVideo,
-  visibleSelectionSlice,
-  resolveRecordingDuration,
   screenshotRectToVideoCrop,
   tabCaptureRectToVideoCrop,
-} from "./screen-recording"
+  visibleSelectionSlice,
+} from "./screen-recording-crop"
+import { isFullClipExport, resolveRecordingDuration } from "./screen-recording-export"
+import { writeWebmDuration } from "./screen-recording-webm"
 
 describe("getCaptureViewportMetrics", () => {
   it("uses the layout viewport even when a visual viewport is present", () => {
@@ -152,6 +152,25 @@ describe("resolveRecordingDuration", () => {
   it("falls back when metadata is missing", () => {
     expect(resolveRecordingDuration(Number.NaN, 4.2)).toBe(4.2)
     expect(resolveRecordingDuration(0, 0)).toBe(0.1)
+  })
+
+  it("keeps the recorded length when container metadata is only the first clusters", () => {
+    expect(resolveRecordingDuration(1.2, 8)).toBe(8)
+  })
+})
+
+describe("writeWebmDuration", () => {
+  it("replaces a short container duration with the recorded length", () => {
+    const duration = new Uint8Array(4)
+    new DataView(duration.buffer).setFloat32(0, 1000)
+    const infoPayload = [
+      0x2a, 0xd7, 0xb1, 0x83, 0x0f, 0x42, 0x40,
+      0x44, 0x89, 0x84, ...duration,
+    ]
+    const info = [0x15, 0x49, 0xa9, 0x66, 0x8e, ...infoPayload]
+    const bytes = new Uint8Array([0x18, 0x53, 0x80, 0x67, 0x93, ...info])
+    expect(writeWebmDuration(bytes, 8)).toBe(true)
+    expect(new DataView(bytes.buffer).getFloat32(5 + 4 + 1 + 7 + 2 + 1)).toBe(8000)
   })
 })
 
