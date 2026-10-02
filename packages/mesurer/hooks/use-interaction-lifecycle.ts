@@ -223,10 +223,7 @@ export const useInteractionLifecycle = (options: Options) => {
     options.setToolMode("none");
   }, [clearTransientState, options]);
 
-  const keyboardOwned =
-    options.enabled &&
-    !options.minimized &&
-    (options.toolMode !== "none" || options.toolbarActive);
+  const keyboardOwned = options.enabled && !options.minimized;
   const overlayActive =
     options.enabled && (options.toolMode !== "none" || options.toolbarActive);
 

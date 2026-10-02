@@ -214,9 +214,10 @@ export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
 }
 
 const RECORDING_FRAME_WIDTH = 22 * 16
+const RECORDING_FRAME_SHADOW = 28
 
-const recordingTheme = () => {
-  const theme = document.querySelector("[data-mesurer-root]")?.getAttribute("data-theme")
+const recordingTheme = (from?: Element | null) => {
+  const theme = (from?.closest("[data-mesurer-root]") ?? document.querySelector("[data-mesurer-root]"))?.getAttribute("data-theme")
   return theme === "light" || theme === "dark" || theme === "system" ? theme : "system"
 }
 
@@ -224,26 +225,35 @@ function ExtensionRecordingFrame({
   playerUrl,
   onDiscard,
 }: Pick<ScreenRecordingEditorProps, "onDiscard"> & { playerUrl: string }) {
+  const hostRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [frameSize, setFrameSize] = useState({ width: RECORDING_FRAME_WIDTH, height: 280, menuExtra: 0 })
   const [anchorSide, setAnchorSide] = useState<"top" | "bottom">("top")
-  const src = useMemo(() => {
+  const [src, setSrc] = useState<string | null>(null)
+  useLayoutEffect(() => {
     const url = new URL(playerUrl)
-    url.searchParams.set("theme", recordingTheme())
-    return url.toString()
+    url.searchParams.set("theme", recordingTheme(hostRef.current))
+    setSrc(url.toString())
   }, [playerUrl])
   const postFrameState = useCallback(() => {
     const frame = frameRef.current
     const panel = frame?.parentElement?.parentElement
     const side = panel?.style.bottom ? "bottom" : "top"
     setAnchorSide(side)
-    frame?.contentWindow?.postMessage({ type: "mesurer:recording-theme", theme: recordingTheme() }, "*")
+    frame?.contentWindow?.postMessage({ type: "mesurer:recording-theme", theme: recordingTheme(frame ?? hostRef.current) }, "*")
     frame?.contentWindow?.postMessage({ type: "mesurer:recording-anchor", side }, "*")
   }, [])
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return
       if (event.data?.type === "mesurer:recording-discard") onDiscard()
+      if (event.data?.type === "mesurer:recording-frame-intent" && typeof event.data.expanded === "boolean") {
+        setFrameSize((current) => ({
+          ...current,
+          width: event.data.expanded ? 36 * 16 : RECORDING_FRAME_WIDTH,
+          height: event.data.expanded ? Math.max(current.height, 520) : current.height,
+        }))
+      }
       if (
         event.data?.type === "mesurer:recording-frame-size" &&
         typeof event.data.width === "number" &&
@@ -259,7 +269,7 @@ function ExtensionRecordingFrame({
       }
     }
     window.addEventListener("message", onMessage)
-    const root = frameRef.current?.closest("[data-mesurer-root]")
+    const root = (frameRef.current ?? hostRef.current)?.closest("[data-mesurer-root]")
     const panel = frameRef.current?.parentElement?.parentElement
     const observer = new MutationObserver(postFrameState)
     if (root) observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] })
@@ -268,25 +278,36 @@ function ExtensionRecordingFrame({
       window.removeEventListener("message", onMessage)
       observer.disconnect()
     }
-  }, [onDiscard, postFrameState])
+  }, [onDiscard, postFrameState, src])
   const menuAbove = anchorSide === "bottom"
+  const shadow = RECORDING_FRAME_SHADOW
   return (
     <div
-      className="msr:relative msr:max-w-[calc(100vw-16px)] msr:rounded-wide-card"
-      style={{ width: frameSize.width, height: frameSize.height, boxShadow: "var(--msr-shadow-floating)" }}
+      ref={hostRef}
+      className="msr:relative msr:max-w-[calc(100vw-16px)] msr:bg-transparent"
+      style={{
+        width: frameSize.width,
+        height: frameSize.height,
+      }}
     >
-      <iframe
+      {src ? <iframe
         ref={frameRef}
         title="Recording preview"
         src={src}
         onLoad={postFrameState}
-        className="msr:absolute msr:left-0 msr:border-0 msr:bg-transparent"
+        allowTransparency
+        className="msr:absolute msr:border-0 msr:bg-transparent msr:shadow-none"
         style={{
-          width: frameSize.width,
-          height: frameSize.height + frameSize.menuExtra,
-          top: menuAbove ? -frameSize.menuExtra : 0,
+          width: frameSize.width + shadow * 2,
+          height: frameSize.height + frameSize.menuExtra + shadow * 2,
+          left: -shadow,
+          top: menuAbove ? -(frameSize.menuExtra + shadow) : -shadow,
+          backgroundColor: "transparent",
+          colorScheme: "light",
+          border: 0,
+          boxShadow: "none",
         }}
-      />
+      /> : null}
     </div>
   )
 }
@@ -981,7 +1002,13 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             tooltipId="recording-resize"
             tooltip={tooltip}
             pressed={expanded}
-            onClick={() => setExpanded((current) => !current)}
+             onClick={() => {
+               const next = !expanded
+               if (ownerDocument.defaultView && ownerDocument.defaultView.parent !== ownerDocument.defaultView) {
+                 ownerDocument.defaultView.parent.postMessage({ type: "mesurer:recording-frame-intent", expanded: next }, "*")
+               }
+               setExpanded(next)
+             }}
           >
             {expanded ? <CollapseIcon /> : <ExpandIcon />}
           </PlayerIconButton>

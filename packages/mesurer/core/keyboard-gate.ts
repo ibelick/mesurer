@@ -133,6 +133,8 @@ export const installKeyboardGate = (
       }
       if (event instanceof KeyboardEvent && isMesurerKeyboardBridgeKey(event.key, event)) {
         bridgeKey(event)
+        if (event.type === "keydown") event.preventDefault()
+        return
       }
       event.preventDefault()
       // Keep annotation shortcuts on the native event so hotkeys still run.
@@ -146,6 +148,8 @@ export const installKeyboardGate = (
       if (event.type === "keydown" || event.type === "keyup") {
         if (isolateMesurerEvents && isMesurerKeyboardBridgeKey(event.key, event)) {
           bridgeKey(event)
+          if (event.type === "keydown") event.preventDefault()
+          return
         }
       }
     }

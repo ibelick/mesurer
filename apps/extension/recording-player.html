@@ -1,16 +1,23 @@
 <!doctype html>
-<html style="background:transparent">
+<html style="background:transparent;color-scheme:light">
   <body style="margin:0;background:transparent;overflow:hidden">
-    <div id="root" class="mesurer-root"></div>
+    <div id="root" class="mesurer-root" data-anchor="top"></div>
     <link rel="stylesheet" href="mesurer.css" />
     <style>
-      html, body, #root { height: 100%; background: transparent; }
+      /* Match the extension host color-scheme so Chrome does not paint an opaque iframe canvas. */
+      html, body {
+        height: 100%;
+        background: transparent !important;
+        color-scheme: light !important;
+      }
+      #root { height: 100%; background: transparent !important; }
+      #root video { background: transparent; }
       .mesurer-root p { margin: 0; }
       .mesurer-root button, .mesurer-root input, .mesurer-root select { font: inherit; }
-      #root [data-mesurer-recording-card] { box-shadow: none; width: 22rem; max-width: none; }
+      #root [data-mesurer-recording-card] { width: 22rem; max-width: none; }
       #root [data-mesurer-recording-card][data-expanded="true"] { width: 36rem; }
-      #root[data-anchor="bottom"] [data-mesurer-recording-card] { position: fixed; right: auto; bottom: 0; left: 0; }
-      #root[data-anchor="top"] [data-mesurer-recording-card] { position: fixed; top: 0; right: auto; left: 0; }
+      #root[data-anchor="bottom"] [data-mesurer-recording-card] { position: fixed; right: auto; bottom: 28px; left: 28px; }
+      #root[data-anchor="top"] [data-mesurer-recording-card] { position: fixed; top: 28px; right: auto; left: 28px; }
     </style>
     <script src="recording-player.js"></script>
   </body>

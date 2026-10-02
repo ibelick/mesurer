@@ -12,6 +12,7 @@ const id = params.get("id");
 const initialTheme = params.get("theme");
 if (root && (initialTheme === "light" || initialTheme === "dark" || initialTheme === "system")) {
   root.setAttribute("data-theme", initialTheme);
+  document.documentElement.setAttribute("data-theme", initialTheme);
 }
 
 const createFilename = (format: RecordingExportFormat) => `mesurer-recording-${new Date().toISOString().replace(/[:.]/g, "-")}.${format}`;
@@ -26,10 +27,12 @@ const Player = ({ blob, duration }: { blob: Blob; duration: number }) => {
   }, [blob]);
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type !== "mesurer:recording-theme") return;
-      const theme = event.data.theme;
-      if (theme === "light" || theme === "dark" || theme === "system") {
-        document.getElementById("root")?.setAttribute("data-theme", theme);
+      if (event.data?.type === "mesurer:recording-theme") {
+        const theme = event.data.theme;
+        if (theme === "light" || theme === "dark" || theme === "system") {
+          document.getElementById("root")?.setAttribute("data-theme", theme);
+          document.documentElement.setAttribute("data-theme", theme);
+        }
       }
       if (event.data?.type === "mesurer:recording-anchor" && (event.data.side === "top" || event.data.side === "bottom")) {
         document.getElementById("root")?.setAttribute("data-anchor", event.data.side);
@@ -60,16 +63,41 @@ const Player = ({ blob, duration }: { blob: Blob; duration: number }) => {
         "*",
       );
     };
-    const observer = new ResizeObserver(report);
+    let reportFrame: number | null = null;
+    let transitionTimer: number | null = null;
+    let transitioning = false;
+    const scheduleReport = () => {
+      if (reportFrame !== null) return;
+      reportFrame = window.requestAnimationFrame(() => {
+        reportFrame = null;
+        if (!transitioning) report();
+      });
+    };
+    const observer = new ResizeObserver(scheduleReport);
     const watch = () => {
       const card = rootNode.querySelector("section");
-      if (card) observer.observe(card);
-      report();
+      if (card) {
+        observer.disconnect();
+        observer.observe(card);
+      }
+      scheduleReport();
     };
     watch();
-    const mutations = new MutationObserver(watch);
-    mutations.observe(rootNode, { childList: true, subtree: true });
+    const mutations = new MutationObserver((records) => {
+      if (records.some((record) => record.type === "attributes" && record.attributeName === "data-expanded")) {
+        transitioning = true;
+        if (transitionTimer !== null) window.clearTimeout(transitionTimer);
+        transitionTimer = window.setTimeout(() => {
+          transitioning = false;
+          report();
+        }, 220);
+      }
+      watch();
+    });
+    mutations.observe(rootNode, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-expanded"] });
     return () => {
+      if (reportFrame !== null) window.cancelAnimationFrame(reportFrame);
+      if (transitionTimer !== null) window.clearTimeout(transitionTimer);
       observer.disconnect();
       mutations.disconnect();
     };

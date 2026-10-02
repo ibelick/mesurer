@@ -17,7 +17,7 @@ export const useOverlayKeyboard = ({
 }) => {
   useLayoutEffect(() => {
     installKeyboardGate(eventTarget)
-    const claimedRef = { current: false }
+    const claimedRef = { current: overlayActive }
     const owned =
       overlayActive &&
       (claimedRef.current || isInsideMesurer(getDeepActiveElement(eventTarget)))
@@ -31,7 +31,7 @@ export const useOverlayKeyboard = ({
         setMesurerKeyboardOwned(eventTarget.document, true)
         return
       }
-      if (active instanceof Element && !isInsideMesurer(active)) {
+       if (active instanceof Element && !isInsideMesurer(active) && isEditableElement(active)) {
         claimedRef.current = false
         setMesurerKeyboardOwned(eventTarget.document, false)
         return

@@ -419,9 +419,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
 
     const handleKeyboardBridge = (event: MessageEvent) => {
       if (
-        event.source !== target ||
-        event.origin !== target.location.origin ||
-        !isMesurerKeyboardOwned(target)
+        (event.source !== target && event.source !== null) ||
+        (event.origin !== target.location.origin && event.origin !== "null")
       ) return
       const data = event.data
       if (!isMesurerKeyboardBridge(data)) return
