@@ -34,6 +34,7 @@ const SCALE_OPTIONS = [1, 2, 3] as const
 const FORMAT_LABEL: Record<RecordingExportFormat, string> = {
   webm: "WebM",
   mp4: "MP4",
+  gif: "GIF",
 }
 
 const scaleLabel = (scale: number, size: { width: number; height: number } | null) => {
@@ -627,6 +628,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
 
   const downloadRecording = async () => {
     if (exporting) return
+    setExportMenuOpen(false)
     setExporting(true)
     setError(null)
     try {
@@ -757,8 +759,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             />
             </div>
             {exporting ? (
-              <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-ink-900/45 msr:text-[11px] msr:text-white">
-                <StatusEllipsis label="Exporting" />
+              <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-black/80 msr:text-[11px] msr:font-medium msr:text-white msr:drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                <StatusEllipsis label="Generating" />
               </div>
             ) : null}
             <div
@@ -872,6 +874,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                 variant="ghost"
                 aria-haspopup="menu"
                 aria-expanded={exportMenuOpen}
+                disabled={exporting}
                 aria-label="Export options"
                 className="msr:px-1 msr:font-mono msr:text-[10px] msr:leading-none"
                 style={{ height: 20 }}

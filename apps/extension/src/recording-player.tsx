@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ScreenRecordingEditor } from "../../../packages/mesurer/components/screen-recording-editor";
 import { TooltipLayerContext } from "../../../packages/mesurer/components/tooltip";
-import { isFullClipExport, reencodeVideoClip } from "../../../packages/mesurer/core/screen-recording";
+import { encodeGifClip, isFullClipExport, reencodeVideoClip } from "../../../packages/mesurer/core/screen-recording";
+import { supportedMp4MimeType } from "../../../packages/mesurer/hooks/screen-recording-export";
 import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../../../packages/mesurer/hooks/screen-recording-export";
 import { deleteRecording, readRecording } from "./recording-db";
 
@@ -81,7 +82,14 @@ const Player = ({ blob, duration }: { blob: Blob; duration: number }) => {
     if (format === "webm" && scale === 1 && isFullClipExport(start, end, duration)) {
       return { blob, filename: createFilename(format) };
     }
-    const mimeType = format === "mp4" ? "video/mp4" : "video/webm";
+    if (format === "gif") {
+      return {
+        blob: await encodeGifClip(document, url, start, end, scale),
+        filename: createFilename(format),
+      };
+    }
+    const mimeType = format === "mp4" ? supportedMp4MimeType() : "video/webm";
+    if (format === "mp4" && !mimeType) throw new Error("MP4 export is unavailable");
     return {
       blob: await reencodeVideoClip(document, window, url, start, end, scale, mimeType),
       filename: createFilename(format),

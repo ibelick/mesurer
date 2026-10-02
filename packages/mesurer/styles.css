@@ -710,9 +710,10 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 @keyframes mesurer-status-ellipsis {
-  0%, 32% { content: "."; }
-  33%, 65% { content: ".."; }
-  66%, 100% { content: "..."; }
+  0%, 24% { content: ""; }
+  25%, 49% { content: "."; }
+  50%, 74% { content: ".."; }
+  75%, 100% { content: "..."; }
 }
 
 .mesurer-status-ellipsis {
@@ -722,7 +723,7 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-status-ellipsis::after {
-  content: "...";
+  content: "";
   animation: mesurer-status-ellipsis 1.2s steps(1, end) infinite;
 }
 

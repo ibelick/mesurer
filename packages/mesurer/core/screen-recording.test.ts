@@ -7,6 +7,7 @@ import {
   visibleSelectionSlice,
 } from "./screen-recording-crop"
 import { isFullClipExport, resolveRecordingDuration } from "./screen-recording-export"
+import { GIF_FRAME_RATE, gifFrameTimes } from "./screen-recording-gif"
 import { writeWebmDuration } from "./screen-recording-webm"
 
 describe("getCaptureViewportMetrics", () => {
@@ -178,5 +179,15 @@ describe("isFullClipExport", () => {
   it("detects full-length exports within tolerance", () => {
     expect(isFullClipExport(0, 9.96, 10)).toBe(true)
     expect(isFullClipExport(0.2, 9.5, 10)).toBe(false)
+  })
+})
+
+describe("gifFrameTimes", () => {
+  it("samples the complete trim range at the GIF frame rate", () => {
+    expect(gifFrameTimes(2, 2.2)).toEqual([2, 2 + 1 / GIF_FRAME_RATE, 2 + 2 / GIF_FRAME_RATE])
+  })
+
+  it("always returns a frame for a short clip", () => {
+    expect(gifFrameTimes(4, 4.01)).toEqual([4])
   })
 })

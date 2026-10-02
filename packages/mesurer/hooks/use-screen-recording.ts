@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
   correctWebmDuration,
+  encodeGifClip,
   getCaptureViewportMetrics,
   isFullClipExport,
   openDisplayRecordingCapture,
@@ -382,6 +383,12 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
     if (format === "webm" && scale === 1 && isFullClipExport(startTime, endTime, video.duration)) {
       const blob = await fetch(video.url).then((response) => response.blob())
       return { blob, filename }
+    }
+    if (format === "gif") {
+      return {
+        blob: await encodeGifClip(ownerDocument, video.url, startTime, endTime, scale),
+        filename,
+      }
     }
     const mimeType = format === "mp4" ? supportedMp4MimeType() : supportedWebmMimeType()
     if (format === "mp4" && !mimeType) throw new Error("MP4 export is unavailable")

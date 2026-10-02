@@ -192,3 +192,14 @@ export async function reencodeVideoClip(
     )
   })
 }
+
+export async function encodeGifClip(
+  ownerDocument: Document,
+  sourceUrl: string,
+  startTime: number,
+  endTime: number,
+  scale: number,
+): Promise<Blob> {
+  const encoder = await import("./screen-recording-gif")
+  return encoder.encodeGifClip(ownerDocument, sourceUrl, startTime, endTime, scale)
+}

@@ -21,6 +21,7 @@ export {
   seekVideoElement,
   requestDisplayMediaStream,
   reencodeVideoClip,
+  encodeGifClip,
 } from "./screen-recording-export"
 
 export {

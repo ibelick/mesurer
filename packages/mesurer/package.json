@@ -20,10 +20,10 @@
   "files": [
     "dist",
     "dist/styles.css",
-      "CHANGELOG.md",
-      "README.md",
-      "PRIVACY.md",
-      "LICENSE"
+    "CHANGELOG.md",
+    "README.md",
+    "PRIVACY.md",
+    "LICENSE"
   ],
   "sideEffects": [
     "*.css"
