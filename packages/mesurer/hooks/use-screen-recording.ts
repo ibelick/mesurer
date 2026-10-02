@@ -27,10 +27,10 @@ import {
   type RecordingExportFormat,
   type RecordingExportOptions,
   type RecordingExportResult,
-  supportedMp4MimeType,
   supportedRecordingFormats,
   supportedWebmMimeType,
 } from "./screen-recording-export"
+import { encodeMp4Clip } from "../core/screen-recording-mp4"
 
 export type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult }
 export { supportedRecordingFormats }
@@ -390,8 +390,10 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
         filename,
       }
     }
-    const mimeType = format === "mp4" ? supportedMp4MimeType() : supportedWebmMimeType()
-    if (format === "mp4" && !mimeType) throw new Error("MP4 export is unavailable")
+    if (format === "mp4") {
+      return { blob: await encodeMp4Clip(ownerDocument, ownerWindow, video.url, startTime, endTime, scale), filename }
+    }
+    const mimeType = supportedWebmMimeType()
     const blob = await reencodeVideoClip(
       ownerDocument,
       ownerWindow,

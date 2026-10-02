@@ -11,6 +11,7 @@ import { MenuItem, MenuSurface } from "./menu"
 import { SettingsButton } from "./settings-button"
 import { StatusEllipsis } from "./status-ellipsis"
 import { clampOverlayPosition } from "../core/overlay-position"
+import { supportsMp4Encoding } from "../core/screen-recording-mp4"
 import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
 
 type ScreenRecordingEditorProps = {
@@ -309,7 +310,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const [playing, setPlaying] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const formats = useMemo(() => supportedRecordingFormats(), [])
+  const [mp4Supported, setMp4Supported] = useState(false)
+  const formats = useMemo(() => mp4Supported ? [...supportedRecordingFormats(), "mp4" as const] : supportedRecordingFormats(), [mp4Supported])
   const [format, setFormat] = useState<RecordingExportFormat>(formats[0] ?? "webm")
   const [scale, setScale] = useState(1)
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null)
@@ -323,6 +325,20 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number; ready: boolean } | null>(null)
   startRef.current = start
   endRef.current = end
+
+  useEffect(() => {
+    let active = true
+    setMp4Supported(false)
+    if (!frameSize || !ownerDocument.defaultView) return () => { active = false }
+    void supportsMp4Encoding(ownerDocument.defaultView, frameSize.width, frameSize.height).then((supported) => {
+      if (active) setMp4Supported(supported)
+    })
+    return () => { active = false }
+  }, [frameSize, ownerDocument])
+
+  useEffect(() => {
+    if (!mp4Supported && format === "mp4") setFormat("webm")
+  }, [format, mp4Supported])
 
   useEffect(() => {
     setStart(0)
@@ -643,8 +659,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       link.click()
       link.remove()
       ownerDocument.defaultView?.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
-    } catch {
-      setError("Could not export the recording.")
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message ? caught.message : "Could not export the recording.")
     } finally {
       setExporting(false)
     }
@@ -911,7 +927,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                          onClick={() => setFormat(item)}
+                           onClick={() => {
+                             setFormat(item)
+                             setExportMenuOpen(false)
+                           }}
                         >
                           <CheckIcon
                             size={12}
@@ -930,7 +949,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                          onClick={() => setScale(item)}
+                           onClick={() => {
+                             setScale(item)
+                             setExportMenuOpen(false)
+                           }}
                         >
                           <CheckIcon
                             size={12}

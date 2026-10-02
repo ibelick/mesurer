@@ -24,6 +24,8 @@ export {
   encodeGifClip,
 } from "./screen-recording-export"
 
+export { encodeMp4Clip, supportsMp4Encoding } from "./screen-recording-mp4"
+
 export {
   openDisplayRecordingCapture,
   openCanvasCaptureStream,
