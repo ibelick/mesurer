@@ -147,6 +147,18 @@ const VIEWPORT_PADDING = 8;
 const TOOLBAR_HEIGHT = 40;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
+const floatingMenuStyle = (placement: {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}) => ({
+  zIndex: 120,
+  top: placement.top,
+  bottom: placement.bottom,
+  ...(placement.left !== undefined ? { left: placement.left } : { right: placement.right }),
+});
+
 const getSettingsShortcut = (eventTarget: Window) =>
   /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform)
     ? "⌘ ,"
@@ -627,6 +639,40 @@ function ToolbarComponent(
       fixed: true,
     });
   const recordingPanelOpen = Boolean(screenRecording.panel);
+  const captureAnchorRef = useRef<HTMLDivElement | null>(null);
+  const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [colorPickerShell, setColorPickerShell] = useState<{
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
+  const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: guideMenuButtonRef,
+      eventTarget,
+      open: recordingPanelOpen && guideMenuOpen,
+      refreshKey: `${position.x}:${position.y}:${menuAlign}`,
+      fixed: true,
+      align: menuAlign,
+    });
+  const { menuRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: captureAnchorRef,
+      eventTarget,
+      open: recordingPanelOpen && captureMenuOpen,
+      refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
+      align: "right",
+    });
+  const { menuRef: commentDropdownPortalRef, placement: commentDropdownPlacement } =
+    useSettingsMenuPlacement({
+      anchorRef: commentButtonRef,
+      eventTarget,
+      open: recordingPanelOpen && commentMenuOpen && !commentsPanelOpen,
+      refreshKey: `${position.x}:${position.y}`,
+      fixed: true,
+      align: "right",
+    });
   const { menuRef: recordingPanelRef, placement: recordingPlacement } =
     useSettingsMenuPlacement({
       anchorRef: settingsRef,
@@ -644,6 +690,27 @@ function ToolbarComponent(
       refreshKey: `${position.x}:${position.y}`,
       fixed: true,
     });
+
+  useLayoutEffect(() => {
+    if (!recordingPanelOpen || !colorPickerActive) {
+      setColorPickerShell(null);
+      return;
+    }
+    const place = () => {
+      const anchor = colorPickerAnchorRef.current;
+      const tool = anchor?.querySelector("[data-tool-id='color-picker']") ?? anchor;
+      if (!(tool instanceof HTMLElement)) return;
+      const rect = tool.getBoundingClientRect();
+      setColorPickerShell({ left: rect.left, top: rect.bottom, width: rect.width });
+    };
+    place();
+    eventTarget.addEventListener("resize", place);
+    eventTarget.addEventListener("scroll", place, true);
+    return () => {
+      eventTarget.removeEventListener("resize", place);
+      eventTarget.removeEventListener("scroll", place, true);
+    };
+  }, [colorPickerActive, eventTarget, position.x, position.y, recordingPanelOpen]);
 
   const selectMode = useCallback(() => {
     onCancelTransient();
@@ -1130,8 +1197,12 @@ function ToolbarComponent(
           side={tooltipSide}
           anchorRef={guideMenuRef}
         />
-        {guideMenuOpen ? (
+        {guideMenuOpen ? (() => {
+          const menu = (
           <ToolbarMenu
+            ref={recordingPanelOpen ? guideMenuPortalRef : undefined}
+            floating={recordingPanelOpen}
+            floatingStyle={recordingPanelOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
             side={menuSide}
             align={menuAlign}
             tabIndex={0}
@@ -1235,7 +1306,9 @@ function ToolbarComponent(
               <span>V</span>
             </MenuItem>
           </ToolbarMenu>
-        ) : null}
+          );
+          return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+        })() : null}
       </div>
       <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
         <ToolbarButton
@@ -1258,6 +1331,7 @@ function ToolbarComponent(
                 ref={layoutGuidesMenuRef}
                 className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                 style={{
+                  zIndex: recordingPanelOpen ? 120 : undefined,
                   top: layoutGuidesPlacement.top,
                   bottom: layoutGuidesPlacement.bottom,
                   right: layoutGuidesPlacement.right,
@@ -1281,7 +1355,7 @@ function ToolbarComponent(
             )
           : null}
       </div>
-      <div className="msr:relative msr:flex">
+      <div ref={colorPickerAnchorRef} className="msr:relative msr:flex">
         <ToolbarButton
           id="color-picker"
           active={colorPickerActive}
@@ -1293,7 +1367,23 @@ function ToolbarComponent(
         >
           <ColorPickerIcon size={20} aria-hidden="true" />
         </ToolbarButton>
-        {colorPicker.panel}
+        {recordingPanelOpen && colorPickerActive
+          ? createPortal(
+              <div
+                className="msr:pointer-events-none msr:fixed msr:z-[120]"
+                style={{
+                  left: colorPickerShell?.left ?? 0,
+                  top: colorPickerShell?.top ?? 0,
+                  width: colorPickerShell?.width,
+                  height: 0,
+                  visibility: colorPickerShell ? "visible" : "hidden",
+                }}
+              >
+                <div className="msr:pointer-events-auto">{colorPicker.panel}</div>
+              </div>,
+              commentPanelPortalTarget,
+            )
+          : colorPicker.panel}
       </div>
        </ToolbarGroup>
        </div>
@@ -1359,7 +1449,7 @@ function ToolbarComponent(
        <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-stretch">
        <ToolbarDivider />
         <ToolbarGroup label="Capture and settings" className="msr:px-1">
-        <div className="msr:relative msr:flex msr:flex-none">
+        <div ref={captureAnchorRef} className="msr:relative msr:flex msr:flex-none">
         {features.screenshot ? (
           <>
             <ToolbarButton
@@ -1410,8 +1500,12 @@ function ToolbarComponent(
           >
             <CaretDownIcon size={8} aria-hidden="true" />
           </button>
-          {captureMenuOpen ? (
+          {captureMenuOpen ? (() => {
+            const menu = (
             <ToolbarMenu
+              ref={recordingPanelOpen ? captureMenuPortalRef : undefined}
+              floating={recordingPanelOpen}
+              floatingStyle={recordingPanelOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
               side={menuSide}
               align="right"
               onKeyDown={(event) => {
@@ -1443,7 +1537,9 @@ function ToolbarComponent(
                 <span>V</span>
               </ToolbarMenuItem>
             </ToolbarMenu>
-          ) : null}
+            );
+            return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+          })() : null}
         </div>
         <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
        <ToolbarButton
@@ -1496,7 +1592,34 @@ function ToolbarComponent(
                   onSelectComment(id)
                 }}
                 fixed
+                fixedZIndex={recordingPanelOpen ? 120 : 100}
                />, commentPanelPortalTarget)
+           ) : recordingPanelOpen ? (
+             createPortal(
+             <MenuSurface
+               ref={commentDropdownPortalRef}
+               className="msr:pointer-events-auto msr:fixed msr:flex msr:w-44 msr:flex-col msr:gap-px"
+               style={floatingMenuStyle(commentDropdownPlacement)}
+               data-mesurer-comment-ui
+             >
+                <>
+                 <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
+                   <span className="msr:flex-1">Show all comments</span>
+                 </MenuItem>
+                 <MenuItem
+                   disabled={commentCount === 0}
+                   onClick={() => {
+                      void onCopyComments()
+                      setOpenMenu(null)
+                   }}
+                 >
+                   <span className="msr:flex-1">Copy comments</span>
+                   {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
+                 </MenuItem>
+               </>
+             </MenuSurface>,
+             commentPanelPortalTarget,
+             )
            ) : (
              <MenuSurface
                className={cn(

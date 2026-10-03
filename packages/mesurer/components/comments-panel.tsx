@@ -40,6 +40,7 @@ export function CommentsPanel({
   panelRef,
   placement,
   fixed = false,
+  fixedZIndex = 100,
   statusFilter,
   onStatusFilterChange,
 }: {
@@ -57,6 +58,7 @@ export function CommentsPanel({
   panelRef: RefObject<HTMLDivElement | null>
   placement: { side: "top" | "bottom"; height: number; right: number; top?: number; bottom?: number }
   fixed?: boolean
+  fixedZIndex?: number
   statusFilter: CommentFilter
   onStatusFilterChange: (filter: CommentFilter) => void
 }) {
@@ -139,7 +141,7 @@ export function CommentsPanel({
       style={{
         position: fixed ? "fixed" : "absolute",
         width: fixed ? "18rem" : undefined,
-        zIndex: fixed ? 100 : undefined,
+        zIndex: fixed ? fixedZIndex : undefined,
         pointerEvents: "auto",
         right: placement.right,
         top: placement.top,
@@ -304,7 +306,7 @@ export function CommentsPanel({
           data-mesurer-comment-actions
           data-mesurer-comment-ui
              className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
-           style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
+           style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
            <button type="button" role="menuitem" className="mesurer-comment-menu-danger msr:flex msr:w-full msr:rounded-[4px] msr:px-2 msr:py-1.5 msr:text-left msr:text-[12px] msr:text-red-600 msr:hover:bg-red-50" onClick={(event) => { event.stopPropagation(); setDeleteAnchor(commentMenuAnchor); setOpenMenuId(null); setDeleteId(openMenuId) }}>Delete</button>
@@ -317,7 +319,7 @@ export function CommentsPanel({
           data-mesurer-comment-actions
           data-mesurer-comment-ui
             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
-           style={{ position: "fixed", zIndex: 100, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
+           style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
             {(["open", "resolved", "all"] as const).map((filter) => (

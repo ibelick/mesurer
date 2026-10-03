@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react"
+import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type ReactNode } from "react"
 import { cn } from "../core/utils"
 
 type MenuSurfaceProps = HTMLAttributes<HTMLDivElement> & {
@@ -26,23 +26,36 @@ export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
 type ToolbarMenuProps = MenuSurfaceProps & {
   side: "top" | "bottom"
   align?: "left" | "right"
+  /** Fixed on the Mesurer root, same stacking as Settings. */
+  floating?: boolean
+  floatingStyle?: CSSProperties
 }
 
-export function ToolbarMenu({ className, side, align = "left", children, ...props }: ToolbarMenuProps) {
+export const ToolbarMenu = forwardRef<HTMLDivElement, ToolbarMenuProps>(function ToolbarMenu(
+  { className, side, align = "left", floating = false, floatingStyle, style, children, ...props },
+  ref,
+) {
   return (
     <MenuSurface
       {...props}
+      ref={ref}
+      style={floating ? { ...floatingStyle, ...style } : style}
       className={cn(
-        "msr:absolute msr:z-[100] msr:flex msr:w-44 msr:flex-col msr:gap-px",
-        side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
-        align === "left" ? "msr:left-0" : "msr:right-0",
+        "msr:flex msr:w-44 msr:flex-col msr:gap-px",
+        floating
+          ? "msr:pointer-events-auto msr:fixed msr:z-[120]"
+          : cn(
+              "msr:absolute msr:z-[100]",
+              side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2",
+              align === "left" ? "msr:left-0" : "msr:right-0",
+            ),
         className,
       )}
     >
       {children}
     </MenuSurface>
   )
-}
+})
 
 type MenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
