@@ -12,6 +12,7 @@ import type {
 import { SAVE_WORKSPACE_MESSAGE } from "./messages";
 
 const SETTINGS_KEY = "mesurer:settings";
+const SHORTCUTS_DEFAULT_MIGRATION_KEY = "mesurer:shortcuts-default-migrated";
 
 const workspaceKey = (origin: string, tabId: string) =>
   `mesurer:workspace:${encodeURIComponent(origin)}:${tabId}`;
@@ -26,8 +27,24 @@ export const createExtensionPersistence = async (
   tabId: string,
 ): Promise<MesurerPersistence> => {
   const key = workspaceKey(origin, tabId);
-  const stored = await chrome.storage.local.get([SETTINGS_KEY, key]);
+  const stored = await chrome.storage.local.get([
+    SETTINGS_KEY,
+    SHORTCUTS_DEFAULT_MIGRATION_KEY,
+    key,
+  ]);
   let settings = normalizeStoredSettings(stored[SETTINGS_KEY]);
+  // One-time: older unpacked builds often persisted shortcuts off; re-enable once.
+  if (!stored[SHORTCUTS_DEFAULT_MIGRATION_KEY]) {
+    if (settings.shortcutsEnabled !== true) {
+      settings = { ...settings, shortcutsEnabled: true };
+    }
+    void chrome.storage.local
+      .set({
+        [SETTINGS_KEY]: settings,
+        [SHORTCUTS_DEFAULT_MIGRATION_KEY]: true,
+      })
+      .catch(() => undefined);
+  }
   let workspace = readWorkspaceValue(stored[key]);
   let errorHandler: ((error: unknown) => void) | undefined;
   let settingsTimer: ReturnType<typeof setTimeout> | null = null;

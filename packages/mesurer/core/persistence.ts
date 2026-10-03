@@ -472,7 +472,8 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
         ? { infoCardMode: "click" as const }
         : {}),
     ...(typeof input.persistOnReload === "boolean" ? { persistOnReload: input.persistOnReload } : {}),
-    ...(typeof input.shortcutsEnabled === "boolean" ? { shortcutsEnabled: input.shortcutsEnabled } : {}),
+    shortcutsEnabled:
+      typeof input.shortcutsEnabled === "boolean" ? input.shortcutsEnabled : true,
     ...(input.theme === "system" || input.theme === "light" || input.theme === "dark" ? { theme: input.theme } : {}),
     ...(normalizeGuideStyle(input.guideStyle) ? { guideStyle: normalizeGuideStyle(input.guideStyle) } : {}),
     ...(normalizeRulerSettings(input.rulerSettings) ? { rulerSettings: normalizeRulerSettings(input.rulerSettings) } : {}),
