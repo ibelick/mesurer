@@ -1,5 +1,10 @@
 # mesurer
 
+## 0.2.3
+
+- add GIF export and capability-gated MP4 export
+- improve extension recording previews, shortcuts, menu stacking, and theme support
+
 ## 0.2.2
 
 - improve screen recording stability across browser resizing, first-frame capture, color picker usage, and export duration

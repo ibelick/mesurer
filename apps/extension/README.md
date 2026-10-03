@@ -34,7 +34,7 @@ This generates the extension files in `apps/extension/dist`.
 - Screenshot on other pages uses the extension's visible-tab capture API after the extension is activated for that tab.
 - Video recording uses Chrome tab capture. Press `V` or choose **Screen record** from the capture menu, then drag over the region to record. The sharing bar appears before selection so the selected region matches the captured tab.
 - Stop recording to open the video editor. You can play the clip, trim its start and end, choose an export scale and format, and download the result. Recordings are limited to 60 seconds.
-- WebM export is available in Chrome; MP4 export depends on the browser's supported media codecs.
+- WebM and GIF export are available in the editor; MP4 export depends on browser WebCodecs support.
 - Use the grouped Select &amp; Inspect and Annotate toolbars to access Inspect, Select, Comments, Guides, Rulers, Arrows, Pen, Text, Typography, X-ray, Sample color, and Screenshot.
 - Configure column, row, and pixel grid guides, including their style and alignment.
 - Use Comments to pin threads to live elements, add replies, move comment targets, and copy structured feedback for an agent. Press `Cmd/Ctrl + K` to copy all comments.

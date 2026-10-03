@@ -122,7 +122,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 - **X-ray mode** - Reveal element structure without changing the page
 - **Sample color** - Sample rendered colors and copy values in your chosen format
 - **Screenshot** - Drag a region of the visible tab and copy or download it. In a React integration without the extension, the browser may show a tab-sharing prompt.
-- **Video recording** - Drag a region of the visible tab, record up to 60 seconds, trim the result, and export it as WebM or MP4 when supported. The Chrome extension records the active tab without a second sharing prompt.
+- **Video recording** - Drag a region of the visible tab, record up to 60 seconds, trim the result, and export it as WebM, GIF, or MP4 when supported. The Chrome extension records the active tab without a second sharing prompt.
 - **Distance overlays** - Hold Alt for quick spacing checks
 - **Undo/redo** - Command history for guides, measurements, arrows, pen strokes, and text annotations
 - **Comments** - Pin threads to live elements, add replies, move targets, search threads, and copy structured feedback for agents
@@ -133,7 +133,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 
 - React 18+
 - Chromium-based browser. The native screen color picker requires Chromium on Windows or macOS; Linux Chromium builds may not expose the EyeDropper API.
-- Video recording uses the Chrome extension's tab-capture integration for the smoothest active-tab workflow. Without the extension, browser capture permissions and supported export formats depend on the browser.
+- Video recording uses the Chrome extension's tab-capture integration for the smoothest active-tab workflow. Without the extension, browser capture permissions and supported export formats depend on the browser. MP4 requires browser WebCodecs support.
 
 Settings are stored separately from workspace state. The default adapter uses `localStorage`; integrations can provide a `persistence` adapter such as the browser extension's `chrome.storage.local` implementation.
 
