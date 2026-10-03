@@ -281,6 +281,8 @@ function ExtensionRecordingFrame({
   }, [onDiscard, postFrameState, src])
   const menuAbove = anchorSide === "bottom"
   const shadow = RECORDING_FRAME_SHADOW
+  const frameWidth = frameSize.width + shadow * 2
+  const frameHeight = frameSize.height + frameSize.menuExtra + shadow * 2
   return (
     <div
       ref={hostRef}
@@ -290,24 +292,36 @@ function ExtensionRecordingFrame({
         height: frameSize.height,
       }}
     >
-      {src ? <iframe
-        ref={frameRef}
-        title="Recording preview"
-        src={src}
-        onLoad={postFrameState}
-        allowTransparency
-        className="msr:absolute msr:border-0 msr:bg-transparent msr:shadow-none"
-        style={{
-          width: frameSize.width + shadow * 2,
-          height: frameSize.height + frameSize.menuExtra + shadow * 2,
-          left: -shadow,
-          top: menuAbove ? -(frameSize.menuExtra + shadow) : -shadow,
-          backgroundColor: "transparent",
-          colorScheme: "light",
-          border: 0,
-          boxShadow: "none",
-        }}
-      /> : null}
+      {src ? (
+        <div
+          className="msr:pointer-events-none msr:absolute"
+          style={{
+            width: frameWidth,
+            height: frameHeight,
+            left: -shadow,
+            top: menuAbove ? -(frameSize.menuExtra + shadow) : -shadow,
+            // The iframe is larger than the card so its shadow can paint.
+            // Clip the edge that faces the toolbar; otherwise that transparent
+            // strip sits on the toolbar and swallows clicks.
+            clipPath: menuAbove ? `inset(0 0 ${shadow}px 0)` : `inset(${shadow}px 0 0 0)`,
+          }}
+        >
+          <iframe
+            ref={frameRef}
+            title="Recording preview"
+            src={src}
+            onLoad={postFrameState}
+            allowTransparency
+            className="msr:pointer-events-auto msr:absolute msr:inset-0 msr:size-full msr:border-0 msr:bg-transparent msr:shadow-none"
+            style={{
+              backgroundColor: "transparent",
+              colorScheme: "light",
+              border: 0,
+              boxShadow: "none",
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
