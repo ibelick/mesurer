@@ -11,7 +11,7 @@
     drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
     drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
-  --shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
+  --shadow-floating: 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --color-ink-50: #f8fafc;
   --color-ink-100: #f1f5f9;
   --color-ink-200: #e2e8f0;
@@ -104,7 +104,7 @@
     drop-shadow(0 6px 18px rgba(0, 0, 0, 0.03))
     drop-shadow(0 3px 9px rgba(0, 0, 0, 0.06))
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
-  --msr-shadow-floating: 0 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
+  --msr-shadow-floating: 0 0 0.4px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.03), 0 3px 9px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.06);
   --msr-shadow-select-menu: var(--msr-shadow-floating);
   --msr-comment-menu-surface: var(--msr-surface-raised);
   --msr-shadow-comment-menu: var(--msr-shadow-select-menu);
@@ -175,6 +175,11 @@
 .mesurer-root [class~="msr:hover:bg-black\/4"]:hover,
 .mesurer-root [class~="msr:hover:bg-black\/5"]:hover {
   background-color: color-mix(in srgb, var(--msr-content) 6%, transparent) !important;
+}
+
+.mesurer-root .mesurer-menu-surface,
+.mesurer-root .mesurer-color-picker {
+  border-radius: 9px;
 }
 
 .mesurer-root .mesurer-menu-surface,
@@ -310,7 +315,7 @@
     drop-shadow(0 3px 8px lch(0% 0 0 / 0.125))
     drop-shadow(0 2px 5px lch(0% 0 0 / 0.125))
     drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
-  --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
+  --msr-shadow-floating: 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
   --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
   --msr-comment-menu-surface: #323232;
   --msr-shadow-comment-menu: 0 0 0 0.5px lch(100% 0 0 / 0.16), 0 5px 14px lch(0% 0 0 / 0.26), 0 1px 3px lch(0% 0 0 / 0.18);
@@ -345,7 +350,7 @@
     --msr-control-thumb: #f4f4f5;
     --msr-slider-track: rgba(245, 245, 245, 0.24);
     --msr-shadow-toolbar: drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10)) drop-shadow(0 3px 8px lch(0% 0 0 / 0.125)) drop-shadow(0 2px 5px lch(0% 0 0 / 0.125)) drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
-    --msr-shadow-floating: 0 0 0 0.4px lch(100% 0 0 / 0.05), 0 4px 12px lch(0% 0 0 / 0.12), 0 1px 3px lch(0% 0 0 / 0.10);
+    --msr-shadow-floating: 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
     --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
     --msr-comment-menu-surface: #323232;
     --msr-shadow-comment-menu: 0 0 0 0.5px lch(100% 0 0 / 0.16), 0 5px 14px lch(0% 0 0 / 0.26), 0 1px 3px lch(0% 0 0 / 0.18);
