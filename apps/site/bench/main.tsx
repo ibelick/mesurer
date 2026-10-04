@@ -411,10 +411,11 @@ function TestCanvas({ count }: { count: number }) {
           <div><span className="bench-kicker">10 / motion</span><h2 id="motion-title">Animated targets</h2></div>
           <span className="bench-coordinate">transform / opacity</span>
         </div>
-        <p className="bench-card-instruction">Inspect these while they move. Check that measurements and comments stay anchored to the animated target.</p>
+        <p className="bench-card-instruction">Inspect an animated target to open its motion card. Try pause, replay, scrubbing, playback speed, and the hover transition.</p>
         <div className="bench-motion-stage">
-          <button className="bench-motion-target bench-motion-orbit" type="button">orbiting target</button>
-          <button className="bench-motion-target bench-motion-pulse" type="button">pulsing target</button>
+          <button className="bench-motion-target bench-motion-orbit" type="button">orbit / transform</button>
+          <button className="bench-motion-target bench-motion-pulse" type="button">pulse / opacity</button>
+          <button className="bench-motion-target bench-motion-transition" type="button">hover / transition</button>
           <div className="bench-motion-scan" aria-hidden="true"><span>moving scan line</span></div>
         </div>
       </section>

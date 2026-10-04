@@ -356,7 +356,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const [error, setError] = useState<string | null>(null)
   const closeAnchorRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLElement>(null)
-  const togglePlaybackRef = useRef<() => void>(() => {})
+  const togglePlaybackRef = useRef<() => void>(() => { })
   const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number; ready: boolean } | null>(null)
   startRef.current = start
   endRef.current = end
@@ -418,10 +418,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     }
     const detachWindow = exportMenuOpen
       ? addMesurerCaptureListener(view, view, "pointerdown", closeIfOutside)
-      : () => {}
+      : () => { }
     const detachDocument = exportMenuOpen
       ? addMesurerCaptureListener(view, ownerDocument, "pointerdown", closeIfOutside)
-      : () => {}
+      : () => { }
     const detachKeys = addMesurerCaptureListener(view, view, "keydown", onKeyDown)
     return () => {
       detachWindow()
@@ -756,58 +756,58 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
               )}
               style={{ aspectRatio: previewAspect }}
             >
-            <video
-            ref={videoRef}
-            className="msr:block msr:size-full msr:max-h-full msr:max-w-full msr:object-contain"
-            src={url}
-            muted
-            playsInline
-            preload="auto"
-            onLoadedMetadata={(event) => {
-              const video = event.currentTarget
-              if (video.videoWidth > 0 && video.videoHeight > 0) {
-                setFrameSize({ width: video.videoWidth, height: video.videoHeight })
-              }
-            }}
-            onPlay={() => {
-              setPlaying(true)
-              const video = videoRef.current
-              if (video && !playClockRef.current) syncPlayClock(video.currentTime)
-            }}
-            onPause={() => {
-              playClockRef.current = null
-              setPlaying(false)
-            }}
-            onTimeUpdate={(event) => {
-              const video = event.currentTarget
-              if (video.paused) {
-                setCurrentTime(video.currentTime)
-                return
-              }
-              const clipStart = startRef.current
-              const clipEnd = endRef.current
-              if (video.currentTime >= clipEnd - 0.02) {
-                video.pause()
-                video.currentTime = clipStart
-                setCurrentTime(clipStart)
-                updatePlayheadPosition(clipStart)
-                playClockRef.current = null
-                return
-              }
-              if (video.currentTime < clipStart) {
-                video.currentTime = clipStart
-                setCurrentTime(clipStart)
-                syncPlayClock(clipStart)
-              }
-            }}
-            onEnded={() => {
-              const clipStart = startRef.current
-              const video = videoRef.current
-              if (video) video.currentTime = clipStart
-              setCurrentTime(clipStart)
-              updatePlayheadPosition(clipStart)
-            }}
-            />
+              <video
+                ref={videoRef}
+                className="msr:block msr:size-full msr:max-h-full msr:max-w-full msr:object-contain"
+                src={url}
+                muted
+                playsInline
+                preload="auto"
+                onLoadedMetadata={(event) => {
+                  const video = event.currentTarget
+                  if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    setFrameSize({ width: video.videoWidth, height: video.videoHeight })
+                  }
+                }}
+                onPlay={() => {
+                  setPlaying(true)
+                  const video = videoRef.current
+                  if (video && !playClockRef.current) syncPlayClock(video.currentTime)
+                }}
+                onPause={() => {
+                  playClockRef.current = null
+                  setPlaying(false)
+                }}
+                onTimeUpdate={(event) => {
+                  const video = event.currentTarget
+                  if (video.paused) {
+                    setCurrentTime(video.currentTime)
+                    return
+                  }
+                  const clipStart = startRef.current
+                  const clipEnd = endRef.current
+                  if (video.currentTime >= clipEnd - 0.02) {
+                    video.pause()
+                    video.currentTime = clipStart
+                    setCurrentTime(clipStart)
+                    updatePlayheadPosition(clipStart)
+                    playClockRef.current = null
+                    return
+                  }
+                  if (video.currentTime < clipStart) {
+                    video.currentTime = clipStart
+                    setCurrentTime(clipStart)
+                    syncPlayClock(clipStart)
+                  }
+                }}
+                onEnded={() => {
+                  const clipStart = startRef.current
+                  const video = videoRef.current
+                  if (video) video.currentTime = clipStart
+                  setCurrentTime(clipStart)
+                  updatePlayheadPosition(clipStart)
+                }}
+              />
             </div>
             {exporting ? (
               <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-black/80 msr:text-[11px] msr:font-medium msr:text-white msr:drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
@@ -962,10 +962,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                           onClick={() => {
-                             setFormat(item)
-                             setExportMenuOpen(false)
-                           }}
+                          onClick={() => {
+                            setFormat(item)
+                            setExportMenuOpen(false)
+                          }}
                         >
                           <CheckIcon
                             size={12}
@@ -984,10 +984,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                           onClick={() => {
-                             setScale(item)
-                             setExportMenuOpen(false)
-                           }}
+                          onClick={() => {
+                            setScale(item)
+                            setExportMenuOpen(false)
+                          }}
                         >
                           <CheckIcon
                             size={12}
@@ -1016,13 +1016,13 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             tooltipId="recording-resize"
             tooltip={tooltip}
             pressed={expanded}
-             onClick={() => {
-               const next = !expanded
-               if (ownerDocument.defaultView && ownerDocument.defaultView.parent !== ownerDocument.defaultView) {
-                 ownerDocument.defaultView.parent.postMessage({ type: "mesurer:recording-frame-intent", expanded: next }, "*")
-               }
-               setExpanded(next)
-             }}
+            onClick={() => {
+              const next = !expanded
+              if (ownerDocument.defaultView && ownerDocument.defaultView.parent !== ownerDocument.defaultView) {
+                ownerDocument.defaultView.parent.postMessage({ type: "mesurer:recording-frame-intent", expanded: next }, "*")
+              }
+              setExpanded(next)
+            }}
           >
             {expanded ? <CollapseIcon /> : <ExpandIcon />}
           </PlayerIconButton>

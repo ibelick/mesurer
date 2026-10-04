@@ -1857,6 +1857,7 @@ export function MesurerClient({
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
               onClose={closeColorPicker}
+              anchored={!(screenRecording.recording || Boolean(screenRecording.video))}
             />
           ),
         },
@@ -1871,7 +1872,7 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-            screenRecording: {
+        screenRecording: {
             selecting: screenRecording.selecting,
             recording: screenRecording.recording,
            elapsed: screenRecording.elapsed,
@@ -1884,7 +1885,11 @@ export function MesurerClient({
            onClick: screenRecording.toggleSelection,
           onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,
-        },
+         },
+         motion: {
+           element: selectedElement,
+           ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
+         },
          comments: {
           count: comments.length,
           comments,

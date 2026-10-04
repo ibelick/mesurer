@@ -177,6 +177,8 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-motion-target { position: absolute; z-index: 1; border: 1px solid #172033; border-radius: 999px; padding: 9px 12px; color: #172033; background: #fef3c7; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 4px 12px rgb(15 23 42 / 12%); }
 .bench-motion-orbit { top: 50%; left: 50%; animation: bench-orbit 4s linear infinite; }
 .bench-motion-pulse { right: 14%; bottom: 20%; animation: bench-pulse 1.8s ease-in-out infinite; }
+.bench-motion-transition { left: 12%; bottom: 18%; transition: transform 900ms cubic-bezier(.2,.8,.2,1), background-color 900ms ease 120ms; }
+.bench-motion-transition:hover, .bench-motion-transition:focus-visible { transform: translate(22px, -18px) scale(1.12); background: #bae6fd; }
 .bench-motion-scan { position: absolute; inset: 0; color: #64748b; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .bench-motion-scan::before { position: absolute; top: 0; bottom: 0; left: 12%; width: 1px; background: #f97316; box-shadow: 0 0 14px 2px rgb(249 115 22 / 35%); content: ""; animation: bench-scan 3.2s ease-in-out infinite alternate; }
 .bench-motion-scan span { position: absolute; right: 12px; top: 12px; }
