@@ -18,9 +18,9 @@ import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
+import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
 import { usePlayableMotion } from "../hooks/use-playable-motion";
-import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
 import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
 import { ScreenshotPreview } from "./screenshot-preview";
@@ -29,7 +29,7 @@ import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
 import { LayoutGuidesPanel } from "./layout-guides-panel";
 import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
-import { MenuItem, MenuSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
+import { MenuItem, MenuSurface, ToolbarFloatingSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import type { LayoutGuide } from "../core/layout-guides";
 import {
@@ -629,78 +629,86 @@ function ToolbarComponent(
     onTooltipLeave,
   };
   const menuSide: "top" | "bottom" = nearBottom ? "top" : "bottom";
-  const { menuRef: settingsMenuRef, placement: settingsPlacement } =
-    useSettingsMenuPlacement({
-      anchorRef: settingsRef,
+  const { surfaceRef: settingsMenuRef, placement: settingsPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: motionRef,
       eventTarget,
       open: settingsOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
+      align: "right",
+      gap: 4,
+      rightOffset: 0,
     });
   const { menuRef: commentsPanelRef, placement: commentsPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
       open: commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
     });
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const captureAnchorRef = useRef<HTMLDivElement | null>(null);
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
-  const motionOpen = usePlayableMotion(motion?.element, motion?.ownerWindow);
+  const playableMotion = usePlayableMotion(motion?.element, motion?.ownerWindow);
+  const motionPlayerOpen = playableMotion && !recordingPanelOpen;
+  const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
   const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: guideMenuButtonRef,
       eventTarget,
-      open: recordingPanelOpen && guideMenuOpen,
+      open: floatingCardOpen && guideMenuOpen,
       refreshKey: `${position.x}:${position.y}:${menuAlign}`,
-      fixed: true,
       align: menuAlign,
     });
   const { menuRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: captureAnchorRef,
       eventTarget,
-      open: recordingPanelOpen && captureMenuOpen,
+      open: floatingCardOpen && captureMenuOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "right",
     });
   const { menuRef: commentDropdownPortalRef, placement: commentDropdownPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
-      open: recordingPanelOpen && commentMenuOpen && !commentsPanelOpen,
+      open: floatingCardOpen && commentMenuOpen && !commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "right",
     });
-  const belowToolbarOpen = recordingPanelOpen || motionOpen;
-  const { menuRef: belowToolbarPanelRef, placement: belowToolbarPlacement } =
-    useSettingsMenuPlacement({
+  const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
+    useFloatingSurfacePlacement({
       anchorRef: motionRef,
       eventTarget,
-      open: belowToolbarOpen,
+      open: recordingPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "left",
+      gap: 4,
+      rightOffset: 0,
+    });
+  const { surfaceRef: motionPlayerRef, placement: motionPlayerPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: motionRef,
+      eventTarget,
+      open: motionPlayerOpen,
+      refreshKey: `${position.x}:${position.y}`,
+      align: "left",
+      gap: 4,
+      rightOffset: 0,
     });
   const { menuRef: colorPickerPortalRef, placement: colorPickerPortalPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: colorPickerAnchorRef,
       eventTarget,
-      open: recordingPanelOpen && colorPickerActive,
+      open: floatingCardOpen && colorPickerActive,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
     });
   const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: layoutGuidesAnchorRef,
       eventTarget,
       open: layoutGuidesOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
     });
 
   const selectMode = useCallback(() => {
@@ -1191,9 +1199,9 @@ function ToolbarComponent(
                                       {guideMenuOpen ? (() => {
                                         const menu = (
                                           <ToolbarMenu
-                                            ref={recordingPanelOpen ? guideMenuPortalRef : undefined}
-                                            floating={recordingPanelOpen}
-                                            floatingStyle={recordingPanelOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
+                                            ref={floatingCardOpen ? guideMenuPortalRef : undefined}
+                                            floating={floatingCardOpen}
+                                            floatingStyle={floatingCardOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
                                             side={menuSide}
                                             align={menuAlign}
                                             tabIndex={0}
@@ -1298,7 +1306,7 @@ function ToolbarComponent(
                                             </MenuItem>
                                           </ToolbarMenu>
                                         );
-                                        return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                        return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
                                       })() : null}
                                     </div>
                                     <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
@@ -1322,7 +1330,7 @@ function ToolbarComponent(
                                             ref={layoutGuidesMenuRef}
                                             className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                                             style={{
-                                              zIndex: recordingPanelOpen ? 120 : undefined,
+                                              zIndex: floatingCardOpen ? 120 : undefined,
                                               top: layoutGuidesPlacement.top,
                                               bottom: layoutGuidesPlacement.bottom,
                                               right: layoutGuidesPlacement.right,
@@ -1358,7 +1366,7 @@ function ToolbarComponent(
                                       >
                                         <ColorPickerIcon size={20} aria-hidden="true" />
                                       </ToolbarButton>
-                                      {recordingPanelOpen && colorPickerActive
+                                      {floatingCardOpen && colorPickerActive
                                         ? createPortal(
                                           <div
                                             ref={colorPickerPortalRef}
@@ -1489,9 +1497,9 @@ function ToolbarComponent(
                                 {captureMenuOpen ? (() => {
                                   const menu = (
                                     <ToolbarMenu
-                                      ref={recordingPanelOpen ? captureMenuPortalRef : undefined}
-                                      floating={recordingPanelOpen}
-                                      floatingStyle={recordingPanelOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
+                                      ref={floatingCardOpen ? captureMenuPortalRef : undefined}
+                                      floating={floatingCardOpen}
+                                      floatingStyle={floatingCardOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
                                       side={menuSide}
                                       align="right"
                                       onKeyDown={(event) => {
@@ -1524,7 +1532,7 @@ function ToolbarComponent(
                                       </ToolbarMenuItem>
                                     </ToolbarMenu>
                                   );
-                                  return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                  return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
                                 })() : null}
                               </div>
                               <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
@@ -1578,9 +1586,9 @@ function ToolbarComponent(
                                         onSelectComment(id)
                                       }}
                                       fixed
-                                      fixedZIndex={recordingPanelOpen ? 120 : 100}
+                                      fixedZIndex={floatingCardOpen ? 120 : 100}
                                     />, commentPanelPortalTarget)
-                                  ) : recordingPanelOpen ? (
+                                  ) : floatingCardOpen ? (
                                     createPortal(
                                       <MenuSurface
                                         ref={commentDropdownPortalRef}
@@ -1653,9 +1661,9 @@ function ToolbarComponent(
                                 </ToolbarButton>
                                 {settingsOpen
                                   ? createPortal(
-                                    <div
+                                    <ToolbarFloatingSurface
                                       ref={settingsMenuRef}
-                                      className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[120] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                                      className="msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:p-0"
                                       style={{
                                         top: settingsPlacement.top,
                                         bottom: settingsPlacement.bottom,
@@ -1673,7 +1681,7 @@ function ToolbarComponent(
                                       onClick={(event) => event.stopPropagation()}
                                     >
                                       {settingsPanel}
-                                    </div>,
+                                    </ToolbarFloatingSurface>,
                                     commentPanelPortalTarget,
                                   )
                                   : null}
@@ -1716,23 +1724,38 @@ function ToolbarComponent(
             />,
             commentPanelPortalTarget,
           )}
-          {belowToolbarOpen
+          {motionPlayerOpen && motion
+            ? createPortal(
+              <ToolbarFloatingSurface
+                ref={motionPlayerRef}
+                className="msr:z-[101] msr:p-0"
+                style={{
+                  top: motionPlayerPlacement.top,
+                  bottom: motionPlayerPlacement.bottom,
+                  left: motionPlayerPlacement.left,
+                  zIndex: 101,
+                }}
+                data-mesurer-motion-surface
+              >
+                <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} />
+              </ToolbarFloatingSurface>,
+              commentPanelPortalTarget,
+            )
+            : null}
+          {recordingPanelOpen
             ? createPortal(
               <div
-                ref={belowToolbarPanelRef}
-                className="msr:pointer-events-none msr:fixed msr:flex msr:w-max msr:max-w-[calc(100vw-16px)] msr:flex-col msr:gap-2"
+                ref={recordingPanelRef}
+                className="msr:pointer-events-auto msr:fixed msr:z-[101] msr:w-max msr:max-w-[calc(100vw-16px)]"
                 style={{
-                  ...floatingMenuStyle(belowToolbarPlacement),
-                  maxHeight: belowToolbarPlacement.height,
+                  top: recordingPanelPlacement.top,
+                  bottom: recordingPanelPlacement.bottom,
+                  left: recordingPanelPlacement.left,
+                  zIndex: 101,
                 }}
                 data-mesurer-capture-ui
               >
-                {motionOpen && motion ? (
-                  <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} />
-                ) : null}
-                {recordingPanelOpen ? (
-                  <div className="msr:pointer-events-auto">{screenRecording.panel}</div>
-                ) : null}
+                {screenRecording.panel}
               </div>,
               commentPanelPortalTarget,
             )

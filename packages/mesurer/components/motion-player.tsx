@@ -87,7 +87,7 @@ export function MotionPlayer({ element, ownerWindow }: { element: Element | null
     <div
       data-mesurer-motion-player
       aria-label="Motion playback"
-      className="mesurer-menu-surface msr:pointer-events-auto msr:flex msr:h-9 msr:w-72 msr:max-w-[calc(100vw-16px)] msr:items-center msr:gap-1.5 msr:rounded-lg msr:bg-white msr:px-2 msr:shadow-floating"
+      className="msr:flex msr:h-9 msr:w-72 msr:max-w-[calc(100vw-16px)] msr:items-center msr:gap-1.5 msr:px-2"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onMouseLeave={tooltip.onToolbarLeave}
