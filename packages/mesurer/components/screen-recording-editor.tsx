@@ -91,6 +91,8 @@ export function PlayerIconButton({
   tooltipId,
   tooltip,
   pressed,
+  expanded,
+  controls,
   disabled,
   onClick,
   onPointerDown,
@@ -100,6 +102,8 @@ export function PlayerIconButton({
   tooltipId?: string
   tooltip: ReturnType<typeof useToolbarTooltip>
   pressed?: boolean
+  expanded?: boolean
+  controls?: string
   disabled?: boolean
   onClick?: () => void
   onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void
@@ -131,6 +135,8 @@ export function PlayerIconButton({
         type="button"
         aria-label={label}
         aria-pressed={pressed}
+        aria-expanded={expanded}
+        aria-controls={controls}
         disabled={disabled}
         onPointerDown={onPointerDown}
         onClick={onClick}

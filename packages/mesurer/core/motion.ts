@@ -113,6 +113,19 @@ export const motionDuration = (motion: MotionDetails) => {
   return Number.isFinite(iterations) ? motion.duration * Math.max(1, iterations) : motion.duration
 }
 
+export const motionPlaybackProgress = (animation: Animation, duration: number) => {
+  const time = animation.currentTime
+  if (typeof time !== "number" || !Number.isFinite(time) || duration <= 0) return 0
+  const timing = animation.effect?.getTiming()
+  const elapsed = Math.max(0, time - (timing?.delay ?? 0))
+  const looping = timing?.iterations === Infinity
+  // Keep a scrub to the exact end visible until playback resumes.
+  const position = looping && (animation.playState === "running" || elapsed > duration)
+    ? elapsed % duration
+    : elapsed
+  return Math.min(1, position / duration)
+}
+
 export const formatMotionTime = (milliseconds: number) => {
   if (milliseconds >= 1000) return `${(milliseconds / 1000).toFixed(milliseconds >= 10000 ? 0 : 1)}s`
   return `${Math.round(milliseconds)}ms`
@@ -135,7 +148,7 @@ export const controlMotion = (element: Element, action: "play" | "pause" | "repl
 export const scrubMotion = (element: Element, progress: number, duration: number) => {
   const currentTime = Math.max(0, Math.min(1, progress)) * duration
   for (const animation of getAnimations(element)) {
-    animation.currentTime = currentTime
+    animation.currentTime = currentTime + (animation.effect?.getTiming().delay ?? 0)
     animation.pause()
   }
 }

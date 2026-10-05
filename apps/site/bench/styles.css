@@ -193,6 +193,25 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
   50% { background-position: 74% 28%, 86% 74%, 18% 25%, 45% 68%; background-size: 22% 54%, 14% 34%, 24% 58%, 20% 48%; }
   75% { background-position: 86% 74%, 18% 25%, 45% 68%, 76% 28%; background-size: 14% 34%, 22% 54%, 20% 48%, 24% 58%; }
 }
+.bench-motion-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.bench-motion-fixture { position: relative; display: grid; place-items: center; min-height: 250px; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; padding: 44px 20px 24px; background: #fff; }
+.bench-motion-fixture-label { position: absolute; top: 14px; left: 14px; color: #64748b; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-motion-photo { width: 126px; height: 156px; border: 0; border-radius: 8px; background-color: #e2e8f0; background-position: center; background-size: cover; box-shadow: 0 12px 20px -12px rgb(15 23 42 / 28%); }
+.bench-motion-spring { width: 94px; height: 42px; border: 0; border-radius: 16px; color: #fff; background: #0f766e; animation: bench-spring 2.4s infinite; }
+.bench-motion-flip { animation: bench-flip 5.2s ease-in-out infinite; }
+.bench-motion-aperture { width: 164px; height: 164px; animation: bench-aperture 4s cubic-bezier(.65, 0, .35, 1) infinite alternate; }
+.bench-motion-drift { animation: bench-drift 3.6s ease-in-out infinite alternate, bench-photo-fade 1.8s ease-in-out -.4s infinite alternate; }
+.bench-motion-shutter { width: 170px; height: 140px; border-radius: 8px; background-size: 220% auto; background-position: 0% 50%; animation: bench-shutter 3.2s steps(8, end) infinite alternate; }
+.bench-motion-lift { cursor: pointer; transition: transform 700ms cubic-bezier(.22, 1, .36, 1), border-radius 700ms ease; }
+.bench-motion-lift:hover, .bench-motion-lift:focus-visible { transform: translateY(-18px) rotate(-8deg) scale(1.08); border-radius: 24px; }
+@keyframes bench-spring { 0%, 100% { transform: translateY(30px) scale(1.15, .8); animation-timing-function: cubic-bezier(.2, .8, .3, 1); } 35% { transform: translateY(-44px) scale(.92, 1.08); animation-timing-function: cubic-bezier(.65, 0, .9, .4); } 70% { transform: translateY(30px) scale(1.2, .75); } 85% { transform: translateY(14px) scale(.96, 1.04); } }
+@keyframes bench-flip { 0%, 100% { transform: perspective(700px) rotateY(-36deg) rotateZ(-8deg); } 50% { transform: perspective(700px) rotateY(36deg) rotateZ(8deg); } }
+@keyframes bench-aperture { from { clip-path: circle(22% at 30% 35%); } to { clip-path: circle(72% at 55% 55%); } }
+@keyframes bench-drift { from { transform: translate(-24px, 6px) rotate(-10deg); } to { transform: translate(24px, -6px) rotate(10deg); } }
+@keyframes bench-photo-fade { from { opacity: .5; } to { opacity: 1; } }
+@keyframes bench-shutter { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@media (max-width: 760px) { .bench-motion-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .bench-motion-gallery { grid-template-columns: 1fr; } }
 .bench-layer-frame { height: 280px; overflow: auto; border: 1px solid #cbd5e1; background: #e2e8f0; }
 .bench-sticky-bar { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: #fff; background: #172033; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; }
 .bench-sticky-bar button { border: 1px solid #64748b; border-radius: 3px; padding: 4px 7px; color: #fff; background: transparent; font-size: 10px; }
@@ -203,7 +222,7 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-layer-three { z-index: 3; margin: -22px 0 36px 32%; background: #fde68a; }
 .bench-layer-content p { margin: 0 0 18px; color: #64748b; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .bench-layer-filler { height: 180px; border: 1px dashed #94a3b8; background: repeating-linear-gradient(-45deg, transparent 0 8px, rgb(148 163 184 / 12%) 8px 9px); }
-@media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before, .bench-orbit-carousel { animation-play-state: paused; } }
+@media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before, .bench-orbit-carousel, .bench-motion-spring, .bench-motion-flip, .bench-motion-aperture, .bench-motion-drift, .bench-motion-shutter { animation-play-state: paused; } .bench-motion-lift { transition: none; } }
 .bench-guide-line { position: fixed; z-index: 1; pointer-events: none; background: #f97316; }
 .bench-guide-horizontal { top: 50%; left: 0; width: 100%; height: 1px; }
 .bench-host-composer { max-width: 720px; }

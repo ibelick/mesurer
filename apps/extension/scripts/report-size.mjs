@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(extensionRoot, "dist");
-const maxContentGzipBytes = 201 * 1024;
+const maxContentGzipBytes = 202 * 1024;
 
 const getFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });

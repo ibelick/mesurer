@@ -434,6 +434,32 @@ function TestCanvas({ count }: { count: number }) {
             style={{ backgroundImage: orbitArchiveCards.map((card) => `url("${card.image}")`).join(", ") }}
           />
         </div>
+        <div className="bench-motion-gallery">
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">spring / squash & stretch</span>
+            <button type="button" className="bench-motion-spring" data-testid="motion-spring">bounce</button>
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">perspective / 3D turn</span>
+            <div className="bench-motion-photo bench-motion-flip" data-testid="motion-flip" role="img" aria-label="Photograph rotating in three dimensions" style={{ backgroundImage: `url("${orbitArchiveCards[1].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">clip-path / aperture</span>
+            <div className="bench-motion-photo bench-motion-aperture" data-testid="motion-aperture" role="img" aria-label="Photograph revealed through an animated aperture" style={{ backgroundImage: `url("${orbitArchiveCards[3].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">two animations / negative delay</span>
+            <div className="bench-motion-photo bench-motion-drift" data-testid="motion-drift" role="img" aria-label="Photograph with independent drifting and fading animations" style={{ backgroundImage: `url("${orbitArchiveCards[0].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">steps / frame-by-frame</span>
+            <div className="bench-motion-shutter" data-testid="motion-shutter" role="img" aria-label="Photograph moving behind a stepped shutter" style={{ backgroundImage: `url("${orbitArchiveCards[2].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">hover or focus / transitions</span>
+            <button type="button" className="bench-motion-photo bench-motion-lift" data-testid="motion-lift" aria-label="Lift the image card" style={{ backgroundImage: `url("${orbitArchiveCards[1].image}")` }} />
+          </div>
+        </div>
       </section>
       <section className="bench-card" aria-labelledby="layers-title">
         <div className="bench-card-heading">
