@@ -33,6 +33,7 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useScreenRecording } from "./hooks/use-screen-recording";
+import { usePlayableMotion } from "./hooks/use-playable-motion";
 import { ScreenRecordingEditor } from "./components/screen-recording-editor";
 import { SettingsButton } from "./components/settings-button";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
@@ -1132,6 +1133,14 @@ export function MesurerClient({
     if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
     return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
+  const selectedMotionPlayable = usePlayableMotion(
+    selectedElement,
+    selectedElement?.ownerDocument.defaultView,
+  );
+  const [showMotionCssCard, setShowMotionCssCard] = useState(false);
+  useEffect(() => {
+    setShowMotionCssCard(false);
+  }, [selectedElement]);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1670,8 +1679,9 @@ export function MesurerClient({
             selectedSelectorCopied: Boolean(
               selectedElement && copiedSelector === getElementSelector(selectedElement),
             ),
-            selectedTypography,
-            selectedMeasurementCount: selectedMeasurements.length,
+             selectedTypography,
+             selectedMeasurementCount: selectedMeasurements.length,
+             hideInfoCard: selectedMotionPlayable && !showMotionCssCard,
           },
         distances: {
           held: heldDistances,
@@ -1886,9 +1896,11 @@ export function MesurerClient({
           onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,
          },
-         motion: {
-           element: selectedElement,
-           ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
+          motion: {
+            element: selectedElement,
+            ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
+            showCssCard: showMotionCssCard,
+            onShowCssCard: setShowMotionCssCard,
          },
          comments: {
           count: comments.length,
@@ -1930,8 +1942,8 @@ export function MesurerClient({
                 setSnapEnabled,
                 multiMeasureEnabled,
                 setMultiMeasureEnabled,
-                infoCardMode: settingsInfoCardMode,
-                setInfoCardMode: setSettingsInfoCardMode,
+                 infoCardMode: settingsInfoCardMode,
+                 setInfoCardMode: setSettingsInfoCardMode,
               }}
               guides={{
                 guideColor: settingsGuideColor,

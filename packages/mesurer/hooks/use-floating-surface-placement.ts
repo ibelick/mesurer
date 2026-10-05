@@ -20,6 +20,7 @@ export function getFloatingSurfacePlacement({
   align,
   gap,
   rightOffset,
+  side = "auto",
 }: {
   anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">
   surfaceWidth: number
@@ -28,20 +29,23 @@ export function getFloatingSurfacePlacement({
   align: "left" | "right"
   gap: number
   rightOffset: number
+  side?: "auto" | "top" | "bottom"
 }): FloatingSurfacePlacement {
   const availableTop = Math.max(0, anchor.top - gap)
   const availableBottom = Math.max(0, viewportHeight - anchor.bottom - gap)
-  const side = availableBottom >= DEFAULT_HEIGHT || availableBottom >= availableTop ? "bottom" : "top"
+  const placementSide = side === "auto"
+    ? (availableBottom >= DEFAULT_HEIGHT || availableBottom >= availableTop ? "bottom" : "top")
+    : side
   const maxLeft = Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING - surfaceWidth)
   const desiredLeft = align === "left" ? anchor.left : anchor.right + rightOffset - surfaceWidth
   const left = Math.min(maxLeft, Math.max(VIEWPORT_PADDING, desiredLeft))
 
   return {
-    side,
-    height: Math.min(DEFAULT_HEIGHT, side === "bottom" ? availableBottom : availableTop),
+    side: placementSide,
+    height: Math.min(DEFAULT_HEIGHT, placementSide === "bottom" ? availableBottom : availableTop),
     right: viewportWidth - left - surfaceWidth,
     ...(align === "left" ? { left } : {}),
-    ...(side === "bottom"
+    ...(placementSide === "bottom"
       ? { top: anchor.bottom + gap }
       : { bottom: viewportHeight - anchor.top + gap }),
   }
@@ -54,7 +58,8 @@ export const useFloatingSurfacePlacement = ({
   refreshKey,
   align = "right",
   gap = 8,
-  rightOffset = 4,
+    rightOffset = 4,
+    side = "auto",
 }: {
   anchorRef: RefObject<HTMLElement | null>
   eventTarget: Window
@@ -63,6 +68,7 @@ export const useFloatingSurfacePlacement = ({
   align?: "left" | "right"
   gap?: number
   rightOffset?: number
+  side?: "auto" | "top" | "bottom"
 }) => {
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const [placement, setPlacement] = useState<FloatingSurfacePlacement>({
@@ -100,7 +106,7 @@ export const useFloatingSurfacePlacement = ({
       eventTarget.removeEventListener("resize", measure)
       eventTarget.removeEventListener("scroll", measure, true)
     }
-  }, [align, anchorRef, eventTarget, gap, open, refreshKey, rightOffset])
+  }, [align, anchorRef, eventTarget, gap, open, refreshKey, rightOffset, side])
 
   return { surfaceRef, menuRef: surfaceRef, placement }
 }

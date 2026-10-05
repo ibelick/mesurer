@@ -140,6 +140,8 @@ type ToolbarProps = {
   motion?: {
     element: Element | null;
     ownerWindow: Window;
+    showCssCard: boolean;
+    onShowCssCard: (show: boolean) => void;
   };
   comments: ToolbarComments;
   layoutGuides: ToolbarLayoutGuides;
@@ -1737,7 +1739,7 @@ function ToolbarComponent(
                 }}
                 data-mesurer-motion-surface
               >
-                <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} />
+                <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} showCssCard={motion.showCssCard} onShowCssCard={motion.onShowCssCard} refreshKey={`${position.x}:${position.y}`} />
               </ToolbarFloatingSurface>,
               commentPanelPortalTarget,
             )

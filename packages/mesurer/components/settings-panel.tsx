@@ -128,7 +128,7 @@ const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
 
 const roundToTwo = (value: number) => Number(value.toFixed(2))
 
-function SettingsSwitch({ label, checked, onChange }: {
+export function SettingsSwitch({ label, checked, onChange }: {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void
@@ -749,8 +749,8 @@ export function SettingsPanel({
       <SettingsSection id="inspect" title="Inspect" ariaLabel="Inspect settings" focused={focusSection === "inspect"}>
         <ColorField label="Color" value={highlightColor} fallback="#0d99ff" ownerWindow={ownerWindow} onChange={setHighlightColor} />
         <div className="msr:col-span-2"><SettingsSwitch label="Hover" checked={hoverHighlight} onChange={setHoverHighlight} /></div>
-        <div className="msr:col-span-2"><SettingsSwitch label="CSS details" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
-        <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
+         <div className="msr:col-span-2"><SettingsSwitch label="CSS details" checked={layoutDetailsEnabled} onChange={setLayoutDetailsEnabled} /></div>
+         <div className="msr:col-span-2"><SettingsSwitch label="Element snap" checked={snapEnabled} onChange={setSnapEnabled} /></div>
         <div className="msr:col-span-2"><SettingsSwitch label="Stack" checked={multiMeasureEnabled} onChange={setMultiMeasureEnabled} /></div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Info card</span>
