@@ -26,11 +26,11 @@ export function SliderControl({
   const [draftValue, setDraftValue] = useState(formatValue(value))
   const [editing, setEditing] = useState(false)
   const clampValue = (next: number) => roundToTwo(Math.min(max, Math.max(inputMin, next)))
-  const nudge = (direction: number) => {
-    const next = clampValue(sliderValue + direction * step)
+  const updateValue = (next: number) => {
     setDraftValue(formatValue(next))
     onChange(next)
   }
+  const nudge = (direction: number) => updateValue(clampValue(sliderValue + direction * step))
   const commitDraft = () => {
     const parsed = parseInput(draftValue)
     const next = Number.isFinite(parsed) ? clampValue(parsed) : value
@@ -45,7 +45,7 @@ export function SliderControl({
     const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left - thumbInset) / usableWidth))
     const rawValue = min + ratio * (max - min)
     const steppedValue = Math.round((rawValue - min) / step) * step + min
-    onChange(clampValue(steppedValue))
+    updateValue(clampValue(steppedValue))
   }
 
   return (
@@ -90,8 +90,8 @@ export function SliderControl({
               aria-orientation="horizontal"
               onKeyDown={(event) => {
                 const direction = event.key === "ArrowRight" || event.key === "ArrowUp" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 0
-                if (event.key === "Home") onChange(min)
-                else if (event.key === "End") onChange(max)
+                if (event.key === "Home") updateValue(min)
+                else if (event.key === "End") updateValue(max)
                 else if (direction) nudge(direction)
                 else return
                 event.stopPropagation()

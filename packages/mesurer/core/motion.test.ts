@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, scrubMotion, type MotionDetails } from "./motion"
+import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
 
 const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
   kind: "animation",
@@ -16,6 +16,43 @@ const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
 })
 
 describe("motion details", () => {
+  it("formats computed offsets and CSS property names without changing custom properties", () => {
+    const animation = { effect: { getKeyframes: () => [
+      { offset: null, computedOffset: 0, easing: "linear", composite: "auto", transform: "translateX(0px)", "--MyAngle": "0deg" },
+      { offset: null, computedOffset: 1 / 3, easing: "ease-in", composite: "add", backgroundColor: "rgb(0, 0, 0)" },
+      { offset: 1, computedOffset: 1, easing: "linear", composite: "replace", transform: "translateX(24px)" },
+    ] } } as unknown as Animation
+    expect(readMotionKeyframes(animation)).toEqual([
+      { offset: "0%", value: "transform: translateX(0px); --MyAngle: 0deg;", displayValue: "transform: translateX(0px)\n--MyAngle: 0deg" },
+      { offset: "33.33%", value: "background-color: rgb(0, 0, 0); animation-timing-function: ease-in; animation-composition: add;", displayValue: "background-color: rgb(0, 0, 0)\neasing: ease-in\ncomposition: add" },
+      { offset: "100%", value: "transform: translateX(24px);", displayValue: "transform: translateX(24px)" },
+    ])
+  })
+
+  it("preserves distinct declarations at duplicate offsets", () => {
+    const animation = { effect: { getKeyframes: () => [
+      { computedOffset: 0.5, opacity: "0.4" },
+      { computedOffset: 0.5, transform: "scale(1.2)" },
+    ] } } as unknown as Animation
+    expect(readMotionKeyframes(animation)).toEqual([
+      { offset: "50%", value: "opacity: 0.4;", displayValue: "opacity: 0.4" },
+      { offset: "50%", value: "transform: scale(1.2);", displayValue: "transform: scale(1.2)" },
+    ])
+  })
+
+  it("hides inherited easing in the display while preserving it in copied CSS", () => {
+    const animation = { effect: { getKeyframes: () => [{ computedOffset: 0, opacity: "0.5", easing: "ease" }] } } as unknown as Animation
+    expect(readMotionKeyframes(animation, "ease")[0]).toEqual({
+      offset: "0%", value: "opacity: 0.5; animation-timing-function: ease;", displayValue: "opacity: 0.5",
+    })
+  })
+
+  it("handles unavailable keyframes safely", () => {
+    expect(readMotionKeyframes(null)).toEqual([])
+    expect(readMotionKeyframes({ effect: null } as Animation)).toEqual([])
+    expect(readMotionKeyframes({ effect: { getKeyframes: () => { throw new Error("unavailable") } } } as unknown as Animation)).toEqual([])
+  })
+
   it("formats timeline values compactly", () => {
     expect(formatMotionTime(250)).toBe("250ms")
     expect(formatMotionTime(4000)).toBe("4.0s")

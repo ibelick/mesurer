@@ -26,20 +26,40 @@ const parseTime = (value: string) => {
 
 const unique = (values: string[]) => [...new Set(values.filter(Boolean))]
 
-const keyframeProperties = (animation: Animation | null) => {
+const motionKeyframes = (animation: Animation | null) => {
   const effect = animation?.effect as (KeyframeEffect & { getKeyframes: () => Keyframe[] }) | null
   if (!effect || typeof effect.getKeyframes !== "function") return []
   try {
-    return unique(
-      effect
-        .getKeyframes()
-        .flatMap((frame) => Object.keys(frame))
-        .filter((property) => !["offset", "easing", "composite", "computedOffset"].includes(property)),
-    )
+    return effect.getKeyframes()
   } catch {
     return []
   }
 }
+
+const FRAME_METADATA = new Set(["offset", "easing", "composite", "computedOffset"])
+
+export const motionCssProperty = (property: string) => property.startsWith("--")
+  ? property
+  : property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
+
+const keyframeProperties = (animation: Animation | null) => unique(
+  motionKeyframes(animation).flatMap((frame) => Object.keys(frame)).filter((property) => !FRAME_METADATA.has(property)),
+)
+
+export const readMotionKeyframes = (animation: Animation | null, easing?: string) => motionKeyframes(animation).map((frame) => {
+  const declarations = Object.entries(frame)
+    .filter(([property]) => !FRAME_METADATA.has(property))
+    .map(([property, value]) => `${motionCssProperty(property)}: ${value};`)
+  if (frame.easing && frame.easing !== "linear") declarations.push(`animation-timing-function: ${frame.easing};`)
+  if (frame.composite && frame.composite !== "auto" && frame.composite !== "replace") declarations.push(`animation-composition: ${frame.composite};`)
+  return {
+    offset: `${Math.round(Number(frame.computedOffset ?? frame.offset ?? 0) * 10000) / 100}%`,
+    value: declarations.join(" "),
+    displayValue: declarations.filter((declaration) => declaration !== `animation-timing-function: ${easing};`)
+      .map((declaration) => declaration.slice(0, -1).replace(/^animation-timing-function:/, "easing:").replace(/^animation-composition:/, "composition:"))
+      .join("\n"),
+  }
+})
 
 const getAnimations = (element: Element) => {
   try {

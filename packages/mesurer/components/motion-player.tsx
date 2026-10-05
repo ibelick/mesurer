@@ -1,16 +1,17 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
-import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, readMotionDetails, scrubMotion, type MotionDetails } from "../core/motion"
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
+import { controlMotion, motionCssProperty, motionDuration, motionPlaybackProgress, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "../core/motion"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { Tooltip, useTooltip } from "./tooltip"
 import { FloatingSurface } from "./menu"
 import { SliderControl } from "./slider-control"
-import { InspectDetailRow } from "./inspect-detail-row"
 import { MotionPreview } from "./motion-preview"
 import { PlayerIconButton, PlayIcon, PauseIcon } from "./screen-recording-editor"
 import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "./player-layout"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { CloseIcon } from "./icons"
 import { SettingsButton } from "./settings-button"
+import { InspectDetailRow } from "./inspect-detail-row"
+import { CopyableValue } from "./copyable-value"
 
 
 const SPEED_PRESETS = [0.25, 0.5, 1]
@@ -26,36 +27,84 @@ function MotionValues({ motions, ownerWindow, element }: {
   element: Element
 }) {
   const tooltip = useTooltip()
+  const [keyframesExpanded, setKeyframesExpanded] = useState(false)
+  const keyframesId = useId()
+  const keyframes = useMemo(() => motions.filter((motion) => motion.kind === "animation")
+    .map((motion) => ({ name: motion.name, frames: readMotionKeyframes(motion.animation, motion.easing) }))
+    .filter(({ frames }) => frames.length > 0), [motions])
+  const frameGroups = useMemo(() => keyframes.map(({ name, frames }) => {
+    const groups = new Map<string, { offsets: string[]; displayValue: string }>()
+    for (const { offset, value, displayValue } of frames) {
+      const group = groups.get(value)
+      if (group) group.offsets.push(offset)
+      else groups.set(value, { offsets: [offset], displayValue })
+    }
+    return { name, frames: [...groups].map(([value, group]) => ({ value, ...group })) }
+  }), [keyframes])
+  const keyframeBlocks = keyframes.map(({ name, frames }) => `@keyframes ${name} {\n${frames.map(({ offset, value }) => `  ${offset} { ${value} }`).join("\n")}\n}`)
+  const keyframesCss = keyframeBlocks.join("\n\n")
   const style = ownerWindow.getComputedStyle(element)
   const copyValue = (value: string) => {
     void ownerWindow.navigator.clipboard?.writeText(value).catch(() => {})
   }
+  const animations = motions.filter((motion) => motion.kind === "animation")
+  const transitions = motions.filter((motion) => motion.kind === "transition")
+  const time = (milliseconds: number) => `${milliseconds / 1000}s`
+  const shorthands = [animations, transitions].map((group, groupIndex) => [
+    groupIndex === 0 ? "animation" : "transition",
+    group.map((motion) => [
+      motion.name, time(motion.duration), motion.easing, motion.delay ? time(motion.delay) : "",
+      ...(motion.kind === "animation" ? [
+        motion.iterationCount !== "1" ? motion.iterationCount : "",
+        motion.direction !== "normal" ? motion.direction : "",
+        motion.fillMode !== "none" ? motion.fillMode : "",
+        motion.animation?.playState === "paused" ? "paused" : "",
+      ] : []),
+    ].filter(Boolean).join(" ")).join(",\n"),
+  ])
+  const properties = [...new Set(animations.flatMap((motion) => motion.properties))]
+    .map(motionCssProperty)
+    .join(", ")
+  const extras = [
+    "animation-composition", "animation-timeline", "animation-range-start", "animation-range-end", "transition-behavior",
+    ...(properties.includes("transform") ? ["transform-origin"] : []),
+    ...(style.perspective !== "none" ? ["perspective", "perspective-origin"] : []),
+  ].map((label) => [label, style.getPropertyValue(label).trim()])
+    .filter(([, value]) => value && !/^(auto|normal|replace)(,\s*\1)*$/.test(value))
 
   return (
     <div className="msr:w-full msr:pt-2 msr:text-[10px] msr:text-ink-900">
       <div className="msr:flex msr:flex-col msr:gap-0.5 msr:px-2">
-        {motions.map((motion, index) => (
-          <div key={`${motion.kind}-${motion.name}-${index}`} className="msr:flex msr:flex-col msr:gap-0.5">
-            {[
-              [motion.kind === "animation" ? "animation-name" : "transition-property", motion.name],
-              [`${motion.kind}-duration`, formatMotionTime(motion.duration)],
-              [`${motion.kind}-delay`, formatMotionTime(motion.delay)],
-              [`${motion.kind}-timing-function`, motion.easing],
-              ...(motion.kind === "animation" ? [
-                ["animation-iteration-count", motion.iterationCount],
-                ["animation-direction", motion.direction],
-                ["animation-fill-mode", motion.fillMode],
-                ["animation-play-state", motion.animation?.playState === "paused" ? "paused" : style.animationPlayState],
-                ["animated properties", motion.properties.map((property) => property.startsWith("--") ? property : property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)).join(", ") || "unknown"],
-              ] : []),
-              ...((motion.kind === "animation" ? ["animation-composition", "animation-timeline", "animation-range-start", "animation-range-end"] : ["transition-behavior"])
-                .map((property) => [property, style.getPropertyValue(property)])
-                .filter(([, value]) => value)),
-            ].map(([label, value]) => (
-              <InspectDetailRow key={label} label={label} value={value} id={`${index}-${label}`} onCopy={() => copyValue(value)} tooltip={tooltip} />
-            ))}
-          </div>
+        {[...shorthands, ["animated properties", properties], ...extras].filter(([, value]) => value).map(([label, value]) => (
+          <InspectDetailRow key={label} label={label} value={value} id={`motion-${label}`} onCopy={() => copyValue(label === "animated properties" ? value : `${label}: ${value};`)} tooltip={tooltip} valueClassName="msr:min-w-0 msr:whitespace-pre-wrap msr:break-words msr:text-right msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
         ))}
+        {keyframes.length > 0 ? <>
+          {!keyframesExpanded ? keyframes.map(({ name, frames }, index) => (
+            <div key={`${name}-${index}`} className="msr:grid msr:grid-cols-[3.5rem_minmax(0,1fr)] msr:items-baseline msr:gap-2">
+              <span className="msr:text-ink-500">{index === 0 ? "keyframes" : ""}</span>
+              <CopyableValue id={`motion-keyframes-${index}`} value={`${name}: ${frames.map(({ offset }) => offset).join(", ")}`} onCopy={() => copyValue(keyframesCss)} tooltip={tooltip} className="msr:w-full msr:min-w-0 msr:whitespace-pre-wrap msr:break-words msr:text-right msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
+            </div>
+          )) : null}
+          <div id={keyframesId} hidden={!keyframesExpanded}>
+            {keyframesExpanded ? frameGroups.map(({ name, frames }, index) => (
+              <div key={`${name}-${index}`} className="msr:mt-1 msr:flex msr:flex-col msr:gap-1">
+                <div className="msr:grid msr:grid-cols-[auto_minmax(0,1fr)] msr:items-baseline msr:gap-2">
+                  <span className="msr:text-ink-500">{index === 0 ? "keyframes" : ""}</span>
+                  <CopyableValue id={`keyframe-name-${index}`} value={name} onCopy={() => copyValue(keyframeBlocks[index])} tooltip={tooltip} className="msr:w-full msr:min-w-0 msr:truncate msr:text-right msr:text-ink-900 msr:hover:underline" />
+                </div>
+                {frames.map(({ offsets, value, displayValue }, frameIndex) => (
+                  <div key={frameIndex} className="msr:grid msr:grid-cols-[3.5rem_minmax(0,1fr)] msr:items-baseline msr:gap-2">
+                    <span className="msr:text-ink-500 msr:tabular-nums">{offsets.join(", ")}</span>
+                    <CopyableValue id={`keyframe-${index}-${frameIndex}`} value={displayValue || "underlying style"} onCopy={() => copyValue(`${offsets.join(", ")} { ${value} }`)} tooltip={tooltip} className="msr:w-full msr:min-w-0 msr:whitespace-pre-wrap msr:break-words msr:text-right msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
+                  </div>
+                ))}
+              </div>
+            )) : null}
+          </div>
+          <SettingsButton variant="ghost" className="msr:self-end msr:text-[10px] msr:hover:bg-transparent msr:focus-visible:outline-auto" style={{ padding: 0, border: 0, height: "auto", background: "transparent", textDecoration: "underline", textUnderlineOffset: "2px" }} aria-expanded={keyframesExpanded} aria-controls={keyframesId} onClick={() => setKeyframesExpanded((expanded) => !expanded)}>
+            {keyframesExpanded ? "Hide keyframes" : "Show keyframes"}
+          </SettingsButton>
+        </> : null}
       </div>
     </div>
   )
@@ -224,7 +273,7 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
             setCustomSpeedOpen(false)
             changeSpeed(Number(event.target.value))
           }}
-          className="msr:h-5 msr:w-[5ch] msr:appearance-none msr:rounded msr:border-0 msr:bg-transparent msr:p-0 msr:text-center msr:font-mono msr:text-[10px] msr:tabular-nums msr:text-ink-500 msr:outline-none msr:focus:outline-none msr:focus-visible:outline-none msr:focus-visible:shadow-none"
+          className="mesurer-settings-button-ghost msr:h-5 msr:w-[5ch] msr:appearance-none msr:rounded-control msr:border msr:border-transparent msr:bg-transparent msr:p-0 msr:text-center msr:font-mono msr:text-[10px] msr:tabular-nums msr:text-ink-500 msr:hover:bg-black/4 msr:hover:text-ink-900 msr:focus-visible:bg-black/4 msr:outline-none msr:focus:outline-none msr:focus-visible:outline-none msr:focus:shadow-none msr:focus-visible:shadow-none"
         >
           {SPEED_PRESETS.map((value) => <option key={value} value={value}>{value}x</option>)}
           {!SPEED_PRESETS.includes(speed) ? <option value={speed}>{speed}x</option> : null}
