@@ -92,6 +92,7 @@ export const useFloatingSurfacePlacement = ({
         align,
         gap,
         rightOffset,
+        side,
       }))
     }
 

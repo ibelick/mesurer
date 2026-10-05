@@ -20,7 +20,6 @@ import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
-import { usePlayableMotion } from "../hooks/use-playable-motion";
 import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
 import { ScreenshotPreview } from "./screenshot-preview";
@@ -137,11 +136,11 @@ type ToolbarProps = {
   colorPicker: ToolbarColorPicker;
   screenshot: ToolbarScreenshot;
   screenRecording: ToolbarScreenRecording;
-  motion?: {
+  motion: {
     element: Element | null;
     ownerWindow: Window;
-    showCssCard: boolean;
-    onShowCssCard: (show: boolean) => void;
+    playable: boolean;
+    inspectDetails: (motionDetails: ReactNode) => ReactNode;
   };
   comments: ToolbarComments;
   layoutGuides: ToolbarLayoutGuides;
@@ -651,8 +650,7 @@ function ToolbarComponent(
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const captureAnchorRef = useRef<HTMLDivElement | null>(null);
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
-  const playableMotion = usePlayableMotion(motion?.element, motion?.ownerWindow);
-  const motionPlayerOpen = playableMotion && !recordingPanelOpen;
+  const motionPlayerOpen = motion.playable && !recordingPanelOpen;
   const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
   const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
     useFloatingSurfacePlacement({
@@ -682,17 +680,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: motionRef,
       eventTarget,
-      open: recordingPanelOpen,
-      refreshKey: `${position.x}:${position.y}`,
-      align: "left",
-      gap: 4,
-      rightOffset: 0,
-    });
-  const { surfaceRef: motionPlayerRef, placement: motionPlayerPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: motionRef,
-      eventTarget,
-      open: motionPlayerOpen,
+      open: floatingCardOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "left",
       gap: 4,
@@ -1726,25 +1714,7 @@ function ToolbarComponent(
             />,
             commentPanelPortalTarget,
           )}
-          {motionPlayerOpen && motion
-            ? createPortal(
-              <ToolbarFloatingSurface
-                ref={motionPlayerRef}
-                className="msr:z-[101] msr:p-0"
-                style={{
-                  top: motionPlayerPlacement.top,
-                  bottom: motionPlayerPlacement.bottom,
-                  left: motionPlayerPlacement.left,
-                  zIndex: 101,
-                }}
-                data-mesurer-motion-surface
-              >
-                <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} showCssCard={motion.showCssCard} onShowCssCard={motion.onShowCssCard} refreshKey={`${position.x}:${position.y}`} />
-              </ToolbarFloatingSurface>,
-              commentPanelPortalTarget,
-            )
-            : null}
-          {recordingPanelOpen
+          {floatingCardOpen
             ? createPortal(
               <div
                 ref={recordingPanelRef}
@@ -1757,7 +1727,11 @@ function ToolbarComponent(
                 }}
                 data-mesurer-capture-ui
               >
-                {screenRecording.panel}
+                 {recordingPanelOpen ? screenRecording.panel : (
+                   <div className="msr:w-[22rem] msr:max-w-[calc(100vw-24px)]" data-mesurer-motion-surface>
+                     <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} inspectDetails={motion.inspectDetails} />
+                   </div>
+                 )}
               </div>,
               commentPanelPortalTarget,
             )

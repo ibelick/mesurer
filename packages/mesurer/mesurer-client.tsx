@@ -34,6 +34,7 @@ import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useScreenRecording } from "./hooks/use-screen-recording";
 import { usePlayableMotion } from "./hooks/use-playable-motion";
+import { InspectInfoCard } from "./components/inspect-info-card";
 import { ScreenRecordingEditor } from "./components/screen-recording-editor";
 import { SettingsButton } from "./components/settings-button";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
@@ -1133,14 +1134,7 @@ export function MesurerClient({
     if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
     return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
-  const selectedMotionPlayable = usePlayableMotion(
-    selectedElement,
-    selectedElement?.ownerDocument.defaultView,
-  );
-  const [showMotionCssCard, setShowMotionCssCard] = useState(false);
-  useEffect(() => {
-    setShowMotionCssCard(false);
-  }, [selectedElement]);
+  const selectedMotionPlayable = usePlayableMotion(selectedElement, selectedElement?.ownerDocument.defaultView);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1681,7 +1675,7 @@ export function MesurerClient({
             ),
              selectedTypography,
              selectedMeasurementCount: selectedMeasurements.length,
-             hideInfoCard: selectedMotionPlayable && !showMotionCssCard,
+             hideInfoCard: selectedMotionPlayable && !screenRecording.recording && !screenRecording.video,
           },
         distances: {
           held: heldDistances,
@@ -1899,10 +1893,22 @@ export function MesurerClient({
           motion: {
             element: selectedElement,
             ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
-            showCssCard: showMotionCssCard,
-            onShowCssCard: setShowMotionCssCard,
-         },
-         comments: {
+            playable: selectedMotionPlayable,
+             inspectDetails: (motionDetails) => displayedSelectedMeasurements[0] ? (
+              <InspectInfoCard
+                 embedded
+                 motionDetails={motionDetails}
+                ownerWindow={ownerWindow}
+                rect={displayedSelectedMeasurements[0].rect}
+                element={selectedElement}
+                measurement={displayedSelectedMeasurements[0]}
+                layoutDetailsEnabled={settingsLayoutDetailsEnabled}
+                copied={Boolean(selectedElement && copiedSelector === getElementSelector(selectedElement))}
+                typography={selectedMeasurements.length === 1 ? selectedTypography : null}
+              />
+            ) : null,
+          },
+          comments: {
           count: comments.length,
           comments,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,

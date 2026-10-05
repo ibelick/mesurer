@@ -13,6 +13,7 @@ import { StatusEllipsis } from "./status-ellipsis"
 import { clampOverlayPosition } from "../core/overlay-position"
 import { supportsMp4Encoding } from "../core/screen-recording-mp4"
 import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
+import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "./player-layout"
 
 type ScreenRecordingEditorProps = {
   url: string
@@ -54,13 +55,13 @@ const timestamp = (value: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-const PlayIcon = () => (
+export const PlayIcon = () => (
   <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
     <path d="M1.4.6v6.8L7.2 4z" />
   </svg>
 )
 
-const PauseIcon = () => (
+export const PauseIcon = () => (
   <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
     <rect x="1.4" y="1" width="1.8" height="6" rx="0.2" />
     <rect x="4.8" y="1" width="1.8" height="6" rx="0.2" />
@@ -85,7 +86,7 @@ const DownloadIcon = () => (
   </svg>
 )
 
-function PlayerIconButton({
+export function PlayerIconButton({
   label,
   tooltipId,
   tooltip,
@@ -725,7 +726,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       data-mesurer-recording-card
       data-expanded={expanded ? "true" : "false"}
       className={cn(
-        "mesurer-menu-surface msr:relative msr:box-border msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none",
+        playerCardClassName,
         fillFrame
           ? "msr:w-full msr:max-w-none"
           : "msr:w-[22rem] msr:max-w-[calc(100vw-24px)] msr:transition-[width] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
@@ -742,7 +743,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       <div className="msr:relative msr:p-2">
         <div className="msr:relative msr:flex msr:w-full msr:justify-center">
           <div
-            className="msr:group/video msr:relative msr:flex msr:w-full msr:cursor-default msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100"
+            className={playerPreviewClassName}
             onClick={(event) => {
               if ((event.target as HTMLElement).closest("button")) return
               void togglePlayback()
@@ -844,7 +845,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             </div>
           </div>
         </div>
-        <div className="msr:mt-2 msr:flex msr:h-5 msr:items-center msr:gap-1.5">
+        <div className={playerControlsClassName}>
           <PlayerIconButton
             label={playing ? "Pause" : "Play"}
             tooltip={tooltip}

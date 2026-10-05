@@ -185,6 +185,14 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 @keyframes bench-orbit { 0% { transform: translate(-50%, -50%) rotate(0deg) translateX(72px) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg) translateX(72px) rotate(-360deg); } }
 @keyframes bench-pulse { 0%, 100% { transform: scale(1); opacity: .72; } 50% { transform: scale(1.16); opacity: 1; } }
 @keyframes bench-scan { from { transform: translateX(0); } to { transform: translateX(calc(76vw - 70px)); } }
+.bench-orbit-archive { position: relative; isolation: isolate; height: clamp(380px, 48vw, 580px); margin-top: 16px; overflow: hidden; border-radius: 8px; background: #fff; perspective: 1200px; }
+.bench-orbit-carousel { position: absolute; inset: 0; cursor: crosshair; background-repeat: no-repeat; animation: bench-orbit-carousel-turn 20s cubic-bezier(.45, 0, .2, 1) infinite; }
+@keyframes bench-orbit-carousel-turn {
+  0%, 100% { background-position: 18% 28%, 48% 68%, 78% 25%, 87% 78%; background-size: 24% 58%, 20% 48%, 22% 54%, 14% 34%; }
+  25% { background-position: 40% 65%, 74% 23%, 86% 74%, 15% 30%; background-size: 20% 48%, 24% 58%, 14% 34%, 22% 54%; }
+  50% { background-position: 74% 28%, 86% 74%, 18% 25%, 45% 68%; background-size: 22% 54%, 14% 34%, 24% 58%, 20% 48%; }
+  75% { background-position: 86% 74%, 18% 25%, 45% 68%, 76% 28%; background-size: 14% 34%, 22% 54%, 20% 48%, 24% 58%; }
+}
 .bench-layer-frame { height: 280px; overflow: auto; border: 1px solid #cbd5e1; background: #e2e8f0; }
 .bench-sticky-bar { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: #fff; background: #172033; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; }
 .bench-sticky-bar button { border: 1px solid #64748b; border-radius: 3px; padding: 4px 7px; color: #fff; background: transparent; font-size: 10px; }
@@ -195,7 +203,7 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
 .bench-layer-three { z-index: 3; margin: -22px 0 36px 32%; background: #fde68a; }
 .bench-layer-content p { margin: 0 0 18px; color: #64748b; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .bench-layer-filler { height: 180px; border: 1px dashed #94a3b8; background: repeating-linear-gradient(-45deg, transparent 0 8px, rgb(148 163 184 / 12%) 8px 9px); }
-@media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before { animation-play-state: paused; } }
+@media (prefers-reduced-motion: reduce) { .bench-motion-orbit, .bench-motion-pulse, .bench-motion-scan::before, .bench-orbit-carousel { animation-play-state: paused; } }
 .bench-guide-line { position: fixed; z-index: 1; pointer-events: none; background: #f97316; }
 .bench-guide-horizontal { top: 50%; left: 0; width: 100%; height: 1px; }
 .bench-host-composer { max-width: 720px; }

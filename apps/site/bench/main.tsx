@@ -22,6 +22,13 @@ const agentLogos = [
   ["DeepSeek", "https://assets.querrel.com/logo/muted/deepseek.webp"],
 ] as const
 
+const orbitArchiveCards = [
+  { title: "New material studies", note: "Milan, 2025", image: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=720&q=85" },
+  { title: "Soft architecture", note: "Objects / 041", image: "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=720&q=85" },
+  { title: "Blue hour archive", note: "Kyoto, 06:12", image: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=720&q=85" },
+  { title: "The color of water", note: "Field notes", image: "https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=720&q=85" },
+] as const
+
 const transparentPixel = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
 
 const iframeSrcDoc = `<!doctype html>
@@ -417,6 +424,15 @@ function TestCanvas({ count }: { count: number }) {
           <button className="bench-motion-target bench-motion-pulse" type="button">pulse / opacity</button>
           <button className="bench-motion-target bench-motion-transition" type="button">hover / transition</button>
           <div className="bench-motion-scan" aria-hidden="true"><span>moving scan line</span></div>
+        </div>
+        <div className="bench-orbit-archive" aria-label="Looping image card motion fixture">
+          <div
+            className="bench-orbit-carousel"
+            data-testid="orbit-archive-motion"
+            role="img"
+            aria-label="Four photographic cards flowing through a looping composition"
+            style={{ backgroundImage: orbitArchiveCards.map((card) => `url("${card.image}")`).join(", ") }}
+          />
         </div>
       </section>
       <section className="bench-card" aria-labelledby="layers-title">

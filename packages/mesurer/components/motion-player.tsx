@@ -1,55 +1,53 @@
-import { useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { controlMotion, formatMotionTime, motionDuration, readMotionDetails, scrubMotion, type MotionDetails } from "../core/motion"
-import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
-import { FloatingSurface } from "./menu"
-import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import { GearIcon } from "./icons"
-import { SettingsSwitch } from "./settings-panel"
+import { SettingsButton } from "./settings-button"
 import { InspectDetailRow } from "./inspect-detail-row"
+import { MotionPreview } from "./motion-preview"
+import { PlayerIconButton, PlayIcon, PauseIcon } from "./screen-recording-editor"
+import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "./player-layout"
 
-const PlayIcon = () => <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true"><path d="M1.4.6v6.8L7.2 4z" /></svg>
-const PauseIcon = () => <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true"><rect x="1.4" y="1" width="1.8" height="6" rx="0.2" /><rect x="4.8" y="1" width="1.8" height="6" rx="0.2" /></svg>
 
 const timestamp = (milliseconds: number) => {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000))
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-function MotionSettingsCard({ motions, ownerWindow, showCssCard, onShowCssCard }: {
+function MotionValues({ motions, ownerWindow, element }: {
   motions: MotionDetails[]
   ownerWindow: Window
-  showCssCard: boolean
-  onShowCssCard: (show: boolean) => void
+  element: Element
 }) {
   const tooltip = useTooltip()
+  const style = ownerWindow.getComputedStyle(element)
   const copyValue = (value: string) => {
-    void ownerWindow.navigator.clipboard?.writeText(value)
+    void ownerWindow.navigator.clipboard?.writeText(value).catch(() => {})
   }
-  const detailRow = (label: string, value: string, id: string) => (
-    <InspectDetailRow label={label} value={value} id={id} onCopy={() => copyValue(value)} tooltip={tooltip} />
-  )
 
   return (
-    <div className="msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:py-2 msr:text-[10px] msr:text-ink-900">
-      <div className="msr:px-3">
-        <SettingsSwitch label="Show CSS card" checked={showCssCard} onChange={onShowCssCard} />
-      </div>
-      <div className="msr:mt-2 msr:px-2">
-        <div className="msr:mb-1 msr:font-semibold msr:text-ink-500">Motion</div>
+    <div className="msr:w-full msr:pt-2 msr:text-[10px] msr:text-ink-900">
+      <div className="msr:flex msr:flex-col msr:gap-0.5 msr:px-2">
         {motions.map((motion, index) => (
-          <div key={`${motion.kind}-${motion.name}-${index}`} className="msr:flex msr:flex-col msr:gap-0.5 msr:pb-2 last:pb-0">
-            {detailRow("Name", motion.name, `${index}-name`)}
-            {detailRow("Type", motion.kind, `${index}-type`)}
-            {detailRow("Duration", formatMotionTime(motion.duration), `${index}-duration`)}
-            {detailRow("Delay", formatMotionTime(motion.delay), `${index}-delay`)}
-            {detailRow("Easing", motion.easing, `${index}-easing`)}
-            {detailRow("Iterations", motion.iterationCount, `${index}-iterations`)}
-            {detailRow("Direction", motion.direction, `${index}-direction`)}
-            {detailRow("Fill", motion.fillMode, `${index}-fill`)}
-            {detailRow("Properties", motion.properties.join(", ") || "unknown", `${index}-properties`)}
+          <div key={`${motion.kind}-${motion.name}-${index}`} className="msr:flex msr:flex-col msr:gap-0.5">
+            {[
+              [motion.kind === "animation" ? "animation-name" : "transition-property", motion.name],
+              [`${motion.kind}-duration`, formatMotionTime(motion.duration)],
+              [`${motion.kind}-delay`, formatMotionTime(motion.delay)],
+              [`${motion.kind}-timing-function`, motion.easing],
+              ...(motion.kind === "animation" ? [
+                ["animation-iteration-count", motion.iterationCount],
+                ["animation-direction", motion.direction],
+                ["animation-fill-mode", motion.fillMode],
+                ["animation-play-state", motion.animation?.playState === "paused" ? "paused" : style.animationPlayState],
+                ["animated properties", motion.properties.map((property) => property.startsWith("--") ? property : property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)).join(", ") || "unknown"],
+              ] : []),
+              ...((motion.kind === "animation" ? ["animation-composition", "animation-timeline", "animation-range-start", "animation-range-end"] : ["transition-behavior"])
+                .map((property) => [property, style.getPropertyValue(property)])
+                .filter(([, value]) => value)),
+            ].map(([label, value]) => (
+              <InspectDetailRow key={label} label={label} value={value} id={`${index}-${label}`} onCopy={() => copyValue(value)} tooltip={tooltip} />
+            ))}
           </div>
         ))}
       </div>
@@ -57,12 +55,11 @@ function MotionSettingsCard({ motions, ownerWindow, showCssCard, onShowCssCard }
   )
 }
 
-export function MotionPlayer({ element, ownerWindow, showCssCard, onShowCssCard, refreshKey }: { element: Element | null | undefined; ownerWindow: Window | null; showCssCard: boolean; onShowCssCard: (show: boolean) => void; refreshKey: string }) {
-  const playerRef = useRef<HTMLDivElement>(null)
+export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null)
-  const playAnchorRef = useRef<HTMLDivElement>(null)
   const speedAnchorRef = useRef<HTMLDivElement>(null)
-  const settingsAnchorRef = useRef<HTMLDivElement>(null)
+  const inspectAnchorRef = useRef<HTMLDivElement>(null)
+  const inspectId = useId()
   const tooltip = useToolbarTooltip()
   const [duration, setDuration] = useState(0)
   const [progress, setProgress] = useState(0)
@@ -70,25 +67,16 @@ export function MotionPlayer({ element, ownerWindow, showCssCard, onShowCssCard,
   const [playing, setPlaying] = useState(false)
   const [ready, setReady] = useState(false)
   const [motions, setMotions] = useState<MotionDetails[]>([])
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const { surfaceRef: settingsRef, placement: settingsPlacement } = useFloatingSurfacePlacement({
-    anchorRef: playerRef,
-    eventTarget: ownerWindow ?? window,
-    open: settingsOpen,
-    align: "left",
-    gap: 4,
-    side: "bottom",
-    refreshKey,
-  })
+  const [inspectOpen, setInspectOpen] = useState(false)
 
   useEffect(() => {
     setProgress(0)
     setPlaying(false)
+    setInspectOpen(false)
     if (!element || !ownerWindow) {
       setReady(false)
       setDuration(0)
       setMotions([])
-      setSettingsOpen(false)
       return
     }
     const refresh = () => {
@@ -145,20 +133,21 @@ export function MotionPlayer({ element, ownerWindow, showCssCard, onShowCssCard,
 
   return (
     <div
-      ref={playerRef}
       data-mesurer-motion-player
       aria-label="Motion playback"
-      className="msr:flex msr:h-9 msr:w-72 msr:max-w-[calc(100vw-16px)] msr:items-center msr:gap-1.5 msr:px-2"
+      className={`${playerCardClassName} msr:w-full`}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onMouseLeave={tooltip.onToolbarLeave}
     >
-      <div ref={playAnchorRef} className="msr:relative msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center" {...bindTooltip("motion-play")}>
-        <SettingsButton shape="icon" variant="ghost" type="button" aria-label={playLabel} aria-pressed={playing} className="msr:size-5" onClick={togglePlay}>
+      <div className="msr:relative msr:p-2">
+        <div className={playerPreviewClassName} onClick={togglePlay}>
+          <MotionPreview element={element} ownerWindow={ownerWindow} />
+        </div>
+        <div className={playerControlsClassName}>
+        <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} onClick={togglePlay}>
           {playing ? <PauseIcon /> : <PlayIcon />}
-        </SettingsButton>
-        <Tooltip label={playLabel} visible={tooltip.visibleTooltipId === "motion-play"} instant={tooltip.tooltipInstant} side="top" anchorRef={playAnchorRef} />
-      </div>
+        </PlayerIconButton>
       <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{timestamp(progress * duration)}</span>
       <div
         ref={trackRef}
@@ -202,26 +191,25 @@ export function MotionPlayer({ element, ownerWindow, showCssCard, onShowCssCard,
         </select>
         <Tooltip label="Speed" visible={tooltip.visibleTooltipId === "motion-speed"} instant={tooltip.tooltipInstant} side="top" anchorRef={speedAnchorRef} />
       </div>
-      <div ref={settingsAnchorRef} className="msr:relative msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center" {...bindTooltip("motion-settings")}>
-        <SettingsButton shape="icon" variant="ghost" type="button" aria-label="Motion settings" aria-expanded={settingsOpen} className="msr:size-5" onClick={() => setSettingsOpen((open) => !open)}>
-          <GearIcon size={10} strokePx={1.25} />
+      <div ref={inspectAnchorRef} className="msr:relative msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center" {...bindTooltip("motion-inspect")}>
+        <SettingsButton shape="icon" variant="ghost" type="button" aria-label={inspectOpen ? "Hide Inspect" : "Show Inspect"} aria-expanded={inspectOpen} aria-controls={inspectId} onClick={() => setInspectOpen((open) => !open)}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M3.25 2.5.75 5l2.5 2.5m3.5-5L9.25 5l-2.5 2.5M5.75 1.5l-1.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </SettingsButton>
-        <Tooltip label="Motion settings" visible={tooltip.visibleTooltipId === "motion-settings"} instant={tooltip.tooltipInstant} side="top" anchorRef={settingsAnchorRef} />
+        <Tooltip label={inspectOpen ? "Hide Inspect" : "Show Inspect"} visible={tooltip.visibleTooltipId === "motion-inspect"} instant={tooltip.tooltipInstant} side="top" anchorRef={inspectAnchorRef} />
       </div>
-      {settingsOpen
-        ? createPortal(
-            <FloatingSurface
-              ref={settingsRef}
-              className="msr:pointer-events-auto msr:fixed msr:z-[120]"
-              style={{ top: settingsPlacement.top, bottom: settingsPlacement.bottom, left: settingsPlacement.left, right: settingsPlacement.right, zIndex: 120 }}
-              aria-label="Motion settings"
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <MotionSettingsCard motions={motions} ownerWindow={ownerWindow} showCssCard={showCssCard} onShowCssCard={onShowCssCard} />
-            </FloatingSurface>,
-            playerRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body,
-          )
-        : null}
+        </div>
+      </div>
+      <div id={inspectId} hidden={!inspectOpen}>
+        {inspectOpen ? (
+          <div className="mesurer-thin-scrollbar msr:max-h-[50vh] msr:overflow-y-auto">
+            {inspectDetails
+              ? inspectDetails(<MotionValues motions={motions} ownerWindow={ownerWindow} element={element} />)
+              : <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} />}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }
