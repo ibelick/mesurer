@@ -1134,7 +1134,8 @@ export function MesurerClient({
     if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
     return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
-  const { ready: selectedMotionPlayable, observedProperties: selectedObservedProperties, observedTargets: selectedObservedTargets } = usePlayableMotion(selectedElement, selectedElement?.ownerDocument.defaultView);
+  const motionElement = selectedMeasurement?.elementRef ?? selectedElement;
+  const { ready: selectedMotionPlayable, observedProperties: selectedObservedProperties, observedTargets: selectedObservedTargets } = usePlayableMotion(motionElement, motionElement?.ownerDocument.defaultView);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1891,18 +1892,18 @@ export function MesurerClient({
           onStop: screenRecording.stop,
          },
           motion: {
-            element: selectedElement,
-            ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
+            element: motionElement,
+            ownerWindow: motionElement?.ownerDocument.defaultView ?? ownerWindow,
              playable: selectedMotionPlayable,
               observedProperties: selectedObservedProperties,
               observedTargets: selectedObservedTargets,
              inspectDetails: (motionDetails) => displayedSelectedMeasurements[0] ? (
               <InspectInfoCard
-                 embedded
-                 motionDetails={motionDetails}
+                  embedded
+                  motionDetails={motionDetails}
                 ownerWindow={ownerWindow}
                 rect={displayedSelectedMeasurements[0].rect}
-                element={selectedElement}
+                 element={motionElement}
                 measurement={displayedSelectedMeasurements[0]}
                 layoutDetailsEnabled={settingsLayoutDetailsEnabled}
                 copied={Boolean(selectedElement && copiedSelector === getElementSelector(selectedElement))}

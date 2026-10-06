@@ -1,4 +1,17 @@
 export type MotionKind = "animation" | "transition" | "web-animation"
+export const OBSERVED_MOTION_PROPERTIES = ["transform", "translate", "rotate", "scale", "opacity", "filter", "clip-path", "width", "height", "top", "left", "content"]
+
+const controlledAnimations = new WeakSet<Animation>()
+
+// Finite, running script-created effects may be transient pieces of a JS
+// lifecycle. CSS effects and animations explicitly controlled here remain seekable.
+export const hasTransientScriptMotion = (element: Element, animations = getMotionAnimations(element)) => animations.some((animation) => {
+  if (controlledAnimations.has(animation) || "animationName" in animation || "transitionProperty" in animation || animation.playState !== "running") return false
+  try {
+    const timing = animation.effect?.getTiming()
+    return Boolean(timing && timing.iterations !== Infinity)
+  } catch { return false }
+})
 
 export type MotionDetails = {
   kind: MotionKind
@@ -88,6 +101,7 @@ const animationFor = (animations: Animation[], name: string, index: number) => {
 }
 
 export const readMotionDetails = (element: Element, ownerWindow: Window): MotionDetails[] => {
+  ownerWindow = element.ownerDocument?.defaultView ?? ownerWindow
   const style = ownerWindow.getComputedStyle(element)
   const animations = getMotionAnimations(element)
   const ownAnimations = animations.filter((animation) => {
@@ -142,7 +156,8 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
   const claimed = new Set([...animationDetails, ...transitionDetails].map((motion) => motion.animation))
   const webAnimations = animations.filter((animation) => !claimed.has(animation))
     .flatMap((animation, index) => {
-      const timing = animation.effect?.getTiming()
+      let timing: EffectTiming | undefined
+      try { timing = animation.effect?.getTiming() } catch { return [] }
       if (!timing) return []
       const properties = keyframeProperties(animation)
       return [{
@@ -201,6 +216,7 @@ export const formatMotionTime = (milliseconds: number) => {
 
 export const controlMotion = (element: Element, action: "play" | "pause" | "replay", playbackRate = 1) => {
   for (const animation of getMotionAnimations(element)) {
+    controlledAnimations.add(animation)
     animation.playbackRate = playbackRate
     if (action === "replay") {
       animation.cancel()
@@ -220,6 +236,7 @@ export const scrubMotion = (element: Element, progress: number, duration: number
 export const scrubAnimations = (animations: Animation[], progress: number, duration: number) => {
   const currentTime = Math.max(0, Math.min(1, progress)) * duration
   for (const animation of animations) {
+    controlledAnimations.add(animation)
     const timing = animation.effect?.getTiming()
     const elapsed = timing?.iterations === Infinity ? currentTime : Math.min(currentTime, animationDuration(animation, duration))
     animation.currentTime = elapsed + (timing?.delay ?? 0)

@@ -161,7 +161,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
     const refresh = () => {
       const motions = readMotionDetails(element, ownerWindow)
       const nextDuration = Math.max(0, ...motions.map(motionDuration))
-      setReady(motions.length > 0)
+      setReady(motions.length > 0 || getMotionAnimations(element).length > 0)
       setDuration(nextDuration)
       setMotions(motions)
       animationsRef.current = [...new Set(motions.flatMap((motion) => motion.animation ? [motion.animation] : []))]
@@ -333,7 +333,8 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
          aria-label="Playback speed"
           disabled={!controllable}
           aria-controls={customSpeedOpen ? customSpeedId : undefined}
-          value={speed}
+           value={speed}
+           style={{ width: `${Math.max(6, `${speed}x`.length + 1)}ch` }}
           onChange={(event) => {
             if (event.target.value === "custom") {
               tooltip.onToolbarLeave()
@@ -343,7 +344,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
             setCustomSpeedOpen(false)
             changeSpeed(Number(event.target.value))
           }}
-          className="mesurer-settings-button-ghost msr:h-5 msr:w-[5ch] msr:appearance-none msr:rounded-control msr:border msr:border-transparent msr:bg-transparent msr:p-0 msr:text-center msr:font-mono msr:text-[10px] msr:tabular-nums msr:text-ink-500 msr:hover:bg-black/4 msr:hover:text-ink-900 msr:focus-visible:bg-black/4 msr:outline-none msr:focus:outline-none msr:focus-visible:outline-none msr:focus:shadow-none msr:focus-visible:shadow-none"
+           className="mesurer-settings-button-ghost msr:h-5 msr:appearance-none msr:rounded-control msr:border msr:border-transparent msr:bg-transparent msr:p-0 msr:text-center msr:font-mono msr:text-[10px] msr:tabular-nums msr:text-ink-500 msr:hover:bg-black/4 msr:hover:text-ink-900 msr:focus-visible:bg-black/4 msr:outline-none msr:focus:outline-none msr:focus-visible:outline-none msr:focus:shadow-none msr:focus-visible:shadow-none"
         >
           {SPEED_PRESETS.map((value) => <option key={value} value={value}>{value}x</option>)}
           {!SPEED_PRESETS.includes(speed) ? <option value={speed}>{speed}x</option> : null}

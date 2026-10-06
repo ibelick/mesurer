@@ -5,6 +5,7 @@ import { isLayoutContainerDisplay } from "./layout-details"
 import type { InspectMeasurement, InspectTextAnchor, LayoutGap, Measurement, Rect } from "./types"
 import { createId } from "./utils"
 import { getFrameToken, getViewportRect, isConnectedElement } from "./document-tree"
+import { projectRect } from "./frame-geometry"
 
 export {
   getAccessibleDocumentElements,
@@ -127,14 +128,7 @@ export const resolveInspectLayoutElement = (
 export const getRectFromDom = getViewportRect
 
 const toViewportRect = (element: Element, rect: Rect): Rect => {
-  const localElementRect = element.getBoundingClientRect()
-  const viewportElementRect = getViewportRect(element)
-  return {
-    left: viewportElementRect.left + rect.left - localElementRect.left,
-    top: viewportElementRect.top + rect.top - localElementRect.top,
-    width: rect.width,
-    height: rect.height,
-  }
+  return projectRect(rect, element.ownerDocument)
 }
 
 let rectCacheFrame = -1
@@ -164,7 +158,7 @@ export const getInspectMeasurement = (
   ownerWindow: Window = window,
   options?: InspectMeasurementOptions,
 ): InspectMeasurement => {
-  const elementRect = element.getBoundingClientRect()
+  const elementRect = getViewportRect(element)
   const textPoint = options?.mode === "text" ? options.point : undefined
   const textControl = compositeControlFor(element, element.ownerDocument.body) ?? element
   const textRange = textPoint
@@ -189,19 +183,19 @@ export const getInspectMeasurement = (
   }
   const layoutElement = resolveInspectLayoutElement(element, ownerWindow, textAnchor)
   const { padding, margin, gap } = readSpacingFromElement(layoutElement, ownerWindow)
-  const layoutRect = getViewportRect(layoutElement)
-  const paddingRect = {
+  const layoutRect = layoutElement.getBoundingClientRect()
+  const paddingRect = projectRect({
     left: layoutRect.left + padding.left,
     top: layoutRect.top + padding.top,
     width: Math.max(0, layoutRect.width - padding.left - padding.right),
     height: Math.max(0, layoutRect.height - padding.top - padding.bottom),
-  }
-  const marginRect = {
+  }, layoutElement.ownerDocument)
+  const marginRect = projectRect({
     left: layoutRect.left - margin.left,
     top: layoutRect.top - margin.top,
     width: layoutRect.width + margin.left + margin.right,
     height: layoutRect.height + margin.top + margin.bottom,
-  }
+  }, layoutElement.ownerDocument)
   return {
     id: createId(),
     rect: selectionRect,
@@ -237,19 +231,19 @@ export const refreshInspectMeasurement = (
     const rect = toViewportRect(element, localRect)
     const layoutElement = resolveInspectLayoutElement(element, ownerWindow, anchor)
     const { padding, margin, gap } = readInspectBoxSpacing(layoutElement, ownerWindow)
-    const layoutRect = getViewportRect(layoutElement)
-    const paddingRect = {
+    const layoutRect = layoutElement.getBoundingClientRect()
+    const paddingRect = projectRect({
       left: layoutRect.left + padding.left,
       top: layoutRect.top + padding.top,
       width: Math.max(0, layoutRect.width - padding.left - padding.right),
       height: Math.max(0, layoutRect.height - padding.top - padding.bottom),
-    }
-    const marginRect = {
+    }, layoutElement.ownerDocument)
+    const marginRect = projectRect({
       left: layoutRect.left - margin.left,
       top: layoutRect.top - margin.top,
       width: layoutRect.width + margin.left + margin.right,
       height: layoutRect.height + margin.top + margin.bottom,
-    }
+    }, layoutElement.ownerDocument)
     return {
       ...measurement,
       rect,

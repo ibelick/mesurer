@@ -330,10 +330,39 @@ test("inspect tool can select an element inside the iframe", async ({ page }) =>
   await expect.poll(async () => {
     const selection = await selected.first().boundingBox();
     if (!target || !selection) return Number.POSITIVE_INFINITY;
-    return Math.max(Math.abs(selection.width - target.width), Math.abs(selection.height - target.height));
+    return Math.max(Math.abs(selection.x - target.x), Math.abs(selection.y - target.y), Math.abs(selection.width - target.width), Math.abs(selection.height - target.height));
   }).toBeLessThan(3);
   await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("h1");
 });
+
+for (const angle of [0, 12]) {
+  test(`inspect projects scaled iframe hover, selection, and motion preview (${angle}deg)`, async ({ page }) => {
+    await page.goto("/bench");
+    await expect(page.getByRole("button", { name: "Inspect (I)", exact: true })).toBeVisible();
+    await page.evaluate((angle) => {
+      const frame = document.createElement("iframe");
+      frame.title = "Transformed motion frame";
+      frame.style.cssText = `position:fixed;left:300px;top:180px;width:400px;height:220px;box-sizing:border-box;border:4px solid black;transform:rotate(${angle}deg) scale(.7);transform-origin:top left;z-index:2`;
+      frame.srcdoc = '<style>body{margin:0;padding:20px}button{width:160px;height:48px;border:0;padding:0;font:16px sans-serif;animation:pulse 2s infinite alternate}@keyframes pulse{from{opacity:.4}to{opacity:1}}</style><button>Frame target</button>';
+      document.body.append(frame);
+    }, angle);
+    await expect(page.frameLocator('iframe[title="Transformed motion frame"]').getByRole("button", { name: "Frame target" })).toBeVisible();
+    const radians = angle * Math.PI / 180, a = .7 * Math.cos(radians), b = .7 * Math.sin(radians), c = -b, d = a;
+    const point = { x: 300 + a * 104 + c * 48, y: 180 + b * 104 + d * 48 };
+    const expected = { x: 300 + a * 24 + c * 72, y: 180 + b * 24 + d * 24, width: a * 160 - c * 48, height: b * 160 + d * 48 };
+    await page.mouse.move(point.x, point.y);
+    const hover = page.locator("[data-mesurer-hover='true']");
+    await expect(hover).toBeVisible();
+    const hoverBox = (await hover.boundingBox())!;
+    expect(Math.max(Math.abs(hoverBox.x - expected.x), Math.abs(hoverBox.y - expected.y), Math.abs(hoverBox.width - expected.width), Math.abs(hoverBox.height - expected.height))).toBeLessThan(3);
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected).toBeVisible();
+    const selectedBox = (await selected.boundingBox())!;
+    expect(Math.max(Math.abs(selectedBox.x - expected.x), Math.abs(selectedBox.y - expected.y), Math.abs(selectedBox.width - expected.width), Math.abs(selectedBox.height - expected.height))).toBeLessThan(3);
+    await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("opacity");
+  });
+}
 
 test("x-ray mode outlines accessible iframe content", async ({ page }) => {
   await page.goto("/bench");

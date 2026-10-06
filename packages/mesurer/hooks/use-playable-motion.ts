@@ -1,29 +1,40 @@
 import { useEffect, useState } from "react"
-import { motionDuration, readMotionDetails } from "../core/motion"
+import { getMotionAnimations, motionDuration, readMotionDetails } from "../core/motion"
 import { useObservedMotion } from "./use-observed-motion"
 
 export const usePlayableMotion = (
   element: Element | null | undefined,
   ownerWindow: Window | null | undefined,
 ) => {
-  const [ready, setReady] = useState(false)
-  const { properties: observedProperties, targets: observedTargets } = useObservedMotion(element, ownerWindow ?? null)
+  const view = element?.ownerDocument?.defaultView ?? ownerWindow ?? null
+  const [native, setNative] = useState<{ element: Element | null | undefined; view: Window | null; ready: boolean }>({ element: null, view: null, ready: false })
+  const { properties: observedProperties, targets: observedTargets } = useObservedMotion(element, view)
 
   useEffect(() => {
-    if (!element || !ownerWindow) {
-      setReady(false)
+    if (!element || !view) {
+      setNative({ element, view, ready: false })
       return
     }
     const refresh = () => {
-      if (!element.isConnected) { setReady(false); return }
-      const motions = readMotionDetails(element, ownerWindow)
-      const duration = Math.max(0, ...motions.map(motionDuration))
-      setReady(motions.length > 0 && duration > 0)
+      let ready = false
+      if (element.isConnected) {
+        try {
+          const motions = readMotionDetails(element, view)
+          const effects = getMotionAnimations(element)
+          ready = motions.some((motion) => motionDuration(motion) > 0) || effects.some((animation) => {
+            try {
+              const timing = animation.effect?.getTiming()
+              return Boolean(timing && (timing.duration === "auto" || Number(timing.duration) > 0))
+            } catch { return false }
+          })
+        } catch { /* Navigating frames can temporarily lose their style context. */ }
+      }
+      setNative((previous) => previous.element === element && previous.view === view && previous.ready === ready ? previous : { element, view, ready })
     }
     refresh()
-    const interval = ownerWindow.setInterval(refresh, 250)
-    return () => ownerWindow.clearInterval(interval)
-  }, [element, ownerWindow])
+    const interval = view.setInterval(refresh, 250)
+    return () => view.clearInterval(interval)
+  }, [element, view])
 
-  return { ready: ready || observedProperties.length > 0, observedProperties, observedTargets }
+  return { ready: (native.element === element && native.view === view && native.ready) || observedProperties.length > 0, observedProperties, observedTargets }
 }

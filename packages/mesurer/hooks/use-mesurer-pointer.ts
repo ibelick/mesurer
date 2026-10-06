@@ -5,6 +5,7 @@ import type {
   SetStateAction,
 } from "react"
 import { getSnapGuidePosition } from "../core/guides"
+import { projectPoint } from "../core/frame-geometry"
 import type {
   DistanceOverlay,
   Guide,
@@ -580,26 +581,11 @@ export const useMesurerPointer = ({
   useEffect(() => {
     if (!enabled || settingsOpen || toolMode !== "selection") return
 
-    const getDocumentOffset = (sourceDocument: Document) => {
-      let currentDocument = sourceDocument
-      let left = 0
-      let top = 0
-      while (currentDocument !== document) {
-        const frame = currentDocument.defaultView?.frameElement
-        if (!frame) break
-        const rect = frame.getBoundingClientRect()
-        left += rect.left + frame.clientLeft
-        top += rect.top + frame.clientTop
-        currentDocument = frame.ownerDocument
-      }
-      return { left, top }
-    }
-
     const toOverlayInput = (event: PointerEvent, sourceDocument: Document) => {
       const overlayNode = overlayRef.current
       const overlay = overlayNode?.querySelector<HTMLDivElement>("[data-mesurer-overlay]")
       if (!overlay) return null
-      const offset = getDocumentOffset(sourceDocument)
+      const point = projectPoint({ x: event.clientX, y: event.clientY }, sourceDocument, document)
       // This is an internal semantic input record, not a DOM event replay.
       return {
         target: pointerTargetsRef.current.get(event.pointerId) ?? event.target,
@@ -607,8 +593,8 @@ export const useMesurerPointer = ({
         nativeEvent: event,
         ownerDocument: sourceDocument,
         localPoint: { x: event.clientX, y: event.clientY },
-        clientX: event.clientX + offset.left,
-        clientY: event.clientY + offset.top,
+        clientX: point.x,
+        clientY: point.y,
         button: event.button,
         buttons: event.buttons,
         pointerId: event.pointerId,

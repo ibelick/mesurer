@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
 
-async function fixture(page: Page, kind: "mixed" | "hybrid" | "managed" | "observed" | "shadow" | "pseudo", unsupported = false) {
+async function fixture(page: Page, kind: "mixed" | "hybrid" | "transient" | "many" | "observed" | "shadow" | "pseudo", unsupported = false) {
   await page.goto("/bench")
   await expect(page.getByRole("button", { name: "Comments (M)" })).toBeVisible()
   if (unsupported) await page.evaluate(() => Object.defineProperty(Element.prototype, "getAnimations", { value: undefined, configurable: true }))
@@ -27,7 +27,15 @@ async function fixture(page: Page, kind: "mixed" | "hybrid" | "managed" | "obser
       document.head.append(styles)
     }
     const child = source.querySelector("motion-review-box")?.shadowRoot?.querySelector("button") ?? source.querySelector("span")!
-    if (kind === "observed") {
+    if (kind === "many") {
+      for (let index = 0; index < 80; index++) {
+        const staticNode = document.createElement("span")
+        staticNode.className = "review-static-node"
+        staticNode.textContent = "x"
+        source.append(staticNode)
+      }
+    }
+    if (kind === "observed" || kind === "many") {
       child.setAttribute("style", child.getAttribute("style") + ";transform:translateX(var(--review-x, 0px))")
       const draw = (time: number) => { source.style.setProperty("--review-x", `${Math.sin(time / 300) * 20}px`); requestAnimationFrame(draw) }
       requestAnimationFrame(draw)
@@ -38,9 +46,8 @@ async function fixture(page: Page, kind: "mixed" | "hybrid" | "managed" | "obser
       long.id = "long-motion"
       short.pause(); short.currentTime = 1000
       long.pause(); long.currentTime = 2000
-      if (kind === "managed") {
-        source.setAttribute("torph-root", "")
-        child.setAttribute("torph-item", "")
+      if (kind === "transient") {
+        short.play()
         window.setTimeout(() => { child.textContent = "Next morph cycle" }, 900)
       }
       if (kind === "hybrid") {
@@ -124,6 +131,43 @@ test("descendant CSS-variable motion works with an unavailable animation API", a
   await expect.poll(transform).not.toBe(first)
 })
 
+test("JS preview sampling does not repeatedly read styles of static siblings", async ({ page }) => {
+  const player = await fixture(page, "many")
+  await expect(player.getByRole("status")).toBeVisible()
+  await page.evaluate(() => {
+    const getStyle = window.getComputedStyle.bind(window)
+    let reads = 0
+    Object.defineProperty(window, "reviewStaticReads", { get: () => reads })
+    window.getComputedStyle = (element, pseudo) => {
+      if (element.classList.contains("review-static-node")) reads++
+      return getStyle(element, pseudo)
+    }
+  })
+  await page.evaluate(() => new Promise<void>((resolve) => window.setTimeout(resolve, 500)))
+  // The bounded detector still samples at 10Hz; the 60fps mirror must not add
+  // another style read for each of the 80 static siblings on every frame.
+  expect(await page.evaluate(() => (window as unknown as { reviewStaticReads: number }).reviewStaticReads)).toBeLessThan(800)
+})
+
+test("stylesheet transforms driven by ancestor variables are mixed even with a native transform effect", async ({ page }) => {
+  const player = await fixture(page, "mixed")
+  await page.evaluate(() => {
+    const source = document.querySelector("#motion-review-source")!
+    const child = source.querySelector("span")!
+    const styles = document.createElement("style")
+    styles.textContent = "#motion-review-child { transform: translateY(var(--review-inherited, 0px)); }"
+    document.head.append(styles)
+    ;(child.getAnimations().find((animation) => animation.id === "long-motion")!.effect as KeyframeEffect).composite = "add"
+    let value = 0
+    window.setInterval(() => source.parentElement!.style.setProperty("--review-inherited", `${++value % 20}px`), 50)
+  })
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toHaveCount(0)
+  const transform = () => player.locator('[data-motion-snapshot="1"]').evaluate((node) => (node as HTMLElement).style.transform)
+  const first = await transform()
+  await expect.poll(transform).not.toBe(first)
+})
+
 test("native animations plus JavaScript updates on the same property stay read-only and live", async ({ page }) => {
   const player = await fixture(page, "mixed")
   await page.evaluate(() => {
@@ -165,10 +209,10 @@ test("mixed motion shows its read-only message without flashing playback control
   expect(await page.evaluate(() => (window as unknown as { motionControlFlash: { flashed: boolean } }).motionControlFlash.flashed)).toBe(false)
 })
 
-test("Torph-managed text shows the message on the first card render before its next JS cycle", async ({ page }) => {
+test("transient JS-created effects show the message before their next DOM update without library markers", async ({ page }) => {
   await page.addInitScript(() => {
     const state = { firstMessage: "", seen: false, flashed: false }
-    Object.assign(window, { torphCardState: state })
+    Object.assign(window, { transientCardState: state })
     new MutationObserver(() => {
       const card = document.querySelector("[data-mesurer-motion-player]")
       if (!card) return
@@ -179,10 +223,10 @@ test("Torph-managed text shows the message on the first card render before its n
       if (card.querySelector('[aria-label="Playback speed"]')) state.flashed = true
     }).observe(document, { childList: true, subtree: true })
   })
-  const player = await fixture(page, "managed")
+  const player = await fixture(page, "transient")
   await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
   await expect(page.locator("#motion-review-child")).toHaveText("Next morph cycle")
-  expect(await page.evaluate(() => (window as unknown as { torphCardState: unknown }).torphCardState)).toEqual({ firstMessage: "JavaScript animation. Controls unavailable.", seen: true, flashed: false })
+  expect(await page.evaluate(() => (window as unknown as { transientCardState: unknown }).transientCardState)).toEqual({ firstMessage: "JavaScript animation. Controls unavailable.", seen: true, flashed: false })
 })
 
 test("a JS style update shows the unavailable message by the next rendered frame", async ({ page }) => {
@@ -312,6 +356,14 @@ test("animated pseudo-elements stay on their own style rule in the mirror", asyn
 test("custom speed keeps slider and input synchronized and keyframes copy remains complete", async ({ page }) => {
   const player = await fixture(page, "mixed")
   const speed = player.getByRole("combobox", { name: "Playback speed" })
+  await speed.selectOption("0.25")
+  const fit = await speed.evaluate((node) => {
+    const select = node as HTMLSelectElement, style = getComputedStyle(node)
+    const context = document.createElement("canvas").getContext("2d")!
+    context.font = `${style.fontSize} ${style.fontFamily}`
+    return { available: select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), needed: context.measureText(select.selectedOptions[0].text).width }
+  })
+  expect(fit.available).toBeGreaterThanOrEqual(fit.needed)
   await speed.selectOption("custom")
   const dialog = player.getByRole("dialog", { name: "Custom playback speed" })
   const input = dialog.getByRole("textbox", { name: "Speed value" })

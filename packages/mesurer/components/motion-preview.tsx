@@ -3,6 +3,7 @@ import { getMotionAnimations, motionCssProperty } from "../core/motion"
 import { fitMotionPreview } from "../core/motion-preview"
 import { createMotionSnapshot } from "../core/motion-snapshot"
 import { OBSERVED_MOTION_PROPERTIES, type ObservedMotionTarget } from "../core/observed-motion"
+import { createMotionDependencies, cssVariables } from "../core/motion-dependencies"
 
 type PreviewBounds = { left: number; top: number; right: number; bottom: number }
 
@@ -20,6 +21,8 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
     const snapshot = createMotionSnapshot(element, ownerWindow, shadow)
     if (!snapshot) return
     const { root: clone } = snapshot
+    const dependencies = createMotionDependencies(element.ownerDocument)
+    const oldStyle = host.ownerDocument.createElement("span").style
     const childrenOf = (source: Element) => {
       if (source.localName === "slot") {
         const assigned = (source as HTMLSlotElement).assignedNodes({ flatten: true })
@@ -28,13 +31,21 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
       return [...(source.shadowRoot?.childNodes ?? source.childNodes)]
     }
     // Cache node references until structure changes, not on every animation frame.
-    const readPairs = () => snapshot.pairs.map((pair) => ({
-      ...pair,
-      properties: new Set<string>(observedTargets.length ? OBSERVED_MOTION_PROPERTIES : []),
-      written: new Map<string, string>(),
-      sourceText: pair.pseudo ? [] : childrenOf(pair.source).filter((node) => node.nodeType === 3),
-      copyText: pair.pseudo ? [] : [...pair.copy.childNodes].filter((node) => node.nodeType === 3),
-    }))
+    const readPairs = () => snapshot.pairs.map((pair) => {
+      dependencies.forElement(pair.source, "")
+      const targets = observedTargets.filter((target) => target.element === pair.source)
+      // Ownership flags are not CSS properties. An opaque source requires a
+      // bounded computed-style fallback for its snapshot subtree.
+      const opaque = observedTargets.some((target) => target.properties.includes("style") && (target.element === element || target.element === pair.source || target.element.contains(pair.source)))
+      const properties = targets.flatMap((target) => target.properties).filter((property) => OBSERVED_MOTION_PROPERTIES.includes(property))
+      return {
+        ...pair,
+        properties: new Set<string>(opaque ? OBSERVED_MOTION_PROPERTIES : properties),
+        written: new Map<string, string>(),
+        sourceText: pair.pseudo ? [] : childrenOf(pair.source).filter((node) => node.nodeType === 3),
+        copyText: pair.pseudo ? [] : [...pair.copy.childNodes].filter((node) => node.nodeType === 3),
+      }
+    })
     let pairs = readPairs()
     let structureDirty = false
     const frame = host.ownerDocument.createElement("div")
@@ -57,10 +68,11 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
       scale = fitted.scale
       frame.style.transform = `translate(${fitted.left}px, ${fitted.top}px) scale(${scale})`
     }
-    const measure = () => {
+    const measure = (dynamicOnly = false) => {
       const origin = frame.getBoundingClientRect()
-      for (const { copy, pseudo } of pairs) {
+      for (const { copy, pseudo, properties } of pairs) {
         if (pseudo || !copy.isConnected) continue
+        if (dynamicOnly && copy !== clone && !properties.size) continue
         const rect = copy.getBoundingClientRect()
         if (!rect.width || !rect.height) continue
         const next = { left: (rect.left - origin.left) / scale, top: (rect.top - origin.top) / scale, right: (rect.right - origin.left) / scale, bottom: (rect.bottom - origin.top) / scale }
@@ -108,6 +120,7 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
           structureDirty = false
           snapshot.refresh()
           pairs = readPairs()
+          for (const pair of pairs) if (pair.source.shadowRoot) mutations?.observe(pair.source.shadowRoot, mutationOptions)
           scan()
           needsSize = true
         }
@@ -147,7 +160,7 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
             }
           }
         }
-        if (observedTargets.length && time - lastFit >= 100) { lastFit = time; measure(); fit() }
+        if (observedTargets.length && time - lastFit >= 100) { lastFit = time; measure(true); fit() }
       }
       if (running && !request) request = ownerWindow.requestAnimationFrame(paint)
     }
@@ -156,10 +169,14 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
     const scan = () => {
       if (disposed) return
       if (!element.isConnected) { running = false; return }
+      if (dependencies.refresh(ownerWindow.performance.now())) {
+        structureDirty = true
+        needsSize = true
+      }
       const animations = getMotionAnimations(element)
       let changed = animations.length !== previousAnimations.length || animations.some((animation, index) => animation !== previousAnimations[index])
       previousAnimations = animations
-      running = animations.some((animation) => animation.playState === "running")
+      running = observedTargets.length > 0 || animations.some((animation) => animation.playState === "running")
       effects = []
       for (const animation of animations) {
         try {
@@ -171,8 +188,17 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
           const pair = pairs.find((pair) => pair.source === effect.target && pair.pseudo === (effect.pseudoElement ?? null))
           if (!pair) continue
           frames.forEach((frame) => Object.keys(frame).filter((key) => !["offset", "computedOffset", "easing", "composite"].includes(key)).forEach((key) => pair.properties.add(motionCssProperty(key))))
+          if (!frames.length && observedTargets.some((target) => target.properties.includes("animation"))) {
+            for (const property of OBSERVED_MOTION_PROPERTIES) pair.properties.add(property)
+          }
           effects.push({ source: effect.target, pseudo: effect.pseudoElement ?? null, frames })
-        } catch { /* Unavailable effect data must not stop the mirror. */ }
+        } catch {
+          // Hidden keyframes still permit mirroring the effect's target styles.
+          const effect = animation.effect as KeyframeEffect | null
+          for (const pair of pairs) if (pair.source === effect?.target && pair.pseudo === (effect?.pseudoElement ?? null)) {
+            for (const property of OBSERVED_MOTION_PROPERTIES) pair.properties.add(property)
+          }
+        }
       }
       if (changed) needsSize = true
       wake()
@@ -189,16 +215,51 @@ export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }
     const Mutation = (ownerWindow as Window & typeof globalThis).MutationObserver
     const mutations = Mutation ? new Mutation((records) => {
       if (records.some((record) => record.type === "childList")) structureDirty = true
+      for (const record of records) {
+        if (record.type !== "attributes") continue
+        const source = record.target as HTMLElement
+        if (record.attributeName === "class") dependencies.invalidate()
+        if (record.attributeName === "style") {
+          oldStyle.cssText = record.oldValue ?? ""
+          const variables = [...new Set([...source.style, ...oldStyle])].filter((property) => property.startsWith("--") && source.style.getPropertyValue(property) !== oldStyle.getPropertyValue(property))
+          for (const pair of pairs) {
+            const author = variables.length ? dependencies.forElement(pair.source, "") : null
+            const computed = variables.length && dependencies.hasOpaqueStyles(pair.source) ? ownerWindow.getComputedStyle(pair.source, pair.pseudo) : null
+            for (const property of OBSERVED_MOTION_PROPERTIES) {
+              const inline = pair.pseudo ? "" : (pair.source as HTMLElement).style?.getPropertyValue(property) ?? ""
+              if ((pair.source === source && !pair.pseudo && inline !== oldStyle.getPropertyValue(property)) || variables.some((variable) => [...cssVariables(inline), ...(author?.get(property) ?? [])].includes(variable)) || (computed && computed.getPropertyValue(property) !== (pair.written.get(property) ?? pair.style.getPropertyValue(property)))) pair.properties.add(property)
+            }
+          }
+        } else if (record.attributeName === "class") {
+          // Discover class-driven changes once, rather than sampling every node
+          // and every property throughout the animation.
+          for (const pair of pairs) {
+            const computed = ownerWindow.getComputedStyle(pair.source, pair.pseudo)
+            for (const property of OBSERVED_MOTION_PROPERTIES) if (computed.getPropertyValue(property) !== (pair.written.get(property) ?? pair.style.getPropertyValue(property))) pair.properties.add(property)
+          }
+        } else if (record.attributeName === "transform" || record.attributeName === "opacity") {
+          for (const pair of pairs) if (pair.source === source && !pair.pseudo) pair.properties.add(record.attributeName)
+        }
+      }
       wake()
     }) : null
-    mutations?.observe(element, { subtree: true, attributes: true, childList: true, characterData: true })
-    for (const { source } of pairs) if (source.shadowRoot) mutations?.observe(source.shadowRoot, { subtree: true, attributes: true, childList: true, characterData: true })
+    const mutationOptions = { subtree: true, attributes: true, attributeOldValue: true, childList: true, characterData: true, attributeFilter: ["style", "class", "transform", "opacity"] }
+    mutations?.observe(element, mutationOptions)
+    for (const { source } of pairs) if (source.shadowRoot) mutations?.observe(source.shadowRoot, mutationOptions)
+    let ancestor = element.parentElement ?? (element.getRootNode() as ShadowRoot).host ?? null
+    while (ancestor) {
+      mutations?.observe(ancestor, { attributes: true, attributeOldValue: true, attributeFilter: ["style", "class"] })
+      ancestor = ancestor.parentElement ?? (ancestor.getRootNode() as ShadowRoot).host ?? null
+    }
+    const stylesObserver = Mutation ? new Mutation(() => { dependencies.invalidate(); wake() }) : null
+    if (element.ownerDocument.head) stylesObserver?.observe(element.ownerDocument.head, { subtree: true, childList: true, characterData: true })
     const interval = ownerWindow.setInterval(scan, 250)
     return () => {
       disposed = true
       seekRef.current = null
       resize?.disconnect()
       mutations?.disconnect()
+      stylesObserver?.disconnect()
       ownerWindow.clearInterval(interval)
       ownerWindow.cancelAnimationFrame(request)
       snapshot.dispose()

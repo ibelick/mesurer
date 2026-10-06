@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { controlMotion, formatMotionTime, getMotionAnimations, motionDuration, motionPlaybackProgress, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
+import { controlMotion, formatMotionTime, getMotionAnimations, hasTransientScriptMotion, motionDuration, motionPlaybackProgress, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
 
 const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
   kind: "animation",
@@ -16,6 +16,17 @@ const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
 })
 
 describe("motion details", () => {
+  it("recognizes transient script effects without treating controlled or CSS effects as managed", () => {
+    const animation = { playState: "running", effect: { getTiming: () => ({ duration: 1000, iterations: 1 }) }, pause: vi.fn() } as unknown as Animation
+    const element = { getAnimations: () => [animation] } as unknown as Element
+    expect(hasTransientScriptMotion(element)).toBe(true)
+    controlMotion(element, "pause")
+    expect(hasTransientScriptMotion(element)).toBe(false)
+    const css = { ...animation, animationName: "fade" } as unknown as Animation
+    expect(hasTransientScriptMotion(element, [css])).toBe(false)
+    const loop = { playState: "running", effect: { getTiming: () => ({ duration: 1000, iterations: Infinity }) } } as unknown as Animation
+    expect(hasTransientScriptMotion(element, [loop])).toBe(false)
+  })
   const readDetails = (animations: Animation[], overrides: Record<string, string> = {}) => readMotionDetails(
     { getAnimations: () => animations } as unknown as Element,
     { getComputedStyle: () => ({

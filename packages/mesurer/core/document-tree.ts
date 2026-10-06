@@ -1,4 +1,5 @@
 import type { Rect } from "./types"
+import { projectRect } from "./frame-geometry"
 
 export const getFrameToken = () =>
   typeof performance === "undefined" ? 0 : Math.floor(performance.now() / 16)
@@ -22,18 +23,7 @@ export const isConnectedElement = (element: Element | null | undefined): element
 
 export const getViewportRect = (element: Element): Rect => {
   const rect = element.getBoundingClientRect()
-  let left = rect.left
-  let top = rect.top
-  let frame = element.ownerDocument.defaultView?.frameElement
-
-  while (frame) {
-    const frameRect = frame.getBoundingClientRect()
-    left += frameRect.left + frame.clientLeft
-    top += frameRect.top + frame.clientTop
-    frame = frame.ownerDocument.defaultView?.frameElement
-  }
-
-  return { left, top, width: rect.width, height: rect.height }
+  return projectRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height }, element.ownerDocument)
 }
 
 const elementCache = new WeakMap<Document, { version: number; elements: Element[] }>()
