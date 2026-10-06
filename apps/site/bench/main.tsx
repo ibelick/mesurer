@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { createPortal } from "react-dom"
 import { Mesurer } from "mesurer"
 import "./styles.css"
+import { MotionLibraryFixtures } from "./motion-fixtures"
 
 const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe", "#cffafe"]
 
@@ -90,6 +91,43 @@ const iframeSrcDoc = `<!doctype html>
     </script>
   </body>
 </html>`
+
+function JavaScriptMotionFixture({ mode }: { mode: "waapi" | "raf" }) {
+  const ref = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const animation = mode === "waapi" ? element.animate([
+      { transform: "translateX(-28px) rotate(-8deg)", opacity: 0.55 },
+      { transform: "translateX(28px) rotate(8deg)", opacity: 1 },
+    ], { duration: 2800, easing: "ease-in-out", iterations: Infinity, direction: "alternate" }) : null
+    if (animation) animation.id = "bench-waapi"
+    let frame = 0, visible = false
+    const draw = (time: number) => {
+      const phase = Math.sin(time / 650)
+      element.style.transform = `translateY(${phase * 22}px) rotate(${phase * 7}deg)`
+      element.style.opacity = String(0.75 + phase * 0.25)
+      frame = window.requestAnimationFrame(draw)
+    }
+    const update = () => {
+      window.cancelAnimationFrame(frame)
+      if (!visible || reduced.matches) animation?.pause()
+      else if (animation) animation.play()
+      else frame = window.requestAnimationFrame(draw)
+    }
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update() })
+    observer.observe(element)
+    reduced.addEventListener("change", update)
+    return () => {
+      observer.disconnect()
+      reduced.removeEventListener("change", update)
+      window.cancelAnimationFrame(frame)
+      animation?.cancel()
+    }
+  }, [mode])
+  return <button ref={ref} type="button" className="bench-motion-js" data-testid={`motion-${mode}`}>{mode === "waapi" ? "Web Animation" : "JS motion"}</button>
+}
 
 function SelectionOverlayFixtures() {
   const deeplyNestedImage = Array.from({ length: 12 }, (_, index) => index).reduce<ReactNode>(
@@ -459,6 +497,15 @@ function TestCanvas({ count }: { count: number }) {
             <span className="bench-motion-fixture-label">hover or focus / transitions</span>
             <button type="button" className="bench-motion-photo bench-motion-lift" data-testid="motion-lift" aria-label="Lift the image card" style={{ backgroundImage: `url("${orbitArchiveCards[1].image}")` }} />
           </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">JavaScript / Web Animations API</span>
+            <JavaScriptMotionFixture mode="waapi" />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">JavaScript / requestAnimationFrame</span>
+            <JavaScriptMotionFixture mode="raf" />
+          </div>
+          <MotionLibraryFixtures />
         </div>
       </section>
       <section className="bench-card" aria-labelledby="layers-title">

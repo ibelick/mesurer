@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { motionDuration, readMotionDetails } from "../core/motion"
+import { useObservedMotion } from "./use-observed-motion"
 
 export const usePlayableMotion = (
   element: Element | null | undefined,
   ownerWindow: Window | null | undefined,
 ) => {
   const [ready, setReady] = useState(false)
+  const observedProperties = useObservedMotion(element, ownerWindow ?? null)
 
   useEffect(() => {
     if (!element || !ownerWindow) {
@@ -18,9 +20,9 @@ export const usePlayableMotion = (
       setReady(motions.length > 0 && duration > 0)
     }
     refresh()
-    const frame = ownerWindow.requestAnimationFrame(refresh)
-    return () => ownerWindow.cancelAnimationFrame(frame)
+    const interval = ownerWindow.setInterval(refresh, 250)
+    return () => ownerWindow.clearInterval(interval)
   }, [element, ownerWindow])
 
-  return ready
+  return { ready: ready || observedProperties.length > 0, observedProperties }
 }

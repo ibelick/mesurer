@@ -140,6 +140,7 @@ type ToolbarProps = {
     element: Element | null;
     ownerWindow: Window;
     playable: boolean;
+    observedProperties: string[];
     inspectDetails: (motionDetails: ReactNode) => ReactNode;
   };
   comments: ToolbarComments;
@@ -1729,7 +1730,7 @@ function ToolbarComponent(
               >
                  {recordingPanelOpen ? screenRecording.panel : (
                    <div className="msr:w-[22rem] msr:max-w-[calc(100vw-24px)]" data-mesurer-motion-surface>
-                     <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} inspectDetails={motion.inspectDetails} />
+                      <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} observedProperties={motion.observedProperties} inspectDetails={motion.inspectDetails} />
                    </div>
                  )}
               </div>,

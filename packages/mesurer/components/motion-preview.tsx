@@ -3,7 +3,7 @@ import { fitMotionPreview } from "../core/motion-preview"
 
 // A read-only visual mirror: controls always operate on the original element.
 // The shadow root isolates page selectors/IDs from the inspector UI.
-export function MotionPreview({ element, ownerWindow }: { element: Element; ownerWindow: Window }) {
+export function MotionPreview({ element, ownerWindow, observedProperties = [] }: { element: Element; ownerWindow: Window; observedProperties?: string[] }) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
@@ -13,7 +13,7 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
     const clone = element.cloneNode(true) as HTMLElement
     const sources = [element, ...element.querySelectorAll("*")]
     const copies = [clone, ...clone.querySelectorAll("*")] as HTMLElement[]
-    const pairs = sources.map((source, index) => ({ source, copy: copies[index], properties: new Set<string>() }))
+    const pairs = sources.map((source, index) => ({ source, copy: copies[index], properties: new Set<string>(source === element ? observedProperties : []) }))
     const frame = host.ownerDocument.createElement("div")
     frame.style.cssText = "position:absolute;transform-origin:top left;pointer-events:none;"
     for (const { source, copy } of pairs) {
@@ -43,6 +43,7 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
     frame.append(clone)
     shadow.replaceChildren(frame)
 
+    let observedBounds: { left: number; top: number; right: number; bottom: number } | null = null
     const size = () => {
       const computed = ownerWindow.getComputedStyle(element)
       // Preserve fractional CSS dimensions: offsetWidth rounds and can wrap text.
@@ -93,6 +94,13 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
         for (const sample of samples) sample.cancel()
       }
       if (!Number.isFinite(left)) return
+      if (observedProperties.length) {
+        left = Math.min(left, observedBounds?.left ?? left)
+        top = Math.min(top, observedBounds?.top ?? top)
+        right = Math.max(right, observedBounds?.right ?? right)
+        bottom = Math.max(bottom, observedBounds?.bottom ?? bottom)
+        observedBounds = { left, top, right, bottom }
+      }
       const fit = fitMotionPreview({ left, top, width: right - left, height: bottom - top }, host.clientWidth, host.clientHeight)
       frame.style.transform = `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})`
     }
@@ -100,7 +108,7 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
     const observer = new ResizeObserver(size)
     observer.observe(host)
     observer.observe(element)
-    let request = 0
+    let request = 0, lastFit = 0
     const update = () => {
       for (const { source, copy, properties } of pairs) {
         if (!copy?.isConnected || !copy.style) continue
@@ -119,6 +127,10 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
           copy.style.setProperty(cssProperty, computed.getPropertyValue(cssProperty))
         }
       }
+      if (observedProperties.length && ownerWindow.performance.now() - lastFit >= 100) {
+        lastFit = ownerWindow.performance.now()
+        size()
+      }
       request = ownerWindow.requestAnimationFrame(update)
     }
     update()
@@ -127,7 +139,7 @@ export function MotionPreview({ element, ownerWindow }: { element: Element; owne
       ownerWindow.cancelAnimationFrame(request)
       shadow.replaceChildren()
     }
-  }, [element, ownerWindow])
+  }, [element, ownerWindow, observedProperties])
 
   return <div ref={hostRef} aria-hidden="true" className="msr:pointer-events-none msr:relative msr:h-36 msr:w-full msr:overflow-hidden" />
 }

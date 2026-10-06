@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
+import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
 
 const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
   kind: "animation",
@@ -16,6 +16,72 @@ const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
 })
 
 describe("motion details", () => {
+  const readDetails = (animations: Animation[], overrides: Record<string, string> = {}) => readMotionDetails(
+    { getAnimations: () => animations } as unknown as Element,
+    { getComputedStyle: () => ({
+      animationName: "none", animationDuration: "0s", animationDelay: "0s", animationTimingFunction: "ease",
+      animationIterationCount: "1", animationDirection: "normal", animationFillMode: "none",
+      transitionProperty: "none", transitionDuration: "0s", transitionDelay: "0s", transitionTimingFunction: "ease", ...overrides,
+    }) } as unknown as Window,
+  )
+  const webAnimation = (overrides: Record<string, unknown> = {}) => ({
+    id: "", playState: "running", effect: {
+      getTiming: () => ({ duration: 1800, delay: -200, iterations: Infinity, direction: "alternate", fill: "both", easing: "ease-out" }),
+      getKeyframes: () => [{ computedOffset: 0, transform: "scale(1)" }, { computedOffset: 1, transform: "scale(1.2)" }],
+    }, ...overrides,
+  }) as unknown as Animation
+
+  it("detects unnamed Web Animations without CSS declarations", () => {
+    const animation = webAnimation()
+    expect(readDetails([animation])).toEqual([{
+      kind: "web-animation", name: "js-transform-1", duration: 1800, delay: -200, easing: "ease-out",
+      properties: ["transform"], iterationCount: "infinite", direction: "alternate", fillMode: "both", animation,
+    }])
+  })
+
+  it("keeps named CSS animations distinct from JavaScript animations", () => {
+    const js = webAnimation({ id: "motion-react-animation" })
+    const css = webAnimation({ animationName: "bounce" })
+    const details = readDetails([js, css], { animationName: "bounce", animationDuration: "2s" })
+    expect(details.map(({ kind }) => kind)).toEqual(["animation", "web-animation"])
+    expect(details[0].animation).toBe(css)
+    expect(details[1].animation).toBe(js)
+    expect(details[1].name).toBe("motion-react-animation")
+  })
+
+  it("matches repeated CSS names by occurrence rather than unrelated animation order", () => {
+    const first = webAnimation({ animationName: "bounce" })
+    const second = webAnimation({ animationName: "bounce" })
+    const details = readDetails([webAnimation(), first, second], { animationName: "bounce, bounce" })
+    expect(details[0].animation).toBe(first)
+    expect(details[1].animation).toBe(second)
+    expect(details).toHaveLength(3)
+  })
+
+  it("matches transitions by property and does not duplicate them as Web Animations", () => {
+    const opacity = webAnimation({ transitionProperty: "opacity" })
+    const transform = webAnimation({ transitionProperty: "transform" })
+    const details = readDetails([opacity, transform], { transitionProperty: "transform, opacity", transitionDuration: "1s" })
+    expect(details.map(({ animation }) => animation)).toEqual([transform, opacity])
+    expect(details.every(({ kind }) => kind === "transition")).toBe(true)
+  })
+
+  it("preserves easing functions containing commas across multiple transitions", () => {
+    const details = readDetails([], {
+      transitionProperty: "transform, opacity, filter", transitionDuration: "1s",
+      transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1), steps(4, jump-end), linear(0, 0.5 40%, 1)",
+    })
+    expect(details.map(({ easing }) => easing)).toEqual([
+      "cubic-bezier(0.22, 1, 0.36, 1)", "steps(4, jump-end)", "linear(0, 0.5 40%, 1)",
+    ])
+  })
+
+  it("ignores effects without timing and does not invent an auto duration", () => {
+    const animation = webAnimation({ effect: { getTiming: () => ({ duration: "auto", fill: "auto" }) } })
+    expect(readDetails([animation])[0]).toMatchObject({ duration: 0, fillMode: "none", properties: [] })
+    expect(readDetails([{ effect: null } as Animation])).toEqual([])
+  })
+
   it("formats computed offsets and CSS property names without changing custom properties", () => {
     const animation = { effect: { getKeyframes: () => [
       { offset: null, computedOffset: 0, easing: "linear", composite: "auto", transform: "translateX(0px)", "--MyAngle": "0deg" },

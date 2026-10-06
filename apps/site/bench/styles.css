@@ -194,6 +194,11 @@ canvas, .bench-svg { display: block; max-width: 100%; height: auto; border: 1px 
   75% { background-position: 86% 74%, 18% 25%, 45% 68%, 76% 28%; background-size: 14% 34%, 22% 54%, 20% 48%, 24% 58%; }
 }
 .bench-motion-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.bench-motion-js { border: 0; border-radius: 12px; padding: 14px 20px; color: white; background: #0f766e; font: inherit; }
+.bench-motion-fixture-with-hint { padding-bottom: 50px; }
+.bench-motion-fixture-hint { position: absolute; bottom: 12px; left: 14px; right: 14px; margin: 0; color: #64748b; font-size: 11px; line-height: 1.4; }
+.bench-motion-auto-transition { transition: transform 1200ms cubic-bezier(.22, 1, .36, 1), opacity 1200ms ease; }
+.bench-motion-mixed { animation: bench-photo-fade 1.8s ease-in-out infinite alternate; }
 .bench-motion-fixture { position: relative; display: grid; place-items: center; min-height: 250px; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; padding: 44px 20px 24px; background: #fff; }
 .bench-motion-fixture-label { position: absolute; top: 14px; left: 14px; color: #64748b; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .bench-motion-photo { width: 126px; height: 156px; border: 0; border-radius: 8px; background-color: #e2e8f0; background-position: center; background-size: cover; box-shadow: 0 12px 20px -12px rgb(15 23 42 / 28%); }

@@ -13,16 +13,17 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "mesurer": "workspace:*",
+    "motion": "^14.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "playwright": "^1.61.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "playwright": "^1.61.1",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.4.5",
     "vite": "^5.3.3"

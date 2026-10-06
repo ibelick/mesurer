@@ -1,4 +1,4 @@
-export type MotionKind = "animation" | "transition"
+export type MotionKind = "animation" | "transition" | "web-animation"
 
 export type MotionDetails = {
   kind: MotionKind
@@ -13,7 +13,8 @@ export type MotionDetails = {
   animation: Animation | null
 }
 
-const splitList = (value: string) => value.split(",").map((part) => part.trim())
+// Commas inside cubic-bezier(), steps(), or linear() are not list separators.
+const splitList = (value: string) => value.split(/,(?![^()]*\))/).map((part) => part.trim())
 
 const listValue = (values: string[], index: number) => values[index % values.length] ?? ""
 
@@ -74,7 +75,7 @@ const animationFor = (animations: Animation[], name: string, index: number) => {
     const candidate = animation as Animation & { animationName?: string }
     return candidate.animationName === name
   })
-  return named[index] ?? animations[index] ?? null
+  return named[index] ?? null
 }
 
 export const readMotionDetails = (element: Element, ownerWindow: Window): MotionDetails[] => {
@@ -94,11 +95,11 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
       duration: parseTime(listValue(durations, index)),
       delay: parseTime(listValue(delays, index)),
       easing: listValue(easings, index),
-      properties: keyframeProperties(animationFor(animations, name, index)),
+      properties: keyframeProperties(animationFor(animations, name, names.slice(0, index).filter((candidate) => candidate === name).length)),
       iterationCount: listValue(iterations, index),
       direction: listValue(directions, index),
       fillMode: listValue(fills, index),
-      animation: animationFor(animations, name, index),
+      animation: animationFor(animations, name, names.slice(0, index).filter((candidate) => candidate === name).length),
     }))
     .filter((motion) => motion.name !== "none")
 
@@ -121,11 +122,29 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
       iterationCount: "1",
       direction: "normal",
       fillMode: "both",
-      animation: transitionAnimations[index] ?? null,
+      animation: transitionAnimations.find((animation) => (animation as CSSTransition).transitionProperty === property) ?? (property === "all" ? transitionAnimations[0] : null) ?? null,
     }))
     .filter((motion) => motion.name !== "none" && motion.duration > 0)
 
-  return [...animationDetails, ...transitionDetails]
+  const webAnimations = animations.filter((animation) => !("animationName" in animation) && !("transitionProperty" in animation))
+    .flatMap((animation, index) => {
+      const timing = animation.effect?.getTiming()
+      if (!timing) return []
+      const properties = keyframeProperties(animation)
+      return [{
+        kind: "web-animation" as const,
+        name: animation.id || `js-${motionCssProperty(properties[0] || "animation")}-${index + 1}`,
+        duration: typeof timing.duration === "number" && Number.isFinite(timing.duration) ? timing.duration : 0,
+        delay: timing.delay ?? 0,
+        easing: timing.easing || "linear",
+        properties,
+        iterationCount: timing.iterations === Infinity ? "infinite" : String(timing.iterations ?? 1),
+        direction: timing.direction || "normal",
+        fillMode: timing.fill === "auto" ? "none" : timing.fill || "none",
+        animation,
+      }]
+    })
+  return [...animationDetails, ...transitionDetails, ...webAnimations]
 }
 
 export const motionDuration = (motion: MotionDetails) => {

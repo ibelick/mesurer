@@ -21,16 +21,17 @@ const timestamp = (milliseconds: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-function MotionValues({ motions, ownerWindow, element }: {
+function MotionValues({ motions, ownerWindow, element, observedProperties }: {
   motions: MotionDetails[]
   ownerWindow: Window
   element: Element
+  observedProperties: string[]
 }) {
   const tooltip = useTooltip()
   const [keyframesExpanded, setKeyframesExpanded] = useState(false)
   const keyframesId = useId()
-  const keyframes = useMemo(() => motions.filter((motion) => motion.kind === "animation")
-    .map((motion) => ({ name: motion.name, frames: readMotionKeyframes(motion.animation, motion.easing) }))
+  const keyframes = useMemo(() => motions.filter((motion) => motion.kind !== "transition")
+    .map((motion) => ({ name: motion.name, cssName: motion.kind === "web-animation" ? CSS.escape(motion.name) : motion.name, frames: readMotionKeyframes(motion.animation, motion.easing) }))
     .filter(({ frames }) => frames.length > 0), [motions])
   const frameGroups = useMemo(() => keyframes.map(({ name, frames }) => {
     const groups = new Map<string, { offsets: string[]; displayValue: string }>()
@@ -41,7 +42,7 @@ function MotionValues({ motions, ownerWindow, element }: {
     }
     return { name, frames: [...groups].map(([value, group]) => ({ value, ...group })) }
   }), [keyframes])
-  const keyframeBlocks = keyframes.map(({ name, frames }) => `@keyframes ${name} {\n${frames.map(({ offset, value }) => `  ${offset} { ${value} }`).join("\n")}\n}`)
+  const keyframeBlocks = keyframes.map(({ cssName, frames }) => `@keyframes ${cssName} {\n${frames.map(({ offset, value }) => `  ${offset} { ${value} }`).join("\n")}\n}`)
   const keyframesCss = keyframeBlocks.join("\n\n")
   const style = ownerWindow.getComputedStyle(element)
   const copyValue = (value: string) => {
@@ -49,12 +50,13 @@ function MotionValues({ motions, ownerWindow, element }: {
   }
   const animations = motions.filter((motion) => motion.kind === "animation")
   const transitions = motions.filter((motion) => motion.kind === "transition")
+  const webAnimations = motions.filter((motion) => motion.kind === "web-animation")
   const time = (milliseconds: number) => `${milliseconds / 1000}s`
-  const shorthands = [animations, transitions].map((group, groupIndex) => [
-    groupIndex === 0 ? "animation" : "transition",
+  const shorthands = [animations, transitions, webAnimations].map((group, groupIndex) => [
+    ["animation", "transition", "web animation"][groupIndex],
     group.map((motion) => [
       motion.name, time(motion.duration), motion.easing, motion.delay ? time(motion.delay) : "",
-      ...(motion.kind === "animation" ? [
+      ...(motion.kind !== "transition" ? [
         motion.iterationCount !== "1" ? motion.iterationCount : "",
         motion.direction !== "normal" ? motion.direction : "",
         motion.fillMode !== "none" ? motion.fillMode : "",
@@ -62,7 +64,7 @@ function MotionValues({ motions, ownerWindow, element }: {
       ] : []),
     ].filter(Boolean).join(" ")).join(",\n"),
   ])
-  const properties = [...new Set(animations.flatMap((motion) => motion.properties))]
+  const properties = [...new Set(motions.flatMap((motion) => motion.properties))]
     .map(motionCssProperty)
     .join(", ")
   const extras = [
@@ -75,8 +77,8 @@ function MotionValues({ motions, ownerWindow, element }: {
   return (
     <div className="msr:w-full msr:pt-2 msr:text-[10px] msr:text-ink-900">
       <div className="msr:flex msr:flex-col msr:gap-0.5 msr:px-2">
-        {[...shorthands, ["animated properties", properties], ...extras].filter(([, value]) => value).map(([label, value]) => (
-          <InspectDetailRow key={label} label={label} value={value} id={`motion-${label}`} onCopy={() => copyValue(label === "animated properties" ? value : `${label}: ${value};`)} tooltip={tooltip} valueClassName="msr:min-w-0 msr:whitespace-pre-wrap msr:break-words msr:text-right msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
+        {[...shorthands, ["animated properties", properties], ...(observedProperties.length ? [["observed motion", observedProperties.join(", ")], ["playback", "Observed motion is read-only"]] : []), ...extras].filter(([, value]) => value).map(([label, value]) => (
+          <InspectDetailRow key={label} label={label} value={value} id={`motion-${label}`} onCopy={() => copyValue(label === "animation" || label === "transition" || extras.some(([property]) => property === label) ? `${label}: ${value};` : value)} tooltip={tooltip} valueClassName="msr:min-w-0 msr:whitespace-pre-wrap msr:break-words msr:text-right msr:tabular-nums msr:text-ink-900 msr:hover:underline" />
         ))}
         {keyframes.length > 0 ? <>
           {!keyframesExpanded ? keyframes.map(({ name, frames }, index) => (
@@ -110,7 +112,7 @@ function MotionValues({ motions, ownerWindow, element }: {
   )
 }
 
-export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
+export function MotionPlayer({ element, ownerWindow, observedProperties, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; observedProperties: string[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const speedAnchorRef = useRef<HTMLDivElement>(null)
   const customSpeedRef = useRef<HTMLDivElement>(null)
@@ -125,6 +127,7 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
   const [ready, setReady] = useState(false)
   const [motions, setMotions] = useState<MotionDetails[]>([])
   const [inspectOpen, setInspectOpen] = useState(false)
+  const controllable = duration > 0 && motions.some((motion) => motion.animation)
 
   useEffect(() => {
     setProgress(0)
@@ -141,13 +144,13 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
     const refresh = () => {
       const motions = readMotionDetails(element, ownerWindow)
       const nextDuration = Math.max(0, ...motions.map(motionDuration))
-      setReady(motions.length > 0 && nextDuration > 0)
+      setReady(motions.length > 0)
       setDuration(nextDuration)
       setMotions(motions)
     }
     refresh()
-    const frame = ownerWindow.requestAnimationFrame(refresh)
-    return () => ownerWindow.cancelAnimationFrame(frame)
+    const interval = ownerWindow.setInterval(refresh, 250)
+    return () => ownerWindow.clearInterval(interval)
   }, [element, ownerWindow])
 
   useEffect(() => {
@@ -186,8 +189,9 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
     return () => ownerWindow.cancelAnimationFrame(frame)
   }, [duration, element, ownerWindow, ready])
 
-  if (!element || !ownerWindow || !ready) return null
+  if (!element || !ownerWindow || (!ready && observedProperties.length === 0)) return null
   const scrubAt = (clientX: number) => {
+    if (!controllable) return
     const rect = trackRef.current?.getBoundingClientRect()
     if (!rect || rect.width <= 0) return
     const next = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
@@ -196,6 +200,7 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
   }
 
   const togglePlay = () => {
+    if (!controllable) return
     const action = playing ? "pause" : "play"
     controlMotion(element, action, speed)
     setPlaying(action === "play")
@@ -225,23 +230,25 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
     >
       <div className="msr:relative msr:p-2">
         <div className={playerPreviewClassName} onClick={togglePlay}>
-          <MotionPreview element={element} ownerWindow={ownerWindow} />
+          <MotionPreview element={element} ownerWindow={ownerWindow} observedProperties={observedProperties} />
         </div>
         <div className={playerControlsClassName}>
-        <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} onClick={togglePlay}>
+         <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} disabled={!controllable} onClick={togglePlay}>
           {playing ? <PauseIcon /> : <PlayIcon />}
         </PlayerIconButton>
-      <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{timestamp(progress * duration)}</span>
+      <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(progress * duration) : "—"}</span>
       <div
         ref={trackRef}
         role="slider"
-        tabIndex={0}
+         tabIndex={controllable ? 0 : -1}
+         aria-disabled={!controllable}
         aria-label="Scrub motion timeline"
         aria-valuemin={0}
         aria-valuemax={duration}
         aria-valuenow={progress * duration}
         className="mesurer-recording-timeline msr:relative msr:h-5 msr:min-w-0 msr:flex-1 msr:select-none"
-        onPointerDown={(event) => {
+         onPointerDown={(event) => {
+           if (!controllable) return
           event.currentTarget.setPointerCapture(event.pointerId)
           scrubAt(event.clientX)
         }}
@@ -258,10 +265,11 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
         <div className="mesurer-recording-track-rail msr:absolute msr:inset-x-0 msr:top-1/2 msr:h-[3px] msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-200" />
         <div className="mesurer-recording-playhead msr:pointer-events-none msr:absolute msr:left-0 msr:top-1/2 msr:z-[2] msr:h-2 msr:w-0.5 msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-900" style={{ left: `${progress * 100}%` }} />
       </div>
-      <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{timestamp(duration)}</span>
+      <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(duration) : "—"}</span>
       <div ref={speedAnchorRef} className="msr:relative msr:flex msr:h-5 msr:shrink-0 msr:items-center" {...bindTooltip("motion-speed")}>
         <select
-          aria-label="Playback speed"
+         aria-label="Playback speed"
+          disabled={!controllable}
           aria-controls={customSpeedOpen ? customSpeedId : undefined}
           value={speed}
           onChange={(event) => {
@@ -313,8 +321,8 @@ export function MotionPlayer({ element, ownerWindow, inspectDetails }: { element
         {inspectOpen ? (
           <div className="mesurer-thin-scrollbar msr:max-h-[50vh] msr:overflow-y-auto">
             {inspectDetails
-              ? inspectDetails(<MotionValues motions={motions} ownerWindow={ownerWindow} element={element} />)
-              : <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} />}
+              ? inspectDetails(<MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />)
+              : <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />}
           </div>
         ) : null}
       </div>
