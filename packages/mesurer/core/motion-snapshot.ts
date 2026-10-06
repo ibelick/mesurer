@@ -9,7 +9,13 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
   const sourcePairs = new WeakMap<Node, MotionSnapshotPair[]>()
   const pseudoRules: { pair: MotionSnapshotPair; css: string }[] = []
   const copyStyle = (source: CSSStyleDeclaration, target: CSSStyleDeclaration) => {
-    for (const property of source) target.setProperty(property, source.getPropertyValue(property))
+    for (const property of source) {
+      const value = source.getPropertyValue(property)
+      // Keep the mirror inert and avoid triggering duplicate network requests
+      // from computed background, mask, cursor, or content URLs.
+      if (/\burl\(/i.test(value)) continue
+      target.setProperty(property, value)
+    }
     target.setProperty("animation", "none", "important")
     target.setProperty("transition", "none", "important")
     target.setProperty("pointer-events", "none", "important")

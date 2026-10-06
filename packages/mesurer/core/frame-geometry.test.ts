@@ -12,7 +12,7 @@ function fixture(transform: string, rect = { left: 100, top: 50 }) {
   const frame = {
     ownerDocument: document, parentElement: null, getRootNode: () => document,
     clientLeft: 2, clientTop: 3, offsetWidth: 300, offsetHeight: 200,
-    style: { transform, scale: "none", rotate: "none", zoom: "1", width: "300px", height: "200px", boxSizing: "border-box", paddingLeft: "0px", paddingTop: "0px" },
+    style: { transform, scale: "none", rotate: "none", zoom: "1", width: "300px", height: "200px", boxSizing: "border-box", paddingLeft: "0px", paddingRight: "0px", paddingTop: "0px", paddingBottom: "0px", borderLeftWidth: "0px", borderRightWidth: "0px", borderTopWidth: "0px", borderBottomWidth: "0px" },
     getBoundingClientRect: () => rect,
   } as unknown as Element
   const child = { defaultView: { frameElement: frame } } as unknown as Document
@@ -88,6 +88,18 @@ describe("frame coordinate projection", () => {
     Object.assign((frame as HTMLElement).style, { width: "400.5px", height: "100.25px" })
     Object.assign(frame, { offsetWidth: 400, offsetHeight: 100 })
     expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 137.25, top: 62, width: 40, height: 100 })
+  })
+
+  it("includes borders when projecting content-box frames", () => {
+    const { frame, child } = fixture("matrix(0,1,-1,0,0,0)")
+    Object.assign((frame as HTMLElement).style, {
+      boxSizing: "content-box",
+      borderLeftWidth: "4px",
+      borderRightWidth: "4px",
+      borderTopWidth: "5px",
+      borderBottomWidth: "5px",
+    })
+    expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 247, top: 62, width: 40, height: 100 })
   })
 
   it("does not parse unresolved percentage dimensions as pixels", () => {

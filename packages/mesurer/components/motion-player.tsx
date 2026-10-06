@@ -159,12 +159,19 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
     }
     setSpeed(getMotionAnimations(element)[0]?.playbackRate ?? 1)
     const refresh = () => {
-      const motions = readMotionDetails(element, ownerWindow)
-      const nextDuration = Math.max(0, ...motions.map(motionDuration))
-      setReady(motions.length > 0 || getMotionAnimations(element).length > 0)
-      setDuration(nextDuration)
-      setMotions(motions)
-      animationsRef.current = [...new Set(motions.flatMap((motion) => motion.animation ? [motion.animation] : []))]
+      try {
+        const motions = readMotionDetails(element, ownerWindow)
+        const nextDuration = Math.max(0, ...motions.map(motionDuration))
+        setReady(motions.length > 0 || getMotionAnimations(element).length > 0)
+        setDuration(nextDuration)
+        setMotions(motions)
+        animationsRef.current = [...new Set(motions.flatMap((motion) => motion.animation ? [motion.animation] : []))]
+      } catch {
+        setReady(false)
+        setDuration(0)
+        setMotions([])
+        animationsRef.current = []
+      }
     }
     refresh()
     const interval = ownerWindow.setInterval(refresh, 250)
