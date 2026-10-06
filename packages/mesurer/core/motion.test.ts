@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { controlMotion, formatMotionTime, motionDuration, motionPlaybackProgress, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
+import { controlMotion, formatMotionTime, getMotionAnimations, motionDuration, motionPlaybackProgress, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "./motion"
 
 const motion = (overrides: Partial<MotionDetails> = {}): MotionDetails => ({
   kind: "animation",
@@ -127,10 +127,44 @@ describe("motion details", () => {
   it("uses one animation cycle for infinite animations", () => {
     expect(motionDuration(motion())).toBe(4000)
     expect(motionDuration(motion({ iterationCount: "3" }))).toBe(12000)
+    expect(motionDuration(motion({ iterationCount: "0.5" }))).toBe(2000)
   })
 })
 
 describe("motion controls", () => {
+  it("uses the longest animation as timeline reference and considers every play state", () => {
+    const short = { currentTime: 1000, playState: "finished", effect: { getTiming: () => ({ duration: 1000, iterations: 1 }) } } as unknown as Animation
+    const long = { currentTime: 2000, playState: "running", effect: { getTiming: () => ({ duration: 4000, iterations: Infinity }) } } as unknown as Animation
+    expect(motionPlaybackState([short, long], 4000)).toEqual({ progress: 0.5, playing: true })
+    expect(motionPlaybackState([long, short], 4000)).toEqual({ progress: 0.5, playing: true })
+    expect(motionPlaybackState([], 4000)).toEqual({ progress: 0, playing: false })
+    Object.defineProperty(short, "playState", { value: "running" })
+    Object.defineProperty(long, "playState", { value: "paused" })
+    expect(motionPlaybackState([short, long], 4000)).toEqual({ progress: 0.25, playing: true })
+  })
+
+  it("clamps finished finite animations while scrubbing a longer shared timeline", () => {
+    const short = { currentTime: 0, pause: vi.fn(), effect: { getTiming: () => ({ duration: 1000, iterations: 1, delay: 200 }) } }
+    const long = { currentTime: 0, pause: vi.fn(), effect: { getTiming: () => ({ duration: 4000, iterations: Infinity, delay: -300 }) } }
+    const element = { getAnimations: vi.fn(() => [short, long]) } as unknown as Element
+    scrubMotion(element, 0.75, 4000)
+    expect(short.currentTime).toBe(1200)
+    expect(long.currentTime).toBe(2700)
+    expect(short.pause).toHaveBeenCalledOnce()
+    expect(long.pause).toHaveBeenCalledOnce()
+  })
+
+  it("requests descendant animations and handles missing or throwing APIs", () => {
+    const animation = {} as Animation
+    const getAnimations = vi.fn(() => [animation])
+    expect(getMotionAnimations({ getAnimations } as unknown as Element)).toEqual([animation])
+    expect(getAnimations).toHaveBeenCalledWith({ subtree: true })
+    expect(getMotionAnimations({} as Element)).toEqual([])
+    const unsupported = vi.fn().mockImplementationOnce(() => { throw new Error("no options") }).mockReturnValue([animation])
+    expect(getMotionAnimations({ getAnimations: unsupported } as unknown as Element)).toEqual([animation])
+    expect(getMotionAnimations({ getAnimations: () => { throw new Error("unavailable") } } as unknown as Element)).toEqual([])
+  })
+
   const animationAt = (currentTime: number, iterations = Infinity, playState = "running", delay = 0) => ({
     currentTime,
     playState,

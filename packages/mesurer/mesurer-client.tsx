@@ -1134,7 +1134,7 @@ export function MesurerClient({
     if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
     return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
-  const { ready: selectedMotionPlayable, observedProperties: selectedObservedProperties } = usePlayableMotion(selectedElement, selectedElement?.ownerDocument.defaultView);
+  const { ready: selectedMotionPlayable, observedProperties: selectedObservedProperties, observedTargets: selectedObservedTargets } = usePlayableMotion(selectedElement, selectedElement?.ownerDocument.defaultView);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1894,7 +1894,8 @@ export function MesurerClient({
             element: selectedElement,
             ownerWindow: selectedElement?.ownerDocument.defaultView ?? ownerWindow,
              playable: selectedMotionPlayable,
-             observedProperties: selectedObservedProperties,
+              observedProperties: selectedObservedProperties,
+              observedTargets: selectedObservedTargets,
              inspectDetails: (motionDetails) => displayedSelectedMeasurements[0] ? (
               <InspectInfoCard
                  embedded

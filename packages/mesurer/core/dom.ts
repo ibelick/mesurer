@@ -126,6 +126,17 @@ export const resolveInspectLayoutElement = (
 
 export const getRectFromDom = getViewportRect
 
+const toViewportRect = (element: Element, rect: Rect): Rect => {
+  const localElementRect = element.getBoundingClientRect()
+  const viewportElementRect = getViewportRect(element)
+  return {
+    left: viewportElementRect.left + rect.left - localElementRect.left,
+    top: viewportElementRect.top + rect.top - localElementRect.top,
+    width: rect.width,
+    height: rect.height,
+  }
+}
+
 let rectCacheFrame = -1
 const rectCache = new Map<Element, Rect>()
 
@@ -161,7 +172,8 @@ export const getInspectMeasurement = (
         getDirectTextRangeAtPoint(textControl, textPoint, element.ownerDocument),
       )
     : null
-  const textRect = textRange ? getRectFromRange(textRange) : null
+  const localTextRect = textRange ? getRectFromRange(textRange) : null
+  const textRect = localTextRect ? toViewportRect(element, localTextRect) : null
   const textAnchor: InspectTextAnchor | null = textRect && textRange?.startContainer.nodeType === Node.TEXT_NODE
     ? {
         node: textRange.startContainer as Text,
@@ -177,7 +189,7 @@ export const getInspectMeasurement = (
   }
   const layoutElement = resolveInspectLayoutElement(element, ownerWindow, textAnchor)
   const { padding, margin, gap } = readSpacingFromElement(layoutElement, ownerWindow)
-  const layoutRect = layoutElement.getBoundingClientRect()
+  const layoutRect = getViewportRect(layoutElement)
   const paddingRect = {
     left: layoutRect.left + padding.left,
     top: layoutRect.top + padding.top,
@@ -211,6 +223,7 @@ export const refreshInspectMeasurement = (
 ): InspectMeasurement => {
   const anchor = measurement.textAnchor
   if (anchor?.node.isConnected) {
+    const element = measurement.elementRef
     const range = anchor.node.ownerDocument.createRange()
     try {
       range.setStart(anchor.node, anchor.start)
@@ -218,13 +231,13 @@ export const refreshInspectMeasurement = (
     } catch {
       return measurement
     }
-    const rect = getRectFromRange(range)
-    if (!rect) return measurement
-    const element = measurement.elementRef
-    if (!element) return { ...measurement, rect }
+    const localRect = getRectFromRange(range)
+    if (!localRect) return measurement
+    if (!element) return { ...measurement, rect: localRect }
+    const rect = toViewportRect(element, localRect)
     const layoutElement = resolveInspectLayoutElement(element, ownerWindow, anchor)
     const { padding, margin, gap } = readInspectBoxSpacing(layoutElement, ownerWindow)
-    const layoutRect = layoutElement.getBoundingClientRect()
+    const layoutRect = getViewportRect(layoutElement)
     const paddingRect = {
       left: layoutRect.left + padding.left,
       top: layoutRect.top + padding.top,

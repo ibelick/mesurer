@@ -62,12 +62,21 @@ export const readMotionKeyframes = (animation: Animation | null, easing?: string
   }
 })
 
-const getAnimations = (element: Element) => {
-  try {
-    return typeof element.getAnimations === "function" ? element.getAnimations() : []
-  } catch {
-    return []
+export const getMotionAnimations = (element: Element) => {
+  const read = (target: Element) => {
+    try { return typeof target.getAnimations === "function" ? target.getAnimations({ subtree: true }) : [] }
+    catch { try { return target.getAnimations() } catch { return [] } }
   }
+  const animations = new Set(read(element))
+  // getAnimations({subtree:true}) does not cross open shadow boundaries.
+  const nodes = [element]
+  for (let index = 0; index < nodes.length && index < 128; index++) {
+    const node = nodes[index]
+    const shadow = [...(node.shadowRoot?.children ?? [])]
+    for (const child of shadow) for (const animation of read(child)) animations.add(animation)
+    nodes.push(...[...(node.children ?? []), ...shadow].slice(0, 128 - nodes.length))
+  }
+  return [...animations]
 }
 
 const animationFor = (animations: Animation[], name: string, index: number) => {
@@ -80,7 +89,11 @@ const animationFor = (animations: Animation[], name: string, index: number) => {
 
 export const readMotionDetails = (element: Element, ownerWindow: Window): MotionDetails[] => {
   const style = ownerWindow.getComputedStyle(element)
-  const animations = getAnimations(element)
+  const animations = getMotionAnimations(element)
+  const ownAnimations = animations.filter((animation) => {
+    const effect = animation.effect as KeyframeEffect | null
+    return (!effect?.target || effect.target === element) && !effect?.pseudoElement
+  })
   const names = splitList(style.animationName)
   const durations = splitList(style.animationDuration)
   const delays = splitList(style.animationDelay)
@@ -95,11 +108,11 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
       duration: parseTime(listValue(durations, index)),
       delay: parseTime(listValue(delays, index)),
       easing: listValue(easings, index),
-      properties: keyframeProperties(animationFor(animations, name, names.slice(0, index).filter((candidate) => candidate === name).length)),
+      properties: keyframeProperties(animationFor(ownAnimations, name, names.slice(0, index).filter((candidate) => candidate === name).length)),
       iterationCount: listValue(iterations, index),
       direction: listValue(directions, index),
       fillMode: listValue(fills, index),
-      animation: animationFor(animations, name, names.slice(0, index).filter((candidate) => candidate === name).length),
+      animation: animationFor(ownAnimations, name, names.slice(0, index).filter((candidate) => candidate === name).length),
     }))
     .filter((motion) => motion.name !== "none")
 
@@ -107,7 +120,7 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
   const transitionDurations = splitList(style.transitionDuration)
   const transitionDelays = splitList(style.transitionDelay)
   const transitionEasings = splitList(style.transitionTimingFunction)
-  const transitionAnimations = animations.filter((animation) => {
+  const transitionAnimations = ownAnimations.filter((animation) => {
     const candidate = animation as Animation & { transitionProperty?: string }
     return Boolean(candidate.transitionProperty)
   })
@@ -126,14 +139,15 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
     }))
     .filter((motion) => motion.name !== "none" && motion.duration > 0)
 
-  const webAnimations = animations.filter((animation) => !("animationName" in animation) && !("transitionProperty" in animation))
+  const claimed = new Set([...animationDetails, ...transitionDetails].map((motion) => motion.animation))
+  const webAnimations = animations.filter((animation) => !claimed.has(animation))
     .flatMap((animation, index) => {
       const timing = animation.effect?.getTiming()
       if (!timing) return []
       const properties = keyframeProperties(animation)
       return [{
-        kind: "web-animation" as const,
-        name: animation.id || `js-${motionCssProperty(properties[0] || "animation")}-${index + 1}`,
+        kind: "animationName" in animation ? "animation" as const : "transitionProperty" in animation ? "transition" as const : "web-animation" as const,
+        name: (animation as CSSAnimation).animationName || (animation as CSSTransition).transitionProperty || animation.id || `js-${motionCssProperty(properties[0] || "animation")}-${index + 1}`,
         duration: typeof timing.duration === "number" && Number.isFinite(timing.duration) ? timing.duration : 0,
         delay: timing.delay ?? 0,
         easing: timing.easing || "linear",
@@ -149,7 +163,22 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
 
 export const motionDuration = (motion: MotionDetails) => {
   const iterations = Number.parseFloat(motion.iterationCount)
-  return Number.isFinite(iterations) ? motion.duration * Math.max(1, iterations) : motion.duration
+  return Number.isFinite(iterations) ? motion.duration * Math.max(0, iterations) : motion.duration
+}
+
+const animationDuration = (animation: Animation, fallback: number) => {
+  const timing = animation.effect?.getTiming()
+  if (typeof timing?.duration !== "number" || !Number.isFinite(timing.duration)) return fallback
+  return timing.duration * (timing.iterations === Infinity ? 1 : Math.max(0, timing.iterations ?? 1))
+}
+
+export const motionPlaybackState = (animations: Animation[], duration: number) => {
+  const active = animations.filter((animation) => animation.playState === "running")
+  const reference = (active.length ? active : animations).reduce<Animation | null>((longest, animation) => !longest || animationDuration(animation, duration) > animationDuration(longest, duration) ? animation : longest, null)
+  return {
+    playing: active.length > 0,
+    progress: reference ? motionPlaybackProgress(reference, duration) : 0,
+  }
 }
 
 export const motionPlaybackProgress = (animation: Animation, duration: number) => {
@@ -171,7 +200,7 @@ export const formatMotionTime = (milliseconds: number) => {
 }
 
 export const controlMotion = (element: Element, action: "play" | "pause" | "replay", playbackRate = 1) => {
-  for (const animation of getAnimations(element)) {
+  for (const animation of getMotionAnimations(element)) {
     animation.playbackRate = playbackRate
     if (action === "replay") {
       animation.cancel()
@@ -186,8 +215,10 @@ export const controlMotion = (element: Element, action: "play" | "pause" | "repl
 
 export const scrubMotion = (element: Element, progress: number, duration: number) => {
   const currentTime = Math.max(0, Math.min(1, progress)) * duration
-  for (const animation of getAnimations(element)) {
-    animation.currentTime = currentTime + (animation.effect?.getTiming().delay ?? 0)
+  for (const animation of getMotionAnimations(element)) {
+    const timing = animation.effect?.getTiming()
+    const elapsed = timing?.iterations === Infinity ? currentTime : Math.min(currentTime, animationDuration(animation, duration))
+    animation.currentTime = elapsed + (timing?.delay ?? 0)
     animation.pause()
   }
 }

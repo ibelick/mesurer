@@ -575,8 +575,9 @@ function FloatingUiExamples() {
       setMenuOpen(false)
       setModelOpen(false)
     }
-    window.addEventListener("keydown", dismissOnEscape)
-    return () => window.removeEventListener("keydown", dismissOnEscape)
+    // Handle page-owned dismissal before Mesurer's global keyboard handling.
+    window.addEventListener("keydown", dismissOnEscape, true)
+    return () => window.removeEventListener("keydown", dismissOnEscape, true)
   }, [dialogOpen, menuOpen, modelOpen, popoverOpen])
 
   useEffect(() => {

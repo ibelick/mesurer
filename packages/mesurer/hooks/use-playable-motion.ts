@@ -7,7 +7,7 @@ export const usePlayableMotion = (
   ownerWindow: Window | null | undefined,
 ) => {
   const [ready, setReady] = useState(false)
-  const observedProperties = useObservedMotion(element, ownerWindow ?? null)
+  const { properties: observedProperties, targets: observedTargets } = useObservedMotion(element, ownerWindow ?? null)
 
   useEffect(() => {
     if (!element || !ownerWindow) {
@@ -15,6 +15,7 @@ export const usePlayableMotion = (
       return
     }
     const refresh = () => {
+      if (!element.isConnected) { setReady(false); return }
       const motions = readMotionDetails(element, ownerWindow)
       const duration = Math.max(0, ...motions.map(motionDuration))
       setReady(motions.length > 0 && duration > 0)
@@ -24,5 +25,5 @@ export const usePlayableMotion = (
     return () => ownerWindow.clearInterval(interval)
   }, [element, ownerWindow])
 
-  return { ready: ready || observedProperties.length > 0, observedProperties }
+  return { ready: ready || observedProperties.length > 0, observedProperties, observedTargets }
 }

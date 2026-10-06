@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
-import { controlMotion, motionCssProperty, motionDuration, motionPlaybackProgress, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "../core/motion"
+import { controlMotion, getMotionAnimations, motionCssProperty, motionDuration, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "../core/motion"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { Tooltip, useTooltip } from "./tooltip"
 import { FloatingSurface } from "./menu"
@@ -12,6 +12,7 @@ import { CloseIcon } from "./icons"
 import { SettingsButton } from "./settings-button"
 import { InspectDetailRow } from "./inspect-detail-row"
 import { CopyableValue } from "./copyable-value"
+import type { ObservedMotionTarget } from "../core/observed-motion"
 
 
 const SPEED_PRESETS = [0.25, 0.5, 1]
@@ -112,7 +113,7 @@ function MotionValues({ motions, ownerWindow, element, observedProperties }: {
   )
 }
 
-export function MotionPlayer({ element, ownerWindow, observedProperties, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; observedProperties: string[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
+export function MotionPlayer({ element, ownerWindow, observedProperties, observedTargets, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; observedProperties: string[]; observedTargets: ObservedMotionTarget[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const speedAnchorRef = useRef<HTMLDivElement>(null)
   const customSpeedRef = useRef<HTMLDivElement>(null)
@@ -140,7 +141,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, inspect
       setMotions([])
       return
     }
-    setSpeed(element.getAnimations()[0]?.playbackRate ?? 1)
+    setSpeed(getMotionAnimations(element)[0]?.playbackRate ?? 1)
     const refresh = () => {
       const motions = readMotionDetails(element, ownerWindow)
       const nextDuration = Math.max(0, ...motions.map(motionDuration))
@@ -178,15 +179,15 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, inspect
 
   useEffect(() => {
     if (!element || !ownerWindow || !ready) return
-    let frame = 0
+    let timer = 0
     const update = () => {
-      const animation = element.getAnimations()[0]
-      if (animation) setProgress(motionPlaybackProgress(animation, duration))
-      setPlaying(animation?.playState === "running")
-      frame = ownerWindow.requestAnimationFrame(update)
+      const playback = motionPlaybackState(getMotionAnimations(element), duration)
+      setProgress(playback.progress)
+      setPlaying(playback.playing)
+      timer = ownerWindow.setTimeout(update, playback.playing ? 1000 / 30 : 250)
     }
-    frame = ownerWindow.requestAnimationFrame(update)
-    return () => ownerWindow.cancelAnimationFrame(frame)
+    update()
+    return () => ownerWindow.clearTimeout(timer)
   }, [duration, element, ownerWindow, ready])
 
   if (!element || !ownerWindow || (!ready && observedProperties.length === 0)) return null
@@ -230,7 +231,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, inspect
     >
       <div className="msr:relative msr:p-2">
         <div className={playerPreviewClassName} onClick={togglePlay}>
-          <MotionPreview element={element} ownerWindow={ownerWindow} observedProperties={observedProperties} />
+          <MotionPreview element={element} ownerWindow={ownerWindow} observedTargets={observedTargets} />
         </div>
         <div className={playerControlsClassName}>
          <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} disabled={!controllable} onClick={togglePlay}>
@@ -246,6 +247,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, inspect
         aria-valuemin={0}
         aria-valuemax={duration}
         aria-valuenow={progress * duration}
+        aria-valuetext={controllable ? `${Math.round(progress * 100)}%` : "Playback unavailable"}
         className="mesurer-recording-timeline msr:relative msr:h-5 msr:min-w-0 msr:flex-1 msr:select-none"
          onPointerDown={(event) => {
            if (!controllable) return
@@ -257,6 +259,11 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, inspect
         }}
         onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
         onKeyDown={(event) => {
+          if (event.key === "Home" || event.key === "End") {
+            event.preventDefault()
+            if (controllable) scrubMotion(element, event.key === "Home" ? 0 : 1, duration)
+            return
+          }
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return
           event.preventDefault()
           scrubAt((trackRef.current?.getBoundingClientRect().left ?? 0) + (progress + (event.key === "ArrowRight" ? 0.02 : -0.02)) * (trackRef.current?.getBoundingClientRect().width ?? 0))
