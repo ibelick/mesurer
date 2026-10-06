@@ -129,6 +129,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
   const [motions, setMotions] = useState<MotionDetails[]>([])
   const [inspectOpen, setInspectOpen] = useState(false)
   const controllable = duration > 0 && motions.some((motion) => motion.animation)
+  const observedOnly = observedProperties.length > 0 && !controllable
 
   useEffect(() => {
     setProgress(0)
@@ -230,11 +231,21 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
       onMouseLeave={tooltip.onToolbarLeave}
     >
       <div className="msr:relative msr:p-2">
-        <div className={playerPreviewClassName} onClick={togglePlay}>
+        <div className={playerPreviewClassName} onClick={controllable ? togglePlay : undefined}>
           <MotionPreview element={element} ownerWindow={ownerWindow} observedTargets={observedTargets} />
         </div>
         <div className={playerControlsClassName}>
-         <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} disabled={!controllable} onClick={togglePlay}>
+         {observedOnly ? (
+          <div
+            role="status"
+            aria-label="JavaScript animation. Controls unavailable."
+            className="msr:flex msr:h-5 msr:min-w-0 msr:flex-1 msr:items-center msr:truncate msr:font-mono msr:text-[10px] msr:leading-none msr:text-ink-500"
+          >
+           JavaScript animation. Controls unavailable.
+          </div>
+         ) : null}
+         {!observedOnly ? <>
+          <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} disabled={!controllable} onClick={togglePlay}>
           {playing ? <PauseIcon /> : <PlayIcon />}
         </PlayerIconButton>
       <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(progress * duration) : "—"}</span>
@@ -271,8 +282,8 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
       >
         <div className="mesurer-recording-track-rail msr:absolute msr:inset-x-0 msr:top-1/2 msr:h-[3px] msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-200" />
         <div className="mesurer-recording-playhead msr:pointer-events-none msr:absolute msr:left-0 msr:top-1/2 msr:z-[2] msr:h-2 msr:w-0.5 msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-900" style={{ left: `${progress * 100}%` }} />
-      </div>
-      <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(duration) : "—"}</span>
+          </div>
+       <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(duration) : "—"}</span>
       <div ref={speedAnchorRef} className="msr:relative msr:flex msr:h-5 msr:shrink-0 msr:items-center" {...bindTooltip("motion-speed")}>
         <select
          aria-label="Playback speed"
@@ -316,8 +327,9 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
             </SettingsButton>
           </FloatingSurface>
         ) : null}
-      </div>
-        <PlayerIconButton label={inspectOpen ? "Hide Inspect" : "Show Inspect"} tooltipId="motion-inspect" tooltip={tooltip} expanded={inspectOpen} controls={inspectId} onClick={() => setInspectOpen((open) => !open)}>
+       </div>
+         </> : null}
+         <PlayerIconButton label={inspectOpen ? "Hide Inspect" : "Show Inspect"} tooltipId="motion-inspect" tooltip={tooltip} expanded={inspectOpen} controls={inspectId} onClick={() => setInspectOpen((open) => !open)}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
             <path d="M3.25 2.5.75 5l2.5 2.5m3.5-5L9.25 5l-2.5 2.5M5.75 1.5l-1.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

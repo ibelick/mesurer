@@ -68,7 +68,9 @@ test("descendant CSS-variable motion works with an unavailable animation API", a
   const player = await fixture(page, "observed", true)
   await player.getByRole("button", { name: "Show Inspect", exact: true }).click()
   await expect(player).toContainText("observed motion")
-  await expect(player.getByRole("combobox", { name: "Playback speed" })).toBeDisabled()
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  await expect(player.getByRole("slider", { name: "Scrub motion timeline" })).toHaveCount(0)
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toHaveCount(0)
   const transform = () => player.evaluate((node) => {
     const host = [...node.querySelectorAll("div")].find((div) => div.shadowRoot)!
     return host.shadowRoot!.querySelector('[data-motion-snapshot="1"]')!.getAttribute("style")
