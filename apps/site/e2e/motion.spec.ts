@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
 
-async function fixture(page: Page, kind: "mixed" | "observed" | "shadow" | "pseudo", unsupported = false) {
+async function fixture(page: Page, kind: "mixed" | "hybrid" | "managed" | "observed" | "shadow" | "pseudo", unsupported = false) {
   await page.goto("/bench")
   await expect(page.getByRole("button", { name: "Comments (M)" })).toBeVisible()
   if (unsupported) await page.evaluate(() => Object.defineProperty(Element.prototype, "getAnimations", { value: undefined, configurable: true }))
@@ -38,6 +38,20 @@ async function fixture(page: Page, kind: "mixed" | "observed" | "shadow" | "pseu
       long.id = "long-motion"
       short.pause(); short.currentTime = 1000
       long.pause(); long.currentTime = 2000
+      if (kind === "managed") {
+        source.setAttribute("torph-root", "")
+        child.setAttribute("torph-item", "")
+        window.setTimeout(() => { child.textContent = "Next morph cycle" }, 900)
+      }
+      if (kind === "hybrid") {
+        ;(long.effect as KeyframeEffect).composite = "add"
+        long.play()
+        const draw = (time: number) => {
+          (child as HTMLElement).style.transform = `translateY(${Math.sin(time / 300) * 12}px)`
+          requestAnimationFrame(draw)
+        }
+        requestAnimationFrame(draw)
+      }
     }
   }, kind)
   if (kind !== "shadow") await expect.poll(() => page.evaluate(() => (document.querySelector("#motion-review-source img") as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
@@ -64,6 +78,37 @@ test("mixed descendant animations use one timeline with finite clamping and keyb
   await expect(player.getByRole("button", { name: "Pause", exact: true })).toBeVisible()
 })
 
+test("scrubbing updates the paused preview within two frames and keeps the cursor under the pointer", async ({ page }) => {
+  const player = await fixture(page, "mixed")
+  const timeline = player.getByRole("slider", { name: "Scrub motion timeline" })
+  await expect(timeline).toHaveAttribute("aria-valuenow", "2000")
+  await timeline.press("Home")
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+  const styles = await player.evaluate((node) => {
+    const host = [...node.querySelectorAll("div")].find((div) => div.shadowRoot)!
+    const mirror = host.shadowRoot!.querySelector('[data-motion-snapshot="1"]') as HTMLElement
+    return { mirror: mirror.style.transform, source: getComputedStyle(document.querySelector("#motion-review-child")!).transform }
+  })
+  expect(styles.mirror).toBe(styles.source)
+  // The longest animation remains at zero while another animation changes.
+  await page.evaluate(() => { document.querySelector("#motion-review-child")!.getAnimations().find((animation) => animation.id === "short-motion")!.currentTime = 1000 })
+  const opacity = () => player.locator('[data-motion-snapshot="1"]').evaluate((node) => (node as HTMLElement).style.opacity)
+  await expect.poll(opacity).toBe("1")
+  await timeline.press("Home")
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+  expect(await opacity()).toBe("0.4")
+  const box = (await timeline.boundingBox())!
+  await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2, { steps: 8 })
+  await expect.poll(async () => Math.abs(Number(await timeline.getAttribute("aria-valuenow")) - 3600)).toBeLessThan(5)
+  const cursor = (await player.locator(".mesurer-recording-playhead").boundingBox())!
+  expect(Math.abs(cursor.x - (box.x + box.width * 0.9))).toBeLessThan(2)
+  await page.mouse.move(box.x + box.width + 20, box.y + box.height / 2)
+  await page.mouse.up()
+  await expect(timeline).toHaveAttribute("aria-valuenow", "4000")
+})
+
 test("descendant CSS-variable motion works with an unavailable animation API", async ({ page }) => {
   const player = await fixture(page, "observed", true)
   await player.getByRole("button", { name: "Show Inspect", exact: true }).click()
@@ -77,6 +122,167 @@ test("descendant CSS-variable motion works with an unavailable animation API", a
   })
   const first = await transform()
   await expect.poll(transform).not.toBe(first)
+})
+
+test("native animations plus JavaScript updates on the same property stay read-only and live", async ({ page }) => {
+  const player = await fixture(page, "mixed")
+  await page.evaluate(() => {
+    const child = document.querySelector("#motion-review-child") as HTMLElement
+    const animations = child.getAnimations()
+    const long = animations.find((animation) => animation.id === "long-motion")!
+    ;(long.effect as KeyframeEffect).composite = "add"
+    animations.forEach((animation) => animation.play())
+    const draw = (time: number) => {
+      child.style.transform = `translateY(${Math.sin(time / 300) * 12}px)`
+      requestAnimationFrame(draw)
+    }
+    requestAnimationFrame(draw)
+  })
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  await expect(player.getByRole("button", { name: /^(Play|Pause)$/ })).toHaveCount(0)
+  await expect(player.getByRole("slider", { name: "Scrub motion timeline" })).toHaveCount(0)
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toHaveCount(0)
+  const mirrorTransform = () => player.evaluate((node) => {
+    const host = [...node.querySelectorAll("div")].find((div) => div.shadowRoot)!
+    return (host.shadowRoot!.querySelector('[data-motion-snapshot="1"]') as HTMLElement).style.transform
+  })
+  const first = await mirrorTransform()
+  await expect.poll(mirrorTransform).not.toBe(first)
+  expect(await page.evaluate(() => document.querySelector("#motion-review-child")!.getAnimations().find((animation) => animation.id === "long-motion")!.playState)).toBe("running")
+})
+
+test("mixed motion shows its read-only message without flashing playback controls", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = { flashed: false }
+    Object.assign(window, { motionControlFlash: state })
+    new MutationObserver(() => {
+      if (document.querySelector('[data-mesurer-motion-player] [aria-label="Playback speed"]')) state.flashed = true
+    }).observe(document, { childList: true, subtree: true })
+  })
+  const player = await fixture(page, "hybrid")
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { motionControlFlash: { flashed: boolean } }).motionControlFlash.flashed)).toBe(false)
+})
+
+test("Torph-managed text shows the message on the first card render before its next JS cycle", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = { firstMessage: "", seen: false, flashed: false }
+    Object.assign(window, { torphCardState: state })
+    new MutationObserver(() => {
+      const card = document.querySelector("[data-mesurer-motion-player]")
+      if (!card) return
+      if (!state.seen) {
+        state.seen = true
+        state.firstMessage = card.querySelector('[role="status"]')?.textContent?.trim() ?? ""
+      }
+      if (card.querySelector('[aria-label="Playback speed"]')) state.flashed = true
+    }).observe(document, { childList: true, subtree: true })
+  })
+  const player = await fixture(page, "managed")
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  await expect(page.locator("#motion-review-child")).toHaveText("Next morph cycle")
+  expect(await page.evaluate(() => (window as unknown as { torphCardState: unknown }).torphCardState)).toEqual({ firstMessage: "JavaScript animation. Controls unavailable.", seen: true, flashed: false })
+})
+
+test("a JS style update shows the unavailable message by the next rendered frame", async ({ page }) => {
+  const player = await fixture(page, "mixed")
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toBeEnabled()
+  const message = await page.evaluate(async () => {
+    const child = document.querySelector("#motion-review-child") as HTMLElement
+    child.style.transform = "translateY(12px)"
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    return document.querySelector('[data-mesurer-motion-player] [role="status"]')?.textContent?.trim()
+  })
+  expect(message).toBe("JavaScript animation. Controls unavailable.")
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toHaveCount(0)
+})
+
+test("the preview appears before playback controls finish classification", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = { seen: false, hadControls: false, hadPreview: false }
+    Object.assign(window, { initialMotionCard: state })
+    new MutationObserver(() => {
+      const card = document.querySelector("[data-mesurer-motion-player]")
+      if (!card || state.seen) return
+      state.seen = true
+      state.hadControls = Boolean(card.querySelector('[aria-label="Playback speed"]'))
+      state.hadPreview = [...card.querySelectorAll("div")].some((node) => node.shadowRoot)
+    }).observe(document, { childList: true, subtree: true })
+  })
+  const player = await fixture(page, "mixed")
+  await expect(player.getByRole("combobox", { name: "Playback speed" })).toBeEnabled()
+  expect(await page.evaluate(() => (window as unknown as { initialMotionCard: unknown }).initialMotionCard)).toEqual({ seen: true, hadControls: false, hadPreview: true })
+})
+
+test("text morphing refreshes replaced glyphs, edited text, and native effects", async ({ page }) => {
+  const player = await fixture(page, "mixed")
+  await page.evaluate(() => {
+    let samples = 0
+    Object.defineProperty(window, "reviewSnapshotSamples", { get: () => samples })
+    const animate = Element.prototype.animate
+    Element.prototype.animate = function (frames, options) {
+      if (this.hasAttribute("data-motion-snapshot")) samples++
+      return animate.call(this, frames, options)
+    }
+    const source = document.querySelector("#motion-review-source")!
+    let generation = 0
+    const morph = () => {
+      const glyph = document.createElement("span")
+      glyph.style.cssText = "display:block;width:140px;height:50px"
+      glyph.dataset.generation = String(++generation)
+      glyph.append(document.createTextNode(`Text ${generation}`))
+      source.replaceChildren(glyph)
+      glyph.animate([{ opacity: 0.3 }, { opacity: 1 }], { duration: 1200, iterations: Infinity })
+    }
+    morph()
+    window.setInterval(morph, 600)
+  })
+  await expect(player.getByRole("status", { name: "JavaScript animation. Controls unavailable." })).toBeVisible()
+  const mirrorText = () => player.evaluate((node) => {
+    const host = [...node.querySelectorAll("div")].find((div) => div.shadowRoot)!
+    return host.shadowRoot!.textContent
+  })
+  await expect.poll(mirrorText).toMatch(/Text \d+/)
+  const first = await mirrorText()
+  await expect.poll(mirrorText).not.toBe(first)
+  // Editing an existing text node does not replace the source or its animation.
+  await page.evaluate(() => {
+    const source = document.querySelector("#motion-review-source")!
+    const update = () => {
+      const text = source.querySelector("span")?.firstChild
+      if (text) text.textContent = `Edited ${performance.now()}`
+    }
+    update()
+    window.setInterval(update, 50)
+  })
+  await expect.poll(mirrorText).toContain("Edited")
+  expect(await page.evaluate(() => (window as unknown as { reviewSnapshotSamples: number }).reviewSnapshotSamples)).toBe(0)
+})
+
+test("fast mixed glyph updates retain the preview root and stable framing", async ({ page }) => {
+  const player = await fixture(page, "observed")
+  await page.evaluate(() => {
+    const source = document.querySelector("#motion-review-source")!
+    let generation = 0
+    window.setInterval(() => {
+      const glyph = document.createElement("span")
+      glyph.style.cssText = "display:block;width:140px;height:50px;transform:translateX(var(--review-x))"
+      glyph.textContent = `Glyph ${++generation}`
+      source.replaceChildren(glyph)
+      glyph.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: 600 })
+    }, 64)
+  })
+  const root = player.locator('[data-motion-snapshot="0"]')
+  await expect(root).toContainText(/Glyph [4-9]\d*/)
+  const handle = await root.elementHandle()
+  const framing = await root.evaluate((node) => (node.parentElement as HTMLElement).style.transform)
+  const first = await root.textContent()
+  await expect.poll(() => root.textContent()).not.toBe(first)
+  expect(await handle!.evaluate((node) => node.isConnected)).toBe(true)
+  expect(await root.evaluate((node) => (node.parentElement as HTMLElement).style.transform)).toBe(framing)
+  await expect.poll(() => root.evaluate((node) => (node.firstElementChild as HTMLElement).style.transform)).toMatch(/matrix/)
+  expect(await root.evaluate((node) => (node as HTMLElement).style.top)).toBe("0px")
 })
 
 test("snapshot mirrors shadow content and pseudo-elements without constructing new custom elements", async ({ page }) => {

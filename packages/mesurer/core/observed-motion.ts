@@ -1,7 +1,7 @@
 import { getMotionAnimations, motionCssProperty } from "./motion"
 
 export type ObservedMotionTarget = { element: Element; properties: string[] }
-const PROPERTIES = ["transform", "translate", "rotate", "scale", "opacity", "filter", "clip-path", "width", "height", "top", "left"]
+export const OBSERVED_MOTION_PROPERTIES = ["transform", "translate", "rotate", "scale", "opacity", "filter", "clip-path", "width", "height", "top", "left"]
 
 export function motionElements(root: Element, limit = 128) {
   const elements = [root]
@@ -14,8 +14,8 @@ export function motionElements(root: Element, limit = 128) {
 
 // Bounded 10Hz bursts, triggered by relevant mutations in the selected subtree.
 export function observeMotion(root: Element, view: Window, onChange: (targets: ObservedMotionTarget[]) => void) {
-  let request = 0, lastSample = -Infinity, until = 0, disposed = false
-  const previous = new WeakMap<Element, { values: string[]; covered: Set<string> }>()
+  let request = 0, lastSample = -Infinity, until = 0, disposed = false, urgent = true
+  const previous = new WeakMap<Element, { values: string[]; inputs: string[]; covered: Set<string> }>()
   const detected = new Map<Element, Set<string>>()
   const observers: MutationObserver[] = []
   const observedRoots = new WeakSet<Node>()
@@ -23,8 +23,27 @@ export function observeMotion(root: Element, view: Window, onChange: (targets: O
     const Constructor = (view as Window & typeof globalThis).MutationObserver
     if (!Constructor || observedRoots.has(node)) return
     try {
-      const observer = new Constructor(wake)
-      observer.observe(node, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class", "transform", "opacity"] })
+      const observer = new Constructor((records = []) => {
+        // Text morphers replace glyphs while browser animations are still active.
+        // Keep one content flag for the selection, not a target per transient glyph.
+        if (records.some((record) => record.type === "childList" || record.type === "characterData")) {
+          const properties = detected.get(root) ?? new Set<string>()
+          if (!properties.has("content")) {
+            properties.add("content")
+            detected.set(root, properties)
+            publish()
+          }
+        }
+        // Confirm the first JS style update in this burst before the next 10Hz tick.
+        if (urgent && records.some((record) => record.type === "attributes" && record.attributeName === "style")) {
+          urgent = false
+          view.cancelAnimationFrame?.(request)
+          lastSample = -Infinity
+          sample(view.performance.now())
+        }
+        wake()
+      })
+      observer.observe(node, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["style", "class", "transform", "opacity"] })
       observedRoots.add(node)
       observers.push(observer)
     } catch { /* Detached or unsupported document: sampling still works. */ }
@@ -55,30 +74,44 @@ export function observeMotion(root: Element, view: Window, onChange: (targets: O
         if (element.shadowRoot) watch(element.shadowRoot)
         try {
           const style = view.getComputedStyle(element)
-          const values = PROPERTIES.map((property) => style.getPropertyValue(property))
+          const values = OBSERVED_MOTION_PROPERTIES.map((property) => style.getPropertyValue(property))
+          const inline = (element as HTMLElement).style
+          const inputs = OBSERVED_MOTION_PROPERTIES.map((property) => {
+            const declaration = inline?.getPropertyValue(property) ?? ""
+            const variables = [...declaration.matchAll(/var\(\s*(--[\w-]+)/g)]
+              .map(([, variable]) => style.getPropertyValue(variable))
+            return JSON.stringify([declaration, ...variables])
+          })
           const native = covered.get(element) ?? new Set<string>()
           const before = previous.get(element)
           const properties = detected.get(element) ?? new Set<string>()
-          if (before) PROPERTIES.forEach((property, index) => {
-            if (values[index] !== before.values[index] && !native.has(property) && !before.covered.has(property) && !properties.has(property)) {
+          if (before) OBSERVED_MOTION_PROPERTIES.forEach((property, index) => {
+            const inputChanged = inputs[index] !== before.inputs[index]
+            const uncoveredChange = values[index] !== before.values[index] && !native.has(property) && !before.covered.has(property)
+            if ((inputChanged || uncoveredChange) && !properties.has(property)) {
               properties.add(property)
               detected.set(element, properties)
               changed = true
             }
           })
-          previous.set(element, { values, covered: native })
+          previous.set(element, { values, inputs, covered: native })
         } catch { /* A disappearing/foreign element must not break inspection. */ }
       }
-      if (changed) onChange([...detected].map(([element, properties]) => ({ element, properties: [...properties] })))
+      if (changed) publish()
     }
     if (time < until) request = view.requestAnimationFrame(sample)
   }
+  function publish() {
+    if (!disposed) onChange([...detected].map(([element, properties]) => ({ element, properties: [...properties] })))
+  }
   function wake() {
     if (disposed || typeof view.requestAnimationFrame !== "function") return
+    if (view.performance.now() > until) urgent = true
     until = view.performance.now() + 1500
     if (!request) request = view.requestAnimationFrame(sample)
   }
   watch(root)
+  sample(view.performance.now())
   wake()
   return () => {
     disposed = true

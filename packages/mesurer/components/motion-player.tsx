@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
-import { controlMotion, getMotionAnimations, motionCssProperty, motionDuration, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubMotion, type MotionDetails } from "../core/motion"
+import { controlMotion, getMotionAnimations, motionCssProperty, motionDuration, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubAnimations, type MotionDetails } from "../core/motion"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { Tooltip, useTooltip } from "./tooltip"
 import { FloatingSurface } from "./menu"
@@ -115,6 +115,9 @@ function MotionValues({ motions, ownerWindow, element, observedProperties }: {
 
 export function MotionPlayer({ element, ownerWindow, observedProperties, observedTargets, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; observedProperties: string[]; observedTargets: ObservedMotionTarget[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null)
+  const animationsRef = useRef<Animation[]>([])
+  const dragRef = useRef<DOMRect | null>(null)
+  const previewWakeRef = useRef<(() => void) | null>(null)
   const speedAnchorRef = useRef<HTMLDivElement>(null)
   const customSpeedRef = useRef<HTMLDivElement>(null)
   const customSpeedId = useId()
@@ -128,10 +131,22 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
   const [ready, setReady] = useState(false)
   const [motions, setMotions] = useState<MotionDetails[]>([])
   const [inspectOpen, setInspectOpen] = useState(false)
-  const controllable = duration > 0 && motions.some((motion) => motion.animation)
-  const observedOnly = observedProperties.length > 0 && !controllable
+  const [playbackElement, setPlaybackElement] = useState<Element | null>(null)
+  const observedOnly = observedProperties.length > 0
+  const playbackReady = playbackElement === element
+  const controllable = playbackReady && !observedOnly && duration > 0 && motions.some((motion) => motion.animation)
 
   useEffect(() => {
+    setPlaybackElement(null)
+    if (!element || !ownerWindow) return
+    // Let the 10Hz observer compare styles before exposing native controls.
+    const timer = ownerWindow.setTimeout(() => setPlaybackElement(element), 250)
+    return () => ownerWindow.clearTimeout(timer)
+  }, [element, ownerWindow])
+
+  useEffect(() => {
+    dragRef.current = null
+    animationsRef.current = []
     setProgress(0)
     setPlaying(false)
     setInspectOpen(false)
@@ -149,6 +164,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
       setReady(motions.length > 0)
       setDuration(nextDuration)
       setMotions(motions)
+      animationsRef.current = [...new Set(motions.flatMap((motion) => motion.animation ? [motion.animation] : []))]
     }
     refresh()
     const interval = ownerWindow.setInterval(refresh, 250)
@@ -179,26 +195,41 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
   }, [customSpeedOpen])
 
   useEffect(() => {
-    if (!element || !ownerWindow || !ready) return
-    let timer = 0
+    if (!element || !ownerWindow || !ready || !controllable) return
+    let timer = 0, frame = 0
     const update = () => {
-      const playback = motionPlaybackState(getMotionAnimations(element), duration)
-      setProgress(playback.progress)
+      const playback = motionPlaybackState(animationsRef.current, duration)
+      if (!dragRef.current) setProgress(playback.progress)
+      previewWakeRef.current?.()
       setPlaying(playback.playing)
-      timer = ownerWindow.setTimeout(update, playback.playing ? 1000 / 30 : 250)
+      if (playback.playing) frame = ownerWindow.requestAnimationFrame(update)
+      else timer = ownerWindow.setTimeout(update, 250)
     }
     update()
-    return () => ownerWindow.clearTimeout(timer)
-  }, [duration, element, ownerWindow, ready])
+    return () => { ownerWindow.clearTimeout(timer); ownerWindow.cancelAnimationFrame(frame) }
+  }, [duration, element, ownerWindow, ready, controllable, playing])
+
+  const details = useMemo(() => {
+    if (!inspectOpen || !element || !ownerWindow) return null
+    const values = <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />
+    return inspectDetails ? inspectDetails(values) : values
+  }, [inspectOpen, element, ownerWindow, motions, observedProperties, inspectDetails])
 
   if (!element || !ownerWindow || (!ready && observedProperties.length === 0)) return null
+  const seek = (next: number) => {
+    if (!controllable) return
+    const position = Math.max(0, Math.min(1, next))
+    setProgress(position)
+    setPlaying(false)
+    scrubAnimations(animationsRef.current, position, duration)
+    previewWakeRef.current?.()
+  }
   const scrubAt = (clientX: number) => {
     if (!controllable) return
-    const rect = trackRef.current?.getBoundingClientRect()
+    const rect = dragRef.current ?? trackRef.current?.getBoundingClientRect()
     if (!rect || rect.width <= 0) return
     const next = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    setProgress(next)
-    scrubMotion(element, next, duration)
+    seek(next)
   }
 
   const togglePlay = () => {
@@ -210,6 +241,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
 
   const playLabel = playing ? "Pause" : "Play"
   const changeSpeed = (next: number) => {
+    if (!controllable) return
     setSpeed(next)
     controlMotion(element, playing ? "play" : "pause", next)
   }
@@ -232,7 +264,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
     >
       <div className="msr:relative msr:p-2">
         <div className={playerPreviewClassName} onClick={controllable ? togglePlay : undefined}>
-          <MotionPreview element={element} ownerWindow={ownerWindow} observedTargets={observedTargets} />
+          <MotionPreview element={element} ownerWindow={ownerWindow} observedTargets={observedTargets} wakeRef={previewWakeRef} />
         </div>
         <div className={playerControlsClassName}>
          {observedOnly ? (
@@ -244,7 +276,8 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
            JavaScript animation. Controls unavailable.
           </div>
          ) : null}
-         {!observedOnly ? <>
+         {!observedOnly && !playbackReady ? <div className="msr:h-5 msr:flex-1" aria-hidden="true" /> : null}
+         {!observedOnly && playbackReady ? <>
           <PlayerIconButton label={playLabel} tooltipId="motion-play" tooltip={tooltip} pressed={playing} disabled={!controllable} onClick={togglePlay}>
           {playing ? <PauseIcon /> : <PlayIcon />}
         </PlayerIconButton>
@@ -262,26 +295,37 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
         className="mesurer-recording-timeline msr:relative msr:h-5 msr:min-w-0 msr:flex-1 msr:select-none"
          onPointerDown={(event) => {
            if (!controllable) return
+           dragRef.current = event.currentTarget.getBoundingClientRect()
           event.currentTarget.setPointerCapture(event.pointerId)
           scrubAt(event.clientX)
         }}
         onPointerMove={(event) => {
           if (event.currentTarget.hasPointerCapture(event.pointerId)) scrubAt(event.clientX)
         }}
-        onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            scrubAt(event.clientX)
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }
+          dragRef.current = null
+        }}
+        onPointerCancel={() => { dragRef.current = null }}
+        onLostPointerCapture={() => { dragRef.current = null }}
         onKeyDown={(event) => {
           if (event.key === "Home" || event.key === "End") {
             event.preventDefault()
-            if (controllable) scrubMotion(element, event.key === "Home" ? 0 : 1, duration)
+            seek(event.key === "Home" ? 0 : 1)
             return
           }
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return
           event.preventDefault()
-          scrubAt((trackRef.current?.getBoundingClientRect().left ?? 0) + (progress + (event.key === "ArrowRight" ? 0.02 : -0.02)) * (trackRef.current?.getBoundingClientRect().width ?? 0))
+          seek(progress + (event.key === "ArrowRight" ? 0.02 : -0.02))
         }}
       >
         <div className="mesurer-recording-track-rail msr:absolute msr:inset-x-0 msr:top-1/2 msr:h-[3px] msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-200" />
-        <div className="mesurer-recording-playhead msr:pointer-events-none msr:absolute msr:left-0 msr:top-1/2 msr:z-[2] msr:h-2 msr:w-0.5 msr:-translate-y-1/2 msr:rounded-full msr:bg-ink-900" style={{ left: `${progress * 100}%` }} />
+        <div className="msr:pointer-events-none msr:absolute msr:inset-x-0 msr:top-1/2 msr:z-[2] msr:h-2 msr:-translate-y-1/2" style={{ transform: `translateX(${progress * 100}%)` }}>
+          <div className="mesurer-recording-playhead msr:h-full msr:w-0.5 msr:rounded-full msr:bg-ink-900" />
+        </div>
           </div>
        <span className="msr:flex msr:h-5 msr:w-8 msr:shrink-0 msr:items-center msr:justify-end msr:font-mono msr:text-[10px] msr:leading-none msr:tabular-nums msr:text-ink-500">{controllable ? timestamp(duration) : "—"}</span>
       <div ref={speedAnchorRef} className="msr:relative msr:flex msr:h-5 msr:shrink-0 msr:items-center" {...bindTooltip("motion-speed")}>
@@ -306,7 +350,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
           <option value="custom">Custom</option>
         </select>
         <Tooltip label="Speed" visible={!customSpeedOpen && tooltip.visibleTooltipId === "motion-speed"} instant={tooltip.tooltipInstant} side="top" anchorRef={speedAnchorRef} />
-        {customSpeedOpen ? (
+        {customSpeedOpen && controllable ? (
           <FloatingSurface
             ref={customSpeedRef}
             id={customSpeedId}
@@ -339,9 +383,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
       <div id={inspectId} hidden={!inspectOpen}>
         {inspectOpen ? (
           <div className="mesurer-thin-scrollbar msr:max-h-[50vh] msr:overflow-y-auto">
-            {inspectDetails
-              ? inspectDetails(<MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />)
-              : <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />}
+            {details}
           </div>
         ) : null}
       </div>

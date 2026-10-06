@@ -4,7 +4,9 @@ export type MotionSnapshotPair = { source: Element; copy: HTMLElement; style: CS
 export function createMotionSnapshot(element: Element, view: Window, shadow: ShadowRoot) {
   const document = shadow.ownerDocument
   const pairs: MotionSnapshotPair[] = []
-  const cleanups: (() => void)[] = []
+  const cleanups = new Map<Element, () => void>()
+  const copies = new WeakMap<Node, Node>()
+  const sourcePairs = new WeakMap<Node, MotionSnapshotPair[]>()
   const pseudoRules: { pair: MotionSnapshotPair; css: string }[] = []
   const copyStyle = (source: CSSStyleDeclaration, target: CSSStyleDeclaration) => {
     for (const property of source) target.setProperty(property, source.getPropertyValue(property))
@@ -13,10 +15,24 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
     target.setProperty("pointer-events", "none", "important")
   }
   const clone = (source: Node): Node | null => {
-    if (source.nodeType === 3) return document.createTextNode(source.textContent ?? "")
+    if (source.nodeType === 3) {
+      const copy = copies.get(source) ?? document.createTextNode("")
+      if (copy.textContent !== source.textContent) copy.textContent = source.textContent
+      copies.set(source, copy)
+      return copy
+    }
     if (source.nodeType !== 1 || pairs.length >= 128) return null
     const original = source as Element
     if (["SCRIPT", "STYLE", "LINK", "IFRAME", "OBJECT", "EMBED", "SOURCE", "TRACK"].includes(original.tagName)) return null
+    const cached = copies.get(source) as HTMLElement | undefined
+    if (cached) {
+      for (const pair of sourcePairs.get(source) ?? []) {
+        if (pair.pseudo) pseudoRules.push({ pair, css: `[data-motion-snapshot="${cached.dataset.motionSnapshot}"]${pair.pseudo}{${pair.style.cssText}}` })
+        else pairs.push(pair)
+      }
+      syncChildren(original, cached)
+      return cached
+    }
     const media = ["IMG", "VIDEO", "CANVAS"].includes(original.tagName)
     const tag = media ? "canvas" : original.localName.includes("-") || original.localName === "slot" ? "div" : original.localName
     const copy = document.createElementNS(media ? "http://www.w3.org/1999/xhtml" : original.namespaceURI, tag) as HTMLElement
@@ -28,9 +44,11 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
     try { computed = view.getComputedStyle(original) } catch { return null }
     copyStyle(computed, copy.style)
     copy.setAttribute("tabindex", "-1")
-    const id = pairs.length
-    copy.dataset.motionSnapshot = String(id)
-    pairs.push({ source: original, copy, style: copy.style, pseudo: null })
+    copy.dataset.motionSnapshot = String(nextId++)
+    const ownPairs: MotionSnapshotPair[] = [{ source: original, copy, style: copy.style, pseudo: null }]
+    pairs.push(...ownPairs)
+    copies.set(source, copy)
+    sourcePairs.set(source, ownPairs)
     if (media) {
       const canvas = copy as HTMLCanvasElement
       canvas.width = Math.min(1024, original.clientWidth || 1)
@@ -47,14 +65,9 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
       draw()
       original.addEventListener("load", draw)
       original.addEventListener("loadeddata", draw)
-      cleanups.push(() => { original.removeEventListener("load", draw); original.removeEventListener("loadeddata", draw) })
+      cleanups.set(original, () => { original.removeEventListener("load", draw); original.removeEventListener("loadeddata", draw) })
     } else {
-      const slot = original as HTMLSlotElement
-      const children = original.localName === "slot" ? slot.assignedNodes({ flatten: true }) : [...(original.shadowRoot?.childNodes ?? original.childNodes)]
-      for (const child of children.length ? children : original.childNodes) {
-        const copied = clone(child)
-        if (copied) copy.append(copied)
-      }
+      syncChildren(original, copy)
     }
     for (const pseudo of ["::before", "::after"]) {
       let style: CSSStyleDeclaration
@@ -63,19 +76,45 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
       const scratch = document.createElement("span").style
       copyStyle(style, scratch)
       const pair = { source: original, copy, style: scratch, pseudo }
-      pseudoRules.push({ pair, css: `[data-motion-snapshot="${id}"]${pseudo}{${scratch.cssText}}` })
+      ownPairs.push(pair)
+      pseudoRules.push({ pair, css: `[data-motion-snapshot="${copy.dataset.motionSnapshot}"]${pseudo}{${scratch.cssText}}` })
     }
     return copy
+  }
+  let nextId = 0
+  function syncChildren(original: Element, copy: HTMLElement) {
+    if (["IMG", "VIDEO", "CANVAS"].includes(original.tagName)) return
+    const slot = original as HTMLSlotElement
+    const assigned = original.localName === "slot" ? slot.assignedNodes({ flatten: true }) : []
+    const nodes = assigned.length ? assigned : [...(original.shadowRoot?.childNodes ?? original.childNodes)]
+    const children = nodes.map(clone).filter((node): node is Node => Boolean(node))
+    children.forEach((child, index) => {
+      if (copy.childNodes[index] !== child) copy.insertBefore(child, copy.childNodes[index] ?? null)
+    })
+    while (copy.childNodes.length > children.length) copy.lastChild?.remove()
   }
   const root = clone(element) as HTMLElement | null
   if (!root) return null
   const styles = document.createElement("style")
-  styles.textContent = pseudoRules.map(({ css }) => css).join("\n")
   shadow.append(styles)
-  const rules = styles.sheet?.cssRules
-  pseudoRules.forEach(({ pair }, index) => {
-    const rule = rules?.[index] as CSSStyleRule | undefined
-    if (rule) pairs.push({ ...pair, style: rule.style })
-  })
-  return { root, pairs, dispose: () => cleanups.forEach((cleanup) => cleanup()) }
+  const updateRules = () => {
+    styles.textContent = pseudoRules.map(({ css }) => css).join("\n")
+    const rules = styles.sheet?.cssRules
+    pseudoRules.forEach(({ pair }, index) => {
+      const rule = rules?.[index] as CSSStyleRule | undefined
+      if (rule) { pair.style = rule.style; pairs.push(pair) }
+    })
+  }
+  updateRules()
+  const refresh = () => {
+    pairs.length = 0
+    pseudoRules.length = 0
+    clone(element)
+    updateRules()
+    const active = new Set(pairs.map((pair) => pair.source))
+    for (const [source, cleanup] of cleanups) if (!active.has(source)) {
+      cleanup(); cleanups.delete(source); copies.delete(source)
+    }
+  }
+  return { root, pairs, refresh, dispose: () => cleanups.forEach((cleanup) => cleanup()) }
 }

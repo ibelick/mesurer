@@ -214,8 +214,12 @@ export const controlMotion = (element: Element, action: "play" | "pause" | "repl
 }
 
 export const scrubMotion = (element: Element, progress: number, duration: number) => {
+  scrubAnimations(getMotionAnimations(element), progress, duration)
+}
+
+export const scrubAnimations = (animations: Animation[], progress: number, duration: number) => {
   const currentTime = Math.max(0, Math.min(1, progress)) * duration
-  for (const animation of getMotionAnimations(element)) {
+  for (const animation of animations) {
     const timing = animation.effect?.getTiming()
     const elapsed = timing?.iterations === Infinity ? currentTime : Math.min(currentTime, animationDuration(animation, duration))
     animation.currentTime = elapsed + (timing?.delay ?? 0)
