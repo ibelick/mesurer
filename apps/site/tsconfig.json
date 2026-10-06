@@ -6,6 +6,10 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "mesurer": ["../../packages/mesurer/dist/index.d.ts"]
+    },
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
