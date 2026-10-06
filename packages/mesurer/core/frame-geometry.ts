@@ -44,8 +44,19 @@ function frameMatrix(frame: Element): Matrix | null {
   const rect = frame.getBoundingClientRect()
   const element = frame as HTMLElement
   const style = frameStyle
-  const width = style ? (Number.parseFloat(style.width) || element.offsetWidth) + (style.boxSizing === "border-box" ? 0 : (Number.parseFloat(style.borderLeftWidth) || 0) + (Number.parseFloat(style.borderRightWidth) || 0) + (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0)) : element.offsetWidth
-  const height = style ? (Number.parseFloat(style.height) || element.offsetHeight) + (style.boxSizing === "border-box" ? 0 : (Number.parseFloat(style.borderTopWidth) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0) + (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0)) : element.offsetHeight
+  // offsetWidth/offsetHeight are the resolved border-box dimensions. Parsing
+  // computed width would turn `100%` into `100px` and break transformed
+  // responsive frames. The rect supplies translation from individual
+  // translate/rotate/scale properties, so only the local dimensions belong in
+  // the affine basis here.
+  const boxDimension = (value: string | undefined, fallback: number, before: string, after: string) => {
+    if (!value?.endsWith("px")) return fallback
+    const parsed = Number.parseFloat(value)
+    if (!Number.isFinite(parsed)) return fallback
+    return parsed + Number.parseFloat(before || "0") + Number.parseFloat(after || "0")
+  }
+  const width = boxDimension(style?.width, element.offsetWidth, style?.boxSizing === "border-box" ? "0" : style?.paddingLeft ?? "0", style?.boxSizing === "border-box" ? "0" : style?.paddingRight ?? "0")
+  const height = boxDimension(style?.height, element.offsetHeight, style?.boxSizing === "border-box" ? "0" : style?.paddingTop ?? "0", style?.boxSizing === "border-box" ? "0" : style?.paddingBottom ?? "0")
   const matrix = {
     a, b, c, d,
     x: rect.left - Math.min(0, a * width, c * height, a * width + c * height) + a * (frame.clientLeft + (Number.parseFloat(style?.paddingLeft ?? "0") || 0)) + c * (frame.clientTop + (Number.parseFloat(style?.paddingTop ?? "0") || 0)),

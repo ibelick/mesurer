@@ -68,6 +68,35 @@ describe("frame coordinate projection", () => {
     expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 112, top: 84.5, width: 100, height: 60 })
   })
 
+  it("uses resolved border-box dimensions for percentage-sized frames", () => {
+    const { frame, child } = fixture("matrix(0,1,-1,0,0,0)")
+    Object.assign((frame as HTMLElement).style, { width: "100%", height: "50%" })
+    Object.assign(frame, { offsetWidth: 400, offsetHeight: 100 })
+    expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 137, top: 62, width: 40, height: 100 })
+  })
+
+  it("uses the rendered rect translation from individual CSS translate properties", () => {
+    const rect = { left: 100, top: 50 }
+    const { frame } = fixture("matrix(1,0,0,1,0,0)", rect)
+    Object.assign((frame as HTMLElement).style, { translate: "50px 0" })
+    rect.left += 50
+    expect(framePointToParent(frame, { x: 10, y: 20 })).toEqual({ x: 162, y: 73 })
+  })
+
+  it("keeps fractional resolved pixel dimensions", () => {
+    const { frame, child } = fixture("matrix(0,1,-1,0,0,0)")
+    Object.assign((frame as HTMLElement).style, { width: "400.5px", height: "100.25px" })
+    Object.assign(frame, { offsetWidth: 400, offsetHeight: 100 })
+    expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 137.25, top: 62, width: 40, height: 100 })
+  })
+
+  it("does not parse unresolved percentage dimensions as pixels", () => {
+    const { frame, child } = fixture("matrix(0,1,-1,0,0,0)")
+    Object.assign((frame as HTMLElement).style, { width: "100%", height: "50%" })
+    Object.assign(frame, { offsetWidth: 0, offsetHeight: 0 })
+    expect(projectRect({ left: 10, top: 20, width: 100, height: 40 }, child)).toEqual({ left: 37, top: 62, width: 40, height: 100 })
+  })
+
   it("does not treat perspective as an ordinary 2D affine transform", () => {
     const { frame, child } = fixture("matrix(1,0,0,1,0,0)")
     Object.assign((frame as HTMLElement).style, { perspective: "500px" })
