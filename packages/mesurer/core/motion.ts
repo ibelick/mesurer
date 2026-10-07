@@ -151,7 +151,7 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
       fillMode: "both",
       animation: transitionAnimations.find((animation) => (animation as CSSTransition).transitionProperty === property) ?? (property === "all" ? transitionAnimations[0] : null) ?? null,
     }))
-    .filter((motion) => motion.name !== "none" && motion.duration > 0)
+     .filter((motion) => motion.name !== "none" && motion.duration > 0 && motion.animation !== null)
 
   const claimed = new Set([...animationDetails, ...transitionDetails].map((motion) => motion.animation))
   const webAnimations = animations.filter((animation) => !claimed.has(animation))

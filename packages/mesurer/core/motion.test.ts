@@ -77,8 +77,20 @@ describe("motion details", () => {
     expect(details.every(({ kind }) => kind === "transition")).toBe(true)
   })
 
-  it("preserves easing functions containing commas across multiple transitions", () => {
+  it("does not expose declared but inactive transitions as motion", () => {
     const details = readDetails([], {
+      transitionProperty: "opacity",
+      transitionDuration: "200ms",
+    })
+    expect(details).toEqual([])
+  })
+
+  it("preserves easing functions containing commas across multiple transitions", () => {
+    const details = readDetails([
+      webAnimation({ transitionProperty: "transform" }),
+      webAnimation({ transitionProperty: "opacity" }),
+      webAnimation({ transitionProperty: "filter" }),
+    ], {
       transitionProperty: "transform, opacity, filter", transitionDuration: "1s",
       transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1), steps(4, jump-end), linear(0, 0.5 40%, 1)",
     })
