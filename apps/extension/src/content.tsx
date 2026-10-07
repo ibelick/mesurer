@@ -33,6 +33,16 @@ type ExtensionGlobal = typeof globalThis & {
 const extensionGlobal = globalThis as ExtensionGlobal;
 
 function createExtensionRecording() {
+  if (typeof chrome === "undefined" || !chrome.runtime?.onMessage) {
+    const unavailable = () => Promise.reject(new Error("Recording is unavailable"));
+    return {
+      prepare: unavailable,
+      start: unavailable,
+      stop: unavailable,
+      abort: () => {},
+      dispose: () => {},
+    };
+  }
   let ready: ((value: { id: string; duration: number }) => void) | null = null;
   let failed: ((error: Error) => void) | null = null;
   let prepared: (() => void) | null = null;
@@ -217,6 +227,9 @@ const mount = async () => {
     if (!state.extensionRecording) {
       state.extensionRecording = createExtensionRecording();
     }
+    const recordingPlayer = typeof chrome !== "undefined" && chrome.runtime?.getURL
+      ? chrome.runtime.getURL("recording-player.html")
+      : undefined;
     state.root = createRoot(container);
     state.root.render(
       <Mesurer
@@ -226,7 +239,7 @@ const mount = async () => {
         persistOnReload={new URLSearchParams(location.search).has("persist")}
         captureVisibleTab={captureVisibleTabPng}
         extensionRecording={state.extensionRecording}
-        extensionRecordingPlayer={chrome.runtime.getURL("recording-player.html")}
+        extensionRecordingPlayer={recordingPlayer}
       />,
     );
     state.mounted = true;

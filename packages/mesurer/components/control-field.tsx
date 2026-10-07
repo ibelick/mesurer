@@ -193,6 +193,7 @@ export function ColorField({
                 aria-label={`${label} color picker`}
                 value={inputValue}
                 onChange={(event) => handleNativeColorInput(event.currentTarget)}
+                onInput={(event) => handleNativeColorInput(event.currentTarget)}
                 className="msr:absolute msr:inset-0 msr:size-full msr:cursor-pointer msr:opacity-0"
               />
             </span>

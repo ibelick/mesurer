@@ -134,6 +134,7 @@ export const installKeyboardGate = (
       if (event instanceof KeyboardEvent && isMesurerKeyboardBridgeKey(event.key, event)) {
         bridgeKey(event)
         if (event.type === "keydown") event.preventDefault()
+        event.stopPropagation()
         return
       }
       event.preventDefault()
@@ -149,6 +150,7 @@ export const installKeyboardGate = (
         if (isolateMesurerEvents && isMesurerKeyboardBridgeKey(event.key, event)) {
           bridgeKey(event)
           if (event.type === "keydown") event.preventDefault()
+          event.stopPropagation()
           return
         }
       }

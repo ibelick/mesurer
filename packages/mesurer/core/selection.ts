@@ -115,8 +115,8 @@ const expandCompositeTextInspectStack = (
   if (!textRange) return { stack, modes }
   const nextStack = [...stack]
   const nextModes = [...modes]
-  nextStack.splice(controlIndex + 1, 0, control)
-  nextModes.splice(controlIndex + 1, 0, "text")
+  nextStack.push(control)
+  nextModes.push("text")
   return { stack: nextStack, modes: nextModes }
 }
 

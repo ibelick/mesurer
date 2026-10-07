@@ -48,7 +48,11 @@ const InspectCardBody = ({
   if (typographyRows.length === 0 && cssParts.length === 0) return null
 
   return (
-    <div className="msr:flex msr:flex-col msr:gap-0.5 msr:px-2" data-mesurer-inspect-details="true">
+    <div
+      className="msr:flex msr:flex-col msr:gap-0.5 msr:px-2"
+      data-mesurer-inspect-details="true"
+      {...(cssParts.length > 0 ? { "data-mesurer-layout-details": true } : {})}
+    >
       {typographyRows.map((row) => (
         <InspectDetailRow
           key={`type-${row.label}`}
@@ -65,7 +69,6 @@ const InspectCardBody = ({
           label={row.label}
           value={row.value}
           id={`inspect-${row.label}`}
-          layoutDetail
           onCopy={() => onCopy(row.value)}
           tooltip={tooltip}
         />

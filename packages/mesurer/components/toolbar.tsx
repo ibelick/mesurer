@@ -765,6 +765,7 @@ function ToolbarComponent(
     setColorPickerActive(false)
     onCancelScreenshot()
     preserveToolGroupRef.current = true
+    setToolGroup("annotate")
     setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
     setOpenMenu(null)
     onInteract()
@@ -777,6 +778,7 @@ function ToolbarComponent(
     onCancelScreenshot()
     if (toolMode !== "comments") {
       preserveToolGroupRef.current = true
+      setToolGroup("annotate")
       setToolMode("comments")
     }
     setOpenMenu({ type: "comments", panel: true })
