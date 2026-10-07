@@ -11,9 +11,10 @@ export function createMotionSnapshot(element: Element, view: Window, shadow: Sha
   const copyStyle = (source: CSSStyleDeclaration, target: CSSStyleDeclaration) => {
     for (const property of source) {
       const value = source.getPropertyValue(property)
-      // Keep the mirror inert and avoid triggering duplicate network requests
-      // from computed background, mask, cursor, or content URLs.
-      if (/\burl\(/i.test(value)) continue
+      // Keep the mirror inert and avoid triggering duplicate requests from
+      // non-visual resource properties. Background images are part of the
+      // rendered motion preview and should reuse the browser cache normally.
+      if (/\burl\(/i.test(value) && !property.startsWith("background")) continue
       target.setProperty(property, value)
     }
     target.setProperty("animation", "none", "important")

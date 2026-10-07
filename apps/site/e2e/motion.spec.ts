@@ -85,6 +85,25 @@ test("mixed descendant animations use one timeline with finite clamping and keyb
   await expect(player.getByRole("button", { name: "Pause", exact: true })).toBeVisible()
 })
 
+test("motion previews retain CSS background images", async ({ page }) => {
+  await page.goto("/bench")
+  const target = page.getByTestId("orbit-archive-motion")
+  await target.scrollIntoViewIfNeeded()
+  const box = await target.boundingBox()
+  expect(box).not.toBeNull()
+  if (!box) return
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+  const player = page.locator("[data-mesurer-motion-player]")
+  await expect(player).toBeVisible()
+  await expect.poll(() => player.evaluate((node) => {
+    const host = [...node.querySelectorAll("div")].find((div) => div.shadowRoot)
+    return [...(host?.shadowRoot?.querySelectorAll<HTMLElement>("[data-motion-snapshot]") ?? [])]
+      .map((snapshot) => getComputedStyle(snapshot).backgroundImage)
+      .join("\n")
+  })).toMatch(/url\(/)
+})
+
 test("scrubbing updates the paused preview within two frames and keeps the cursor under the pointer", async ({ page }) => {
   const player = await fixture(page, "mixed")
   const timeline = player.getByRole("slider", { name: "Scrub motion timeline" })
