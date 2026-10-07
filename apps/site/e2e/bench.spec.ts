@@ -57,7 +57,7 @@ test("inspect resolves text inside a pointer-transparent card description", asyn
   await expect(page.locator("[data-mesurer-hover='true']")).toBeVisible();
   await page.mouse.click(point.x, point.y);
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
-  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /div:nth-of-type\(1\)/);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toHaveAttribute("title", /div:nth-of-type\(1\)/);
 });
 
 test("inspect resolves every UI Skills card target to its visual bounds", async ({ page }) => {
@@ -65,6 +65,7 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
   const targets: Array<{
     name: string;
     selector: string;
+    selectionSelector?: string;
     inspectSelector?: RegExp;
     point?: (box: { x: number; y: number; width: number; height: number }) => { x: number; y: number };
     tolerance?: number;
@@ -73,7 +74,8 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
     { name: "CLI card link", selector: 'a[aria-label="Open CLI installation guide"]' },
     { name: "CLI command row", selector: '[data-command-row="npx ui-skills"]' },
     { name: "CLI copy button", selector: '[data-card-href="/cli"] button[aria-label="Copy command"]', point: (box) => ({ x: box.x + 2, y: box.y + 2 }) },
-    { name: "CLI copy icon", selector: '[data-card-href="/cli"] button[aria-label="Copy command"] svg', point: (box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 }), tolerance: 6 },
+    // Icon hover is glyph-sized; committing a composite control selects its button.
+    { name: "CLI copy icon", selector: '[data-card-href="/cli"] button[aria-label="Copy command"] svg', selectionSelector: '[data-card-href="/cli"] button[aria-label="Copy command"]', inspectSelector: /button/, point: (box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 }), tolerance: 6 },
     { name: "MCP text", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-card-description div:first-child' },
     { name: "MCP logo", selector: '[data-card-href="/mcp/docs"] .bench-uiskills-agent-track-inner img' },
     {
@@ -112,11 +114,12 @@ test("inspect resolves every UI Skills card target to its visual bounds", async 
       await expect(page.locator("[data-mesurer-inspect-selector]"), `${targetCase.name} exact element`).toContainText(targetCase.inspectSelector);
     }
     const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    const selectionBox = targetCase.selectionSelector ? (await page.locator(targetCase.selectionSelector).boundingBox())! : box;
     await expect(selected, `${targetCase.name} selection`).toBeVisible();
     await expect.poll(async () => {
       const selectedBox = await selected.boundingBox();
       if (!selectedBox) return Number.POSITIVE_INFINITY;
-      return Math.max(Math.abs(selectedBox.x - box.x), Math.abs(selectedBox.y - box.y), Math.abs(selectedBox.width - box.width), Math.abs(selectedBox.height - box.height));
+      return Math.max(Math.abs(selectedBox.x - selectionBox.x), Math.abs(selectedBox.y - selectionBox.y), Math.abs(selectedBox.width - selectionBox.width), Math.abs(selectedBox.height - selectionBox.height));
     }, { message: `${targetCase.name} selection bounds` }).toBeLessThan(targetCase.tolerance ?? 3);
   }
 });
@@ -318,17 +321,48 @@ test("inspect tool can select an element inside the iframe", async ({ page }) =>
   const box = await frame.boundingBox();
   expect(box).not.toBeNull();
   if (!box) return;
-  await page.mouse.click(box.x + 40, box.y + 92);
-  const selected = page.locator("[data-mesurer-selected-measurement] > div");
-  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
   const target = await frame.contentFrame()?.getByRole("heading", { name: "Iframe application" }).boundingBox();
   expect(target).not.toBeNull();
+  if (!target) return;
+  await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+  const selected = page.locator("[data-mesurer-selected-measurement] > div");
+  await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
   await expect.poll(async () => {
     const selection = await selected.first().boundingBox();
     if (!target || !selection) return Number.POSITIVE_INFINITY;
-    return Math.max(Math.abs(selection.x - target.x), Math.abs(selection.y - target.y));
+    return Math.max(Math.abs(selection.x - target.x), Math.abs(selection.y - target.y), Math.abs(selection.width - target.width), Math.abs(selection.height - target.height));
   }).toBeLessThan(3);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toContainText("h1");
 });
+
+for (const angle of [0, 12]) {
+  test(`inspect projects scaled iframe hover, selection, and motion preview (${angle}deg)`, async ({ page }) => {
+    await page.goto("/bench");
+    await expect(page.getByRole("button", { name: "Inspect (I)", exact: true })).toBeVisible();
+    await page.evaluate((angle) => {
+      const frame = document.createElement("iframe");
+      frame.title = "Transformed motion frame";
+      frame.style.cssText = `position:fixed;left:300px;top:180px;width:400px;height:220px;box-sizing:border-box;border:4px solid black;transform:rotate(${angle}deg) scale(.7);transform-origin:top left;z-index:2`;
+      frame.srcdoc = '<style>body{margin:0;padding:20px}button{width:160px;height:48px;border:0;padding:0;font:16px sans-serif;animation:pulse 2s infinite alternate}@keyframes pulse{from{opacity:.4}to{opacity:1}}</style><button>Frame target</button>';
+      document.body.append(frame);
+    }, angle);
+    await expect(page.frameLocator('iframe[title="Transformed motion frame"]').getByRole("button", { name: "Frame target" })).toBeVisible();
+    const radians = angle * Math.PI / 180, a = .7 * Math.cos(radians), b = .7 * Math.sin(radians), c = -b, d = a;
+    const point = { x: 300 + a * 104 + c * 48, y: 180 + b * 104 + d * 48 };
+    const expected = { x: 300 + a * 24 + c * 72, y: 180 + b * 24 + d * 24, width: a * 160 - c * 48, height: b * 160 + d * 48 };
+    await page.mouse.move(point.x, point.y);
+    const hover = page.locator("[data-mesurer-hover='true']");
+    await expect(hover).toBeVisible();
+    const hoverBox = (await hover.boundingBox())!;
+    expect(Math.max(Math.abs(hoverBox.x - expected.x), Math.abs(hoverBox.y - expected.y), Math.abs(hoverBox.width - expected.width), Math.abs(hoverBox.height - expected.height))).toBeLessThan(3);
+    await page.mouse.click(point.x, point.y);
+    const selected = page.locator("[data-mesurer-selected-measurement] > div").first();
+    await expect(selected).toBeVisible();
+    const selectedBox = (await selected.boundingBox())!;
+    expect(Math.max(Math.abs(selectedBox.x - expected.x), Math.abs(selectedBox.y - expected.y), Math.abs(selectedBox.width - expected.width), Math.abs(selectedBox.height - expected.height))).toBeLessThan(3);
+    await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("opacity");
+  });
+}
 
 test("x-ray mode outlines accessible iframe content", async ({ page }) => {
   await page.goto("/bench");
@@ -385,12 +419,12 @@ test("inspect tool can reach an iframe inside Shadow DOM", async ({ page }) => {
   if (!box) return;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.locator("[data-mesurer-selected-measurement]")).toHaveCount(1);
-  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveAttribute("title", /button/);
+  await expect(page.locator("[data-mesurer-inspect-selector]")).toHaveAttribute("title", /button/);
 });
 
 test("inspect selection follows an animated target", async ({ page }) => {
   await page.goto("/bench");
-  const target = page.getByRole("button", { name: "orbiting target" });
+  const target = page.getByRole("button", { name: "orbit / transform", exact: true });
   await expect(target).toBeVisible();
   await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
   const targetBox = await target.boundingBox();
@@ -414,7 +448,7 @@ test("inspect selection follows an animated target", async ({ page }) => {
 
 test("inspect selection remains after moving the pointer away", async ({ page }) => {
   await page.goto("/bench");
-  const target = page.getByRole("button", { name: "orbiting target" });
+  const target = page.getByRole("button", { name: "orbit / transform", exact: true });
   await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
   const box = await target.boundingBox();
   expect(box).not.toBeNull();
@@ -429,7 +463,7 @@ test("inspect selection remains after moving the pointer away", async ({ page })
 
 test("comment draft follows an animated target", async ({ page }) => {
   await page.goto("/bench");
-  const target = page.getByRole("button", { name: "orbiting target" });
+  const target = page.getByRole("button", { name: "orbit / transform", exact: true });
   await expect(target).toBeVisible();
   await target.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
   await page.getByRole("button", { name: "Annotate tools (2)" }).click();

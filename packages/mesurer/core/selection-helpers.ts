@@ -1,6 +1,7 @@
 import { getRectFromDom, isConnectedElement } from "./dom"
 import { withOverlayHitTesting } from "./overlay-hit-test"
 import type { InspectMeasurement, Point } from "./types"
+import { projectPoint } from "./frame-geometry"
 
 const getOverlayHost = (overlayNode: HTMLDivElement | null) => {
   if (!overlayNode) return null
@@ -59,13 +60,14 @@ export const getSelectedMeasurementHit = (params: {
     }
   }
 
+  const viewportPoint = projectPoint(params.point, ownerDocument)
   for (const candidate of candidates) {
     const { rect } = candidate
     const inRect =
-      params.point.x >= rect.left &&
-      params.point.x <= rect.left + rect.width &&
-      params.point.y >= rect.top &&
-      params.point.y <= rect.top + rect.height
+      viewportPoint.x >= rect.left &&
+      viewportPoint.x <= rect.left + rect.width &&
+      viewportPoint.y >= rect.top &&
+      viewportPoint.y <= rect.top + rect.height
     if (inRect) return candidate.measurement
   }
 

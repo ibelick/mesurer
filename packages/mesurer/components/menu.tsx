@@ -5,20 +5,49 @@ type MenuSurfaceProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
 }
 
-export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
-  function MenuSurface({ className, children, ...props }, ref) {
+export const FloatingSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
+  function FloatingSurface({ className, children, ...props }, ref) {
     return (
       <div
         {...props}
         ref={ref}
         className={cn(
-          "mesurer-menu-surface msr:z-[70] msr:rounded-lg msr:bg-white msr:p-1 msr:shadow-floating msr:outline-none msr:focus:outline-none",
+          "mesurer-menu-surface msr:rounded-lg msr:bg-white msr:shadow-floating msr:outline-none msr:focus:outline-none",
           className,
         )}
-        role="menu"
       >
         {children}
       </div>
+    )
+  },
+)
+
+export const ToolbarFloatingSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
+  function ToolbarFloatingSurface({ className, children, style, ...props }, ref) {
+    return (
+      <FloatingSurface
+        {...props}
+        ref={ref}
+        className={cn("msr:pointer-events-auto msr:fixed msr:z-[120]", className)}
+        style={{ zIndex: 120, ...style }}
+      >
+        {children}
+      </FloatingSurface>
+    )
+  },
+)
+
+export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
+  function MenuSurface({ className, children, ...props }, ref) {
+    return (
+      <FloatingSurface
+        {...props}
+        ref={ref}
+        className={cn("msr:z-[70] msr:p-1", className)}
+        role="menu"
+      >
+        {children}
+      </FloatingSurface>
     )
   },
 )

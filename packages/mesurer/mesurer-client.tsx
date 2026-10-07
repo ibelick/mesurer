@@ -33,6 +33,8 @@ import { useResizeSync } from "./hooks/use-resize-sync";
 import { useRulerGuides } from "./hooks/use-ruler-guides";
 import { useScreenshot } from "./hooks/use-screenshot";
 import { useScreenRecording } from "./hooks/use-screen-recording";
+import { usePlayableMotion } from "./hooks/use-playable-motion";
+import { InspectInfoCard } from "./components/inspect-info-card";
 import { ScreenRecordingEditor } from "./components/screen-recording-editor";
 import { SettingsButton } from "./components/settings-button";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
@@ -1132,6 +1134,8 @@ export function MesurerClient({
     if (!typographyElement || !(typographyElement instanceof ElementConstructor)) return null;
     return typographyInspector.getFast(typographyElement);
   }, [selectedElement, typographyRevision, typographyInspector]);
+  const motionElement = selectedMeasurement?.elementRef ?? selectedElement;
+  const { ready: selectedMotionPlayable, observedProperties: selectedObservedProperties, observedTargets: selectedObservedTargets } = usePlayableMotion(motionElement, motionElement?.ownerDocument.defaultView);
   useEffect(() => () => {
     if (selectorCopyTimeoutRef.current !== null) ownerWindow.clearTimeout(selectorCopyTimeoutRef.current);
   }, [ownerWindow]);
@@ -1670,8 +1674,9 @@ export function MesurerClient({
             selectedSelectorCopied: Boolean(
               selectedElement && copiedSelector === getElementSelector(selectedElement),
             ),
-            selectedTypography,
-            selectedMeasurementCount: selectedMeasurements.length,
+             selectedTypography,
+             selectedMeasurementCount: selectedMeasurements.length,
+             hideInfoCard: selectedMotionPlayable && !screenRecording.recording && !screenRecording.video,
           },
         distances: {
           held: heldDistances,
@@ -1857,6 +1862,7 @@ export function MesurerClient({
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
               onClose={closeColorPicker}
+              anchored={!(screenRecording.recording || Boolean(screenRecording.video))}
             />
           ),
         },
@@ -1871,7 +1877,7 @@ export function MesurerClient({
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
         },
-            screenRecording: {
+        screenRecording: {
             selecting: screenRecording.selecting,
             recording: screenRecording.recording,
            elapsed: screenRecording.elapsed,
@@ -1884,8 +1890,28 @@ export function MesurerClient({
            onClick: screenRecording.toggleSelection,
           onCancel: screenRecording.cancelSelection,
           onStop: screenRecording.stop,
-        },
-         comments: {
+         },
+          motion: {
+            element: motionElement,
+            ownerWindow: motionElement?.ownerDocument.defaultView ?? ownerWindow,
+             playable: selectedMotionPlayable,
+              observedProperties: selectedObservedProperties,
+              observedTargets: selectedObservedTargets,
+             inspectDetails: (motionDetails) => displayedSelectedMeasurements[0] ? (
+              <InspectInfoCard
+                  embedded
+                  motionDetails={motionDetails}
+                ownerWindow={ownerWindow}
+                rect={displayedSelectedMeasurements[0].rect}
+                 element={motionElement}
+                measurement={displayedSelectedMeasurements[0]}
+                layoutDetailsEnabled={settingsLayoutDetailsEnabled}
+                copied={Boolean(selectedElement && copiedSelector === getElementSelector(selectedElement))}
+                typography={selectedMeasurements.length === 1 ? selectedTypography : null}
+              />
+            ) : null,
+          },
+          comments: {
           count: comments.length,
           comments,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
@@ -1925,8 +1951,8 @@ export function MesurerClient({
                 setSnapEnabled,
                 multiMeasureEnabled,
                 setMultiMeasureEnabled,
-                infoCardMode: settingsInfoCardMode,
-                setInfoCardMode: setSettingsInfoCardMode,
+                 infoCardMode: settingsInfoCardMode,
+                 setInfoCardMode: setSettingsInfoCardMode,
               }}
               guides={{
                 guideColor: settingsGuideColor,

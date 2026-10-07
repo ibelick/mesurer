@@ -5,6 +5,7 @@ import type {
   SetStateAction,
 } from "react"
 import { getInspectMeasurement } from "../core/dom"
+import { projectPoint } from "../core/frame-geometry"
 import { getRectFromPoints, rectsOverlap } from "../core/geometry"
 import { transformedPenBounds } from "../core/pen-transform"
 import { transformedArrowBounds } from "../core/arrow-transform"
@@ -373,7 +374,7 @@ export const useMesurerPointerSelection = ({
     }
     if (target) {
       const inspectMeasurement = getInspectMeasurement(target, ownerDocument.defaultView ?? window, {
-        point: localPoint,
+        point: projectPoint(localPoint, ownerDocument, target.ownerDocument),
         overlayNode: overlayRef.current,
         ...(inspectMode === "text" ? { mode: inspectMode } : {}),
       })

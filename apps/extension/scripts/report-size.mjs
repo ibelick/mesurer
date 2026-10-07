@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(extensionRoot, "dist");
-const maxContentGzipBytes = 200 * 1024;
+// Measured baseline and rationale: ../BUNDLE_SIZE.md. Keep increases reviewable.
+const maxContentGzipBytes = 211 * 1024;
 
 const getFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -40,6 +41,7 @@ const contentGzipBytes = gzipSync(content, { level: 9 }).length;
 console.log(`Extension package files: ${formatKiB(totalBytes)}`);
 console.log(`content.js: ${formatKiB(content.length)}`);
 console.log(`content.js gzip: ${formatKiB(contentGzipBytes)}`);
+console.log(`content.js gzip headroom: ${formatKiB(maxContentGzipBytes - contentGzipBytes)}`);
 
 if (contentGzipBytes > maxContentGzipBytes) {
   throw new Error(

@@ -79,6 +79,7 @@ export function MesurerPortal({
       ref={rootRef}
       className="mesurer-root msr:pointer-events-none msr:fixed msr:inset-0 msr:z-[70] msr:outline-none"
       data-mesurer-root
+      data-recording-panel={screenRecording.recording ? "true" : undefined}
       data-theme={theme}
       tabIndex={-1}
     >

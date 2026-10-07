@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { createPortal } from "react-dom"
 import { Mesurer } from "mesurer"
 import "./styles.css"
+import { MotionLibraryFixtures } from "./motion-fixtures"
 
 const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe", "#cffafe"]
 
@@ -20,6 +21,13 @@ const agentLogos = [
   ["Gemini", "https://assets.querrel.com/logo/muted/gemini.webp"],
   ["OpenClaw", "https://assets.querrel.com/logo/muted/openclaw.webp"],
   ["DeepSeek", "https://assets.querrel.com/logo/muted/deepseek.webp"],
+] as const
+
+const orbitArchiveCards = [
+  { title: "New material studies", note: "Milan, 2025", image: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=720&q=85" },
+  { title: "Soft architecture", note: "Objects / 041", image: "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=720&q=85" },
+  { title: "Blue hour archive", note: "Kyoto, 06:12", image: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=720&q=85" },
+  { title: "The color of water", note: "Field notes", image: "https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=720&q=85" },
 ] as const
 
 const transparentPixel = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
@@ -83,6 +91,43 @@ const iframeSrcDoc = `<!doctype html>
     </script>
   </body>
 </html>`
+
+function JavaScriptMotionFixture({ mode }: { mode: "waapi" | "raf" }) {
+  const ref = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const animation = mode === "waapi" ? element.animate([
+      { transform: "translateX(-28px) rotate(-8deg)", opacity: 0.55 },
+      { transform: "translateX(28px) rotate(8deg)", opacity: 1 },
+    ], { duration: 2800, easing: "ease-in-out", iterations: Infinity, direction: "alternate" }) : null
+    if (animation) animation.id = "bench-waapi"
+    let frame = 0, visible = false
+    const draw = (time: number) => {
+      const phase = Math.sin(time / 650)
+      element.style.transform = `translateY(${phase * 22}px) rotate(${phase * 7}deg)`
+      element.style.opacity = String(0.75 + phase * 0.25)
+      frame = window.requestAnimationFrame(draw)
+    }
+    const update = () => {
+      window.cancelAnimationFrame(frame)
+      if (!visible || reduced.matches) animation?.pause()
+      else if (animation) animation.play()
+      else frame = window.requestAnimationFrame(draw)
+    }
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update() })
+    observer.observe(element)
+    reduced.addEventListener("change", update)
+    return () => {
+      observer.disconnect()
+      reduced.removeEventListener("change", update)
+      window.cancelAnimationFrame(frame)
+      animation?.cancel()
+    }
+  }, [mode])
+  return <button ref={ref} type="button" className="bench-motion-js" data-testid={`motion-${mode}`}>{mode === "waapi" ? "Web Animation" : "JS motion"}</button>
+}
 
 function SelectionOverlayFixtures() {
   const deeplyNestedImage = Array.from({ length: 12 }, (_, index) => index).reduce<ReactNode>(
@@ -411,11 +456,56 @@ function TestCanvas({ count }: { count: number }) {
           <div><span className="bench-kicker">10 / motion</span><h2 id="motion-title">Animated targets</h2></div>
           <span className="bench-coordinate">transform / opacity</span>
         </div>
-        <p className="bench-card-instruction">Inspect these while they move. Check that measurements and comments stay anchored to the animated target.</p>
+        <p className="bench-card-instruction">Inspect an animated target to open its motion card. Try pause, replay, scrubbing, playback speed, and the hover transition.</p>
         <div className="bench-motion-stage">
-          <button className="bench-motion-target bench-motion-orbit" type="button">orbiting target</button>
-          <button className="bench-motion-target bench-motion-pulse" type="button">pulsing target</button>
+          <button className="bench-motion-target bench-motion-orbit" type="button">orbit / transform</button>
+          <button className="bench-motion-target bench-motion-pulse" type="button">pulse / opacity</button>
+          <button className="bench-motion-target bench-motion-transition" type="button">hover / transition</button>
           <div className="bench-motion-scan" aria-hidden="true"><span>moving scan line</span></div>
+        </div>
+        <div className="bench-orbit-archive" aria-label="Looping image card motion fixture">
+          <div
+            className="bench-orbit-carousel"
+            data-testid="orbit-archive-motion"
+            role="img"
+            aria-label="Four photographic cards flowing through a looping composition"
+            style={{ backgroundImage: orbitArchiveCards.map((card) => `url("${card.image}")`).join(", ") }}
+          />
+        </div>
+        <div className="bench-motion-gallery">
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">spring / squash & stretch</span>
+            <button type="button" className="bench-motion-spring" data-testid="motion-spring">bounce</button>
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">perspective / 3D turn</span>
+            <div className="bench-motion-photo bench-motion-flip" data-testid="motion-flip" role="img" aria-label="Photograph rotating in three dimensions" style={{ backgroundImage: `url("${orbitArchiveCards[1].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">clip-path / aperture</span>
+            <div className="bench-motion-photo bench-motion-aperture" data-testid="motion-aperture" role="img" aria-label="Photograph revealed through an animated aperture" style={{ backgroundImage: `url("${orbitArchiveCards[3].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">two animations / negative delay</span>
+            <div className="bench-motion-photo bench-motion-drift" data-testid="motion-drift" role="img" aria-label="Photograph with independent drifting and fading animations" style={{ backgroundImage: `url("${orbitArchiveCards[0].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">steps / frame-by-frame</span>
+            <div className="bench-motion-shutter" data-testid="motion-shutter" role="img" aria-label="Photograph moving behind a stepped shutter" style={{ backgroundImage: `url("${orbitArchiveCards[2].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">hover or focus / transitions</span>
+            <button type="button" className="bench-motion-photo bench-motion-lift" data-testid="motion-lift" aria-label="Lift the image card" style={{ backgroundImage: `url("${orbitArchiveCards[1].image}")` }} />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">JavaScript / Web Animations API</span>
+            <JavaScriptMotionFixture mode="waapi" />
+          </div>
+          <div className="bench-motion-fixture">
+            <span className="bench-motion-fixture-label">JavaScript / requestAnimationFrame</span>
+            <JavaScriptMotionFixture mode="raf" />
+          </div>
+          <MotionLibraryFixtures />
         </div>
       </section>
       <section className="bench-card" aria-labelledby="layers-title">
@@ -485,8 +575,9 @@ function FloatingUiExamples() {
       setMenuOpen(false)
       setModelOpen(false)
     }
-    window.addEventListener("keydown", dismissOnEscape)
-    return () => window.removeEventListener("keydown", dismissOnEscape)
+    // Handle page-owned dismissal before Mesurer's global keyboard handling.
+    window.addEventListener("keydown", dismissOnEscape, true)
+    return () => window.removeEventListener("keydown", dismissOnEscape, true)
   }, [dialogOpen, menuOpen, modelOpen, popoverOpen])
 
   useEffect(() => {

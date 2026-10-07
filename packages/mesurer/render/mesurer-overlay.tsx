@@ -53,6 +53,7 @@ type OverlaySelection = {
   selectedSelectorCopied: boolean
   selectedTypography: TypographyInfo | null
   selectedMeasurementCount: number
+  hideInfoCard?: boolean
 }
 
 type OverlayDistances = {
@@ -304,7 +305,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
         selectedSelectorCopied={selection.selectedSelectorCopied}
          selectedTypography={selection.selectedTypography}
          selectedMeasurementCount={selection.selectedMeasurementCount}
-         hideInfoCard={selectionVisible && altPressed}
+          hideInfoCard={selectionVisible && (altPressed || Boolean(selection.hideInfoCard))}
        />
 
       {toolMode === "selection" && marqueeRect ? (

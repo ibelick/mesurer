@@ -18,8 +18,9 @@ import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
+import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
-import { useSettingsMenuPlacement } from "../hooks/use-settings-menu-placement";
+import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
 import { ScreenshotPreview } from "./screenshot-preview";
 import { Tooltip, TooltipLayerContext } from "./tooltip";
@@ -27,7 +28,7 @@ import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
 import { CommentsPanel } from "./comments-panel";
 import { LayoutGuidesPanel } from "./layout-guides-panel";
 import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
-import { MenuItem, MenuSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
+import { MenuItem, MenuSurface, ToolbarFloatingSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
 import type { ResolvedMesurerFeatures } from "../core/features";
 import type { LayoutGuide } from "../core/layout-guides";
 import {
@@ -135,6 +136,14 @@ type ToolbarProps = {
   colorPicker: ToolbarColorPicker;
   screenshot: ToolbarScreenshot;
   screenRecording: ToolbarScreenRecording;
+  motion: {
+    element: Element | null;
+    ownerWindow: Window;
+    playable: boolean;
+    observedProperties: string[];
+    observedTargets: import("../core/observed-motion").ObservedMotionTarget[];
+    inspectDetails: (motionDetails: ReactNode) => ReactNode;
+  };
   comments: ToolbarComments;
   layoutGuides: ToolbarLayoutGuides;
   settings: ToolbarSettings;
@@ -320,6 +329,7 @@ function ToolbarComponent(
     colorPicker,
     screenshot,
     screenRecording,
+    motion,
     comments,
     layoutGuides,
     settings,
@@ -612,7 +622,7 @@ function ToolbarComponent(
   const nearBottom = viewportHeight > 0 && position.y > viewportHeight - 56;
   const tooltipSide: "top" | "bottom" =
     viewportHeight > 0 &&
-    position.y + TOOLBAR_HEIGHT + TOOLTIP_HEIGHT_WITH_GAP > viewportHeight
+      position.y + TOOLBAR_HEIGHT + TOOLTIP_HEIGHT_WITH_GAP > viewportHeight
       ? "top"
       : "bottom";
   const toolbarTooltip = {
@@ -622,95 +632,76 @@ function ToolbarComponent(
     onTooltipLeave,
   };
   const menuSide: "top" | "bottom" = nearBottom ? "top" : "bottom";
-  const { menuRef: settingsMenuRef, placement: settingsPlacement } =
-    useSettingsMenuPlacement({
-      anchorRef: settingsRef,
+  const { surfaceRef: settingsMenuRef, placement: settingsPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: motionRef,
       eventTarget,
       open: settingsOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
+      align: "right",
+      gap: 4,
+      rightOffset: 0,
     });
   const { menuRef: commentsPanelRef, placement: commentsPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
       open: commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
     });
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const captureAnchorRef = useRef<HTMLDivElement | null>(null);
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
-  const [colorPickerShell, setColorPickerShell] = useState<{
-    left: number;
-    top: number;
-    width: number;
-  } | null>(null);
+  const motionPlayerOpen = motion.playable && !recordingPanelOpen;
+  const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
   const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: guideMenuButtonRef,
       eventTarget,
-      open: recordingPanelOpen && guideMenuOpen,
+      open: floatingCardOpen && guideMenuOpen,
       refreshKey: `${position.x}:${position.y}:${menuAlign}`,
-      fixed: true,
       align: menuAlign,
     });
   const { menuRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: captureAnchorRef,
       eventTarget,
-      open: recordingPanelOpen && captureMenuOpen,
+      open: floatingCardOpen && captureMenuOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "right",
     });
   const { menuRef: commentDropdownPortalRef, placement: commentDropdownPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
-      open: recordingPanelOpen && commentMenuOpen && !commentsPanelOpen,
+      open: floatingCardOpen && commentMenuOpen && !commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "right",
     });
-  const { menuRef: recordingPanelRef, placement: recordingPlacement } =
-    useSettingsMenuPlacement({
-      anchorRef: settingsRef,
+  const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: motionRef,
       eventTarget,
-      open: recordingPanelOpen,
+      open: floatingCardOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
       align: "left",
+      gap: 4,
+      rightOffset: 0,
+    });
+  const { menuRef: colorPickerPortalRef, placement: colorPickerPortalPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: colorPickerAnchorRef,
+      eventTarget,
+      open: floatingCardOpen && colorPickerActive,
+      refreshKey: `${position.x}:${position.y}`,
     });
   const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
-    useSettingsMenuPlacement({
+    useFloatingSurfacePlacement({
       anchorRef: layoutGuidesAnchorRef,
       eventTarget,
       open: layoutGuidesOpen,
       refreshKey: `${position.x}:${position.y}`,
-      fixed: true,
     });
-
-  useLayoutEffect(() => {
-    if (!recordingPanelOpen || !colorPickerActive) {
-      setColorPickerShell(null);
-      return;
-    }
-    const place = () => {
-      const anchor = colorPickerAnchorRef.current;
-      const tool = anchor?.querySelector("[data-tool-id='color-picker']") ?? anchor;
-      if (!(tool instanceof HTMLElement)) return;
-      const rect = tool.getBoundingClientRect();
-      setColorPickerShell({ left: rect.left, top: rect.bottom, width: rect.width });
-    };
-    place();
-    eventTarget.addEventListener("resize", place);
-    eventTarget.addEventListener("scroll", place, true);
-    return () => {
-      eventTarget.removeEventListener("resize", place);
-      eventTarget.removeEventListener("scroll", place, true);
-    };
-  }, [colorPickerActive, eventTarget, position.x, position.y, recordingPanelOpen]);
 
   const selectMode = useCallback(() => {
     onCancelTransient();
@@ -774,6 +765,7 @@ function ToolbarComponent(
     setColorPickerActive(false)
     onCancelScreenshot()
     preserveToolGroupRef.current = true
+    setToolGroup("annotate")
     setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
     setOpenMenu(null)
     onInteract()
@@ -786,6 +778,7 @@ function ToolbarComponent(
     onCancelScreenshot()
     if (toolMode !== "comments") {
       preserveToolGroupRef.current = true
+      setToolGroup("annotate")
       setToolMode("comments")
     }
     setOpenMenu({ type: "comments", panel: true })
@@ -1043,717 +1036,717 @@ function ToolbarComponent(
         top: position.y,
       }}
     >
-       <div className="msr:relative msr:flex">
-    <TooltipLayerContext.Provider value={tooltipLayer}>
-    <div
-      ref={(node) => {
-        motionRef.current = node;
-        if (typeof ref === "function") {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      }}
-      className="mesurer-toolbar-motion msr:pointer-events-auto"
-       style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
-      onPointerDown={onDragPointerDown}
-      onPointerMove={onDragPointerMove}
-      onPointerUp={onDragPointerEnd}
-      onPointerCancel={onDragPointerEnd}
-      onMouseDown={(event) => {
-        if (event.button !== 0) return
-        const target = event.target
-        if (
-          target instanceof Element &&
-          target.closest("input, textarea, select, [contenteditable]")
-        ) {
-          return
-        }
-        event.preventDefault()
-      }}
-      onClickCapture={onClickCapture}
-      onMouseLeave={onToolbarLeave}
-    >
-    <div className="mesurer-toolbar-chrome" aria-hidden="true" />
-    <div className="mesurer-toolbar-clip">
-    <div className="mesurer-toolbar-surface msr:flex msr:items-center">
-       <div
-         ref={collapseStageRef}
-         className="mesurer-toolbar-minimize-stage"
-         data-minimized={minimized ? "true" : undefined}
-       >
-       <div className="mesurer-toolbar-minimize-track">
-       <div
-         className="mesurer-toolbar-minimize-slot"
-         data-slot="expanded"
-         data-open={!minimized}
-         aria-hidden={minimized}
-         inert={minimized ? true : undefined}
-       >
-        <div ref={expandedPanelRef} className="msr:flex msr:w-max msr:items-stretch msr:gap-1 msr:pl-1">
-       <ToolGroupSwitch
-         value={toolGroup}
-         onChange={selectToolGroup}
-         tooltip={toolbarTooltip}
-         tooltipVisibleId={visibleTooltipId}
-         tooltipsEnabled={tooltipsEnabled}
-       />
-       <div className="msr:flex msr:items-stretch">
-       <ToolbarDivider />
-       <div
-         ref={toolStageRef}
-         className="mesurer-toolbar-tool-stage"
-         data-group={toolGroup}
-       >
-       <div className="mesurer-toolbar-tool-track">
-       <div
-         className="mesurer-toolbar-tool-slot"
-         data-group="inspect"
-         data-open={toolGroup === "inspect"}
-         aria-hidden={toolGroup !== "inspect"}
-         inert={toolGroup !== "inspect" ? true : undefined}
-       >
-       <div ref={inspectPanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
-       <ToolbarGroup label="Select and inspect">
-      <ToolbarButton
-        id="select"
-        active={toolMode === "select"}
-        label="Inspect"
-        shortcut="I"
-        onClick={selectMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
-      >
-        <BoxSelectIcon size={20} />
-      </ToolbarButton>
-       <ToolbarButton
-        id="xray"
-        active={xrayVisible}
-        label="X-ray"
-        shortcut="X"
-        onClick={xrayMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
-      >
-        <XrayIcon size={20} />
-      </ToolbarButton>
-       <ToolbarButton
-        id="guides"
-        active={guideControl === "rulers" ? rulersVisible : toolMode === "guides"}
-        label={guideControl === "rulers" ? "Rulers" : "Guides"}
-        shortcut={guideControl === "rulers" ? "R" : "G"}
-        onClick={guideControl === "rulers" ? rulersMode : guidesMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
-      >
-        {guideControl === "rulers" ? (
-          <RulersIcon size={20} />
-        ) : (
-          <RulerIcon
-            size={20}
-            className={guideOrientation === "vertical" ? "msr:rotate-90" : undefined}
-          />
-        )}
-      </ToolbarButton>
-      <div
-        className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
-        ref={guideMenuRef}
-        onMouseEnter={() => onTooltipEnter("guide-menu")}
-        onMouseLeave={() => onTooltipLeave("guide-menu")}
-      >
-        <button
-          type="button"
-          ref={guideMenuButtonRef}
-          aria-label="Guide orientation menu"
-          aria-haspopup="menu"
-          aria-expanded={guideMenuOpen}
-          data-mesurer-menu-trigger
-          className={cn(
-            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-            guideMenuOpen
-               ? "msr:bg-black/4 msr:text-ink-900"
-               : "msr:text-ink-900",
-          )}
-          onClick={() => {
-            if (!guideMenuOpen) {
-              setActiveMenuIndex(
-                features.rulers && guideControl === "rulers"
-                  ? 0
-                  : guideOrientation === "horizontal"
-                    ? features.rulers ? 1 : 0
-                    : features.rulers ? 2 : 1,
-              );
-              updateMenuAlign();
-            }
-            toggleToolbarMenu({ type: "guide-orientation" });
-          }}
-        >
-          <CaretDownIcon size={8} />
-        </button>
-        <Tooltip
-          label="Orientation Guide"
-          visible={tooltipsEnabled && visibleTooltipId === "guide-menu"}
-          instant={tooltipInstant}
-          side={tooltipSide}
-          anchorRef={guideMenuRef}
-        />
-        {guideMenuOpen ? (() => {
-          const menu = (
-          <ToolbarMenu
-            ref={recordingPanelOpen ? guideMenuPortalRef : undefined}
-            floating={recordingPanelOpen}
-            floatingStyle={recordingPanelOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
-            side={menuSide}
-            align={menuAlign}
-            tabIndex={0}
-            onKeyDown={(event) => {
-              const key = event.key.toLowerCase();
-              const itemCount = features.rulers ? 3 : 2;
-              const horizontalIndex = features.rulers ? 1 : 0;
-              const verticalIndex = features.rulers ? 2 : 1;
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setActiveMenuIndex((prev) => (prev + 1) % itemCount);
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setActiveMenuIndex((prev) => (prev - 1 + itemCount) % itemCount);
-              }
-              if (event.key === "Enter") {
-                event.preventDefault();
-                if (features.rulers && activeMenuIndex === 0) selectRulers();
-                else if (activeMenuIndex === horizontalIndex) selectGuideOrientation("horizontal");
-                else if (activeMenuIndex === verticalIndex) selectGuideOrientation("vertical");
-              }
-              if (features.rulers && key === "r") {
-                event.preventDefault();
-                selectRulers();
-              }
-              if (key === "h") {
-                event.preventDefault();
-                selectGuideOrientation("horizontal");
-              }
-              if (key === "v") {
-                event.preventDefault();
-                selectGuideOrientation("vertical");
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                setOpenMenu(null);
-              }
-            }}
-          >
-            {features.rulers ? (
-              <MenuItem
-                className={cn(
-                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                  activeMenuIndex === 0 || guideControl === "rulers"
-                    ? "msr:bg-[#0d99ff] msr:text-white"
-                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                )}
-                onClick={() => selectRulers()}
-              >
-                <CheckIcon
-                  size={12}
-                  className={cn(guideControl === "rulers" ? "msr:opacity-100" : "msr:opacity-0")}
-                />
-                <RulersIcon size={12} />
-                <span className="msr:flex-1">Rulers</span>
-                <span>R</span>
-              </MenuItem>
-            ) : null}
-            <MenuItem
-              className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                activeMenuIndex === (features.rulers ? 1 : 0) || (guideControl === "guides" && guideOrientation === "horizontal")
-                  ? "msr:bg-[#0d99ff] msr:text-white"
-                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-              )}
-              onClick={() => selectGuideOrientation("horizontal")}
-            >
-              <CheckIcon
-                size={12}
-                className={cn(
-                  guideControl === "guides" && guideOrientation === "horizontal"
-                    ? "msr:opacity-100"
-                    : "msr:opacity-0",
-                )}
-              />
-              <MinusIcon size={12} />
-              <span className="msr:flex-1">Horizontal</span>
-              <span>H</span>
-            </MenuItem>
-            <MenuItem
-              className={cn(
-                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                activeMenuIndex === (features.rulers ? 2 : 1) || (guideControl === "guides" && guideOrientation === "vertical")
-                  ? "msr:bg-[#0d99ff] msr:text-white"
-                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-              )}
-              onClick={() => selectGuideOrientation("vertical")}
-            >
-              <CheckIcon
-                size={12}
-                className={cn(
-                  guideControl === "guides" && guideOrientation === "vertical"
-                    ? "msr:opacity-100"
-                    : "msr:opacity-0",
-                )}
-              />
-              <MinusIcon size={12} className="msr:rotate-90" />
-              <span className="msr:flex-1">Vertical</span>
-              <span>V</span>
-            </MenuItem>
-          </ToolbarMenu>
-          );
-          return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
-        })() : null}
-      </div>
-      <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
-        <ToolbarButton
-          id="layout-guides"
-          active={layoutGuides.visible}
-          label="Layout guides"
-          shortcut="L"
-            onClick={() => {
-            dismissCaptureToasts();
-            layoutGuides.onToggle();
-          }}
-          tooltip={toolbarTooltip}
-          tooltipVisible={tooltipsEnabled && visibleTooltipId === "layout-guides"}
-        >
-          <LayoutGridIcon size={20} />
-        </ToolbarButton>
-        {layoutGuidesOpen
-          ? createPortal(
-              <div
-                ref={layoutGuidesMenuRef}
-                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
-                style={{
-                  zIndex: recordingPanelOpen ? 120 : undefined,
-                  top: layoutGuidesPlacement.top,
-                  bottom: layoutGuidesPlacement.bottom,
-                  right: layoutGuidesPlacement.right,
-                  maxHeight: Math.min(320, layoutGuidesPlacement.height),
-                }}
-                data-mesurer-layout-guides-panel
-                role="dialog"
-                aria-label="Layout guides"
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerMove={(event) => event.stopPropagation()}
-                onPointerUp={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <LayoutGuidesPanel
-                  guides={layoutGuides.items}
-                  ownerWindow={eventTarget}
-                  onChange={layoutGuides.onChange}
-                />
-              </div>,
-              commentPanelPortalTarget,
-            )
-          : null}
-      </div>
-      <div ref={colorPickerAnchorRef} className="msr:relative msr:flex">
-        <ToolbarButton
-          id="color-picker"
-          active={colorPickerActive}
-          label="Sample color"
-          shortcut="P"
-          onClick={colorPickerMode}
-          tooltip={toolbarTooltip}
-          tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
-        >
-          <ColorPickerIcon size={20} aria-hidden="true" />
-        </ToolbarButton>
-        {recordingPanelOpen && colorPickerActive
-          ? createPortal(
-              <div
-                className="msr:pointer-events-none msr:fixed msr:z-[120]"
-                style={{
-                  left: colorPickerShell?.left ?? 0,
-                  top: colorPickerShell?.top ?? 0,
-                  width: colorPickerShell?.width,
-                  height: 0,
-                  visibility: colorPickerShell ? "visible" : "hidden",
-                }}
-              >
-                <div className="msr:pointer-events-auto">{colorPicker.panel}</div>
-              </div>,
-              commentPanelPortalTarget,
-            )
-          : colorPicker.panel}
-      </div>
-       </ToolbarGroup>
-       </div>
-       </div>
-       <div
-         className="mesurer-toolbar-tool-slot"
-         data-group="annotate"
-         data-open={toolGroup === "annotate"}
-         aria-hidden={toolGroup !== "annotate"}
-         inert={toolGroup !== "annotate" ? true : undefined}
-       >
-       <div ref={annotatePanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
-       <ToolbarGroup label="Annotate">
-      <ToolbarButton
-        id="selection"
-        active={toolMode === "selection"}
-        label="Select"
-        shortcut="S"
-        onClick={selectionMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
-      >
-        <CursorIcon size={20} />
-      </ToolbarButton>
-      <ToolbarButton
-        id="arrows"
-        active={toolMode === "arrows"}
-        label="Arrows"
-        shortcut="D"
-        onClick={arrowsMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "arrows"}
-      >
-        <ArrowIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
-      <ToolbarButton
-        id="pen"
-        active={toolMode === "pen"}
-        label="Pen"
-        shortcut="N"
-        onClick={penMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "pen"}
-      >
-        <PenIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
-      <ToolbarButton
-        id="text"
-        active={toolMode === "text"}
-        label="Text"
-        shortcut="T"
-        onClick={textMode}
-        tooltip={toolbarTooltip}
-        tooltipVisible={tooltipsEnabled && visibleTooltipId === "text"}
-      >
-        <TextIcon size={20} aria-hidden="true" />
-      </ToolbarButton>
-       </ToolbarGroup>
-       </div>
-       </div>
-       </div>
-       </div>
-       <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-stretch">
-       <ToolbarDivider />
-        <ToolbarGroup label="Capture and settings" className="msr:px-1">
-        <div ref={captureAnchorRef} className="msr:relative msr:flex msr:flex-none">
-        {features.screenshot ? (
-          <>
-            <ToolbarButton
-              id="screenshot"
-              active={screenshotActive || recording}
-              label={recording ? "Stop recording" : shareMode === "record" ? "Screen record" : "Screenshot"}
-              shortcut={recording ? undefined : shareMode === "record" ? "V" : "C"}
-              onClick={() => {
-                if (openMenu?.type === "capture") setOpenMenu(null)
-                preferredCapture()
-              }}
-              tooltip={toolbarTooltip}
-              tooltipVisible={
-                tooltipsEnabled &&
-                !screenshotPreviewUrl &&
-                visibleTooltipId === "screenshot"
-              }
-            >
-              {recording ? <span aria-hidden="true" className="msr:size-3 msr:rounded-[2px] msr:bg-[var(--msr-danger-solid-bg)]" /> : shareMode === "record" ? <RecordIcon size={20} aria-hidden="true" /> : <CameraIcon size={20} aria-hidden="true" />}
-            </ToolbarButton>
-            {screenshotPreviewUrl ? (
-              <ScreenshotPreview
-                url={screenshotPreviewUrl}
-                side={tooltipSide}
-                label={
-                  screenshotCopy && !screenshotDownload
-                    ? "Screenshot copied"
-                    : screenshotDownload && !screenshotCopy
-                      ? "Screenshot downloaded"
-                      : "Screenshot saved"
-                }
-                onExited={onScreenshotPreviewExited}
-              />
-            ) : null}
-          </>
-        ) : null}
-          <button
-            type="button"
-            aria-label="Capture menu"
-            aria-haspopup="menu"
-            aria-expanded={captureMenuOpen}
-            data-mesurer-menu-trigger
-            className={cn(
-              "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-              captureMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
-            )}
-            onClick={() => toggleToolbarMenu({ type: "capture" })}
-          >
-            <CaretDownIcon size={8} aria-hidden="true" />
-          </button>
-          {captureMenuOpen ? (() => {
-            const menu = (
-            <ToolbarMenu
-              ref={recordingPanelOpen ? captureMenuPortalRef : undefined}
-              floating={recordingPanelOpen}
-              floatingStyle={recordingPanelOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
-              side={menuSide}
-              align="right"
-              onKeyDown={(event) => {
-                if (event.key !== "Escape") return
-                event.preventDefault()
-                event.stopPropagation()
-                setOpenMenu(null)
-              }}
-            >
-              <ToolbarMenuItem
-                onClick={() => {
-                  setOpenMenu(null)
-                  screenshotMode()
-                }}
-              >
-                <CameraIcon size={12} />
-                <span className="msr:flex-1">Screenshot</span>
-                <span>C</span>
-              </ToolbarMenuItem>
-              <ToolbarMenuItem
-                onClick={() => {
-                  setOpenMenu(null)
-                  if (recording) onScreenRecordingStop()
-                  else recordMode()
-                }}
-              >
-                <RecordIcon size={12} />
-                <span className="msr:flex-1">{recording ? "Stop recording" : "Screen record"}</span>
-                <span>V</span>
-              </ToolbarMenuItem>
-            </ToolbarMenu>
-            );
-            return recordingPanelOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
-          })() : null}
-        </div>
-        <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
-       <ToolbarButton
-         id="comments"
-         active={toolMode === "comments"}
-         label="Comments"
-         shortcut="M"
-         onClick={commentsMode}
-         tooltip={toolbarTooltip}
-         tooltipVisible={tooltipsEnabled && visibleTooltipId === "comments"}
-       >
-         <CommentIcon size={20} />
-        </ToolbarButton>
-        <button
-          type="button"
-          ref={commentButtonRef}
-          aria-label="Comment menu"
-         aria-haspopup="menu"
-         aria-expanded={commentMenuOpen}
-         data-mesurer-menu-trigger
-         className={cn(
-            "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-             commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
-         )}
-          onClick={() => {
-            toggleToolbarMenu({ type: "comments", panel: false })
-          }}
-       >
-         <CaretDownIcon size={8} />
-         </button>
-         {commentMenuOpen ? (
-           commentsPanelOpen ? (
-              createPortal(<CommentsPanel
-                comments={commentThreads}
-               unresolvedIds={unresolvedIds}
-               selectedId={selectedId}
-               panelRef={commentsPanelRef}
-               placement={commentsPlacement}
-                onDelete={onDeleteComment}
-                onToggleResolved={onToggleResolved}
-                 onDeleteAll={onDeleteAllComments}
-                 onResolveAll={onResolveAllComments}
-                onCopy={onCopyComments}
-                statusFilter={statusFilter}
-                onStatusFilterChange={onStatusFilterChange}
-               ownerWindow={eventTarget}
-               copyShortcut={copyCommentsShortcut}
-                onSelect={(id) => {
-                  if (toolMode !== "comments") preserveToolGroupRef.current = true;
-                  onSelectComment(id)
-                }}
-                fixed
-                fixedZIndex={recordingPanelOpen ? 120 : 100}
-               />, commentPanelPortalTarget)
-           ) : recordingPanelOpen ? (
-             createPortal(
-             <MenuSurface
-               ref={commentDropdownPortalRef}
-               className="msr:pointer-events-auto msr:fixed msr:flex msr:w-44 msr:flex-col msr:gap-px"
-               style={floatingMenuStyle(commentDropdownPlacement)}
-               data-mesurer-comment-ui
-             >
-                <>
-                 <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
-                   <span className="msr:flex-1">Show all comments</span>
-                 </MenuItem>
-                 <MenuItem
-                   disabled={commentCount === 0}
-                   onClick={() => {
-                      void onCopyComments()
-                      setOpenMenu(null)
-                   }}
-                 >
-                   <span className="msr:flex-1">Copy comments</span>
-                   {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
-                 </MenuItem>
-               </>
-             </MenuSurface>,
-             commentPanelPortalTarget,
-             )
-           ) : (
-             <MenuSurface
-               className={cn(
-                 "msr:absolute msr:right-0 msr:flex msr:w-44 msr:flex-col msr:gap-px",
-                 tooltipSide === "bottom"
-                   ? "msr:top-full msr:mt-2"
-                   : "msr:bottom-full msr:mb-2",
-               )}
-               data-mesurer-comment-ui
-             >
-                <>
-                 <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
-                   <span className="msr:flex-1">Show all comments</span>
-                 </MenuItem>
-                 <MenuItem
-                   disabled={commentCount === 0}
-                   onClick={() => {
-                      void onCopyComments()
-                      setOpenMenu(null)
-                   }}
-                 >
-                   <span className="msr:flex-1">Copy comments</span>
-                   {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
-                 </MenuItem>
-               </>
-             </MenuSurface>
-           )
-         ) : null}
-      </div>
-        {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
-          <ToolbarButton
-            id="settings"
-            className="msr:relative msr:z-[71]"
-            active={settingsOpen}
-            label="Settings"
-            shortcut={settingsShortcut}
-            onClick={() => {
-              dismissCaptureToasts();
-              onToggleSettings();
-            }}
-            tooltip={toolbarTooltip}
-            tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
-          >
-          <GearIcon size={20} aria-hidden="true" />
-        </ToolbarButton>
-        {settingsOpen
-          ? createPortal(
-              <div
-                ref={settingsMenuRef}
-                className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[120] msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
-                style={{
-                  top: settingsPlacement.top,
-                  bottom: settingsPlacement.bottom,
-                  right: settingsPlacement.right,
-                  height: settingsPlacement.height,
-                  maxHeight: settingsPlacement.height,
-                }}
-                data-mesurer-inspector-ui="true"
-                data-mesurer-settings-panel
-                role="dialog"
-                aria-label="Settings"
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerMove={(event) => event.stopPropagation()}
-                onPointerUp={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-              >
-                {settingsPanel}
-              </div>,
-              commentPanelPortalTarget,
-            )
-          : null}
-       </div> : null}
-       </ToolbarGroup>
-       </div>
-    </div>
-    </div>
-    </div>
-    <div
-      ref={iconSlotRef}
-       className="mesurer-toolbar-minimize-slot msr:px-1 msr:py-1"
-      data-slot="icon"
-      data-open={minimized}
-      aria-hidden={!minimized}
-      inert={!minimized ? true : undefined}
-    >
-      <button
-        type="button"
-        aria-label="Show Mesurer toolbar"
-         className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:bg-transparent msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
-        onClick={(event) => {
-          if (event.defaultPrevented || consumeDragClick()) return;
-          onRestore();
-        }}
-      >
-        <MesurerMarkIcon size={20} />
-      </button>
-    </div>
-    </div>
-    </div>
-    </div>
-    </div>
-    </div>
-    {createPortal(
-      <div
-        ref={setTooltipLayer}
-        className="mesurer-toolbar-tooltips"
-        style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
-      />,
-      commentPanelPortalTarget,
-    )}
-    {recordingPanelOpen
-      ? createPortal(
+      <div className="msr:relative msr:flex">
+        <TooltipLayerContext.Provider value={tooltipLayer}>
           <div
-            ref={recordingPanelRef}
-            className="msr:pointer-events-auto msr:fixed msr:z-[101] msr:w-max msr:max-w-[calc(100vw-16px)]"
-            style={{
-              top: recordingPlacement.top,
-              bottom: recordingPlacement.bottom,
-               left: position.x,
+            ref={(node) => {
+              motionRef.current = node;
+              if (typeof ref === "function") {
+                ref(node);
+              } else if (ref) {
+                ref.current = node;
+              }
             }}
-            data-mesurer-capture-ui
+            className="mesurer-toolbar-motion msr:pointer-events-auto"
+            style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
+            onPointerDown={onDragPointerDown}
+            onPointerMove={onDragPointerMove}
+            onPointerUp={onDragPointerEnd}
+            onPointerCancel={onDragPointerEnd}
+            onMouseDown={(event) => {
+              if (event.button !== 0) return
+              const target = event.target
+              if (
+                target instanceof Element &&
+                target.closest("input, textarea, select, [contenteditable]")
+              ) {
+                return
+              }
+              event.preventDefault()
+            }}
+            onClickCapture={onClickCapture}
+            onMouseLeave={onToolbarLeave}
           >
-            {screenRecording.panel}
-          </div>,
-          commentPanelPortalTarget,
-        )
-      : null}
-    </TooltipLayerContext.Provider>
-      {screenshotError ? (
-        <CaptureToast align={toastAlignment} title="Screenshot failed." />
-      ) : recordingError ? (
-        <CaptureToast align={toastAlignment} title="Recording failed." />
-      ) : null}
-    </div>
+            <div className="mesurer-toolbar-chrome" aria-hidden="true" />
+            <div className="mesurer-toolbar-clip">
+              <div className="mesurer-toolbar-surface msr:flex msr:items-center">
+                <div
+                  ref={collapseStageRef}
+                  className="mesurer-toolbar-minimize-stage"
+                  data-minimized={minimized ? "true" : undefined}
+                >
+                  <div className="mesurer-toolbar-minimize-track">
+                    <div
+                      className="mesurer-toolbar-minimize-slot"
+                      data-slot="expanded"
+                      data-open={!minimized}
+                      aria-hidden={minimized}
+                      inert={minimized ? true : undefined}
+                    >
+                      <div ref={expandedPanelRef} className="msr:flex msr:w-max msr:items-stretch msr:gap-1 msr:pl-1">
+                        <ToolGroupSwitch
+                          value={toolGroup}
+                          onChange={selectToolGroup}
+                          tooltip={toolbarTooltip}
+                          tooltipVisibleId={visibleTooltipId}
+                          tooltipsEnabled={tooltipsEnabled}
+                        />
+                        <div className="msr:flex msr:items-stretch">
+                          <ToolbarDivider />
+                          <div
+                            ref={toolStageRef}
+                            className="mesurer-toolbar-tool-stage"
+                            data-group={toolGroup}
+                          >
+                            <div className="mesurer-toolbar-tool-track">
+                              <div
+                                className="mesurer-toolbar-tool-slot"
+                                data-group="inspect"
+                                data-open={toolGroup === "inspect"}
+                                aria-hidden={toolGroup !== "inspect"}
+                                inert={toolGroup !== "inspect" ? true : undefined}
+                              >
+                                <div ref={inspectPanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
+                                  <ToolbarGroup label="Select and inspect">
+                                    <ToolbarButton
+                                      id="select"
+                                      active={toolMode === "select"}
+                                      label="Inspect"
+                                      shortcut="I"
+                                      onClick={selectMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
+                                    >
+                                      <BoxSelectIcon size={20} />
+                                    </ToolbarButton>
+                                    <ToolbarButton
+                                      id="xray"
+                                      active={xrayVisible}
+                                      label="X-ray"
+                                      shortcut="X"
+                                      onClick={xrayMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
+                                    >
+                                      <XrayIcon size={20} />
+                                    </ToolbarButton>
+                                    <ToolbarButton
+                                      id="guides"
+                                      active={guideControl === "rulers" ? rulersVisible : toolMode === "guides"}
+                                      label={guideControl === "rulers" ? "Rulers" : "Guides"}
+                                      shortcut={guideControl === "rulers" ? "R" : "G"}
+                                      onClick={guideControl === "rulers" ? rulersMode : guidesMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
+                                    >
+                                      {guideControl === "rulers" ? (
+                                        <RulersIcon size={20} />
+                                      ) : (
+                                        <RulerIcon
+                                          size={20}
+                                          className={guideOrientation === "vertical" ? "msr:rotate-90" : undefined}
+                                        />
+                                      )}
+                                    </ToolbarButton>
+                                    <div
+                                      className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
+                                      ref={guideMenuRef}
+                                      onMouseEnter={() => onTooltipEnter("guide-menu")}
+                                      onMouseLeave={() => onTooltipLeave("guide-menu")}
+                                    >
+                                      <button
+                                        type="button"
+                                        ref={guideMenuButtonRef}
+                                        aria-label="Guide orientation menu"
+                                        aria-haspopup="menu"
+                                        aria-expanded={guideMenuOpen}
+                                        data-mesurer-menu-trigger
+                                        className={cn(
+                                          "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                          guideMenuOpen
+                                            ? "msr:bg-black/4 msr:text-ink-900"
+                                            : "msr:text-ink-900",
+                                        )}
+                                        onClick={() => {
+                                          if (!guideMenuOpen) {
+                                            setActiveMenuIndex(
+                                              features.rulers && guideControl === "rulers"
+                                                ? 0
+                                                : guideOrientation === "horizontal"
+                                                  ? features.rulers ? 1 : 0
+                                                  : features.rulers ? 2 : 1,
+                                            );
+                                            updateMenuAlign();
+                                          }
+                                          toggleToolbarMenu({ type: "guide-orientation" });
+                                        }}
+                                      >
+                                        <CaretDownIcon size={8} />
+                                      </button>
+                                      <Tooltip
+                                        label="Orientation Guide"
+                                        visible={tooltipsEnabled && visibleTooltipId === "guide-menu"}
+                                        instant={tooltipInstant}
+                                        side={tooltipSide}
+                                        anchorRef={guideMenuRef}
+                                      />
+                                      {guideMenuOpen ? (() => {
+                                        const menu = (
+                                          <ToolbarMenu
+                                            ref={floatingCardOpen ? guideMenuPortalRef : undefined}
+                                            floating={floatingCardOpen}
+                                            floatingStyle={floatingCardOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
+                                            side={menuSide}
+                                            align={menuAlign}
+                                            tabIndex={0}
+                                            onKeyDown={(event) => {
+                                              const key = event.key.toLowerCase();
+                                              const itemCount = features.rulers ? 3 : 2;
+                                              const horizontalIndex = features.rulers ? 1 : 0;
+                                              const verticalIndex = features.rulers ? 2 : 1;
+                                              if (event.key === "ArrowDown") {
+                                                event.preventDefault();
+                                                setActiveMenuIndex((prev) => (prev + 1) % itemCount);
+                                              }
+                                              if (event.key === "ArrowUp") {
+                                                event.preventDefault();
+                                                setActiveMenuIndex((prev) => (prev - 1 + itemCount) % itemCount);
+                                              }
+                                              if (event.key === "Enter") {
+                                                event.preventDefault();
+                                                if (features.rulers && activeMenuIndex === 0) selectRulers();
+                                                else if (activeMenuIndex === horizontalIndex) selectGuideOrientation("horizontal");
+                                                else if (activeMenuIndex === verticalIndex) selectGuideOrientation("vertical");
+                                              }
+                                              if (features.rulers && key === "r") {
+                                                event.preventDefault();
+                                                selectRulers();
+                                              }
+                                              if (key === "h") {
+                                                event.preventDefault();
+                                                selectGuideOrientation("horizontal");
+                                              }
+                                              if (key === "v") {
+                                                event.preventDefault();
+                                                selectGuideOrientation("vertical");
+                                              }
+                                              if (event.key === "Escape") {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                setOpenMenu(null);
+                                              }
+                                            }}
+                                          >
+                                            {features.rulers ? (
+                                              <MenuItem
+                                                className={cn(
+                                                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
+                                                  activeMenuIndex === 0 || guideControl === "rulers"
+                                                    ? "msr:bg-[#0d99ff] msr:text-white"
+                                                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+                                                )}
+                                                onClick={() => selectRulers()}
+                                              >
+                                                <CheckIcon
+                                                  size={12}
+                                                  className={cn(guideControl === "rulers" ? "msr:opacity-100" : "msr:opacity-0")}
+                                                />
+                                                <RulersIcon size={12} />
+                                                <span className="msr:flex-1">Rulers</span>
+                                                <span>R</span>
+                                              </MenuItem>
+                                            ) : null}
+                                            <MenuItem
+                                              className={cn(
+                                                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
+                                                activeMenuIndex === (features.rulers ? 1 : 0) || (guideControl === "guides" && guideOrientation === "horizontal")
+                                                  ? "msr:bg-[#0d99ff] msr:text-white"
+                                                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+                                              )}
+                                              onClick={() => selectGuideOrientation("horizontal")}
+                                            >
+                                              <CheckIcon
+                                                size={12}
+                                                className={cn(
+                                                  guideControl === "guides" && guideOrientation === "horizontal"
+                                                    ? "msr:opacity-100"
+                                                    : "msr:opacity-0",
+                                                )}
+                                              />
+                                              <MinusIcon size={12} />
+                                              <span className="msr:flex-1">Horizontal</span>
+                                              <span>H</span>
+                                            </MenuItem>
+                                            <MenuItem
+                                              className={cn(
+                                                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
+                                                activeMenuIndex === (features.rulers ? 2 : 1) || (guideControl === "guides" && guideOrientation === "vertical")
+                                                  ? "msr:bg-[#0d99ff] msr:text-white"
+                                                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+                                              )}
+                                              onClick={() => selectGuideOrientation("vertical")}
+                                            >
+                                              <CheckIcon
+                                                size={12}
+                                                className={cn(
+                                                  guideControl === "guides" && guideOrientation === "vertical"
+                                                    ? "msr:opacity-100"
+                                                    : "msr:opacity-0",
+                                                )}
+                                              />
+                                              <MinusIcon size={12} className="msr:rotate-90" />
+                                              <span className="msr:flex-1">Vertical</span>
+                                              <span>V</span>
+                                            </MenuItem>
+                                          </ToolbarMenu>
+                                        );
+                                        return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                      })() : null}
+                                    </div>
+                                    <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
+                                      <ToolbarButton
+                                        id="layout-guides"
+                                        active={layoutGuides.visible}
+                                        label="Layout guides"
+                                        shortcut="L"
+                                        onClick={() => {
+                                          dismissCaptureToasts();
+                                          layoutGuides.onToggle();
+                                        }}
+                                        tooltip={toolbarTooltip}
+                                        tooltipVisible={tooltipsEnabled && visibleTooltipId === "layout-guides"}
+                                      >
+                                        <LayoutGridIcon size={20} />
+                                      </ToolbarButton>
+                                      {layoutGuidesOpen
+                                        ? createPortal(
+                                          <div
+                                            ref={layoutGuidesMenuRef}
+                                            className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                                            style={{
+                                              zIndex: floatingCardOpen ? 120 : undefined,
+                                              top: layoutGuidesPlacement.top,
+                                              bottom: layoutGuidesPlacement.bottom,
+                                              right: layoutGuidesPlacement.right,
+                                              maxHeight: Math.min(320, layoutGuidesPlacement.height),
+                                            }}
+                                            data-mesurer-layout-guides-panel
+                                            role="dialog"
+                                            aria-label="Layout guides"
+                                            onPointerDown={(event) => event.stopPropagation()}
+                                            onPointerMove={(event) => event.stopPropagation()}
+                                            onPointerUp={(event) => event.stopPropagation()}
+                                            onClick={(event) => event.stopPropagation()}
+                                          >
+                                            <LayoutGuidesPanel
+                                              guides={layoutGuides.items}
+                                              ownerWindow={eventTarget}
+                                              onChange={layoutGuides.onChange}
+                                            />
+                                          </div>,
+                                          commentPanelPortalTarget,
+                                        )
+                                        : null}
+                                    </div>
+                                    <div ref={colorPickerAnchorRef} className="msr:relative msr:flex">
+                                      <ToolbarButton
+                                        id="color-picker"
+                                        active={colorPickerActive}
+                                        label="Sample color"
+                                        shortcut="P"
+                                        onClick={colorPickerMode}
+                                        tooltip={toolbarTooltip}
+                                        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
+                                      >
+                                        <ColorPickerIcon size={20} aria-hidden="true" />
+                                      </ToolbarButton>
+                                      {floatingCardOpen && colorPickerActive
+                                        ? createPortal(
+                                          <div
+                                            ref={colorPickerPortalRef}
+                                            className="msr:pointer-events-auto msr:fixed"
+                                            style={floatingMenuStyle(colorPickerPortalPlacement)}
+                                          >
+                                            {colorPicker.panel}
+                                          </div>,
+                                          commentPanelPortalTarget,
+                                        )
+                                        : colorPicker.panel}
+                                    </div>
+                                  </ToolbarGroup>
+                                </div>
+                              </div>
+                              <div
+                                className="mesurer-toolbar-tool-slot"
+                                data-group="annotate"
+                                data-open={toolGroup === "annotate"}
+                                aria-hidden={toolGroup !== "annotate"}
+                                inert={toolGroup !== "annotate" ? true : undefined}
+                              >
+                                <div ref={annotatePanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
+                                  <ToolbarGroup label="Annotate">
+                                    <ToolbarButton
+                                      id="selection"
+                                      active={toolMode === "selection"}
+                                      label="Select"
+                                      shortcut="S"
+                                      onClick={selectionMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
+                                    >
+                                      <CursorIcon size={20} />
+                                    </ToolbarButton>
+                                    <ToolbarButton
+                                      id="arrows"
+                                      active={toolMode === "arrows"}
+                                      label="Arrows"
+                                      shortcut="D"
+                                      onClick={arrowsMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "arrows"}
+                                    >
+                                      <ArrowIcon size={20} aria-hidden="true" />
+                                    </ToolbarButton>
+                                    <ToolbarButton
+                                      id="pen"
+                                      active={toolMode === "pen"}
+                                      label="Pen"
+                                      shortcut="N"
+                                      onClick={penMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "pen"}
+                                    >
+                                      <PenIcon size={20} aria-hidden="true" />
+                                    </ToolbarButton>
+                                    <ToolbarButton
+                                      id="text"
+                                      active={toolMode === "text"}
+                                      label="Text"
+                                      shortcut="T"
+                                      onClick={textMode}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "text"}
+                                    >
+                                      <TextIcon size={20} aria-hidden="true" />
+                                    </ToolbarButton>
+                                  </ToolbarGroup>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-stretch">
+                            <ToolbarDivider />
+                            <ToolbarGroup label="Capture and settings" className="msr:px-1">
+                              <div ref={captureAnchorRef} className="msr:relative msr:flex msr:flex-none">
+                                {features.screenshot ? (
+                                  <>
+                                    <ToolbarButton
+                                      id="screenshot"
+                                      active={screenshotActive || recording}
+                                      label={recording ? "Stop recording" : shareMode === "record" ? "Screen record" : "Screenshot"}
+                                      shortcut={recording ? undefined : shareMode === "record" ? "V" : "C"}
+                                      onClick={() => {
+                                        if (openMenu?.type === "capture") setOpenMenu(null)
+                                        preferredCapture()
+                                      }}
+                                      tooltip={toolbarTooltip}
+                                      tooltipVisible={
+                                        tooltipsEnabled &&
+                                        !screenshotPreviewUrl &&
+                                        visibleTooltipId === "screenshot"
+                                      }
+                                    >
+                                      {recording ? <span aria-hidden="true" className="msr:size-3 msr:rounded-[2px] msr:bg-[var(--msr-danger-solid-bg)]" /> : shareMode === "record" ? <RecordIcon size={20} aria-hidden="true" /> : <CameraIcon size={20} aria-hidden="true" />}
+                                    </ToolbarButton>
+                                    {screenshotPreviewUrl ? (
+                                      <ScreenshotPreview
+                                        url={screenshotPreviewUrl}
+                                        side={tooltipSide}
+                                        label={
+                                          screenshotCopy && !screenshotDownload
+                                            ? "Screenshot copied"
+                                            : screenshotDownload && !screenshotCopy
+                                              ? "Screenshot downloaded"
+                                              : "Screenshot saved"
+                                        }
+                                        onExited={onScreenshotPreviewExited}
+                                      />
+                                    ) : null}
+                                  </>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  aria-label="Capture menu"
+                                  aria-haspopup="menu"
+                                  aria-expanded={captureMenuOpen}
+                                  data-mesurer-menu-trigger
+                                  className={cn(
+                                    "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                    captureMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
+                                  )}
+                                  onClick={() => toggleToolbarMenu({ type: "capture" })}
+                                >
+                                  <CaretDownIcon size={8} aria-hidden="true" />
+                                </button>
+                                {captureMenuOpen ? (() => {
+                                  const menu = (
+                                    <ToolbarMenu
+                                      ref={floatingCardOpen ? captureMenuPortalRef : undefined}
+                                      floating={floatingCardOpen}
+                                      floatingStyle={floatingCardOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
+                                      side={menuSide}
+                                      align="right"
+                                      onKeyDown={(event) => {
+                                        if (event.key !== "Escape") return
+                                        event.preventDefault()
+                                        event.stopPropagation()
+                                        setOpenMenu(null)
+                                      }}
+                                    >
+                                      <ToolbarMenuItem
+                                        onClick={() => {
+                                          setOpenMenu(null)
+                                          screenshotMode()
+                                        }}
+                                      >
+                                        <CameraIcon size={12} />
+                                        <span className="msr:flex-1">Screenshot</span>
+                                        <span>C</span>
+                                      </ToolbarMenuItem>
+                                      <ToolbarMenuItem
+                                        onClick={() => {
+                                          setOpenMenu(null)
+                                          if (recording) onScreenRecordingStop()
+                                          else recordMode()
+                                        }}
+                                      >
+                                        <RecordIcon size={12} />
+                                        <span className="msr:flex-1">{recording ? "Stop recording" : "Screen record"}</span>
+                                        <span>V</span>
+                                      </ToolbarMenuItem>
+                                    </ToolbarMenu>
+                                  );
+                                  return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                })() : null}
+                              </div>
+                              <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
+                                <ToolbarButton
+                                  id="comments"
+                                  active={toolMode === "comments"}
+                                  label="Comments"
+                                  shortcut="M"
+                                  onClick={commentsMode}
+                                  tooltip={toolbarTooltip}
+                                  tooltipVisible={tooltipsEnabled && visibleTooltipId === "comments"}
+                                >
+                                  <CommentIcon size={20} />
+                                </ToolbarButton>
+                                <button
+                                  type="button"
+                                  ref={commentButtonRef}
+                                  aria-label="Comment menu"
+                                  aria-haspopup="menu"
+                                  aria-expanded={commentMenuOpen}
+                                  data-mesurer-menu-trigger
+                                  className={cn(
+                                    "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                    commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
+                                  )}
+                                  onClick={() => {
+                                    toggleToolbarMenu({ type: "comments", panel: false })
+                                  }}
+                                >
+                                  <CaretDownIcon size={8} />
+                                </button>
+                                {commentMenuOpen ? (
+                                  commentsPanelOpen ? (
+                                    createPortal(<CommentsPanel
+                                      comments={commentThreads}
+                                      unresolvedIds={unresolvedIds}
+                                      selectedId={selectedId}
+                                      panelRef={commentsPanelRef}
+                                      placement={commentsPlacement}
+                                      onDelete={onDeleteComment}
+                                      onToggleResolved={onToggleResolved}
+                                      onDeleteAll={onDeleteAllComments}
+                                      onResolveAll={onResolveAllComments}
+                                      onCopy={onCopyComments}
+                                      statusFilter={statusFilter}
+                                      onStatusFilterChange={onStatusFilterChange}
+                                      ownerWindow={eventTarget}
+                                      copyShortcut={copyCommentsShortcut}
+                                      onSelect={(id) => {
+                                        if (toolMode !== "comments") preserveToolGroupRef.current = true;
+                                        onSelectComment(id)
+                                      }}
+                                      fixed
+                                      fixedZIndex={floatingCardOpen ? 120 : 100}
+                                    />, commentPanelPortalTarget)
+                                  ) : floatingCardOpen ? (
+                                    createPortal(
+                                      <MenuSurface
+                                        ref={commentDropdownPortalRef}
+                                        className="msr:pointer-events-auto msr:fixed msr:flex msr:w-44 msr:flex-col msr:gap-px"
+                                        style={floatingMenuStyle(commentDropdownPlacement)}
+                                        data-mesurer-comment-ui
+                                      >
+                                        <>
+                                          <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
+                                            <span className="msr:flex-1">Show all comments</span>
+                                          </MenuItem>
+                                          <MenuItem
+                                            disabled={commentCount === 0}
+                                            onClick={() => {
+                                              void onCopyComments()
+                                              setOpenMenu(null)
+                                            }}
+                                          >
+                                            <span className="msr:flex-1">Copy comments</span>
+                                            {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
+                                          </MenuItem>
+                                        </>
+                                      </MenuSurface>,
+                                      commentPanelPortalTarget,
+                                    )
+                                  ) : (
+                                    <MenuSurface
+                                      className={cn(
+                                        "msr:absolute msr:right-0 msr:flex msr:w-44 msr:flex-col msr:gap-px",
+                                        tooltipSide === "bottom"
+                                          ? "msr:top-full msr:mt-2"
+                                          : "msr:bottom-full msr:mb-2",
+                                      )}
+                                      data-mesurer-comment-ui
+                                    >
+                                      <>
+                                        <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
+                                          <span className="msr:flex-1">Show all comments</span>
+                                        </MenuItem>
+                                        <MenuItem
+                                          disabled={commentCount === 0}
+                                          onClick={() => {
+                                            void onCopyComments()
+                                            setOpenMenu(null)
+                                          }}
+                                        >
+                                          <span className="msr:flex-1">Copy comments</span>
+                                          {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
+                                        </MenuItem>
+                                      </>
+                                    </MenuSurface>
+                                  )
+                                ) : null}
+                              </div>
+                              {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
+                                <ToolbarButton
+                                  id="settings"
+                                  className="msr:relative msr:z-[71]"
+                                  active={settingsOpen}
+                                  label="Settings"
+                                  shortcut={settingsShortcut}
+                                  onClick={() => {
+                                    dismissCaptureToasts();
+                                    onToggleSettings();
+                                  }}
+                                  tooltip={toolbarTooltip}
+                                  tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
+                                >
+                                  <GearIcon size={20} aria-hidden="true" />
+                                </ToolbarButton>
+                                {settingsOpen
+                                  ? createPortal(
+                                    <ToolbarFloatingSurface
+                                      ref={settingsMenuRef}
+                                      className="msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:p-0"
+                                      style={{
+                                        top: settingsPlacement.top,
+                                        bottom: settingsPlacement.bottom,
+                                        right: settingsPlacement.right,
+                                        height: settingsPlacement.height,
+                                        maxHeight: settingsPlacement.height,
+                                      }}
+                                      data-mesurer-inspector-ui="true"
+                                      data-mesurer-settings-panel
+                                      role="dialog"
+                                      aria-label="Settings"
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      onPointerMove={(event) => event.stopPropagation()}
+                                      onPointerUp={(event) => event.stopPropagation()}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      {settingsPanel}
+                                    </ToolbarFloatingSurface>,
+                                    commentPanelPortalTarget,
+                                  )
+                                  : null}
+                              </div> : null}
+                            </ToolbarGroup>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      ref={iconSlotRef}
+                      className="mesurer-toolbar-minimize-slot msr:px-1 msr:py-1"
+                      data-slot="icon"
+                      data-open={minimized}
+                      aria-hidden={!minimized}
+                      inert={!minimized ? true : undefined}
+                    >
+                      <button
+                        type="button"
+                        aria-label="Show Mesurer toolbar"
+                        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:bg-transparent msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
+                        onClick={(event) => {
+                          if (event.defaultPrevented || consumeDragClick()) return;
+                          onRestore();
+                        }}
+                      >
+                        <MesurerMarkIcon size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {createPortal(
+            <div
+              ref={setTooltipLayer}
+              className="mesurer-toolbar-tooltips"
+              style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
+            />,
+            commentPanelPortalTarget,
+          )}
+          {floatingCardOpen
+            ? createPortal(
+              <div
+                ref={recordingPanelRef}
+                className="msr:pointer-events-auto msr:fixed msr:z-[101] msr:w-max msr:max-w-[calc(100vw-16px)]"
+                style={{
+                  top: recordingPanelPlacement.top,
+                  bottom: recordingPanelPlacement.bottom,
+                  left: recordingPanelPlacement.left,
+                  zIndex: 101,
+                }}
+                data-mesurer-capture-ui
+              >
+                 {recordingPanelOpen ? screenRecording.panel : (
+                   <div className="msr:w-[22rem] msr:max-w-[calc(100vw-24px)]" data-mesurer-motion-surface>
+                      <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} observedProperties={motion.observedProperties} observedTargets={motion.observedTargets} inspectDetails={motion.inspectDetails} />
+                   </div>
+                 )}
+              </div>,
+              commentPanelPortalTarget,
+            )
+            : null}
+        </TooltipLayerContext.Provider>
+        {screenshotError ? (
+          <CaptureToast align={toastAlignment} title="Screenshot failed." />
+        ) : recordingError ? (
+          <CaptureToast align={toastAlignment} title="Recording failed." />
+        ) : null}
+      </div>
     </div>
   );
 }

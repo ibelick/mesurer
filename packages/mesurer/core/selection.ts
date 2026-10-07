@@ -11,6 +11,7 @@ import { COMPOSITE_CONTROL_SELECTOR, getDirectTextRangeAtPoint } from "./inspect
 import { withOverlayHitTesting } from "./overlay-hit-test"
 import { pickMultiTargets, pickPointTarget } from "./targets"
 import type { Point, Rect } from "./types"
+import { parentPointToFrame } from "./frame-geometry"
 
 const SELECTION_BUCKET_SIZE = 160
 const MAX_INDEXED_BUCKET_SPAN = 32
@@ -114,8 +115,8 @@ const expandCompositeTextInspectStack = (
   if (!textRange) return { stack, modes }
   const nextStack = [...stack]
   const nextModes = [...modes]
-  nextStack.splice(controlIndex + 1, 0, control)
-  nextModes.splice(controlIndex + 1, 0, "text")
+  nextStack.push(control)
+  nextModes.push("text")
   return { stack: nextStack, modes: nextModes }
 }
 
@@ -147,11 +148,7 @@ const getDeepestElementAt = (
     seen.add(current)
     const childDocument = getAccessibleFrameDocument(current)
     if (childDocument) {
-      const frameRect = current.getBoundingClientRect()
-      const childPoint = {
-        x: currentPoint.x - frameRect.left - current.clientLeft,
-        y: currentPoint.y - frameRect.top - current.clientTop,
-      }
+      const childPoint = parentPointToFrame(current, currentPoint)
       const child = childDocument.elementFromPoint(childPoint.x, childPoint.y)
       if (child && child !== childDocument.body && child !== childDocument.documentElement) {
         current = child

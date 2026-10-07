@@ -13,6 +13,7 @@ import { StatusEllipsis } from "./status-ellipsis"
 import { clampOverlayPosition } from "../core/overlay-position"
 import { supportsMp4Encoding } from "../core/screen-recording-mp4"
 import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
+import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "./player-layout"
 
 type ScreenRecordingEditorProps = {
   url: string
@@ -54,13 +55,13 @@ const timestamp = (value: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-const PlayIcon = () => (
+export const PlayIcon = () => (
   <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
     <path d="M1.4.6v6.8L7.2 4z" />
   </svg>
 )
 
-const PauseIcon = () => (
+export const PauseIcon = () => (
   <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
     <rect x="1.4" y="1" width="1.8" height="6" rx="0.2" />
     <rect x="4.8" y="1" width="1.8" height="6" rx="0.2" />
@@ -85,11 +86,13 @@ const DownloadIcon = () => (
   </svg>
 )
 
-function PlayerIconButton({
+export function PlayerIconButton({
   label,
   tooltipId,
   tooltip,
   pressed,
+  expanded,
+  controls,
   disabled,
   onClick,
   onPointerDown,
@@ -99,6 +102,8 @@ function PlayerIconButton({
   tooltipId?: string
   tooltip: ReturnType<typeof useToolbarTooltip>
   pressed?: boolean
+  expanded?: boolean
+  controls?: string
   disabled?: boolean
   onClick?: () => void
   onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void
@@ -130,6 +135,8 @@ function PlayerIconButton({
         type="button"
         aria-label={label}
         aria-pressed={pressed}
+        aria-expanded={expanded}
+        aria-controls={controls}
         disabled={disabled}
         onPointerDown={onPointerDown}
         onClick={onClick}
@@ -356,7 +363,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const [error, setError] = useState<string | null>(null)
   const closeAnchorRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLElement>(null)
-  const togglePlaybackRef = useRef<() => void>(() => {})
+  const togglePlaybackRef = useRef<() => void>(() => { })
   const [exportMenuBox, setExportMenuBox] = useState<{ left: number; top: number; ready: boolean } | null>(null)
   startRef.current = start
   endRef.current = end
@@ -418,10 +425,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     }
     const detachWindow = exportMenuOpen
       ? addMesurerCaptureListener(view, view, "pointerdown", closeIfOutside)
-      : () => {}
+      : () => { }
     const detachDocument = exportMenuOpen
       ? addMesurerCaptureListener(view, ownerDocument, "pointerdown", closeIfOutside)
-      : () => {}
+      : () => { }
     const detachKeys = addMesurerCaptureListener(view, view, "keydown", onKeyDown)
     return () => {
       detachWindow()
@@ -725,7 +732,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       data-mesurer-recording-card
       data-expanded={expanded ? "true" : "false"}
       className={cn(
-        "mesurer-menu-surface msr:relative msr:box-border msr:overflow-visible msr:rounded-wide-card msr:bg-white msr:shadow-floating msr:outline-none",
+        playerCardClassName,
         fillFrame
           ? "msr:w-full msr:max-w-none"
           : "msr:w-[22rem] msr:max-w-[calc(100vw-24px)] msr:transition-[width] msr:duration-200 msr:ease-[ease] msr:motion-reduce:transition-none",
@@ -742,7 +749,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       <div className="msr:relative msr:p-2">
         <div className="msr:relative msr:flex msr:w-full msr:justify-center">
           <div
-            className="msr:group/video msr:relative msr:flex msr:w-full msr:cursor-default msr:justify-center msr:overflow-hidden msr:rounded-control msr:bg-ink-100"
+            className={playerPreviewClassName}
             onClick={(event) => {
               if ((event.target as HTMLElement).closest("button")) return
               void togglePlayback()
@@ -756,58 +763,58 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
               )}
               style={{ aspectRatio: previewAspect }}
             >
-            <video
-            ref={videoRef}
-            className="msr:block msr:size-full msr:max-h-full msr:max-w-full msr:object-contain"
-            src={url}
-            muted
-            playsInline
-            preload="auto"
-            onLoadedMetadata={(event) => {
-              const video = event.currentTarget
-              if (video.videoWidth > 0 && video.videoHeight > 0) {
-                setFrameSize({ width: video.videoWidth, height: video.videoHeight })
-              }
-            }}
-            onPlay={() => {
-              setPlaying(true)
-              const video = videoRef.current
-              if (video && !playClockRef.current) syncPlayClock(video.currentTime)
-            }}
-            onPause={() => {
-              playClockRef.current = null
-              setPlaying(false)
-            }}
-            onTimeUpdate={(event) => {
-              const video = event.currentTarget
-              if (video.paused) {
-                setCurrentTime(video.currentTime)
-                return
-              }
-              const clipStart = startRef.current
-              const clipEnd = endRef.current
-              if (video.currentTime >= clipEnd - 0.02) {
-                video.pause()
-                video.currentTime = clipStart
-                setCurrentTime(clipStart)
-                updatePlayheadPosition(clipStart)
-                playClockRef.current = null
-                return
-              }
-              if (video.currentTime < clipStart) {
-                video.currentTime = clipStart
-                setCurrentTime(clipStart)
-                syncPlayClock(clipStart)
-              }
-            }}
-            onEnded={() => {
-              const clipStart = startRef.current
-              const video = videoRef.current
-              if (video) video.currentTime = clipStart
-              setCurrentTime(clipStart)
-              updatePlayheadPosition(clipStart)
-            }}
-            />
+              <video
+                ref={videoRef}
+                className="msr:block msr:size-full msr:max-h-full msr:max-w-full msr:object-contain"
+                src={url}
+                muted
+                playsInline
+                preload="auto"
+                onLoadedMetadata={(event) => {
+                  const video = event.currentTarget
+                  if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    setFrameSize({ width: video.videoWidth, height: video.videoHeight })
+                  }
+                }}
+                onPlay={() => {
+                  setPlaying(true)
+                  const video = videoRef.current
+                  if (video && !playClockRef.current) syncPlayClock(video.currentTime)
+                }}
+                onPause={() => {
+                  playClockRef.current = null
+                  setPlaying(false)
+                }}
+                onTimeUpdate={(event) => {
+                  const video = event.currentTarget
+                  if (video.paused) {
+                    setCurrentTime(video.currentTime)
+                    return
+                  }
+                  const clipStart = startRef.current
+                  const clipEnd = endRef.current
+                  if (video.currentTime >= clipEnd - 0.02) {
+                    video.pause()
+                    video.currentTime = clipStart
+                    setCurrentTime(clipStart)
+                    updatePlayheadPosition(clipStart)
+                    playClockRef.current = null
+                    return
+                  }
+                  if (video.currentTime < clipStart) {
+                    video.currentTime = clipStart
+                    setCurrentTime(clipStart)
+                    syncPlayClock(clipStart)
+                  }
+                }}
+                onEnded={() => {
+                  const clipStart = startRef.current
+                  const video = videoRef.current
+                  if (video) video.currentTime = clipStart
+                  setCurrentTime(clipStart)
+                  updatePlayheadPosition(clipStart)
+                }}
+              />
             </div>
             {exporting ? (
               <div className="msr:absolute msr:inset-0 msr:z-30 msr:flex msr:items-center msr:justify-center msr:bg-black/80 msr:text-[11px] msr:font-medium msr:text-white msr:drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
@@ -844,7 +851,7 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             </div>
           </div>
         </div>
-        <div className="msr:mt-2 msr:flex msr:h-5 msr:items-center msr:gap-1.5">
+        <div className={playerControlsClassName}>
           <PlayerIconButton
             label={playing ? "Pause" : "Play"}
             tooltip={tooltip}
@@ -962,10 +969,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                           onClick={() => {
-                             setFormat(item)
-                             setExportMenuOpen(false)
-                           }}
+                          onClick={() => {
+                            setFormat(item)
+                            setExportMenuOpen(false)
+                          }}
                         >
                           <CheckIcon
                             size={12}
@@ -984,10 +991,10 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
                           variant="neutral"
                           className={exportMenuRowClass(selected)}
                           aria-checked={selected}
-                           onClick={() => {
-                             setScale(item)
-                             setExportMenuOpen(false)
-                           }}
+                          onClick={() => {
+                            setScale(item)
+                            setExportMenuOpen(false)
+                          }}
                         >
                           <CheckIcon
                             size={12}
@@ -1016,13 +1023,13 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
             tooltipId="recording-resize"
             tooltip={tooltip}
             pressed={expanded}
-             onClick={() => {
-               const next = !expanded
-               if (ownerDocument.defaultView && ownerDocument.defaultView.parent !== ownerDocument.defaultView) {
-                 ownerDocument.defaultView.parent.postMessage({ type: "mesurer:recording-frame-intent", expanded: next }, "*")
-               }
-               setExpanded(next)
-             }}
+            onClick={() => {
+              const next = !expanded
+              if (ownerDocument.defaultView && ownerDocument.defaultView.parent !== ownerDocument.defaultView) {
+                ownerDocument.defaultView.parent.postMessage({ type: "mesurer:recording-frame-intent", expanded: next }, "*")
+              }
+              setExpanded(next)
+            }}
           >
             {expanded ? <CollapseIcon /> : <ExpandIcon />}
           </PlayerIconButton>
