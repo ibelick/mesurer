@@ -1,5 +1,10 @@
 # mesurer
 
+## 0.2.4
+
+- add CSS and JavaScript motion inspection with playback, scrubbing, and previews
+- improve iframe, nested-element, keyboard, comments, settings, and extension behavior
+
 ## 0.2.3
 
 - add GIF export and capability-gated MP4 export
