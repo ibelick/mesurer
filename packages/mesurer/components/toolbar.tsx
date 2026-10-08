@@ -1018,19 +1018,33 @@ function ToolbarComponent(
         : "msr:left-1/2 msr:-translate-x-1/2";
 
   // Auto-hide: a bar glued to an edge slides mostly out of view until the pointer comes back.
-  const busy = dragging || settingsOpen || openMenu !== null;
+  // It stays out while anything hangs off it: a menu, the settings, a card or the color picker.
+  const busy =
+    dragging ||
+    settingsOpen ||
+    openMenu !== null ||
+    floatingCardOpen ||
+    colorPickerActive ||
+    screenshotPreviewUrl !== null;
   const idle = autoHide && edge !== null && !busy;
   // The bar comes out as soon as the pointer is within reach of its edge, not only over the tab,
-  // and only goes back a moment after the pointer has left. Just dropped or just used, it starts
-  // out and waits that same moment, so it is seen landing before it hides.
+  // or the keyboard reaches it, and only goes back a moment after they have left. Just dropped
+  // or just used, it starts out and waits that same moment, so it is seen landing before it hides.
   const [revealed, setRevealed] = useState(false);
+  // A press that began off the bar (a guide, a stroke, a region being drawn) keeps it hidden
+  // until it ends, however close to the bar's edge it goes.
+  const [pressedOff, setPressedOff] = useState(false);
   useLayoutEffect(() => {
     if (!idle) {
       setRevealed(busy);
+      setPressedOff(false);
       return;
     }
     let timer: number | undefined;
+    const bar = barBoxRef.current;
     const hideSoon = () => {
+      // Not while the keyboard is on it, wherever the pointer goes.
+      if (bar?.querySelector(":focus-visible")) return;
       timer ??= eventTarget.setTimeout(() => {
         timer = undefined;
         setRevealed(false);
@@ -1049,16 +1063,38 @@ function ToolbarComponent(
         left: event.clientX <= reach && alongY,
         right: event.clientX >= width - reach && alongY,
       }[edge!];
-      if (!near) return hideSoon();
+      if (!near) hideSoon();
+      else if (event.buttons === 0) stay();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      // The path is read through the shadow root the toolbar lives in.
+      setPressedOff(bar !== null && !event.composedPath().includes(bar));
+    };
+    const onPointerEnd = () => setPressedOff(false);
+    const stay = () => {
       eventTarget.clearTimeout(timer);
       timer = undefined;
       setRevealed(true);
     };
+    // Focus that came from the keyboard: a click on the bar leaves focus behind without it.
+    const onFocusIn = (event: FocusEvent) => {
+      if ((event.target as Element).matches(":focus-visible")) stay();
+    };
     hideSoon();
     eventTarget.addEventListener("pointermove", onPointerMove);
+    eventTarget.addEventListener("pointerdown", onPointerDown, true);
+    eventTarget.addEventListener("pointerup", onPointerEnd, true);
+    eventTarget.addEventListener("pointercancel", onPointerEnd, true);
+    bar?.addEventListener("focusin", onFocusIn);
+    bar?.addEventListener("focusout", hideSoon);
     return () => {
       eventTarget.clearTimeout(timer);
       eventTarget.removeEventListener("pointermove", onPointerMove);
+      eventTarget.removeEventListener("pointerdown", onPointerDown, true);
+      eventTarget.removeEventListener("pointerup", onPointerEnd, true);
+      eventTarget.removeEventListener("pointercancel", onPointerEnd, true);
+      bar?.removeEventListener("focusin", onFocusIn);
+      bar?.removeEventListener("focusout", hideSoon);
     };
   }, [busy, edge, eventTarget, idle]);
   const tucked = idle && !revealed;
@@ -1076,6 +1112,7 @@ function ToolbarComponent(
     <div
       className="mesurer-toolbar-container msr:absolute msr:z-[100]"
       data-tucked={tucked ? "true" : undefined}
+      data-tuck-locked={pressedOff ? "true" : undefined}
       data-tuck-animated={tuckAnimated ? "true" : undefined}
       data-tuck-edge={edge ?? undefined}
       style={{

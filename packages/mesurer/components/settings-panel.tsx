@@ -701,7 +701,10 @@ export function SettingsPanel({
             ))}
           </select>
         </label>
-        <div className="msr:col-span-2"><SettingsSwitch label="Auto-hide" checked={toolbarAutoHide} onChange={setToolbarAutoHide} /></div>
+        {/* Only a toolbar glued to an edge can hide, so the option comes with snap mode. */}
+        {toolbarDock === "snap" ? (
+          <div className="msr:col-span-2"><SettingsSwitch label="Auto-hide" checked={toolbarAutoHide} onChange={setToolbarAutoHide} /></div>
+        ) : null}
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
           <SettingsButton

@@ -18,6 +18,7 @@ export const ZONE_DEPTH = 72
 export const ZONE_HOLD = 8
 // A free toolbar pushed this far lengthwise into a wall turns the other way, so reaching a wall
 // turns it wherever it was grabbed, not only once the pointer itself gets to the wall's zone.
+// It turns back when the pointer lets off the wall, so brushing one changes nothing for good.
 export const PUSH_TURN = 40
 // A toolbar pinned in a corner eases off it up to this distance.
 export const CORNER_EASE_DISTANCE = 128
@@ -187,14 +188,15 @@ export const toolbarZone = (pointer: Point, viewport: Size, held: ToolbarSide | 
 // Places a dragged toolbar in snap mode. The toolbar is held at the spot it was grabbed, so it
 // stays under the pointer through a glue, a turn and a release, and it takes the edge of the
 // zone the pointer is in, whichever way it came. `upright` is whether it stands vertical now,
-// which the free middle keeps unless the toolbar is pushed into a wall, and `glued` the edge it
-// is on. `grab` is the held spot as fractions along the toolbar's length
+// which the free middle keeps unless the toolbar is pushed into a wall, `pushed` whether a wall
+// is what turned it, and `glued` the edge it is on. `grab` is the held spot as fractions along the toolbar's length
 // and across its thickness; `sizeFor` gives the toolbar's size standing up or lying flat.
 export const dragToolbarPosition = ({
   pointer,
   grab,
   glued,
   upright: wasUpright,
+  pushed: wasPushed = false,
   sizeFor,
   viewport,
 }: {
@@ -202,9 +204,10 @@ export const dragToolbarPosition = ({
   grab: { along: number; across: number }
   glued: ToolbarSide | null
   upright: boolean
+  pushed?: boolean
   sizeFor: (upright: boolean) => Size
   viewport: Size
-}): { side: ToolbarSide | null; upright: boolean; position: Point } => {
+}): { side: ToolbarSide | null; upright: boolean; pushed: boolean; position: Point } => {
   const side = toolbarZone(pointer, viewport, glued)
   // Where the pointer holds the toolbar standing up or lying flat, and how far that would push
   // it lengthwise through a wall.
@@ -220,11 +223,20 @@ export const dragToolbarPosition = ({
     return { size, held, push: Math.max(DRAG_INSET - start, start + length - (span - DRAG_INSET)) }
   }
   let upright = side ? isVerticalToolbarSide(side) : wasUpright
-  // In the free middle, a toolbar pushed into a wall turns, unless the other way would be pushed
-  // back just as much: it would only turn again.
-  if (!side && hold(upright).push > PUSH_TURN && hold(!upright).push <= PUSH_TURN) upright = !upright
+  let pushed = !side && wasPushed
+  if (!side) {
+    // In the free middle, a toolbar pushed into a wall turns, unless the other way would be
+    // pushed back just as much. Turned by a wall, it turns back once it would clear that wall.
+    const turns = pushed
+      ? hold(!upright).push <= 0
+      : hold(upright).push > PUSH_TURN && hold(!upright).push <= PUSH_TURN
+    if (turns) {
+      upright = !upright
+      pushed = !pushed
+    }
+  }
   const { size, held } = hold(upright)
-  if (!side) return { side: null, upright, position: freeToolbarPosition(held, size, viewport) }
+  if (!side) return { side: null, upright, pushed, position: freeToolbarPosition(held, size, viewport) }
   // Glued: it slides along the edge, and comes off it with the pointer rather than staying behind.
   const docked = dockedToolbarPosition({ side, point: held, size, viewport })
   // Along the edge the toolbar follows the pinned spot; across it, the pointer can only pull it off.
@@ -235,5 +247,5 @@ export const dragToolbarPosition = ({
   const position = upright
     ? { x: pull(docked.x, held.x), y: along }
     : { x: along, y: pull(docked.y, held.y) }
-  return { side, upright, position }
+  return { side, upright, pushed, position }
 }

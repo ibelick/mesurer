@@ -26,6 +26,7 @@ Measured baselines for `feat/inspect-motion`:
 | Toolbar corners: recording card side, corner glue, and open/minimize from the held corner (before: 214.4 KiB, after: 215.2 KiB) | 215.2 KiB | 216 KiB |
 | Toolbar zones: pointer zones, kept orientation, saved placement, and auto-hide (before: 215.2 KiB, after: 215.8 KiB) | 215.8 KiB | 216 KiB |
 | Toolbar drop: square drop zones, turning against a wall, and the auto-hide delay (before: 215.8 KiB, after: 216.0 KiB) | 216.0 KiB | 217 KiB |
+| Toolbar polish: auto-hide while in use, saved placement on resize, and resumed swings (before: 216.0 KiB, after: 216.4 KiB) | 216.4 KiB | 217 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -78,3 +79,6 @@ about 0.6 KiB (about 0.2 KiB headroom remaining).
 
 The square drop zones, the turn of a toolbar pushed into a wall and the auto-hide delay add
 about 0.2 KiB. The limit is raised to 217 KiB (about 1.0 KiB headroom after this change).
+
+Keeping an auto-hidden toolbar out while it is in use, saving the placement on resize and
+resuming an interrupted swing add about 0.4 KiB (about 0.6 KiB headroom remaining).

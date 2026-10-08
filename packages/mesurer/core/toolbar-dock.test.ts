@@ -165,15 +165,27 @@ describe("dragToolbarPosition", () => {
       dragToolbarPosition({ pointer, grab: { along: 0.9, across: 0.5 }, glued: null, upright, sizeFor, ...viewport })
     expect(byEnd({ x: 270, y: 400 }, false)).toMatchObject({ side: null, upright: false, position: { x: 8, y: 380 } })
     // Pushed 40px further it stands up, free, under the pointer.
-    expect(byEnd({ x: 230, y: 400 }, false)).toEqual({ side: null, upright: true, position: { x: 210, y: 130 } })
+    expect(byEnd({ x: 230, y: 400 }, false)).toEqual({ side: null, upright: true, pushed: true, position: { x: 210, y: 130 } })
     // Standing, it is not pushed any more, so it stays that way when the pointer backs off.
     expect(byEnd({ x: 400, y: 400 }, true).upright).toBe(true)
     // The mirror: a column pushed up into the top wall lies flat.
-    expect(byEnd({ x: 600, y: 230 }, true)).toEqual({ side: null, upright: false, position: { x: 330, y: 210 } })
+    expect(byEnd({ x: 600, y: 230 }, true)).toEqual({ side: null, upright: false, pushed: true, position: { x: 330, y: 210 } })
     // It does not turn into a wall that would push it straight back: it would flip back and forth.
     expect(byEnd({ x: 230, y: 200 }, false).upright).toBe(false)
     expect(byEnd({ x: 230, y: 250 }, false).upright).toBe(true)
     expect(byEnd({ x: 230, y: 250 }, true).upright).toBe(true)
+  })
+
+  it("turns a wall-turned toolbar back once the pointer lets off the wall", () => {
+    const byEnd = (pointer: { x: number; y: number }, upright: boolean, pushed: boolean) =>
+      dragToolbarPosition({ pointer, grab: { along: 0.9, across: 0.5 }, glued: null, upright, pushed, sizeFor, ...viewport })
+    // Still against the wall it stays standing; let off it, it lies flat again.
+    expect(byEnd({ x: 260, y: 400 }, true, true)).toMatchObject({ upright: true, pushed: true })
+    expect(byEnd({ x: 280, y: 400 }, true, true)).toMatchObject({ upright: false, pushed: false })
+    // A column that was not turned by a wall keeps standing wherever it goes.
+    expect(byEnd({ x: 600, y: 400 }, true, false)).toMatchObject({ upright: true, pushed: false })
+    // Glued, then pulled off again, it is no longer a wall's doing.
+    expect(byEnd({ x: 40, y: 400 }, true, true)).toMatchObject({ side: "left", pushed: false })
   })
 
   it("leaves the middle of a short edge out of the corners' pull", () => {
@@ -187,12 +199,12 @@ describe("dragToolbarPosition", () => {
   })
 
   it("holds a free toolbar at the grabbed spot", () => {
-    expect(drag({ x: 600, y: 400 })).toEqual({ side: null, upright: false, position: { x: 450, y: 380 } })
+    expect(drag({ x: 600, y: 400 })).toEqual({ side: null, upright: false, pushed: false, position: { x: 450, y: 380 } })
   })
 
   it("keeps its orientation in the free middle, and only turns in an edge zone", () => {
     // Pulled off a side edge it stays a column, under the pointer.
-    expect(drag({ x: 90, y: 400 }, true)).toEqual({ side: null, upright: true, position: { x: 70, y: 250 } })
+    expect(drag({ x: 90, y: 400 }, true)).toEqual({ side: null, upright: true, pushed: false, position: { x: 70, y: 250 } })
     expect(drag({ x: 600, y: 400 }, true).upright).toBe(true)
     // Pulled off the top it stays a row, even right beside the left edge's zone.
     expect(drag({ x: 90, y: 90 }, false).upright).toBe(false)
@@ -204,7 +216,7 @@ describe("dragToolbarPosition", () => {
   })
 
   it("stands the toolbar up under the pointer in a side zone", () => {
-    expect(drag({ x: 40, y: 400 })).toEqual({ side: "left", upright: true, position: { x: 20, y: 250 } })
+    expect(drag({ x: 40, y: 400 })).toEqual({ side: "left", upright: true, pushed: false, position: { x: 20, y: 250 } })
     expect(drag({ x: 20, y: 400 }).position).toEqual({ x: 16, y: 250 })
   })
 

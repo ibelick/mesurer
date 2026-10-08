@@ -18,7 +18,7 @@ import {
   type Size,
   type ToolbarPlacement,
 } from "../core/toolbar-dock"
-import { captureToolbarTurn, playToolbarTurn } from "../core/toolbar-turn"
+import { captureToolbarTurn, playToolbarTurn, type ToolbarTurn } from "../core/toolbar-turn"
 import { useToolbarDrag } from "./use-toolbar-drag"
 
 // Every spot the bar can land on along an edge in snap mode: its middle, and the corner at either end.
@@ -73,7 +73,7 @@ export const useToolbarDock = ({
     snapping && (edge ? isVerticalToolbarSide(edge) : initialPosition.vertical === true),
   )
   const verticalRef = useRef(vertical)
-  const turnRef = useRef<{ from: DOMRect; vertical: boolean } | null>(null)
+  const turnRef = useRef<{ from: ToolbarTurn; vertical: boolean } | null>(null)
   const setEdge = useCallback(
     (next: ToolbarSide | null, upright = next ? isVerticalToolbarSide(next) : verticalRef.current) => {
       const node = motionRef.current
@@ -129,6 +129,7 @@ export const useToolbarDock = ({
   const [gliding, setGliding] = useState(false)
   const glideTimerRef = useRef<number | undefined>(undefined)
   const startGlide = () => {
+    if (eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) return
     eventTarget.clearTimeout(glideTimerRef.current)
     setGliding(true)
     glideTimerRef.current = eventTarget.setTimeout(() => setGliding(false), GLIDE_MS)
@@ -137,6 +138,8 @@ export const useToolbarDock = ({
 
   // Where the pointer holds the toolbar, as fractions along its length and across its thickness.
   const grabRef = useRef({ along: 0.5, across: 0.5 })
+  // Whether a wall is what turned the dragged bar, so it turns back when let off it.
+  const pushedRef = useRef(false)
   const [dragging, setDragging] = useState(false)
   const drag = useToolbarDrag(
     { x: initialPosition.x, y: initialPosition.y },
@@ -174,9 +177,11 @@ export const useToolbarDock = ({
             grab: grabRef.current,
             glued: edgeRef.current,
             upright: verticalRef.current,
+            pushed: pushedRef.current,
             sizeFor,
             viewport: viewportSize(),
           })
+          pushedRef.current = result.pushed
           setEdge(result.side, result.upright)
           return result.position
         }
@@ -206,13 +211,19 @@ export const useToolbarDock = ({
     const x = (event.clientX - rect.left) / rect.width
     const y = (event.clientY - rect.top) / rect.height
     grabRef.current = vertical ? { along: y, across: x } : { along: x, across: y }
+    pushedRef.current = false
     drag.onPointerDown(event)
   }
 
+  const wasSnappingRef = useRef(snapping)
   useLayoutEffect(() => {
+    const wasSnapping = wasSnappingRef.current
+    wasSnappingRef.current = snapping
     if (!snapping) {
       setEdge(null, false)
       edgeKnownRef.current = false
+      // Leaving snap mode frees the bar: saved, so the next load does not glue it back.
+      if (wasSnapping) report(positionRef.current)
       return
     }
     const node = motionRef.current
@@ -249,6 +260,13 @@ export const useToolbarDock = ({
     // The observer's first report is the bar's size once laid out, which is where it starts from.
     let observed = false
     let persistTimer: number | undefined
+    const persistSoon = () => {
+      eventTarget.clearTimeout(persistTimer)
+      persistTimer = eventTarget.setTimeout(() => {
+        persistTimer = undefined
+        report(positionRef.current)
+      }, PERSIST_DELAY_MS)
+    }
     const onResize = () => {
       const next = measure()
       // A drag places the bar itself.
@@ -264,9 +282,7 @@ export const useToolbarDock = ({
       // Flushed so the new position lands in the same frame as the new size.
       flushSync(() => snap(resized ? Math.round(center - next.size / 2) : undefined))
       anchor = turned || !resized ? measure() : { ...measure(), center }
-      if (!resized) return
-      eventTarget.clearTimeout(persistTimer)
-      persistTimer = eventTarget.setTimeout(() => report(positionRef.current), PERSIST_DELAY_MS)
+      if (resized) persistSoon()
     }
     // The observer reports once the bar is laid out, before it is painted: that first report
     // places it. Placing it any sooner would measure a bar that has not taken its size yet.
@@ -274,7 +290,11 @@ export const useToolbarDock = ({
     if (observer) observer.observe(node)
     else snap()
     const onViewportResize = () => {
-      if (!isDragging()) snap()
+      if (isDragging()) return
+      const before = positionRef.current
+      flushSync(() => snap())
+      // A window resize that moved the bar is saved too.
+      if (!samePoint(before, positionRef.current)) persistSoon()
     }
     eventTarget.addEventListener("resize", onViewportResize)
     return () => {

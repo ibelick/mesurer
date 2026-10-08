@@ -20,20 +20,25 @@ let running: Animation[] = []
 
 const centerOf = (rect: DOMRect) => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
 
+export type ToolbarTurn = { from: DOMRect; angle: number }
+
 // Call before the orientation changes, while the old layout is still on screen.
-export const captureToolbarTurn = (motion: HTMLElement) => {
-  // A turn still in flight would be measured mid-swing.
+export const captureToolbarTurn = (motion: HTMLElement): ToolbarTurn => {
+  // A turn still in flight is stopped where it is: how far it had left to swing is kept, so
+  // turning back picks the bar up from there instead of from the end of the swing.
+  const angle = parseFloat(getComputedStyle(motion).rotate) || 0
   for (const animation of running) animation.cancel()
   running = []
-  return motion.getBoundingClientRect()
+  return { from: motion.getBoundingClientRect(), angle }
 }
 
 // Call once the new orientation has rendered.
-export const playToolbarTurn = (motion: HTMLElement, from: DOMRect, vertical: boolean) => {
+export const playToolbarTurn = (motion: HTMLElement, { from, angle }: ToolbarTurn, vertical: boolean) => {
   const to = motion.getBoundingClientRect()
   // The bar starts a quarter turn back: counter-clockwise when it ends up vertical, so the
-  // left end of the row is the top of the column.
-  const back = vertical ? -90 : 90
+  // left end of the row is the top of the column. A swing cut short starts that much nearer.
+  const quarter = vertical ? -90 : 90
+  const back = quarter + angle
   // The one point that quarter turn can pivot on to lay the new box over the old one.
   const a = centerOf(from)
   const b = centerOf(to)
@@ -44,7 +49,11 @@ export const playToolbarTurn = (motion: HTMLElement, from: DOMRect, vertical: bo
     : { x: b.x + difference / 2, y: b.y + sum / 2 }
 
   const { duration, easing } = readToolbarMotionTiming(motion)
-  const timing = { id: TOOLBAR_TURN_ID, duration: duration * TURN_DURATION_SCALE, easing }
+  const timing = {
+    id: TOOLBAR_TURN_ID,
+    duration: duration * TURN_DURATION_SCALE * Math.abs(back / quarter),
+    easing,
+  }
   const transformOrigin = `${pivot.x - to.left}px ${pivot.y - to.top}px`
   running = [
     motion.animate(

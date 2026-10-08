@@ -861,11 +861,6 @@ test("auto-hide starts hidden when the page loads, without sliding away", async 
 
   // Any tuck that animates during the load would be a visible slide.
   await page.addInitScript(() => {
-    document.addEventListener("transitionrun", (event) => {
-      const target = event.target as Element | null;
-      const host = target?.shadowRoot ? target : null;
-      void host;
-    }, true);
     (window as Window & { __tuckRuns?: number }).__tuckRuns = 0;
     const observe = () => {
       for (const node of document.querySelectorAll("*")) {
@@ -995,5 +990,159 @@ test("a row dragged into a side wall by its far end stands up without the pointe
   // Carried on to the wall it glues there.
   await page.mouse.move(30, 350, { steps: 8 });
   await expect(toolbar).toHaveAttribute("data-edge", "left");
+  await page.mouse.up();
+});
+
+test("auto-hide keeps the toolbar out while something hangs off it or the keyboard is on it", async ({ page }) => {
+  await mockEyeDropper(page);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await page.getByRole("button", { name: /Settings/ }).first().click();
+  await page.getByRole("switch", { name: "Auto-hide" }).click();
+  await page.keyboard.press("Escape");
+  const y = async () => Math.round((await toolbar.boundingBox())?.y ?? -1);
+  await page.mouse.move(600, 500);
+  await expect.poll(y).toBe(-34);
+
+  // The color picker hangs off the bar: the bar stays with it after the pointer has gone.
+  await page.mouse.move(300, 30, { steps: 5 });
+  await expect.poll(y).toBe(16);
+  await page.getByRole("button", { name: "Sample color (P)" }).click();
+  await expect(page.locator(".mesurer-color-picker")).toBeVisible();
+  await page.mouse.move(600, 500, { steps: 3 });
+  await page.waitForTimeout(900);
+  expect(await y()).toBe(16);
+  await page.mouse.click(700, 420);
+  await expect(page.locator(".mesurer-color-picker")).toHaveCount(0);
+  await expect.poll(y).toBe(-34);
+
+  // Reached with the keyboard while hidden, it comes out.
+  await toolbar.getByRole("button").first().focus();
+  await page.keyboard.press("Tab");
+  await expect.poll(y).toBe(16);
+});
+
+test("a row turned by a wall lies flat again when let off it, and a reversed swing picks up where it was", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await dragTo(page, toolbar, 550, 350);
+  // A slow swing, so the reversal lands in the middle of it.
+  await toolbar.evaluate((node) => {
+    (node as HTMLElement).style.setProperty("--msr-toolbar-motion", "2000ms linear");
+    const animate = Element.prototype.animate;
+    const swings: { from: string; duration: number }[] = [];
+    (window as Window & { __swings?: typeof swings }).__swings = swings;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this === node && typeof options === "object" && options.id === "mesurer-toolbar-turn") {
+        swings.push({ from: String((keyframes as Keyframe[])[0].rotate), duration: Number(options.duration) });
+      }
+      return animate.call(this, keyframes, options);
+    };
+  });
+
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  const grabX = box.x + box.width * 0.9;
+  const wall = grabX - box.x;
+  await page.mouse.move(grabX, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(wall - 48, 350, { steps: 6 });
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  await page.waitForTimeout(300);
+  await page.mouse.move(wall + 24, 350, { steps: 3 });
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await page.mouse.up();
+
+  const swings = await page.evaluate(() => (window as Window & { __swings?: { from: string; duration: number }[] }).__swings ?? []);
+  expect(swings).toHaveLength(2);
+  expect(swings[0]).toEqual({ from: "-90deg", duration: 1100 });
+  // The row comes back from where the column had got to, in the time that much takes.
+  const back = parseFloat(swings[1].from);
+  expect(back).toBeGreaterThan(5);
+  expect(back).toBeLessThan(85);
+  expect(swings[1].duration).toBeCloseTo((1100 * back) / 90, 0);
+});
+
+test("the saved placement follows the dock mode and the window size", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const saved = () =>
+    page.evaluate(() => {
+      const found = (localStorage.getItem("mesurer-settings") ?? "").match(/"toolbarPosition":(\{[^}]*\})/);
+      return found ? JSON.parse(found[1]) : {};
+    });
+
+  await dragTo(page, toolbar, 1070, 350);
+  await expect(toolbar).toHaveAttribute("data-edge", "right");
+  await expect.poll(saved).toMatchObject({ x: 1044, edge: "right", align: "center", vertical: true });
+
+  // The window narrows: the bar follows its edge, and so does what is saved.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await expect.poll(saved).toMatchObject({ x: 844, edge: "right", vertical: true });
+
+  // Free mode lets go of the edge, in the save too. The auto-hide option goes with snap mode.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("switch", { name: "Auto-hide" })).toBeVisible();
+  await page.getByLabel("Toolbar dock").selectOption("free");
+  await expect(page.getByRole("switch", { name: "Auto-hide" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect.poll(saved).toMatchObject({ edge: null, vertical: false });
+});
+
+test("the glide into place is skipped under reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(550, 350, { steps: 5 });
+  await page.mouse.move(30, 300, { steps: 8 });
+  await page.mouse.up();
+  // Settled in the middle of the edge at once, with no transition on the way.
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
+  const container = page.locator(".mesurer-toolbar-container");
+  expect(await container.evaluate((node) => (node as HTMLElement).style.transition)).toBe("");
+  expect(Math.round(((await toolbar.boundingBox())?.y ?? 0) + ((await toolbar.boundingBox())?.height ?? 0) / 2)).toBe(350);
+});
+
+test("auto-hide keeps the toolbar hidden while something is being drawn toward its edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await page.getByRole("button", { name: /Settings/ }).first().click();
+  await page.getByRole("switch", { name: "Auto-hide" }).click();
+  await page.keyboard.press("Escape");
+  const y = async () => Math.round((await toolbar.boundingBox())?.y ?? -1);
+  await page.mouse.move(600, 500);
+  await expect.poll(y).toBe(-34);
+
+  // A press on the page, carried into the bar's reach and over its tab: it stays hidden.
+  await page.mouse.down();
+  await page.mouse.move(300, 20, { steps: 6 });
+  await page.mouse.move(300, 3, { steps: 3 });
+  await page.waitForTimeout(400);
+  expect(await y()).toBe(-34);
+
+  // Released, the next move within reach brings it out as usual.
+  await page.mouse.up();
+  await page.mouse.move(300, 30, { steps: 3 });
+  await expect.poll(y).toBe(16);
+
+  // Out when a press begins on the page, it still goes away during it.
+  await page.mouse.move(600, 300, { steps: 2 });
+  await page.mouse.down();
+  await page.mouse.move(700, 400, { steps: 4 });
+  await expect.poll(y).toBe(-34);
   await page.mouse.up();
 });
