@@ -26,21 +26,41 @@ describe("dockedToolbarPosition", () => {
 describe("snapToolbarPosition", () => {
   it("glues to the middle of the nearest edge within the snap distance", () => {
     const result = snapToolbarPosition({ point: { x: 30, y: 100 }, size: column, glued: null, ...viewport })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
+    expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
   })
 
   it("stays free away from every edge", () => {
     const result = snapToolbarPosition({ point: { x: 80, y: 300 }, size: bar, glued: null, ...viewport })
-    expect(result).toEqual({ side: null, position: { x: 80, y: 300 } })
+    expect(result).toEqual({ side: null, align: "center", position: { x: 80, y: 300 } })
   })
 
   it("keeps a glued toolbar in the middle of its edge, whatever its size", () => {
     const result = snapToolbarPosition({ point: { x: 40, y: 400 }, size: column, glued: "left", ...viewport })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
+    expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
     const icon = snapToolbarPosition({ point: { x: 16, y: 250 }, size: { width: 40, height: 40 }, glued: "left", ...viewport })
     expect(icon.position).toEqual({ x: 16, y: 380 })
-    const top = snapToolbarPosition({ point: { x: 900, y: 16 }, size: bar, glued: "top", ...viewport })
+    const top = snapToolbarPosition({ point: { x: 450, y: 16 }, size: bar, glued: "top", ...viewport })
     expect(top.position).toEqual({ x: 450, y: 16 })
+  })
+
+  it("settles in a corner when the toolbar sits close to the edge across from its glue", () => {
+    const topLeft = snapToolbarPosition({ point: { x: 20, y: 20 }, size: bar, glued: "top", ...viewport })
+    expect(topLeft.position).toEqual({ x: 16, y: 16 })
+    const topRight = snapToolbarPosition({ point: { x: 880, y: 16 }, size: bar, glued: "top", ...viewport })
+    expect(topRight.position).toEqual({ x: 884, y: 16 })
+    const leftBottom = snapToolbarPosition({ point: { x: 16, y: 690 }, size: column, glued: "left", ...viewport })
+    expect(leftBottom.position).toEqual({ x: 16, y: 484 })
+  })
+
+  it("keeps the corner it holds, whatever its size", () => {
+    const icon = { width: 40, height: 40 }
+    // Closed around its middle the icon would sit far from the corner: the held spot wins.
+    const closed = snapToolbarPosition({ point: { x: 146, y: 16 }, size: icon, glued: "top", align: "start", ...viewport })
+    expect(closed).toEqual({ side: "top", align: "start", position: { x: 16, y: 16 } })
+    const opened = snapToolbarPosition({ point: { x: 1144, y: 16 }, size: bar, glued: "top", align: "end", ...viewport })
+    expect(opened.position).toEqual({ x: 884, y: 16 })
+    const column40 = snapToolbarPosition({ point: { x: 16, y: 16 }, size: icon, glued: "left", align: "end", ...viewport })
+    expect(column40.position).toEqual({ x: 16, y: 744 })
   })
 
   it("aims the glue at the size the glued orientation will have", () => {
@@ -48,7 +68,7 @@ describe("snapToolbarPosition", () => {
       point: { x: 40, y: 100 }, size: bar, glued: null, ...viewport,
       glueSize: (side) => (side === "left" ? column : undefined),
     })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
+    expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
   })
 
   it("glues to the top when the top-left corner is reached first", () => {
@@ -71,6 +91,16 @@ describe("dragToolbarPosition", () => {
       pointer.y >= position.y && pointer.y <= position.y + size.height
     )
   }
+
+  it("pins a glued toolbar into the corner it is dragged toward, and eases off it", () => {
+    // The grab is the bar's middle, so the bar's left edge sits 150px left of the pointer.
+    expect(drag({ x: 166, y: 36 }, "top").position).toEqual({ x: 16, y: 16 })
+    expect(drag({ x: 1034, y: 36 }, "top").position).toEqual({ x: 884, y: 16 })
+    const leaving = drag({ x: 246, y: 36 }, "top").position
+    expect(leaving.x).toBeGreaterThan(16)
+    expect(leaving.x).toBeLessThan(96)
+    expect(drag({ x: 400, y: 36 }, "top").position.x).toBeGreaterThan(200)
+  })
 
   it("holds a free toolbar at the grabbed spot", () => {
     expect(drag({ x: 600, y: 400 }, null)).toEqual({ side: null, position: { x: 450, y: 380 }, preview: null })

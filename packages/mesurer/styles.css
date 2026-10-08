@@ -668,35 +668,24 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   z-index: 1;
 }
 
-/* Snap preview: a soft lens of shade centered on the middle of the approached edge. It is
-   always mounted and fades, so it eases in on approach and out on release. */
-.mesurer-toolbar-snap-mask {
+/* Drop zones: where the bar can land in snap mode. Fixed to the viewport, so they stay put. */
+.mesurer-toolbar-zone {
   position: fixed;
-  inset: 0;
-  z-index: 99;
+  z-index: 0;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-radius: 9px;
+  background: rgba(15, 15, 20, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(15, 15, 20, 0.08);
+  animation: mesurer-toolbar-zone-in 180ms ease-out both;
 }
 
-.mesurer-toolbar-snap-mask[data-active="true"] {
-  opacity: 1;
-}
-
-.mesurer-toolbar-snap-mask[data-side="left"] {
-  background: radial-gradient(ellipse 150px 30vh at 0 50%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.08) 30%, rgba(0, 0, 0, 0.035) 65%, transparent 100%);
-}
-
-.mesurer-toolbar-snap-mask[data-side="right"] {
-  background: radial-gradient(ellipse 150px 30vh at 100% 50%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.08) 30%, rgba(0, 0, 0, 0.035) 65%, transparent 100%);
-}
-
-.mesurer-toolbar-snap-mask[data-side="top"] {
-  background: radial-gradient(ellipse 30vw 150px at 50% 0, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.08) 30%, rgba(0, 0, 0, 0.035) 65%, transparent 100%);
-}
-
-.mesurer-toolbar-snap-mask[data-side="bottom"] {
-  background: radial-gradient(ellipse 30vw 150px at 50% 100%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.08) 30%, rgba(0, 0, 0, 0.035) 65%, transparent 100%);
+@keyframes mesurer-toolbar-zone-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Vertical toolbar (docked left/right). Flow containers stack top to bottom, the stages
@@ -809,8 +798,8 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mesurer-toolbar-snap-mask {
-    transition: none;
+  .mesurer-toolbar-zone {
+    animation: none;
   }
 
   .mesurer-toolbar-motion,

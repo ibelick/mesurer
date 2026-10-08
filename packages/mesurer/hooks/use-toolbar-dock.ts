@@ -9,15 +9,21 @@ import {
 import { flushSync } from "react-dom"
 import type { ToolbarDock, ToolbarSide } from "../core/persistence"
 import {
-  centeredDockPosition,
+  alignedDockPosition,
+  dockAlignFor,
   dragToolbarPosition,
   isVerticalToolbarSide,
   snapToolbarPosition,
+  type DockAlign,
   type Point,
   type Size,
 } from "../core/toolbar-dock"
 import { captureToolbarTurn, playToolbarTurn } from "../core/toolbar-turn"
 import { useToolbarDrag } from "./use-toolbar-drag"
+
+// Every place the bar can land in snap mode: the middle of each edge, and each corner in both orientations.
+const DROP_SIDES: ToolbarSide[] = ["top", "bottom", "left", "right"]
+const DROP_ALIGNS: DockAlign[] = ["center", "start", "end"]
 
 const GLIDE_MS = 280
 // Different timing per axis, so the glide curves in an arc instead of running straight.
@@ -27,8 +33,11 @@ const PERSIST_DELAY_MS = 300
 
 const samePoint = (a: Point, b: Point) => a.x === b.x && a.y === b.y
 
+// How far along the bar its fixed point sits while it opens, closes and resizes.
+const GROW_ORIGIN: Record<DockAlign, number> = { start: 0, center: 0.5, end: 1 }
+
 // Owns where the toolbar sits: dragging it, and in snap mode gluing it to the screen edges,
-// turning it between horizontal and vertical, and keeping it centered as it resizes.
+// turning it between horizontal and vertical, and keeping it in place as it resizes.
 export const useToolbarDock = ({
   eventTarget,
   motionRef,
@@ -55,8 +64,6 @@ export const useToolbarDock = ({
     height: motionRef.current?.offsetHeight ?? 0,
   })
 
-  // The edge mask: stays mounted and fades, so it eases in and out instead of popping.
-  const [snapMask, setSnapMask] = useState<{ side: ToolbarSide; active: boolean }>({ side: "left", active: false })
   const [edge, setEdgeState] = useState<ToolbarSide | null>(null)
   const edgeRef = useRef<ToolbarSide | null>(null)
   const turnRef = useRef<{ from: DOMRect; vertical: boolean } | null>(null)
@@ -77,6 +84,10 @@ export const useToolbarDock = ({
     [motionRef],
   )
   const vertical = isVerticalToolbarSide(edge)
+  // Where the glued bar sits along its edge: the middle, or a corner.
+  const [align, setAlign] = useState<DockAlign>("center")
+  const alignRef = useRef(align)
+  alignRef.current = align
 
   // Last measured size per orientation, so a glue can aim at the spot the turned bar will occupy.
   const sizesRef = useRef<{ horizontal?: Size; vertical?: Size }>({})
@@ -115,20 +126,22 @@ export const useToolbarDock = ({
     },
     (released) => {
       setDragging(false)
-      setSnapMask((mask) => ({ ...mask, active: false }))
       onDragEnd()
       let settled = released
       if (snapping) {
-        // A toolbar released on an edge, or dropped right next to one, settles in the middle of it.
-        const { side } = snapToolbarPosition({
+        // A toolbar released on an edge, or dropped right next to one, settles in the middle of
+        // it, or in the corner it was left near.
+        const result = snapToolbarPosition({
           point: released,
           size: barSize(),
           viewport: viewportSize(),
           glued: edgeRef.current,
+          glueSize: sizeFor,
         })
-        if (side) {
-          setEdge(side)
-          settled = centeredDockPosition(side, sizeFor(side), viewportSize())
+        if (result.side) {
+          setEdge(result.side)
+          setAlign(result.align)
+          settled = result.position
           if (!samePoint(settled, released)) {
             startGlide()
             setPosition(settled)
@@ -148,16 +161,21 @@ export const useToolbarDock = ({
           })
           setEdge(result.side)
           // Return the same object when nothing changed, so pointer moves do not re-render.
-          setSnapMask((mask) => {
-            const side = result.preview ?? mask.side
-            const active = result.preview !== null
-            return mask.side === side && mask.active === active ? mask : { side, active }
-          })
           return result.position
         }
       : undefined,
   )
   const { position, setPosition, isDragging, refreshDrag } = drag
+  // Static while dragging: fixed to the viewport, so they never follow the bar.
+  const dropZones =
+    snapping && dragging
+      ? DROP_SIDES.flatMap((side) =>
+          DROP_ALIGNS.map((align) => ({
+            ...alignedDockPosition(side, align, sizeFor(side), viewportSize()),
+            ...sizeFor(side),
+          })),
+        )
+      : []
   const positionRef = useRef(position)
   positionRef.current = position
   const onPositionChangeRef = useRef(onPositionChange)
@@ -178,8 +196,8 @@ export const useToolbarDock = ({
     }
     const node = motionRef.current
     if (!node) return
-    // Re-glues after mount, resize and minimize so a glued toolbar stays in the middle of its
-    // edge. `along` overrides the coordinate on a free bar's own axis.
+    // Re-glues after mount, resize and minimize so a glued toolbar keeps its spot on the edge.
+    // `along` overrides the coordinate on a free bar's own axis.
     const snap = (along?: number) => {
       const current = positionRef.current
       const upright = isVerticalToolbarSide(edgeRef.current)
@@ -188,8 +206,10 @@ export const useToolbarDock = ({
         size: barSize(),
         viewport: viewportSize(),
         glued: edgeRef.current,
+        align: alignRef.current,
       })
       setEdge(result.side)
+      setAlign(result.align)
       if (!samePoint(result.position, current)) setPosition(result.position)
     }
     snap()
@@ -248,14 +268,14 @@ export const useToolbarDock = ({
     const turn = turnRef.current
     if (!node || !turn) return
     if (turn.vertical === vertical) {
-      // The turned bar's real size is only known now: put it back under the pointer, or in the
-      // middle of its edge, and swing on the render that follows.
+      // The turned bar's real size is only known now: put it back under the pointer, or on its
+      // spot of the edge, and swing on the render that follows.
       if (isDragging()) {
         if (refreshDrag()) return
       } else if (edge) {
-        const centered = centeredDockPosition(edge, barSize(), viewportSize())
-        if (!samePoint(centered, position)) {
-          setPosition(centered)
+        const settled = alignedDockPosition(edge, align, barSize(), viewportSize())
+        if (!samePoint(settled, position)) {
+          setPosition(settled)
           return
         }
       }
@@ -271,8 +291,10 @@ export const useToolbarDock = ({
     position,
     edge,
     vertical,
+    // Free bars keep their middle in snap mode, and their leading edge otherwise.
+    growOrigin: !snapping ? 0 : edge ? GROW_ORIGIN[align] : 0.5,
     dragging,
-    snapMask,
+    dropZones,
     transition: gliding ? GLIDE_TRANSITION : undefined,
     settleTurn,
     onPointerDown,

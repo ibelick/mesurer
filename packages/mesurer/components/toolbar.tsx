@@ -414,8 +414,9 @@ function ToolbarComponent(
     position,
     edge,
     vertical,
+    growOrigin,
     dragging,
-    snapMask,
+    dropZones,
     transition: positionTransition,
     settleTurn,
     onPointerDown: onDragPointerDown,
@@ -497,7 +498,7 @@ function ToolbarComponent(
     expandedPanelRef,
     iconSlotRef,
     vertical,
-    centered: dock === "snap",
+    origin: growOrigin,
   });
   // Runs after the group motion above has settled a turned bar's sizes.
   useLayoutEffect(settleTurn);
@@ -1019,12 +1020,14 @@ function ToolbarComponent(
         transition: positionTransition,
       }}
     >
-      <div
-        aria-hidden="true"
-        className="mesurer-toolbar-snap-mask"
-        data-side={snapMask.side}
-        data-active={snapMask.active ? "true" : "false"}
-      />
+      {dropZones.map((zone, index) => (
+        <div
+          key={index}
+          aria-hidden="true"
+          className="mesurer-toolbar-zone"
+          style={{ left: zone.x, top: zone.y, width: zone.width, height: zone.height }}
+        />
+      ))}
       <div ref={barBoxRef} className="msr:relative msr:flex">
         <TooltipLayerContext.Provider value={tooltipLayer}>
           <div

@@ -109,6 +109,7 @@ const clearMotionStyles = (
   }
   stage.style.transition = ""
   collapseStage.style.transition = ""
+  motion.style.translate = ""
   delete motion.dataset.resizing
 }
 
@@ -226,7 +227,7 @@ export const useToolbarGroupMotion = ({
   expandedPanelRef,
   iconSlotRef,
   vertical = false,
-  centered = false,
+  origin = 0,
 }: {
   eventTarget: Window
   toolGroup: ToolGroup
@@ -241,9 +242,10 @@ export const useToolbarGroupMotion = ({
   iconSlotRef: RefObject<HTMLDivElement | null>
   // Vertical toolbars (docked left/right) run the same motion along the y axis.
   vertical?: boolean
-  // Resizes grow and shrink around the bar's middle instead of its leading edge. The caller
-  // keeps the layout box centered; this only shifts the visuals to match while they scale.
-  centered?: boolean
+  // The point resizes grow and shrink around, as a fraction along the bar: 0 its leading edge,
+  // 0.5 its middle, 1 its trailing edge. The caller keeps the layout box in place; this only
+  // shifts the visuals to match while they scale.
+  origin?: number
 }) => {
   const axis = toolbarAxis(vertical)
   const readyRef = useRef(false)
@@ -489,15 +491,10 @@ export const useToolbarGroupMotion = ({
           duration,
           timing.easing,
         )
-    const shiftFor = (scale: number) => axisTranslate(axis, (toSize * (1 - scale)) / 2)
-    const shiftMotion =
-      centered && !groupSwitch
-        ? motion.animate([{ translate: shiftFor(fromScale) }, { translate: shiftFor(toScale) }], {
-            duration,
-            easing: timing.easing,
-            fill: "both",
-          })
-        : null
+    // The shift that holds the origin still is written each frame with the pose below, so it
+    // stays locked to the size it follows instead of drifting on the compositor.
+    const shifts = origin > 0 && !groupSwitch
+    if (!shifts) motion.style.translate = ""
     animateTransform(
       nodes.track,
       `${axis.translate}(${fromTrack}px)`,
@@ -540,6 +537,7 @@ export const useToolbarGroupMotion = ({
     const followClip = () => {
       const t = chromeMotion.effect?.getComputedTiming().progress ?? 0
       const chromeScale = lerp(fromScale, toScale, t)
+      if (shifts) motion.style.translate = axisTranslate(axis, toSize * (1 - chromeScale) * origin)
       const visual = lerp(
         fromRadius,
         toRadius,
@@ -573,7 +571,6 @@ export const useToolbarGroupMotion = ({
       if (finished || gen !== genRef.current) return
       finished = true
       stopFollow()
-      shiftMotion?.cancel()
       applyPose(axis, nodes, toPose, collapseMotion, toSize)
       rest()
     }
@@ -582,8 +579,6 @@ export const useToolbarGroupMotion = ({
       eventTarget.clearTimeout(timeout)
       stopFollow()
       if (finished) return
-      // The next run restarts the shift from the pose captured below.
-      shiftMotion?.cancel()
       const play = playRef.current
       if (!motion.isConnected) {
         finish()
@@ -618,7 +613,6 @@ export const useToolbarGroupMotion = ({
   }, [
     annotatePanelRef,
     axis,
-    centered,
     collapseRef,
     eventTarget,
     expandedPanelRef,
@@ -627,6 +621,7 @@ export const useToolbarGroupMotion = ({
     markReady,
     minimized,
     motionRef,
+    origin,
     stageRef,
     toolGroup,
     trailingRef,

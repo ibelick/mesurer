@@ -119,10 +119,10 @@ test("snap mode glues to the left edge and slides vertically along it", async ({
   const startY = (grab?.y ?? 0) + (grab?.height ?? 0) / 2;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(startX, startY - 80, { steps: 10 });
+  await page.mouse.move(startX, startY + 80, { steps: 10 });
   const slid = await toolbar.boundingBox();
   expect(slid?.x).toBe(16);
-  expect(slid?.y).toBeLessThan(glued?.y ?? 0);
+  expect(slid?.y).toBeGreaterThan(glued?.y ?? 0);
   await page.mouse.up();
   await page.waitForTimeout(320);
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
@@ -431,8 +431,10 @@ test("a glued toolbar stays in the middle of its edge when closed, opened and re
   };
   const open = () => page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
 
-  // Top edge: centered across the viewport's width, open or closed.
+  // Top edge: out of its starting corner, centered across the viewport's width, open or closed.
   await expect(toolbar).toHaveAttribute("data-edge", "top");
+  const start = await toolbar.boundingBox();
+  await dragBy(page, toolbar, 550 - ((start?.x ?? 0) + (start?.width ?? 0) / 2), 0);
   expect((await middle()).x).toBe(550);
   await close();
   expect((await middle()).x).toBe(550);
@@ -606,5 +608,86 @@ test("the extension's recording card never covers the toolbar, on any edge", asy
       await page.getByRole("button", { name }).click({ trial: true, timeout: 1000 });
     }
     // The card stays open, so the next drag crosses its iframe: the drag must not stall there.
+  }
+});
+
+test("snap mode settles a toolbar dropped near a corner into that corner", async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+
+  const box = await toolbar.boundingBox();
+  const grabX = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+  const grabY = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+  await page.mouse.move(grabX, grabY);
+  await page.mouse.down();
+  await page.mouse.move(grabX - 300, grabY + 380, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+
+  const settled = await toolbar.boundingBox();
+  console.log("corner settle", JSON.stringify(settled), await toolbar.getAttribute("data-orientation"));
+  expect(Math.round(settled?.x ?? -1)).toBe(16);
+  expect(Math.round((settled?.y ?? 0) + (settled?.height ?? 0))).toBe(700 - 16);
+});
+
+test("a toolbar in a corner opens and closes from that corner", async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const chrome = toolbar.locator(".mesurer-toolbar-chrome");
+  const close = async () => {
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  };
+  const open = () => page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+  const dragTo = async (x: number, y: number) => {
+    const box = await toolbar.boundingBox();
+    const grabX = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+    const grabY = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+    await page.mouse.move(grabX, grabY);
+    await page.mouse.down();
+    await page.mouse.move(x, y, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForTimeout(450);
+  };
+
+  // Each corner keeps one end of the bar fixed: at every frame of the motion, and once settled.
+  const corners: [label: string, x: number, y: number, pinned: (box: Box) => number, at: number][] = [
+    ["top left", 60, 30, (box) => box.x, 16],
+    ["top right", 1040, 30, (box) => box.x + box.width, 1100 - 16],
+    ["bottom right", 1040, 670, (box) => box.x + box.width, 1100 - 16],
+    ["left bottom", 20, 640, (box) => box.y + box.height, 700 - 16],
+    ["left top", 20, 60, (box) => box.y, 16],
+  ];
+  for (const [label, x, y, pinned, at] of corners) {
+    await dragTo(x, y);
+    const end = async () => {
+      const box = await chrome.boundingBox();
+      return box ? pinned(box) : Number.NaN;
+    };
+    const holds = async (when: string) =>
+      expect(Math.abs((await end()) - at), `${label}, ${when}`).toBeLessThanOrEqual(1);
+    await holds("open");
+
+    await close();
+    await expect(toolbar).toHaveAttribute("data-resizing", "collapse");
+    await holds("closing");
+    await expect(toolbar).not.toHaveAttribute("data-resizing");
+    await holds("closed");
+    const closed = await chrome.boundingBox();
+    expect(closed?.width, label).toBe(closed?.height);
+
+    await open();
+    await expect(toolbar).toHaveAttribute("data-resizing", "collapse");
+    // The bar is put back on its corner before the frame paints: measure after one has.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await holds("opening");
+    await expect(toolbar).not.toHaveAttribute("data-resizing");
+    await holds("opened");
   }
 });
