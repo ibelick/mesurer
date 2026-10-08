@@ -577,3 +577,34 @@ test("moving the toolbar closes its menus and cards", async ({ page }) => {
     await expect(surface, trigger).toHaveCount(0);
   }
 });
+
+test("the extension's recording card never covers the toolbar, on any edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/extension-recording.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const frame = page.locator("iframe[title='Recording preview']");
+
+  for (const spot of EDGE_SPOTS) {
+    const bar = await glueTo(page, toolbar, spot);
+    await page.getByRole("button", { name: "Capture menu" }).click();
+    await page.getByRole("menuitem", { name: /Screen record/ }).click();
+    await page.mouse.move(420, 260);
+    await page.mouse.down();
+    await page.mouse.move(640, 420, { steps: 4 });
+    await page.mouse.up();
+    await page.getByRole("button", { name: "Start recording" }).click();
+    await page.getByRole("button", { name: /^Stop recording/ }).click();
+    await expect(frame).toBeVisible();
+    await page.waitForTimeout(150);
+
+    // The card's own box sits against the bar like every other surface.
+    expectAgainstBar(spot[0], bar, await frame.locator("xpath=../..").boundingBox(), `recording card on ${spot[0]}`);
+    // The iframe overhangs the card so its shadow can paint; that overhang must not swallow
+    // clicks meant for the toolbar.
+    for (const name of ["Settings", "Comments (M)", "Inspect (I)", "Select and inspect tools (1)"]) {
+      await page.getByRole("button", { name }).click({ trial: true, timeout: 1000 });
+    }
+    // The card stays open, so the next drag crosses its iframe: the drag must not stall there.
+  }
+});

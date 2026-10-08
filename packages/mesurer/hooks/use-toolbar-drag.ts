@@ -54,7 +54,8 @@ export const useToolbarDrag = (
       state.startY = event.clientY
       state.originX = position.x
       state.originY = position.y
-      const rect = event.currentTarget.getBoundingClientRect()
+      const handle = event.currentTarget
+      const rect = handle.getBoundingClientRect()
       state.width = rect.width
       state.height = rect.height
 
@@ -81,6 +82,13 @@ export const useToolbarDrag = (
           const dy = moveEvent.clientY - current.startY
           if (Math.abs(dx) <= TOOLBAR_DRAG_SLOP && Math.abs(dy) <= TOOLBAR_DRAG_SLOP) return
           current.dragging = true
+          // Keeps the moves coming when the pointer crosses an iframe, which would otherwise
+          // take them for its own document and stall the drag.
+          try {
+            handle.setPointerCapture(moveEvent.pointerId)
+          } catch {
+            /* the pointer may already be gone */
+          }
           onDragStartRef.current?.()
         }
         current.place()

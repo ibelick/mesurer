@@ -22,6 +22,7 @@ import { useToolbarDock } from "../hooks/use-toolbar-dock";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
+import { TOOLBAR_SIDE_ATTRIBUTE } from "./screen-recording-editor";
 import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
 import { ScreenshotPreview } from "./screenshot-preview";
@@ -660,6 +661,8 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({ ...barSurface, open: settingsOpen, align: "right" });
   const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
     useFloatingSurfacePlacement({ ...barSurface, open: floatingCardOpen, align: "left" });
+  // The side of the recording card that faces the bar, for content that has to keep clear of it.
+  const cardToolbarSide = vertical ? edge : recordingPanelPlacement.side === "bottom" ? "top" : "bottom";
   const { surfaceRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
     useFloatingSurfacePlacement({ ...controlSurface, anchorRef: guideMenuButtonRef, open: guideMenuOpen });
   const { surfaceRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
@@ -1684,6 +1687,7 @@ function ToolbarComponent(
                   zIndex: 101,
                 }}
                 data-mesurer-capture-ui
+                {...{ [TOOLBAR_SIDE_ATTRIBUTE]: cardToolbarSide }}
               >
                  {recordingPanelOpen ? screenRecording.panel : (
                    <div className="msr:w-[22rem] msr:max-w-[calc(100vw-24px)]" data-mesurer-motion-surface>
