@@ -806,12 +806,14 @@ function ToolbarComponent(
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
   const motionPlayerOpen = motion.playable && !recordingPanelOpen;
   const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
+  // Vertical toolbars open their menus beside the bar, which needs the floating placement.
+  const floatingMenus = floatingCardOpen || vertical;
   const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
     useFloatingSurfacePlacement({
       anchorRef: guideMenuButtonRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingCardOpen && guideMenuOpen,
+      open: floatingMenus && guideMenuOpen,
       refreshKey: `${position.x}:${position.y}:${menuAlign}`,
       align: menuAlign,
     });
@@ -820,7 +822,7 @@ function ToolbarComponent(
       anchorRef: captureAnchorRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingCardOpen && captureMenuOpen,
+      open: floatingMenus && captureMenuOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
     });
@@ -829,7 +831,7 @@ function ToolbarComponent(
       anchorRef: commentButtonRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingCardOpen && commentMenuOpen && !commentsPanelOpen,
+      open: floatingMenus && commentMenuOpen && !commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
     });
@@ -1357,9 +1359,9 @@ function ToolbarComponent(
                                       {guideMenuOpen ? (() => {
                                         const menu = (
                                           <ToolbarMenu
-                                            ref={floatingCardOpen ? guideMenuPortalRef : undefined}
-                                            floating={floatingCardOpen}
-                                            floatingStyle={floatingCardOpen ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
+                                            ref={floatingMenus ? guideMenuPortalRef : undefined}
+                                            floating={floatingMenus}
+                                            floatingStyle={floatingMenus ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
                                             side={menuSide}
                                             align={menuAlign}
                                             tabIndex={0}
@@ -1464,7 +1466,7 @@ function ToolbarComponent(
                                             </MenuItem>
                                           </ToolbarMenu>
                                         );
-                                        return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                        return floatingMenus ? createPortal(menu, commentPanelPortalTarget) : menu;
                                       })() : null}
                                     </div>
                                     <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
@@ -1488,7 +1490,7 @@ function ToolbarComponent(
                                             ref={layoutGuidesMenuRef}
                                             className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                                             style={{
-                                              zIndex: floatingCardOpen ? 120 : undefined,
+                                              zIndex: floatingMenus ? 120 : undefined,
                                               top: layoutGuidesPlacement.top,
                                               bottom: layoutGuidesPlacement.bottom,
                                               left: layoutGuidesPlacement.left,
@@ -1656,9 +1658,9 @@ function ToolbarComponent(
                                 {captureMenuOpen ? (() => {
                                   const menu = (
                                     <ToolbarMenu
-                                      ref={floatingCardOpen ? captureMenuPortalRef : undefined}
-                                      floating={floatingCardOpen}
-                                      floatingStyle={floatingCardOpen ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
+                                      ref={floatingMenus ? captureMenuPortalRef : undefined}
+                                      floating={floatingMenus}
+                                      floatingStyle={floatingMenus ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
                                       side={menuSide}
                                       align="right"
                                       onKeyDown={(event) => {
@@ -1691,7 +1693,7 @@ function ToolbarComponent(
                                       </ToolbarMenuItem>
                                     </ToolbarMenu>
                                   );
-                                  return floatingCardOpen ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                  return floatingMenus ? createPortal(menu, commentPanelPortalTarget) : menu;
                                 })() : null}
                               </div>
                               <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>

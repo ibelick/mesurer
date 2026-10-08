@@ -20,6 +20,7 @@ Measured baselines for `feat/inspect-motion`:
 | Toolbar snap: optional glue to screen edges with a drag preview, vertical toolbar layout, and edge-aware surfaces and tooltips (before: 210.2 KiB, after: 212.9 KiB) | 212.9 KiB | 213 KiB |
 | Toolbar snap motion: orientation fade, arc glide, release catch-up, and light edge glow (before: 212.9 KiB, after: 213.0 KiB) | 213.0 KiB | 214 KiB |
 | Toolbar snap continuity: magnetic approach, resisting release, and cached glue size (before: 213.0 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
+| Toolbar carets and submenu enter motion (before: 213.2 KiB, after: 213.4 KiB) | 213.4 KiB | 214 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -55,4 +56,4 @@ The snap motion (orientation fade, arc glide, release catch-up) adds about 0.1 K
 The limit is raised to 214 KiB (about 1.0 KiB headroom after this change). Trimming
 the remaining code was not possible without removing behavior.
 
-The continuity change adds about 0.2 KiB (about 0.8 KiB headroom remaining).
+The continuity change adds about 0.2 KiB; the toolbar caret layout adds about 0.1 KiB (about 0.6 KiB headroom remaining).

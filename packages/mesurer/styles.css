@@ -719,6 +719,35 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   margin: 4px 0;
 }
 
+/* Toolbar submenus ease out of the toolbar: they slide from the toolbar side and fade in. */
+.mesurer-toolbar-menu {
+  --menu-dy: -8px;
+  transform-origin: top center;
+  animation: mesurer-toolbar-menu-in 260ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.mesurer-toolbar-menu[data-side="top"] {
+  --menu-dy: 8px;
+  transform-origin: bottom center;
+}
+
+@keyframes mesurer-toolbar-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--menu-dy)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesurer-toolbar-menu {
+    animation: none;
+  }
+}
+
 /* Carets point in the direction their menu opens: away from the docked edge. */
 .mesurer-toolbar-motion[data-edge="left"] .mesurer-toolbar-caret {
   transform: rotate(-90deg);

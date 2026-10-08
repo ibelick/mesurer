@@ -69,8 +69,9 @@ export const ToolbarMenu = forwardRef<HTMLDivElement, ToolbarMenuProps>(function
       {...props}
       ref={ref}
       style={floating ? { ...floatingStyle, ...style } : style}
+      data-side={side}
       className={cn(
-        "msr:flex msr:w-44 msr:flex-col msr:gap-px",
+        "mesurer-toolbar-menu msr:flex msr:w-44 msr:flex-col msr:gap-px",
         floating
           ? "msr:pointer-events-auto msr:fixed msr:z-[120]"
           : cn(
