@@ -628,7 +628,6 @@ test("snap mode settles a toolbar dropped near a corner into that corner", async
   await page.waitForTimeout(400);
 
   const settled = await toolbar.boundingBox();
-  console.log("corner settle", JSON.stringify(settled), await toolbar.getAttribute("data-orientation"));
   expect(Math.round(settled?.x ?? -1)).toBe(16);
   expect(Math.round((settled?.y ?? 0) + (settled?.height ?? 0))).toBe(700 - 16);
 });
