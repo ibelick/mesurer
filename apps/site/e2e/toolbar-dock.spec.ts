@@ -87,3 +87,49 @@ test("pulling a glued toolbar away from the edge releases it", async ({ page }) 
   const free = await toolbar.boundingBox();
   expect(free?.x).toBeGreaterThan(300);
 });
+
+test("a vertical toolbar animates the mode switch and minimize along its own axis", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+
+  const box = await toolbar.boundingBox();
+  await dragBy(page, toolbar, 40 - (box?.x ?? 0), 300 - (box?.y ?? 0));
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  const chrome = toolbar.locator(".mesurer-toolbar-chrome");
+  const chromeHeight = async () => (await chrome.boundingBox())?.height ?? 0;
+  const inspect = await toolbar.boundingBox();
+
+  // Mode switch: the tool track slides on y and the bar resizes in height only.
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await expect(toolbar).toHaveAttribute("data-resizing", "true");
+  const trackAnimations = await toolbar.locator(".mesurer-toolbar-tool-track").evaluate((node) =>
+    node.getAnimations().map((animation) =>
+      (animation.effect as KeyframeEffect).getKeyframes().map((frame) => String(frame.transform)),
+    ),
+  );
+  expect(trackAnimations.flat().every((transform) => transform.startsWith("translateY("))).toBe(true);
+  expect(trackAnimations.flat().length).toBeGreaterThan(0);
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  const annotate = await toolbar.boundingBox();
+  expect(annotate?.width).toBe(inspect?.width);
+  expect(annotate?.height).not.toBe(inspect?.height);
+  expect(await chromeHeight()).toBeCloseTo(annotate?.height ?? 0, 0);
+
+  // Minimize: the chrome shrinks in height through intermediate sizes, then restores.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(toolbar).toHaveAttribute("data-resizing", "collapse");
+  const midway = await chromeHeight();
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  const minimized = await toolbar.boundingBox();
+  expect(minimized?.width).toBe(annotate?.width);
+  expect(minimized?.height).toBe(minimized?.width);
+  expect(midway).toBeGreaterThan(minimized?.height ?? 0);
+  expect(await chromeHeight()).toBeCloseTo(minimized?.height ?? 0, 0);
+
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  expect((await toolbar.boundingBox())?.height).toBe(annotate?.height);
+});

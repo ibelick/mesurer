@@ -17,7 +17,7 @@ import { cn } from "../core/utils";
 import type { ToolbarDock, ToolbarSide } from "../core/persistence";
 import { centeredDockPosition, isVerticalToolbarSide, snapToolbarPosition, surfaceAlignFor } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
-import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
+import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
@@ -1085,23 +1085,24 @@ function ToolbarComponent(
       return;
     }
 
-    const syncWidths = () => {
-      syncToolbarLayoutWidths({
+    const syncSizes = () => {
+      syncToolbarLayoutSizes({
         stage,
         collapseStage,
         inspectPanel,
         annotatePanel,
         expandedPanel,
         iconSlot,
+        axis: toolbarAxis(vertical),
       });
     };
 
-    syncWidths();
+    syncSizes();
     const frame = requestAnimationFrame(() => {
       stage.dataset.ready = "true";
       markToolbarMotionReady();
     });
-    const observer = new ResizeObserver(syncWidths);
+    const observer = new ResizeObserver(syncSizes);
     observer.observe(inspectPanel);
     observer.observe(annotatePanel);
     observer.observe(iconSlot);
@@ -1109,7 +1110,7 @@ function ToolbarComponent(
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [markToolbarMotionReady]);
+  }, [markToolbarMotionReady, vertical]);
 
   useLayoutEffect(() => {
     if (!guideMenuOpen) return;
