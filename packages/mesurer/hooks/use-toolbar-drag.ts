@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react"
 import type { Point } from "../core/toolbar-dock"
 
 const TOOLBAR_DRAG_SLOP = 6
@@ -119,6 +119,9 @@ export const useToolbarDrag = (
     const next = current.place()
     return next !== null && (next.x !== before.x || next.y !== before.y)
   }, [])
+
+  // A drag interrupted by unmount must not leave its window listeners behind.
+  useEffect(() => () => dragRef.current.detach(), [])
 
   const consumeDragClick = useCallback(() => {
     if (!suppressClickRef.current) return false

@@ -147,7 +147,12 @@ export const useToolbarDock = ({
             viewport: viewportSize(),
           })
           setEdge(result.side)
-          setSnapMask((mask) => ({ side: result.preview ?? mask.side, active: result.preview !== null }))
+          // Return the same object when nothing changed, so pointer moves do not re-render.
+          setSnapMask((mask) => {
+            const side = result.preview ?? mask.side
+            const active = result.preview !== null
+            return mask.side === side && mask.active === active ? mask : { side, active }
+          })
           return result.position
         }
       : undefined,
@@ -227,7 +232,11 @@ export const useToolbarDock = ({
     eventTarget.addEventListener("resize", onViewportResize)
     return () => {
       observer?.disconnect()
-      eventTarget.clearTimeout(persistTimer)
+      // Save a pending size-driven position now, rather than dropping it on unmount.
+      if (persistTimer !== undefined) {
+        eventTarget.clearTimeout(persistTimer)
+        onPositionChangeRef.current?.(positionRef.current)
+      }
       eventTarget.removeEventListener("resize", onViewportResize)
     }
   }, [eventTarget, snapping, isDragging, motionRef, setEdge, setPosition])
