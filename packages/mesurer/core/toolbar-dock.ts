@@ -10,6 +10,10 @@ export const RELEASE_DISTANCE = 128
 
 const SNAP_SIDES: ToolbarSide[] = ["top", "bottom", "left", "right"]
 
+// Anchored surfaces open toward the room on the bar's side of the screen.
+export const surfaceAlignFor = (barX: number, viewportWidth: number): "left" | "right" =>
+  barX < viewportWidth / 2 ? "left" : "right"
+
 export const isVerticalToolbarSide = (side: ToolbarSide | null) => side === "left" || side === "right"
 
 // Pins the toolbar to an edge. The coordinate along that edge is kept and clamped,

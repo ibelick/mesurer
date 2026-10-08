@@ -15,7 +15,7 @@ import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import type { ToolbarDock, ToolbarSide } from "../core/persistence";
-import { centeredDockPosition, isVerticalToolbarSide, snapToolbarPosition } from "../core/toolbar-dock";
+import { centeredDockPosition, isVerticalToolbarSide, snapToolbarPosition, surfaceAlignFor } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
@@ -154,11 +154,9 @@ type ToolbarProps = {
   openMenu: OpenMenu;
   setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
 };
-const GUIDE_MENU_WIDTH = 176;
 const GLIDE_MS = 280;
 // Different timing per axis, so the glide curves in an arc instead of running straight.
 const GLIDE_TRANSITION = `left ${GLIDE_MS}ms cubic-bezier(0.2, 0.9, 0.3, 1), top ${GLIDE_MS * 1.35}ms cubic-bezier(0.3, 1.2, 0.5, 1)`;
-const VIEWPORT_PADDING = 8;
 const TOOLBAR_HEIGHT = 40;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
@@ -474,6 +472,8 @@ function ToolbarComponent(
   );
   const positionRef = useRef(position);
   positionRef.current = position;
+  // Every anchored surface (menus and the screenshot card) opens toward the same side.
+  const surfaceAlign = surfaceAlignFor(position.x, eventTarget.innerWidth);
   // Last measured size per orientation, so a glue can aim at the spot the vertical bar will occupy.
   const sizesRef = useRef<{ horizontal?: { width: number; height: number }; vertical?: { width: number; height: number } }>({});
   useLayoutEffect(() => {
@@ -632,7 +632,6 @@ function ToolbarComponent(
   const xrayWasVisibleRef = useRef(xrayVisible);
   const rulersWereVisibleRef = useRef(rulersVisible);
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
-  const [menuAlign, setMenuAlign] = useState<"left" | "right">("right");
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
   const layoutGuidesOpen = openMenu?.type === "layout-guides";
   const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !captureMenuOpen && !settingsOpen && !layoutGuidesOpen && !colorPickerActive;
@@ -742,25 +741,6 @@ function ToolbarComponent(
     };
   }, [colorPickerActive, eventTarget, toolGroup, toolMode]);
 
-  const updateMenuAlign = useCallback(() => {
-    const anchorRect = guideMenuRef.current?.getBoundingClientRect();
-    if (!anchorRect) return;
-
-    const rightAlignedLeft = anchorRect.right - GUIDE_MENU_WIDTH;
-    const leftAlignedRight = anchorRect.left + GUIDE_MENU_WIDTH;
-
-    if (rightAlignedLeft < VIEWPORT_PADDING) {
-      setMenuAlign("left");
-      return;
-    }
-
-    if (leftAlignedRight > eventTarget.innerWidth - VIEWPORT_PADDING) {
-      setMenuAlign("right");
-      return;
-    }
-
-    setMenuAlign("right");
-  }, [eventTarget]);
 
   const viewportHeight =
     eventTarget.innerHeight || 0;
@@ -803,26 +783,35 @@ function ToolbarComponent(
     });
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const captureAnchorRef = useRef<HTMLDivElement | null>(null);
+  const { menuRef: screenshotCardRef, placement: screenshotCardPlacement } =
+    useFloatingSurfacePlacement({
+      anchorRef: captureAnchorRef,
+      eventTarget,
+      sideOfAnchor: surfaceSide,
+      side: edgeSide,
+      open: screenshotPreviewUrl !== null,
+      refreshKey: `${position.x}:${position.y}:${surfaceAlign}`,
+      align: surfaceAlign,
+    });
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
   const motionPlayerOpen = motion.playable && !recordingPanelOpen;
   const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
   // Vertical toolbars open their menus beside the bar, which needs the floating placement.
-  const floatingMenus = floatingCardOpen || vertical;
   const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
     useFloatingSurfacePlacement({
       anchorRef: guideMenuButtonRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingMenus && guideMenuOpen,
-      refreshKey: `${position.x}:${position.y}:${menuAlign}`,
-      align: menuAlign,
+      open: guideMenuOpen,
+      refreshKey: `${position.x}:${position.y}:${surfaceAlign}`,
+      align: surfaceAlign,
     });
   const { menuRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
     useFloatingSurfacePlacement({
       anchorRef: captureAnchorRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingMenus && captureMenuOpen,
+      open: captureMenuOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
     });
@@ -831,9 +820,9 @@ function ToolbarComponent(
       anchorRef: commentButtonRef,
       eventTarget,
       sideOfAnchor: surfaceSide,
-      open: floatingMenus && commentMenuOpen && !commentsPanelOpen,
+      open: commentMenuOpen && !commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
-      align: "right",
+      align: surfaceAlign,
     });
   const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
     useFloatingSurfacePlacement({
@@ -1130,13 +1119,10 @@ function ToolbarComponent(
         ?.querySelector<HTMLElement>("[role='menu']")
         ?.focus();
     });
-    const handleResize = () => updateMenuAlign();
-    eventTarget.addEventListener("resize", handleResize);
     return () => {
       eventTarget.cancelAnimationFrame(frame);
-      eventTarget.removeEventListener("resize", handleResize);
     };
-  }, [eventTarget, guideMenuOpen, updateMenuAlign]);
+  }, [eventTarget, guideMenuOpen]);
 
   useEffect(() => {
     if (!openMenu || openMenu.type === "settings") return;
@@ -1315,7 +1301,7 @@ function ToolbarComponent(
                                       )}
                                     </ToolbarButton>
                                     <div
-                                      className="mesurer-toolbar-flow msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
+                                      className="mesurer-toolbar-flow mesurer-toolbar-caret-anchor msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
                                       ref={guideMenuRef}
                                       onMouseEnter={() => onTooltipEnter("guide-menu")}
                                       onMouseLeave={() => onTooltipLeave("guide-menu")}
@@ -1328,7 +1314,7 @@ function ToolbarComponent(
                                         aria-expanded={guideMenuOpen}
                                         data-mesurer-menu-trigger
                                         className={cn(
-                                          "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                          "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
                                           guideMenuOpen
                                             ? "msr:bg-black/4 msr:text-ink-900"
                                             : "msr:text-ink-900",
@@ -1342,7 +1328,6 @@ function ToolbarComponent(
                                                   ? features.rulers ? 1 : 0
                                                   : features.rulers ? 2 : 1,
                                             );
-                                            updateMenuAlign();
                                           }
                                           toggleToolbarMenu({ type: "guide-orientation" });
                                         }}
@@ -1359,11 +1344,10 @@ function ToolbarComponent(
                                       {guideMenuOpen ? (() => {
                                         const menu = (
                                           <ToolbarMenu
-                                            ref={floatingMenus ? guideMenuPortalRef : undefined}
-                                            floating={floatingMenus}
-                                            floatingStyle={floatingMenus ? floatingMenuStyle(guideMenuPortalPlacement) : undefined}
+                                            ref={guideMenuPortalRef}
+                                            floating
+                                            floatingStyle={floatingMenuStyle(guideMenuPortalPlacement)}
                                             side={menuSide}
-                                            align={menuAlign}
                                             tabIndex={0}
                                             onKeyDown={(event) => {
                                               const key = event.key.toLowerCase();
@@ -1466,7 +1450,7 @@ function ToolbarComponent(
                                             </MenuItem>
                                           </ToolbarMenu>
                                         );
-                                        return floatingMenus ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                        return createPortal(menu, commentPanelPortalTarget);
                                       })() : null}
                                     </div>
                                     <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
@@ -1490,7 +1474,7 @@ function ToolbarComponent(
                                             ref={layoutGuidesMenuRef}
                                             className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                                             style={{
-                                              zIndex: floatingMenus ? 120 : undefined,
+                                              zIndex: 120,
                                               top: layoutGuidesPlacement.top,
                                               bottom: layoutGuidesPlacement.bottom,
                                               left: layoutGuidesPlacement.left,
@@ -1604,7 +1588,7 @@ function ToolbarComponent(
                           <div ref={trailingRef} className="mesurer-toolbar-trailing mesurer-toolbar-flow msr:flex msr:items-stretch">
                             <ToolbarDivider />
                             <ToolbarGroup label="Capture and settings" className="msr:px-1">
-                              <div ref={captureAnchorRef} className="mesurer-toolbar-flow msr:relative msr:flex msr:flex-none">
+                              <div ref={captureAnchorRef} className="mesurer-toolbar-flow mesurer-toolbar-caret-anchor msr:relative msr:flex msr:flex-none">
                                 {features.screenshot ? (
                                   <>
                                     <ToolbarButton
@@ -1627,8 +1611,10 @@ function ToolbarComponent(
                                     </ToolbarButton>
                                     {screenshotPreviewUrl ? (
                                       <ScreenshotPreview
+                                        ref={screenshotCardRef}
                                         url={screenshotPreviewUrl}
-                                        side={edgeSide}
+                                        style={floatingMenuStyle(screenshotCardPlacement)}
+                                        side={screenshotCardPlacement.side}
                                         label={
                                           screenshotCopy && !screenshotDownload
                                             ? "Screenshot copied"
@@ -1648,7 +1634,7 @@ function ToolbarComponent(
                                   aria-expanded={captureMenuOpen}
                                   data-mesurer-menu-trigger
                                   className={cn(
-                                    "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                    "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
                                     captureMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
                                   )}
                                   onClick={() => toggleToolbarMenu({ type: "capture" })}
@@ -1658,9 +1644,9 @@ function ToolbarComponent(
                                 {captureMenuOpen ? (() => {
                                   const menu = (
                                     <ToolbarMenu
-                                      ref={floatingMenus ? captureMenuPortalRef : undefined}
-                                      floating={floatingMenus}
-                                      floatingStyle={floatingMenus ? floatingMenuStyle(captureMenuPortalPlacement) : undefined}
+                                      ref={captureMenuPortalRef}
+                                      floating
+                                      floatingStyle={floatingMenuStyle(captureMenuPortalPlacement)}
                                       side={menuSide}
                                       align="right"
                                       onKeyDown={(event) => {
@@ -1693,10 +1679,10 @@ function ToolbarComponent(
                                       </ToolbarMenuItem>
                                     </ToolbarMenu>
                                   );
-                                  return floatingMenus ? createPortal(menu, commentPanelPortalTarget) : menu;
+                                  return createPortal(menu, commentPanelPortalTarget);
                                 })() : null}
                               </div>
-                              <div ref={commentMenuRef} className="msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
+                              <div ref={commentMenuRef} className="mesurer-toolbar-caret-anchor msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
                                 <ToolbarButton
                                   id="comments"
                                   active={toolMode === "comments"}
@@ -1716,7 +1702,7 @@ function ToolbarComponent(
                                   aria-expanded={commentMenuOpen}
                                   data-mesurer-menu-trigger
                                   className={cn(
-                                    "msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
+                                    "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
                                     commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
                                   )}
                                   onClick={() => {
@@ -1749,7 +1735,7 @@ function ToolbarComponent(
                                       fixed
                                       fixedZIndex={floatingCardOpen ? 120 : 100}
                                     />, commentPanelPortalTarget)
-                                  ) : floatingCardOpen ? (
+                                  ) : (
                                     createPortal(
                                       <MenuSurface
                                         ref={commentDropdownPortalRef}
@@ -1775,32 +1761,6 @@ function ToolbarComponent(
                                       </MenuSurface>,
                                       commentPanelPortalTarget,
                                     )
-                                  ) : (
-                                    <MenuSurface
-                                      className={cn(
-                                        "msr:absolute msr:right-0 msr:flex msr:w-44 msr:flex-col msr:gap-px",
-                                        edgeSide === "bottom"
-                                          ? "msr:top-full msr:mt-2"
-                                          : "msr:bottom-full msr:mb-2",
-                                      )}
-                                      data-mesurer-comment-ui
-                                    >
-                                      <>
-                                        <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
-                                          <span className="msr:flex-1">Show all comments</span>
-                                        </MenuItem>
-                                        <MenuItem
-                                          disabled={commentCount === 0}
-                                          onClick={() => {
-                                            void onCopyComments()
-                                            setOpenMenu(null)
-                                          }}
-                                        >
-                                          <span className="msr:flex-1">Copy comments</span>
-                                          {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
-                                        </MenuItem>
-                                      </>
-                                    </MenuSurface>
                                   )
                                 ) : null}
                               </div>
