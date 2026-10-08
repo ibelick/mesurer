@@ -161,6 +161,8 @@ type ToolbarProps = {
 const TOOLBAR_HEIGHT = 40;
 // How long an auto-hidden bar stays out once the pointer has left it.
 const TUCK_DELAY_MS = 600;
+// A little longer than the slide in and out of view takes (260ms in styles.css).
+const TUCK_SLIDE_MS = 320;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
 // Menus sit above the toolbar's other surfaces.
@@ -396,6 +398,9 @@ function ToolbarComponent(
   // The bar's box as laid out. Unlike the bar itself it is never rotated by a turn, so the
   // surfaces placed against it do not wander while the bar swings.
   const barBoxRef = useRef<HTMLDivElement | null>(null);
+  // Whether an auto-hidden bar is sliding in or out of view. It slides with a transform, which
+  // nothing that watches its layout sees, so its surfaces are placed again on every frame of it.
+  const [tuckSliding, setTuckSliding] = useState(false);
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -649,7 +654,7 @@ function ToolbarComponent(
     sideOfAnchor: surfaceSide,
     refreshKey: `${position.x}:${position.y}:${surfaceAlign}:${edge}:${columnSide}`,
     align: surfaceAlign,
-    follow: positionTransition !== undefined,
+    follow: positionTransition !== undefined || tuckSliding,
   };
   const barSurface = { ...controlSurface, anchorRef: barBoxRef, gap: 4, rightOffset: 0 };
   const { surfaceRef: settingsMenuRef, placement: settingsPlacement } =
@@ -1097,6 +1102,13 @@ function ToolbarComponent(
     };
   }, [busy, edge, eventTarget, idle, minimized]);
   const tucked = idle && !revealed;
+  // A surface opened while the bar is tucked (a shortcut, a capture that just finished) would
+  // otherwise be placed against where the bar was hiding, and end up on top of it.
+  useLayoutEffect(() => {
+    setTuckSliding(true);
+    const timer = eventTarget.setTimeout(() => setTuckSliding(false), TUCK_SLIDE_MS);
+    return () => eventTarget.clearTimeout(timer);
+  }, [eventTarget, tucked]);
   // The tuck only animates once the bar has been painted, so nothing slides as the page loads.
   const [tuckAnimated, setTuckAnimated] = useState(false);
   useEffect(() => {
