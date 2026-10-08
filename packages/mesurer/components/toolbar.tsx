@@ -15,6 +15,7 @@ import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import type { ToolbarDock } from "../core/persistence";
+import type { ToolbarPlacement } from "../core/toolbar-dock";
 import { surfaceAlignFor } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
@@ -129,9 +130,10 @@ type ToolbarLayoutGuides = {
 
 type ToolbarProps = {
   eventTarget: Window;
-  initialPosition: { x: number; y: number };
-  onPositionChange?: (position: { x: number; y: number }) => void;
+  initialPosition: ToolbarPlacement;
+  onPositionChange?: (placement: ToolbarPlacement) => void;
   dock?: ToolbarDock;
+  autoHide?: boolean;
   minimized: boolean;
   onInteract: () => void;
   onRestore: () => void;
@@ -156,6 +158,8 @@ type ToolbarProps = {
   setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
 };
 const TOOLBAR_HEIGHT = 40;
+// How long an auto-hidden bar stays out once the pointer has left it.
+const TUCK_DELAY_MS = 600;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
 // Menus sit above the toolbar's other surfaces.
@@ -318,6 +322,7 @@ function ToolbarComponent(
     initialPosition,
     onPositionChange,
     dock = "free",
+    autoHide = false,
     minimized,
     onInteract,
     onRestore,
@@ -414,6 +419,7 @@ function ToolbarComponent(
     position,
     edge,
     vertical,
+    columnSide,
     growOrigin,
     dragging,
     dropZones,
@@ -630,7 +636,7 @@ function ToolbarComponent(
       : "bottom";
   // Floating surfaces and tooltips open toward the page: beside a vertical toolbar, and below
   // or above a horizontal one.
-  const surfaceSide: "left" | "right" | undefined = vertical ? (edge === "left" ? "right" : "left") : undefined;
+  const surfaceSide: "left" | "right" | undefined = columnSide ? (columnSide === "left" ? "right" : "left") : undefined;
   const tooltipSide = surfaceSide ?? edgeSide;
   const toolbarTooltip = {
     tooltipInstant,
@@ -653,7 +659,7 @@ function ToolbarComponent(
     eventTarget,
     barRef: barBoxRef,
     sideOfAnchor: surfaceSide,
-    refreshKey: `${position.x}:${position.y}:${surfaceAlign}:${edge}`,
+    refreshKey: `${position.x}:${position.y}:${surfaceAlign}:${edge}:${columnSide}`,
     align: surfaceAlign,
     follow: positionTransition !== undefined,
   };
@@ -663,7 +669,7 @@ function ToolbarComponent(
   const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
     useFloatingSurfacePlacement({ ...barSurface, open: floatingCardOpen, align: "left" });
   // The side of the recording card that faces the bar, for content that has to keep clear of it.
-  const cardToolbarSide = vertical ? edge : recordingPanelPlacement.side === "bottom" ? "top" : "bottom";
+  const cardToolbarSide = columnSide ?? (recordingPanelPlacement.side === "bottom" ? "top" : "bottom");
   const { surfaceRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
     useFloatingSurfacePlacement({ ...controlSurface, anchorRef: guideMenuButtonRef, open: guideMenuOpen });
   const { surfaceRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
@@ -1011,9 +1017,67 @@ function ToolbarComponent(
         ? "msr:right-0"
         : "msr:left-1/2 msr:-translate-x-1/2";
 
+  // Auto-hide: a bar glued to an edge slides mostly out of view until the pointer comes back.
+  const busy = dragging || settingsOpen || openMenu !== null;
+  const idle = autoHide && edge !== null && !busy;
+  // The bar comes out as soon as the pointer is within reach of its edge, not only over the tab,
+  // and only goes back a moment after the pointer has left. Just dropped or just used, it starts
+  // out and waits that same moment, so it is seen landing before it hides.
+  const [revealed, setRevealed] = useState(false);
+  useLayoutEffect(() => {
+    if (!idle) {
+      setRevealed(busy);
+      return;
+    }
+    let timer: number | undefined;
+    const hideSoon = () => {
+      timer ??= eventTarget.setTimeout(() => {
+        timer = undefined;
+        setRevealed(false);
+      }, TUCK_DELAY_MS);
+    };
+    const reach = 48;
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = barBoxRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const { innerWidth: width, innerHeight: height } = eventTarget;
+      const alongX = event.clientX >= rect.left - 16 && event.clientX <= rect.right + 16;
+      const alongY = event.clientY >= rect.top - 16 && event.clientY <= rect.bottom + 16;
+      const near = {
+        top: event.clientY <= reach && alongX,
+        bottom: event.clientY >= height - reach && alongX,
+        left: event.clientX <= reach && alongY,
+        right: event.clientX >= width - reach && alongY,
+      }[edge!];
+      if (!near) return hideSoon();
+      eventTarget.clearTimeout(timer);
+      timer = undefined;
+      setRevealed(true);
+    };
+    hideSoon();
+    eventTarget.addEventListener("pointermove", onPointerMove);
+    return () => {
+      eventTarget.clearTimeout(timer);
+      eventTarget.removeEventListener("pointermove", onPointerMove);
+    };
+  }, [busy, edge, eventTarget, idle]);
+  const tucked = idle && !revealed;
+  // The tuck only animates once the bar has been painted, so a bar that starts tucked is simply
+  // hidden from the first frame instead of sliding away as the page loads.
+  const [tuckAnimated, setTuckAnimated] = useState(false);
+  useEffect(() => {
+    // Two frames: the first one places the bar on its edge.
+    let frame = eventTarget.requestAnimationFrame(() => {
+      frame = eventTarget.requestAnimationFrame(() => setTuckAnimated(true));
+    });
+    return () => eventTarget.cancelAnimationFrame(frame);
+  }, [eventTarget]);
   return (
     <div
-      className="msr:absolute msr:z-[100]"
+      className="mesurer-toolbar-container msr:absolute msr:z-[100]"
+      data-tucked={tucked ? "true" : undefined}
+      data-tuck-animated={tuckAnimated ? "true" : undefined}
+      data-tuck-edge={edge ?? undefined}
       style={{
         left: position.x,
         top: position.y,
@@ -1042,6 +1106,7 @@ function ToolbarComponent(
             className="mesurer-toolbar-motion msr:pointer-events-auto"
             data-orientation={vertical ? "vertical" : "horizontal"}
             data-edge={edge ?? undefined}
+            data-column-side={columnSide ?? undefined}
             style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
             onPointerDown={onDragPointerDown}
             onMouseDown={(event) => {

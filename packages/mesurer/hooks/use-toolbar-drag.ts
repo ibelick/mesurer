@@ -34,6 +34,8 @@ export const useToolbarDrag = (
     height: 0,
     lastX: 0,
     lastY: 0,
+    // The last position placed, which the render it asked for may not have reached yet.
+    placed: null as Point | null,
     place: (): Point | null => null,
     detach: () => {},
   })
@@ -50,6 +52,7 @@ export const useToolbarDrag = (
       state.detach()
       state.pointerId = event.pointerId
       state.dragging = false
+      state.placed = null
       state.startX = event.clientX
       state.startY = event.clientY
       state.originX = position.x
@@ -69,6 +72,7 @@ export const useToolbarDrag = (
           y: Math.min(maxY, Math.max(8, current.originY + current.lastY - current.startY)),
         }
         const next = constrainRef.current?.(free, { x: current.lastX, y: current.lastY }) ?? free
+        current.placed = next
         setPosition(next)
         return next
       }
@@ -101,7 +105,7 @@ export const useToolbarDrag = (
         current.pointerId = -1
         current.dragging = false
         state.detach()
-        if (dragged) onPositionChangeRef.current?.(positionRef.current)
+        if (dragged) onPositionChangeRef.current?.(current.placed ?? positionRef.current)
       }
       eventTarget.addEventListener("pointermove", onWindowMove)
       eventTarget.addEventListener("pointerup", onWindowEnd)

@@ -668,14 +668,37 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   z-index: 1;
 }
 
+/* Auto-hide: a bar glued to an edge slides out of view and leaves a 6px tab on that edge.
+   Hovering the bar brings it back. The 10px is the 16px dock margin less the tab. */
+.mesurer-toolbar-container[data-tuck-animated="true"] {
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:not(:hover)[data-tuck-edge="top"] {
+  transform: translateY(calc(-100% - 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:not(:hover)[data-tuck-edge="bottom"] {
+  transform: translateY(calc(100% + 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:not(:hover)[data-tuck-edge="left"] {
+  transform: translateX(calc(-100% - 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:not(:hover)[data-tuck-edge="right"] {
+  transform: translateX(calc(100% + 10px));
+}
+
 /* Drop zones: where the bar can land in snap mode. Fixed to the viewport, so they stay put. */
 .mesurer-toolbar-zone {
   position: fixed;
   z-index: 0;
   pointer-events: none;
   border-radius: 9px;
-  background: rgba(15, 15, 20, 0.05);
-  box-shadow: inset 0 0 0 1px rgba(15, 15, 20, 0.08);
+  box-sizing: border-box;
+  border: 1px dashed rgba(15, 15, 20, 0.08);
+  background: rgba(15, 15, 20, 0.01);
   animation: mesurer-toolbar-zone-in 180ms ease-out both;
 }
 
@@ -732,11 +755,11 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 /* Carets point in the direction their menu opens: away from the docked edge. */
-.mesurer-toolbar-motion[data-edge="left"] .mesurer-toolbar-caret {
+.mesurer-toolbar-motion[data-column-side="left"] .mesurer-toolbar-caret {
   transform: rotate(-90deg);
 }
 
-.mesurer-toolbar-motion[data-edge="right"] .mesurer-toolbar-caret {
+.mesurer-toolbar-motion[data-column-side="right"] .mesurer-toolbar-caret {
   transform: rotate(90deg);
 }
 
@@ -800,6 +823,10 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 @media (prefers-reduced-motion: reduce) {
   .mesurer-toolbar-zone {
     animation: none;
+  }
+
+  .mesurer-toolbar-container {
+    transition: none;
   }
 
   .mesurer-toolbar-motion,

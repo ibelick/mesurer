@@ -10,6 +10,7 @@ import type {
   ToolMode,
 } from "./types"
 import type { ColorPickerFormat } from "./colors"
+import type { ToolbarPlacement } from "./toolbar-dock"
 import { normalizeTextStyle, type TextStyleSettings } from "./text-style"
 import { normalizeLayoutGuides, type LayoutGuide } from "./layout-guides"
 
@@ -22,6 +23,7 @@ export type InfoCardMode = "hover" | "click"
 export type ThemeMode = "system" | "light" | "dark"
 // Edge a snapped toolbar is glued to.
 export type ToolbarSide = "top" | "bottom" | "left" | "right"
+export const TOOLBAR_SIDES: ToolbarSide[] = ["top", "bottom", "left", "right"]
 // "free" keeps the toolbar wherever it was dragged; "snap" glues it to an edge when dragged close.
 export type ToolbarDock = "free" | "snap"
 
@@ -72,8 +74,9 @@ export const DEFAULT_TOOLBAR_POSITION = { x: 16, y: 16 }
 
 export type MesurerStoredSettings = {
   lastToolMode?: PersistentToolMode
-  toolbarPosition?: { x: number; y: number }
+  toolbarPosition?: ToolbarPlacement
   toolbarDock?: ToolbarDock
+  toolbarAutoHide?: boolean
   highlightColor?: string
   guideColor?: string
   arrowColor?: string
@@ -284,11 +287,20 @@ const isFiniteNumber = (value: unknown): value is number =>
 const isToolbarDock = (value: unknown): value is ToolbarDock =>
   value === "free" || value === "snap"
 
-const isToolbarPosition = (value: unknown): value is { x: number; y: number } => {
+const isToolbarPosition = (value: unknown): value is ToolbarPlacement => {
   if (!value || typeof value !== "object") return false
   const point = value as Record<string, unknown>
   return isFiniteNumber(point.x) && isFiniteNumber(point.y)
 }
+
+// Keeps the saved edge, spot and orientation only when they are ones the toolbar knows.
+const normalizeToolbarPlacement = ({ x, y, edge, align, vertical }: ToolbarPlacement): ToolbarPlacement => ({
+  x,
+  y,
+  ...(edge === null || TOOLBAR_SIDES.includes(edge as ToolbarSide) ? { edge } : {}),
+  ...(align === "start" || align === "center" || align === "end" ? { align } : {}),
+  ...(typeof vertical === "boolean" ? { vertical } : {}),
+})
 
 const isRect = (value: unknown): value is { left: number; top: number; width: number; height: number } => {
   if (!value || typeof value !== "object") return false
@@ -458,8 +470,9 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
     ...(input.lastToolMode === "select" || input.lastToolMode === "selection" || input.lastToolMode === "guides" || input.lastToolMode === "arrows" || input.lastToolMode === "pen" || input.lastToolMode === "text"
       ? { lastToolMode: input.lastToolMode }
       : {}),
-    ...(isToolbarPosition(input.toolbarPosition) ? { toolbarPosition: input.toolbarPosition } : {}),
+    ...(isToolbarPosition(input.toolbarPosition) ? { toolbarPosition: normalizeToolbarPlacement(input.toolbarPosition) } : {}),
     ...(isToolbarDock(input.toolbarDock) ? { toolbarDock: input.toolbarDock } : {}),
+    ...(typeof input.toolbarAutoHide === "boolean" ? { toolbarAutoHide: input.toolbarAutoHide } : {}),
     ...(typeof input.highlightColor === "string" ? { highlightColor: input.highlightColor } : {}),
     ...(typeof input.guideColor === "string" ? { guideColor: input.guideColor } : {}),
     ...(typeof input.arrowColor === "string" ? { arrowColor: input.arrowColor } : {}),

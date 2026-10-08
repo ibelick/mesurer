@@ -101,6 +101,7 @@ export const useMesurerSettings = ({
   const [toolbarDock, setToolbarDock] = useState<ToolbarDock>(
     persistedSettings.toolbarDock ?? DEFAULT_TOOLBAR_DOCK,
   );
+  const [toolbarAutoHide, setToolbarAutoHide] = useState(persistedSettings.toolbarAutoHide ?? false);
   const [colorPickerFormats, setColorPickerFormats] = useState(
     persistedSettings.colorPickerFormats ?? defaults.colorPickerFormats,
   );
@@ -138,6 +139,7 @@ export const useMesurerSettings = ({
     setLastToolMode("select");
     setToolbarPosition({ x: 16, y: 16 });
     setToolbarDock(DEFAULT_TOOLBAR_DOCK);
+    setToolbarAutoHide(false);
     setColorPickerFormats([...defaults.colorPickerFormats]);
     setColorPickerClickFormat(defaults.colorPickerClickFormat);
     toggles.setSnapEnabled(defaults.snapEnabled);
@@ -175,6 +177,7 @@ export const useMesurerSettings = ({
       lastToolMode,
       toolbarPosition,
       toolbarDock,
+      toolbarAutoHide,
       guideStyle,
       rulerSettings,
       screenshotSettings,
@@ -199,6 +202,7 @@ export const useMesurerSettings = ({
     lastToolMode,
     toolbarPosition,
     toolbarDock,
+    toolbarAutoHide,
     rulerSettings,
     screenshotSettings,
     textStyle,
@@ -237,6 +241,7 @@ export const useMesurerSettings = ({
     if (settings.lastToolMode !== undefined) setLastToolMode(settings.lastToolMode);
     if (settings.toolbarPosition !== undefined) setToolbarPosition(settings.toolbarPosition);
     if (settings.toolbarDock !== undefined) setToolbarDock(settings.toolbarDock);
+    if (settings.toolbarAutoHide !== undefined) setToolbarAutoHide(settings.toolbarAutoHide);
     if (settings.snapEnabled !== undefined) toggles.setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) {
       toggles.setSnapGuidesEnabled(settings.snapGuidesEnabled);
@@ -294,6 +299,8 @@ export const useMesurerSettings = ({
     setToolbarPosition,
     toolbarDock,
     setToolbarDock,
+    toolbarAutoHide,
+    setToolbarAutoHide,
     colorPickerFormats,
     setColorPickerFormats,
     colorPickerClickFormat,

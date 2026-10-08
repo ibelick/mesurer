@@ -116,6 +116,8 @@ type SettingsPanelProps = {
     setTheme: Dispatch<SetStateAction<ThemeMode>>
     toolbarDock: ToolbarDock
     setToolbarDock: Dispatch<SetStateAction<ToolbarDock>>
+    toolbarAutoHide: boolean
+    setToolbarAutoHide: Dispatch<SetStateAction<boolean>>
     onMinimize: () => void
     onResetSettings: () => void
     onClearWorkspace: () => void
@@ -408,6 +410,8 @@ export function SettingsPanel({
     setTheme,
     toolbarDock,
     setToolbarDock,
+    toolbarAutoHide,
+    setToolbarAutoHide,
     onMinimize,
     onResetSettings,
     onClearWorkspace,
@@ -697,6 +701,7 @@ export function SettingsPanel({
             ))}
           </select>
         </label>
+        <div className="msr:col-span-2"><SettingsSwitch label="Auto-hide" checked={toolbarAutoHide} onChange={setToolbarAutoHide} /></div>
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
           <SettingsButton

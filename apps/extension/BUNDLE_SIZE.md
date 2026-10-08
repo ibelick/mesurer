@@ -1,7 +1,7 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **216 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **217 KiB**. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -24,6 +24,8 @@ Measured baselines for `feat/inspect-motion`:
 | Toolbar axis motion: vertical mode switch and minimize, centered resize in snap mode, and the orientation swing (before: 213.2 KiB, after: 214.1 KiB) | 214.1 KiB | 215 KiB |
 | Toolbar held drag: the dragged toolbar stays under the pointer through glue, turn and release (before: 214.1 KiB, after: 214.4 KiB) | 214.4 KiB | 215 KiB |
 | Toolbar corners: recording card side, corner glue, and open/minimize from the held corner (before: 214.4 KiB, after: 215.2 KiB) | 215.2 KiB | 216 KiB |
+| Toolbar zones: pointer zones, kept orientation, saved placement, and auto-hide (before: 215.2 KiB, after: 215.8 KiB) | 215.8 KiB | 216 KiB |
+| Toolbar drop: square drop zones, turning against a wall, and the auto-hide delay (before: 215.8 KiB, after: 216.0 KiB) | 216.0 KiB | 217 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -70,3 +72,9 @@ The held drag (pointer-anchored glue and release) adds about 0.3 KiB (about 0.6 
 The recording card's toolbar side and held drag capture add about 0.4 KiB; corner glue and
 opening and minimizing from the held corner add about 0.4 KiB. The limit is raised to
 216 KiB (about 0.8 KiB headroom after this change).
+
+The pointer zones, the orientation a free toolbar keeps, the saved placement and auto-hide add
+about 0.6 KiB (about 0.2 KiB headroom remaining).
+
+The square drop zones, the turn of a toolbar pushed into a wall and the auto-hide delay add
+about 0.2 KiB. The limit is raised to 217 KiB (about 1.0 KiB headroom after this change).
