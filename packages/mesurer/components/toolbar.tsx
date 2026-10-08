@@ -14,6 +14,8 @@ import { createPortal } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
+import type { ToolbarDock, ToolbarSide } from "../core/persistence";
+import { centeredDockPosition, isVerticalToolbarSide, snapToolbarPosition } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarMotionMs, syncToolbarLayoutWidths } from "../core/toolbar-motion";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
@@ -128,6 +130,7 @@ type ToolbarProps = {
   eventTarget: Window;
   initialPosition: { x: number; y: number };
   onPositionChange?: (position: { x: number; y: number }) => void;
+  dock?: ToolbarDock;
   minimized: boolean;
   onInteract: () => void;
   onRestore: () => void;
@@ -152,6 +155,9 @@ type ToolbarProps = {
   setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
 };
 const GUIDE_MENU_WIDTH = 176;
+const GLIDE_MS = 280;
+// Different timing per axis, so the glide curves in an arc instead of running straight.
+const GLIDE_TRANSITION = `left ${GLIDE_MS}ms cubic-bezier(0.2, 0.9, 0.3, 1), top ${GLIDE_MS * 1.35}ms cubic-bezier(0.3, 1.2, 0.5, 1)`;
 const VIEWPORT_PADDING = 8;
 const TOOLBAR_HEIGHT = 40;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
@@ -223,7 +229,7 @@ const exclusiveToolId = (
 
 type ToolbarTooltipProps = {
   tooltipInstant: boolean;
-  tooltipSide: "top" | "bottom";
+  tooltipSide: "top" | "bottom" | "left" | "right";
   onTooltipEnter: (id: string) => void;
   onTooltipLeave: (id: string) => void;
 };
@@ -300,7 +306,7 @@ function ToolbarGroup({
     <div
       role="group"
       aria-label={label}
-      className={cn("msr:flex msr:items-center msr:gap-1 msr:py-1", className)}
+      className={cn("mesurer-toolbar-flow msr:flex msr:items-center msr:gap-1 msr:py-1", className)}
     >
       {children}
     </div>
@@ -321,6 +327,7 @@ function ToolbarComponent(
     eventTarget,
     initialPosition,
     onPositionChange,
+    dock = "free",
     minimized,
     onInteract,
     onRestore,
@@ -390,7 +397,30 @@ function ToolbarComponent(
   } = settings;
 
   const motionRef = useRef<HTMLDivElement | null>(null);
-  const { position, onPointerDown: onDragPointerDown, onPointerMove: onDragPointerMove, onPointerEnd: onDragPointerEnd, onClickCapture, consumeDragClick } = useToolbarDrag(
+  // The edge mask: stays mounted and fades, so it eases in and out instead of popping.
+  const [snapMask, setSnapMask] = useState<{ side: ToolbarSide; active: boolean }>({ side: "left", active: false });
+  const [edge, setEdgeState] = useState<ToolbarSide | null>(null);
+  const edgeRef = useRef<ToolbarSide | null>(null);
+  const setEdge = useCallback((next: ToolbarSide | null) => {
+    edgeRef.current = next;
+    setEdgeState(next);
+  }, []);
+  const vertical = isVerticalToolbarSide(edge);
+  // A swap between vertical and horizontal fades and scales in place, so the bar never jumps.
+  const orientationRef = useRef(vertical);
+  useLayoutEffect(() => {
+    const node = motionRef.current;
+    if (!node || orientationRef.current === vertical) return;
+    orientationRef.current = vertical;
+    node.animate(
+      [
+        { opacity: 0.45, transform: "scale(0.94)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    );
+  }, [vertical]);
+  const { position, setPosition, rebaseDrag, onPointerDown: onDragPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag(
     {
       x: initialPosition.x,
       y: initialPosition.y,
@@ -400,8 +430,122 @@ function ToolbarComponent(
       setOpenMenu(null);
       setSettingsOpen(false);
     },
-    onPositionChange,
+    (nextPosition) => {
+      setSnapMask((mask) => ({ ...mask, active: false }));
+      // A glued toolbar settles in the middle of its edge when released.
+      let settled = nextPosition;
+      const glued = edgeRef.current;
+      const node = motionRef.current;
+      if (dock === "snap" && glued && node) {
+        settled = centeredDockPosition(
+          glued,
+          { width: node.offsetWidth, height: node.offsetHeight },
+          { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
+        );
+        if (settled.x !== nextPosition.x || settled.y !== nextPosition.y) {
+          startGlide();
+          setPosition(settled);
+        }
+      }
+      onPositionChange?.(settled);
+    },
+    dock === "snap"
+      ? (point, pointerDownSize) => {
+        // Glue against the toolbar's live size: gluing changes its orientation mid-drag.
+        const node = motionRef.current;
+        const size = node ? { width: node.offsetWidth, height: node.offsetHeight } : pointerDownSize;
+        const previous = edgeRef.current;
+        const result = snapToolbarPosition({
+          point,
+          size,
+          viewportWidth: eventTarget.innerWidth,
+          viewportHeight: eventTarget.innerHeight,
+          glued: previous,
+          glueSize: (side) => sizesRef.current[isVerticalToolbarSide(side) ? "vertical" : "horizontal"],
+        });
+        const newlyGlued = result.side !== null && result.side !== previous;
+        if (result.side !== previous) setEdge(result.side);
+        if (newlyGlued) centerOnEdgeRef.current = !sizesRef.current[isVerticalToolbarSide(result.side) ? "vertical" : "horizontal"];
+        setSnapMask((mask) => ({ side: result.preview ?? mask.side, active: result.preview !== null }));
+        // On glue the drag continues from the glued spot, so the toolbar follows the pointer along the edge.
+        return { point: result.position, rebase: newlyGlued };
+      }
+      : undefined,
   );
+  const positionRef = useRef(position);
+  positionRef.current = position;
+  // Last measured size per orientation, so a glue can aim at the spot the vertical bar will occupy.
+  const sizesRef = useRef<{ horizontal?: { width: number; height: number }; vertical?: { width: number; height: number } }>({});
+  useLayoutEffect(() => {
+    const node = motionRef.current;
+    if (node && node.offsetWidth) {
+      sizesRef.current[vertical ? "vertical" : "horizontal"] = { width: node.offsetWidth, height: node.offsetHeight };
+    }
+  });
+  // Set when a drag glues the toolbar; the centering waits until the glued orientation has rendered.
+  const centerOnEdgeRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!edge || !centerOnEdgeRef.current) return;
+    centerOnEdgeRef.current = false;
+    const node = motionRef.current;
+    if (!node) return;
+    const centered = centeredDockPosition(
+      edge,
+      { width: node.offsetWidth, height: node.offsetHeight },
+      { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
+    );
+    // Correct the first glue's spot smoothly rather than snapping it.
+    if (centered.x !== positionRef.current.x || centered.y !== positionRef.current.y) startGlide();
+    setPosition(centered);
+    rebaseDrag(centered);
+  }, [edge, eventTarget, rebaseDrag, setPosition]);
+  // Gluing eases the toolbar into the middle of the edge instead of jumping there.
+  const [gliding, setGliding] = useState(false);
+  const glideTimerRef = useRef<number | null>(null);
+  const startGlide = () => {
+    if (glideTimerRef.current !== null) eventTarget.clearTimeout(glideTimerRef.current);
+    setGliding(true);
+    glideTimerRef.current = eventTarget.setTimeout(() => {
+      glideTimerRef.current = null;
+      setGliding(false);
+    }, GLIDE_MS);
+  };
+  useLayoutEffect(() => {
+    return () => {
+      if (glideTimerRef.current !== null) eventTarget.clearTimeout(glideTimerRef.current);
+    };
+  }, [eventTarget]);
+  useLayoutEffect(() => {
+    if (dock !== "snap") {
+      setEdge(null);
+      return;
+    }
+    const node = motionRef.current;
+    if (!node) return;
+    // Re-glues after mount, resize and minimize so a glued toolbar keeps hugging its edge.
+    const snap = () => {
+      const current = positionRef.current;
+      const result = snapToolbarPosition({
+        point: current,
+        size: { width: node.offsetWidth, height: node.offsetHeight },
+        viewportWidth: eventTarget.innerWidth,
+        viewportHeight: eventTarget.innerHeight,
+        glued: edgeRef.current,
+      });
+      if (result.side !== edgeRef.current) setEdge(result.side);
+      if (result.position.x !== current.x || result.position.y !== current.y) {
+        setPosition(result.position);
+      }
+    };
+    snap();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(snap) : null;
+    observer?.observe(node);
+    eventTarget.addEventListener("resize", snap);
+    return () => {
+      observer?.disconnect();
+      eventTarget.removeEventListener("resize", snap);
+    };
+  }, [eventTarget, dock, setEdge, setPosition]);
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -478,6 +622,7 @@ function ToolbarComponent(
     annotatePanelRef,
     expandedPanelRef,
     iconSlotRef,
+    vertical,
   });
   const previousToolGroupRef = useRef(toolGroup);
   const preserveToolGroupRef = useRef(false);
@@ -619,12 +764,17 @@ function ToolbarComponent(
 
   const viewportHeight =
     eventTarget.innerHeight || 0;
-  const nearBottom = viewportHeight > 0 && position.y > viewportHeight - 56;
-  const tooltipSide: "top" | "bottom" =
+  const nearBottom = viewportHeight > 0 && (position.y > viewportHeight - 56 || edge === "bottom");
+  const edgeSide: "top" | "bottom" =
     viewportHeight > 0 &&
       position.y + TOOLBAR_HEIGHT + TOOLTIP_HEIGHT_WITH_GAP > viewportHeight
       ? "top"
       : "bottom";
+  const tooltipSide: "top" | "bottom" | "left" | "right" = vertical
+    ? (edge === "left" ? "right" : "left")
+    : edgeSide;
+  // Floating surfaces open toward the page, beside a vertical toolbar and below/above a horizontal one.
+  const surfaceSide = vertical ? (edge === "left" ? "right" : "left") : undefined;
   const toolbarTooltip = {
     tooltipInstant,
     tooltipSide,
@@ -636,6 +786,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: motionRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: settingsOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
@@ -646,6 +797,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
     });
@@ -658,6 +810,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: guideMenuButtonRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: floatingCardOpen && guideMenuOpen,
       refreshKey: `${position.x}:${position.y}:${menuAlign}`,
       align: menuAlign,
@@ -666,6 +819,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: captureAnchorRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: floatingCardOpen && captureMenuOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
@@ -674,6 +828,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: commentButtonRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: floatingCardOpen && commentMenuOpen && !commentsPanelOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "right",
@@ -682,6 +837,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: motionRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: floatingCardOpen,
       refreshKey: `${position.x}:${position.y}`,
       align: "left",
@@ -692,6 +848,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: colorPickerAnchorRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: floatingCardOpen && colorPickerActive,
       refreshKey: `${position.x}:${position.y}`,
     });
@@ -699,6 +856,7 @@ function ToolbarComponent(
     useFloatingSurfacePlacement({
       anchorRef: layoutGuidesAnchorRef,
       eventTarget,
+      sideOfAnchor: surfaceSide,
       open: layoutGuidesOpen,
       refreshKey: `${position.x}:${position.y}`,
     });
@@ -1034,8 +1192,15 @@ function ToolbarComponent(
       style={{
         left: position.x,
         top: position.y,
+        transition: gliding ? GLIDE_TRANSITION : undefined,
       }}
     >
+      <div
+        aria-hidden="true"
+        className="mesurer-toolbar-snap-mask"
+        data-side={snapMask.side}
+        data-active={snapMask.active ? "true" : "false"}
+      />
       <div className="msr:relative msr:flex">
         <TooltipLayerContext.Provider value={tooltipLayer}>
           <div
@@ -1048,11 +1213,10 @@ function ToolbarComponent(
               }
             }}
             className="mesurer-toolbar-motion msr:pointer-events-auto"
+            data-orientation={vertical ? "vertical" : "horizontal"}
+            data-edge={edge ?? undefined}
             style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
             onPointerDown={onDragPointerDown}
-            onPointerMove={onDragPointerMove}
-            onPointerUp={onDragPointerEnd}
-            onPointerCancel={onDragPointerEnd}
             onMouseDown={(event) => {
               if (event.button !== 0) return
               const target = event.target
@@ -1069,13 +1233,13 @@ function ToolbarComponent(
           >
             <div className="mesurer-toolbar-chrome" aria-hidden="true" />
             <div className="mesurer-toolbar-clip">
-              <div className="mesurer-toolbar-surface msr:flex msr:items-center">
+              <div className="mesurer-toolbar-surface mesurer-toolbar-flow msr:flex msr:items-center">
                 <div
                   ref={collapseStageRef}
                   className="mesurer-toolbar-minimize-stage"
                   data-minimized={minimized ? "true" : undefined}
                 >
-                  <div className="mesurer-toolbar-minimize-track">
+                  <div className="mesurer-toolbar-minimize-track mesurer-toolbar-flow">
                     <div
                       className="mesurer-toolbar-minimize-slot"
                       data-slot="expanded"
@@ -1083,7 +1247,7 @@ function ToolbarComponent(
                       aria-hidden={minimized}
                       inert={minimized ? true : undefined}
                     >
-                      <div ref={expandedPanelRef} className="msr:flex msr:w-max msr:items-stretch msr:gap-1 msr:pl-1">
+                      <div ref={expandedPanelRef} className="mesurer-toolbar-expanded mesurer-toolbar-flow msr:flex msr:w-max msr:items-stretch msr:gap-1 msr:pl-1">
                         <ToolGroupSwitch
                           value={toolGroup}
                           onChange={selectToolGroup}
@@ -1091,14 +1255,14 @@ function ToolbarComponent(
                           tooltipVisibleId={visibleTooltipId}
                           tooltipsEnabled={tooltipsEnabled}
                         />
-                        <div className="msr:flex msr:items-stretch">
+                        <div className="mesurer-toolbar-flow msr:flex msr:items-stretch">
                           <ToolbarDivider />
                           <div
                             ref={toolStageRef}
                             className="mesurer-toolbar-tool-stage"
                             data-group={toolGroup}
                           >
-                            <div className="mesurer-toolbar-tool-track">
+                            <div className="mesurer-toolbar-tool-track mesurer-toolbar-flow">
                               <div
                                 className="mesurer-toolbar-tool-slot"
                                 data-group="inspect"
@@ -1149,7 +1313,7 @@ function ToolbarComponent(
                                       )}
                                     </ToolbarButton>
                                     <div
-                                      className="msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
+                                      className="mesurer-toolbar-flow msr:group msr:relative msr:-ml-1 msr:flex msr:items-stretch"
                                       ref={guideMenuRef}
                                       onMouseEnter={() => onTooltipEnter("guide-menu")}
                                       onMouseLeave={() => onTooltipLeave("guide-menu")}
@@ -1181,7 +1345,7 @@ function ToolbarComponent(
                                           toggleToolbarMenu({ type: "guide-orientation" });
                                         }}
                                       >
-                                        <CaretDownIcon size={8} />
+                                        <CaretDownIcon size={8} className="mesurer-toolbar-caret" />
                                       </button>
                                       <Tooltip
                                         label="Orientation Guide"
@@ -1327,6 +1491,7 @@ function ToolbarComponent(
                                               zIndex: floatingCardOpen ? 120 : undefined,
                                               top: layoutGuidesPlacement.top,
                                               bottom: layoutGuidesPlacement.bottom,
+                                              left: layoutGuidesPlacement.left,
                                               right: layoutGuidesPlacement.right,
                                               maxHeight: Math.min(320, layoutGuidesPlacement.height),
                                             }}
@@ -1434,10 +1599,10 @@ function ToolbarComponent(
                               </div>
                             </div>
                           </div>
-                          <div ref={trailingRef} className="mesurer-toolbar-trailing msr:flex msr:items-stretch">
+                          <div ref={trailingRef} className="mesurer-toolbar-trailing mesurer-toolbar-flow msr:flex msr:items-stretch">
                             <ToolbarDivider />
                             <ToolbarGroup label="Capture and settings" className="msr:px-1">
-                              <div ref={captureAnchorRef} className="msr:relative msr:flex msr:flex-none">
+                              <div ref={captureAnchorRef} className="mesurer-toolbar-flow msr:relative msr:flex msr:flex-none">
                                 {features.screenshot ? (
                                   <>
                                     <ToolbarButton
@@ -1461,7 +1626,7 @@ function ToolbarComponent(
                                     {screenshotPreviewUrl ? (
                                       <ScreenshotPreview
                                         url={screenshotPreviewUrl}
-                                        side={tooltipSide}
+                                        side={edgeSide}
                                         label={
                                           screenshotCopy && !screenshotDownload
                                             ? "Screenshot copied"
@@ -1486,7 +1651,7 @@ function ToolbarComponent(
                                   )}
                                   onClick={() => toggleToolbarMenu({ type: "capture" })}
                                 >
-                                  <CaretDownIcon size={8} aria-hidden="true" />
+                                  <CaretDownIcon size={8} aria-hidden="true" className="mesurer-toolbar-caret" />
                                 </button>
                                 {captureMenuOpen ? (() => {
                                   const menu = (
@@ -1556,7 +1721,7 @@ function ToolbarComponent(
                                     toggleToolbarMenu({ type: "comments", panel: false })
                                   }}
                                 >
-                                  <CaretDownIcon size={8} />
+                                  <CaretDownIcon size={8} className="mesurer-toolbar-caret" />
                                 </button>
                                 {commentMenuOpen ? (
                                   commentsPanelOpen ? (
@@ -1612,7 +1777,7 @@ function ToolbarComponent(
                                     <MenuSurface
                                       className={cn(
                                         "msr:absolute msr:right-0 msr:flex msr:w-44 msr:flex-col msr:gap-px",
-                                        tooltipSide === "bottom"
+                                        edgeSide === "bottom"
                                           ? "msr:top-full msr:mt-2"
                                           : "msr:bottom-full msr:mb-2",
                                       )}
@@ -1661,6 +1826,7 @@ function ToolbarComponent(
                                       style={{
                                         top: settingsPlacement.top,
                                         bottom: settingsPlacement.bottom,
+                                        left: settingsPlacement.left,
                                         right: settingsPlacement.right,
                                         height: settingsPlacement.height,
                                         maxHeight: settingsPlacement.height,

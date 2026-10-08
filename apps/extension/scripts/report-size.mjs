@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(extensionRoot, "dist");
 // Measured baseline and rationale: ../BUNDLE_SIZE.md. Keep increases reviewable.
-const maxContentGzipBytes = 211 * 1024;
+const maxContentGzipBytes = 214 * 1024;
 
 const getFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });

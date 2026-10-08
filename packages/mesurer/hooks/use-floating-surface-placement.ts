@@ -6,7 +6,7 @@ const VIEWPORT_PADDING = 8
 export type FloatingSurfacePlacement = {
   side: "top" | "bottom"
   height: number
-  right: number
+  right?: number
   left?: number
   top?: number
   bottom?: number
@@ -21,6 +21,8 @@ export function getFloatingSurfacePlacement({
   gap,
   rightOffset,
   side = "auto",
+  sideOfAnchor,
+  surfaceHeight = 0,
 }: {
   anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">
   surfaceWidth: number
@@ -30,7 +32,23 @@ export function getFloatingSurfacePlacement({
   gap: number
   rightOffset: number
   side?: "auto" | "top" | "bottom"
+  // Places the surface beside the anchor (for a toolbar docked to a vertical edge).
+  sideOfAnchor?: "left" | "right"
+  surfaceHeight?: number
 }): FloatingSurfacePlacement {
+  if (sideOfAnchor) {
+    const maxTop = Math.max(VIEWPORT_PADDING, viewportHeight - VIEWPORT_PADDING - surfaceHeight)
+    const maxRight = Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING - surfaceWidth)
+    return {
+      side: "bottom",
+      height: Math.min(DEFAULT_HEIGHT, Math.max(0, viewportHeight - VIEWPORT_PADDING * 2)),
+      top: Math.min(maxTop, Math.max(VIEWPORT_PADDING, anchor.top)),
+      ...(sideOfAnchor === "right"
+        ? { left: Math.min(maxRight, anchor.right + gap) }
+        : { right: Math.min(maxRight, viewportWidth - anchor.left + gap) }),
+    }
+  }
+
   const availableTop = Math.max(0, anchor.top - gap)
   const availableBottom = Math.max(0, viewportHeight - anchor.bottom - gap)
   const placementSide = side === "auto"
@@ -60,6 +78,7 @@ export const useFloatingSurfacePlacement = ({
   gap = 8,
     rightOffset = 4,
     side = "auto",
+  sideOfAnchor,
 }: {
   anchorRef: RefObject<HTMLElement | null>
   eventTarget: Window
@@ -69,6 +88,7 @@ export const useFloatingSurfacePlacement = ({
   gap?: number
   rightOffset?: number
   side?: "auto" | "top" | "bottom"
+  sideOfAnchor?: "left" | "right"
 }) => {
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const [placement, setPlacement] = useState<FloatingSurfacePlacement>({
@@ -93,6 +113,8 @@ export const useFloatingSurfacePlacement = ({
         gap,
         rightOffset,
         side,
+        sideOfAnchor,
+        surfaceHeight: surface.height,
       }))
     }
 
@@ -107,7 +129,7 @@ export const useFloatingSurfacePlacement = ({
       eventTarget.removeEventListener("resize", measure)
       eventTarget.removeEventListener("scroll", measure, true)
     }
-  }, [align, anchorRef, eventTarget, gap, open, refreshKey, rightOffset, side])
+  }, [align, anchorRef, eventTarget, gap, open, refreshKey, rightOffset, side, sideOfAnchor])
 
   return { surfaceRef, menuRef: surfaceRef, placement }
 }

@@ -211,6 +211,7 @@ export const useToolbarGroupMotion = ({
   annotatePanelRef,
   expandedPanelRef,
   iconSlotRef,
+  vertical = false,
 }: {
   eventTarget: Window
   toolGroup: ToolGroup
@@ -223,6 +224,8 @@ export const useToolbarGroupMotion = ({
   annotatePanelRef: RefObject<HTMLDivElement | null>
   expandedPanelRef: RefObject<HTMLDivElement | null>
   iconSlotRef: RefObject<HTMLDivElement | null>
+  // Vertical toolbars (docked left/right) swap panels without the horizontal width slide.
+  vertical?: boolean
 }) => {
   const readyRef = useRef(false)
   const barWidthRef = useRef(0)
@@ -248,6 +251,14 @@ export const useToolbarGroupMotion = ({
     if (!motion || !stage || !trailing || !collapseStage) return
     const nodes = readNodes(motion, stage, trailing, collapseStage)
     if (!nodes) return
+
+    if (vertical) {
+      clearMotionStyles(motion, nodes, stage, collapseStage)
+      minimizedRef.current = minimized
+      groupRef.current = toolGroup
+      markReady()
+      return
+    }
 
     const inspectPanel = inspectPanelRef.current
     const annotatePanel = annotatePanelRef.current
@@ -576,11 +587,13 @@ export const useToolbarGroupMotion = ({
     expandedPanelRef,
     iconSlotRef,
     inspectPanelRef,
+    markReady,
     minimized,
     motionRef,
     stageRef,
     toolGroup,
     trailingRef,
+    vertical,
   ])
 
   return { markReady }

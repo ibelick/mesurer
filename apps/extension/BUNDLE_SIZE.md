@@ -1,7 +1,7 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **211 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **214 KiB**. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -17,6 +17,9 @@ Measured baselines for `feat/inspect-motion`:
 | Immediate JS detection: synchronous baseline and first-mutation confirmation | 207.0 KiB | 207 KiB |
 | Torph recognition: classify managed roots/glyphs before their next cycle, with selection-scoped state | 207.0 KiB | 207.5 KiB |
 | Generic review fixes: remove vendor detection, narrow preview properties, resolve stylesheet variables, and project transformed iframe geometry | 210.2 KiB | 211 KiB |
+| Toolbar snap: optional glue to screen edges with a drag preview, vertical toolbar layout, and edge-aware surfaces and tooltips (before: 210.2 KiB, after: 212.9 KiB) | 212.9 KiB | 213 KiB |
+| Toolbar snap motion: orientation fade, arc glide, release catch-up, and light edge glow (before: 212.9 KiB, after: 213.0 KiB) | 213.0 KiB | 214 KiB |
+| Toolbar snap continuity: magnetic approach, resisting release, and cached glue size (before: 213.0 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -42,3 +45,14 @@ record the before/after compressed measurements here, and explain the change.
 Prefer removing duplication or moving optional work out of the content script
 before increasing it. The build reports remaining headroom so growth stays
 visible during local development and CI.
+
+The toolbar dock adds the snap-to-edge glue, the vertical toolbar layout, and
+edge-aware floating surfaces and tooltips. Before: 210.2 KiB; after: 212.9 KiB.
+The remaining code is distinct branches rather than duplication, so the limit is
+raised to 213 KiB (about 0.1 KiB headroom) instead of trimming behavior.
+
+The snap motion (orientation fade, arc glide, release catch-up) adds about 0.1 KiB.
+The limit is raised to 214 KiB (about 1.0 KiB headroom after this change). Trimming
+the remaining code was not possible without removing behavior.
+
+The continuity change adds about 0.2 KiB (about 0.8 KiB headroom remaining).

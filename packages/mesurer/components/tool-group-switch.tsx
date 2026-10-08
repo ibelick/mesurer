@@ -6,7 +6,7 @@ import { Tooltip } from "./tooltip";
 export type ToolGroup = "inspect" | "annotate";
 type ToolGroupTooltip = {
   tooltipInstant: boolean;
-  tooltipSide: "top" | "bottom";
+  tooltipSide: "top" | "bottom" | "left" | "right";
   onTooltipEnter: (id: string) => void;
   onTooltipLeave: (id: string) => void;
 };
@@ -28,7 +28,7 @@ export function ToolGroupSwitch({
   const annotateRef = useRef<HTMLDivElement | null>(null);
   return (
     <div
-      className="mesurer-toolbar-tool-switch msr:flex msr:flex-none msr:self-center msr:items-center msr:gap-[2px] msr:rounded-control msr:bg-ink-50 msr:p-[2px]"
+      className="mesurer-toolbar-tool-switch mesurer-toolbar-flow msr:flex msr:flex-none msr:self-center msr:items-center msr:gap-[2px] msr:rounded-control msr:bg-ink-50 msr:p-[2px]"
       data-value={value}
       role="group"
       aria-label="Tool group"

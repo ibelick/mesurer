@@ -20,6 +20,13 @@ export const MESURER_STORAGE_VERSION = 2
 export type GuidePattern = "solid" | "dashed" | "dotted"
 export type InfoCardMode = "hover" | "click"
 export type ThemeMode = "system" | "light" | "dark"
+// Edge a snapped toolbar is glued to.
+export type ToolbarSide = "top" | "bottom" | "left" | "right"
+// "free" keeps the toolbar wherever it was dragged; "snap" glues it to an edge when dragged close.
+export type ToolbarDock = "free" | "snap"
+
+export const TOOLBAR_DOCKS: ToolbarDock[] = ["free", "snap"]
+export const DEFAULT_TOOLBAR_DOCK: ToolbarDock = "free"
 
 export type GuideStyle = {
   opacity: number
@@ -66,6 +73,7 @@ export const DEFAULT_TOOLBAR_POSITION = { x: 16, y: 16 }
 export type MesurerStoredSettings = {
   lastToolMode?: PersistentToolMode
   toolbarPosition?: { x: number; y: number }
+  toolbarDock?: ToolbarDock
   highlightColor?: string
   guideColor?: string
   arrowColor?: string
@@ -273,6 +281,9 @@ const normalizeScreenshotSettings = (value: unknown): ScreenshotSettings | undef
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value)
 
+const isToolbarDock = (value: unknown): value is ToolbarDock =>
+  value === "free" || value === "snap"
+
 const isToolbarPosition = (value: unknown): value is { x: number; y: number } => {
   if (!value || typeof value !== "object") return false
   const point = value as Record<string, unknown>
@@ -448,6 +459,7 @@ export const normalizeStoredSettings = (value: unknown): MesurerStoredSettings =
       ? { lastToolMode: input.lastToolMode }
       : {}),
     ...(isToolbarPosition(input.toolbarPosition) ? { toolbarPosition: input.toolbarPosition } : {}),
+    ...(isToolbarDock(input.toolbarDock) ? { toolbarDock: input.toolbarDock } : {}),
     ...(typeof input.highlightColor === "string" ? { highlightColor: input.highlightColor } : {}),
     ...(typeof input.guideColor === "string" ? { guideColor: input.guideColor } : {}),
     ...(typeof input.arrowColor === "string" ? { arrowColor: input.arrowColor } : {}),

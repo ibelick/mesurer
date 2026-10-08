@@ -2,6 +2,7 @@ import { useCallback, useState, type Dispatch, type SetStateAction } from "react
 import type { ColorPickerFormat } from "../core/colors";
 import type {
   GuideStyle,
+  ToolbarDock,
   MesurerPersistence,
   MesurerStoredSettings,
   RulerSettings,
@@ -10,7 +11,7 @@ import type {
   ThemeMode,
 } from "../core/persistence";
 import type { PersistentToolMode } from "../core/types";
-import { DEFAULT_SCREENSHOT_SETTINGS } from "../core/persistence";
+import { DEFAULT_SCREENSHOT_SETTINGS, DEFAULT_TOOLBAR_DOCK } from "../core/persistence";
 import { type TextStyleSettings } from "../core/text-style";
 
 type ToggleState = {
@@ -97,6 +98,9 @@ export const useMesurerSettings = ({
   const [toolbarPosition, setToolbarPosition] = useState(
     persistedSettings.toolbarPosition ?? { x: 16, y: 16 },
   );
+  const [toolbarDock, setToolbarDock] = useState<ToolbarDock>(
+    persistedSettings.toolbarDock ?? DEFAULT_TOOLBAR_DOCK,
+  );
   const [colorPickerFormats, setColorPickerFormats] = useState(
     persistedSettings.colorPickerFormats ?? defaults.colorPickerFormats,
   );
@@ -133,6 +137,7 @@ export const useMesurerSettings = ({
     setTheme(defaults.theme);
     setLastToolMode("select");
     setToolbarPosition({ x: 16, y: 16 });
+    setToolbarDock(DEFAULT_TOOLBAR_DOCK);
     setColorPickerFormats([...defaults.colorPickerFormats]);
     setColorPickerClickFormat(defaults.colorPickerClickFormat);
     toggles.setSnapEnabled(defaults.snapEnabled);
@@ -169,6 +174,7 @@ export const useMesurerSettings = ({
       theme,
       lastToolMode,
       toolbarPosition,
+      toolbarDock,
       guideStyle,
       rulerSettings,
       screenshotSettings,
@@ -192,6 +198,7 @@ export const useMesurerSettings = ({
     theme,
     lastToolMode,
     toolbarPosition,
+    toolbarDock,
     rulerSettings,
     screenshotSettings,
     textStyle,
@@ -229,6 +236,7 @@ export const useMesurerSettings = ({
     if (settings.theme !== undefined) setTheme(settings.theme);
     if (settings.lastToolMode !== undefined) setLastToolMode(settings.lastToolMode);
     if (settings.toolbarPosition !== undefined) setToolbarPosition(settings.toolbarPosition);
+    if (settings.toolbarDock !== undefined) setToolbarDock(settings.toolbarDock);
     if (settings.snapEnabled !== undefined) toggles.setSnapEnabled(settings.snapEnabled);
     if (settings.snapGuidesEnabled !== undefined) {
       toggles.setSnapGuidesEnabled(settings.snapGuidesEnabled);
@@ -284,6 +292,8 @@ export const useMesurerSettings = ({
     setLastToolMode,
     toolbarPosition,
     setToolbarPosition,
+    toolbarDock,
+    setToolbarDock,
     colorPickerFormats,
     setColorPickerFormats,
     colorPickerClickFormat,

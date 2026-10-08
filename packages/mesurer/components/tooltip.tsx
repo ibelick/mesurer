@@ -23,6 +23,8 @@ export function OverlayPortal({ children }: { children: ReactNode }) {
   return createPortal(children, layer)
 }
 
+type TooltipSide = "top" | "bottom" | "left" | "right"
+
 export function Tooltip({
   label,
   shortcut,
@@ -36,11 +38,12 @@ export function Tooltip({
   shortcut?: string
   visible?: boolean
   instant?: boolean
-  side?: "top" | "bottom"
+  side?: TooltipSide
   className?: string
   anchorRef?: RefObject<HTMLElement | null>
 }) {
   const layer = useContext(TooltipLayerContext)
+  const horizontal = side === "left" || side === "right"
   const nodeRef = useRef<HTMLSpanElement | null>(null)
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(
     null,
@@ -56,8 +59,8 @@ export function Tooltip({
       const rect = anchor.getBoundingClientRect()
       const origin = layer.getBoundingClientRect()
       setCoords({
-        left: rect.left - origin.left + rect.width / 2,
-        top: (side === "top" ? rect.top : rect.bottom) - origin.top,
+        left: (side === "left" ? rect.left : side === "right" ? rect.right : rect.left + rect.width / 2) - origin.left,
+        top: (side === "top" ? rect.top : side === "bottom" ? rect.bottom : rect.top + rect.height / 2) - origin.top,
       })
     }
     update()
@@ -102,7 +105,7 @@ export function Tooltip({
       role="tooltip"
       className={cn(
         "msr:pointer-events-none msr:z-[100] msr:whitespace-nowrap msr:rounded msr:bg-black msr:px-2 msr:py-1 msr:text-[11px] msr:text-white msr:transition-opacity msr:duration-150 msr:select-none",
-        !(pinned && coords) && "msr:absolute msr:left-1/2 msr:-translate-x-1/2",
+        !(pinned && coords) && (horizontal ? "msr:absolute msr:top-1/2 msr:-translate-y-1/2" : "msr:absolute msr:left-1/2 msr:-translate-x-1/2"),
         instant && "msr:transition-none",
         visible === undefined ? null : visible ? "msr:opacity-100" : "msr:opacity-0",
         className,
@@ -119,11 +122,19 @@ export function Tooltip({
               transform:
                 side === "top"
                   ? "translate(-50%, calc(-100% - 0.5rem))"
-                  : "translate(-50%, 0.5rem)",
+                  : side === "left"
+                    ? "translate(calc(-100% - 0.5rem), -50%)"
+                    : side === "right"
+                      ? "translate(0.5rem, -50%)"
+                      : "translate(-50%, 0.5rem)",
             }
           : side === "top"
             ? { bottom: "100%", marginBottom: "0.5rem" }
-            : { top: "100%", marginTop: "0.5rem" }
+            : side === "bottom"
+              ? { top: "100%", marginTop: "0.5rem" }
+              : side === "left"
+                ? { right: "100%", top: "50%", marginRight: "0.5rem", transform: "translateY(-50%)" }
+                : { left: "100%", top: "50%", marginLeft: "0.5rem", transform: "translateY(-50%)" }
       }
     >
       {label}{shortcut ? <> <span className="msr:font-normal msr:text-white/60">{shortcut}</span></> : null}

@@ -56,7 +56,7 @@ export function CommentsPanel({
   onDelete: (id: string) => void
   onToggleResolved: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
-  placement: { side: "top" | "bottom"; height: number; right: number; top?: number; bottom?: number }
+  placement: { side: "top" | "bottom"; height: number; right?: number; left?: number; top?: number; bottom?: number }
   fixed?: boolean
   fixedZIndex?: number
   statusFilter: CommentFilter
@@ -143,6 +143,7 @@ export function CommentsPanel({
         width: fixed ? "18rem" : undefined,
         zIndex: fixed ? fixedZIndex : undefined,
         pointerEvents: "auto",
+        left: placement.left,
         right: placement.right,
         top: placement.top,
         bottom: placement.bottom,
