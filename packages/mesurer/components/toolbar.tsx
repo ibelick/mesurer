@@ -10,14 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
 import type { ToolbarDock, ToolbarSide } from "../core/persistence";
-import { centeredDockPosition, isVerticalToolbarSide, snapToolbarPosition, surfaceAlignFor } from "../core/toolbar-dock";
+import { centeredDockPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition, surfaceAlignFor } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
+import { captureToolbarTurn, playToolbarTurn } from "../core/toolbar-turn";
 import { useToolbarDrag } from "../hooks/use-toolbar-drag";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
@@ -399,106 +400,102 @@ function ToolbarComponent(
   const [snapMask, setSnapMask] = useState<{ side: ToolbarSide; active: boolean }>({ side: "left", active: false });
   const [edge, setEdgeState] = useState<ToolbarSide | null>(null);
   const edgeRef = useRef<ToolbarSide | null>(null);
+  const turnRef = useRef<{ from: DOMRect; vertical: boolean } | null>(null);
   const setEdge = useCallback((next: ToolbarSide | null) => {
+    const node = motionRef.current;
+    // Measure the bar before it turns, so the new orientation swings out of the old one.
+    if (
+      node?.dataset.ready === "true" &&
+      isVerticalToolbarSide(next) !== isVerticalToolbarSide(edgeRef.current)
+    ) {
+      turnRef.current = { from: captureToolbarTurn(node), vertical: isVerticalToolbarSide(next) };
+    }
     edgeRef.current = next;
     setEdgeState(next);
   }, []);
   const vertical = isVerticalToolbarSide(edge);
-  // A swap between vertical and horizontal fades and scales in place, so the bar never jumps.
-  const orientationRef = useRef(vertical);
-  useLayoutEffect(() => {
+  // Last measured size per orientation, so a glue can aim at the spot the turned bar will occupy.
+  const sizesRef = useRef<{ horizontal?: { width: number; height: number }; vertical?: { width: number; height: number } }>({});
+  // The toolbar's size on a side (null when free). The orientation on screen is measured live;
+  // the other one comes from its last measure, or from the current size turned on its side.
+  const sizeFor = (side: ToolbarSide | null) => {
     const node = motionRef.current;
-    if (!node || orientationRef.current === vertical) return;
-    orientationRef.current = vertical;
-    node.animate(
-      [
-        { opacity: 0.45, transform: "scale(0.94)" },
-        { opacity: 1, transform: "none" },
-      ],
-      { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
-    );
-  }, [vertical]);
-  const { position, setPosition, rebaseDrag, onPointerDown: onDragPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag(
+    const live = { width: node?.offsetWidth ?? 0, height: node?.offsetHeight ?? 0 };
+    const upright = isVerticalToolbarSide(side);
+    if (upright === (node?.dataset.orientation === "vertical")) return live;
+    return sizesRef.current[upright ? "vertical" : "horizontal"] ?? { width: live.height, height: live.width };
+  };
+  // Where the pointer holds the toolbar, as fractions along its length and across its thickness.
+  const grabRef = useRef({ along: 0.5, across: 0.5 });
+  const [dragging, setDragging] = useState(false);
+  const { position, setPosition, isDragging, refreshDrag, onPointerDown: onDragPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag(
     {
       x: initialPosition.x,
       y: initialPosition.y,
     },
     eventTarget,
     () => {
+      setDragging(true);
       setOpenMenu(null);
       setSettingsOpen(false);
     },
     (nextPosition) => {
+      setDragging(false);
+      // Tooltips stay away during a drag, and wait for a fresh hover after it.
+      onToolbarLeave();
       setSnapMask((mask) => ({ ...mask, active: false }));
-      // A glued toolbar settles in the middle of its edge when released.
       let settled = nextPosition;
-      const glued = edgeRef.current;
       const node = motionRef.current;
-      if (dock === "snap" && glued && node) {
-        settled = centeredDockPosition(
-          glued,
-          { width: node.offsetWidth, height: node.offsetHeight },
-          { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
-        );
-        if (settled.x !== nextPosition.x || settled.y !== nextPosition.y) {
-          startGlide();
-          setPosition(settled);
+      if (dock === "snap" && node) {
+        const viewport = { width: eventTarget.innerWidth, height: eventTarget.innerHeight };
+        // A toolbar released on an edge, or dropped right next to one, settles in the middle of it.
+        const side = snapToolbarPosition({
+          point: nextPosition,
+          size: sizeFor(edgeRef.current),
+          viewportWidth: viewport.width,
+          viewportHeight: viewport.height,
+          glued: edgeRef.current,
+        }).side;
+        if (side) {
+          if (side !== edgeRef.current) setEdge(side);
+          settled = centeredDockPosition(side, sizeFor(side), viewport);
+          if (settled.x !== nextPosition.x || settled.y !== nextPosition.y) {
+            startGlide();
+            setPosition(settled);
+          }
         }
       }
       onPositionChange?.(settled);
     },
     dock === "snap"
-      ? (point, pointerDownSize) => {
-        // Glue against the toolbar's live size: gluing changes its orientation mid-drag.
-        const node = motionRef.current;
-        const size = node ? { width: node.offsetWidth, height: node.offsetHeight } : pointerDownSize;
+      ? (_point, pointer) => {
         const previous = edgeRef.current;
-        const result = snapToolbarPosition({
-          point,
-          size,
+        const result = dragToolbarPosition({
+          pointer,
+          grab: grabRef.current,
+          glued: previous,
+          sizeFor,
           viewportWidth: eventTarget.innerWidth,
           viewportHeight: eventTarget.innerHeight,
-          glued: previous,
-          glueSize: (side) => sizesRef.current[isVerticalToolbarSide(side) ? "vertical" : "horizontal"],
         });
-        const newlyGlued = result.side !== null && result.side !== previous;
         if (result.side !== previous) setEdge(result.side);
-        if (newlyGlued) centerOnEdgeRef.current = !sizesRef.current[isVerticalToolbarSide(result.side) ? "vertical" : "horizontal"];
         setSnapMask((mask) => ({ side: result.preview ?? mask.side, active: result.preview !== null }));
-        // On glue the drag continues from the glued spot, so the toolbar follows the pointer along the edge.
-        return { point: result.position, rebase: newlyGlued };
+        return result.position;
       }
       : undefined,
   );
   const positionRef = useRef(position);
   positionRef.current = position;
+  const onPositionChangeRef = useRef(onPositionChange);
+  onPositionChangeRef.current = onPositionChange;
   // Every anchored surface (menus and the screenshot card) opens toward the same side.
   const surfaceAlign = surfaceAlignFor(position.x, eventTarget.innerWidth);
-  // Last measured size per orientation, so a glue can aim at the spot the vertical bar will occupy.
-  const sizesRef = useRef<{ horizontal?: { width: number; height: number }; vertical?: { width: number; height: number } }>({});
   useLayoutEffect(() => {
     const node = motionRef.current;
     if (node && node.offsetWidth) {
       sizesRef.current[vertical ? "vertical" : "horizontal"] = { width: node.offsetWidth, height: node.offsetHeight };
     }
   });
-  // Set when a drag glues the toolbar; the centering waits until the glued orientation has rendered.
-  const centerOnEdgeRef = useRef(false);
-  useLayoutEffect(() => {
-    if (!edge || !centerOnEdgeRef.current) return;
-    centerOnEdgeRef.current = false;
-    const node = motionRef.current;
-    if (!node) return;
-    const centered = centeredDockPosition(
-      edge,
-      { width: node.offsetWidth, height: node.offsetHeight },
-      { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
-    );
-    // Correct the first glue's spot smoothly rather than snapping it.
-    if (centered.x !== positionRef.current.x || centered.y !== positionRef.current.y) startGlide();
-    setPosition(centered);
-    rebaseDrag(centered);
-  }, [edge, eventTarget, rebaseDrag, setPosition]);
   // Gluing eases the toolbar into the middle of the edge instead of jumping there.
   const [gliding, setGliding] = useState(false);
   const glideTimerRef = useRef<number | null>(null);
@@ -522,11 +519,13 @@ function ToolbarComponent(
     }
     const node = motionRef.current;
     if (!node) return;
-    // Re-glues after mount, resize and minimize so a glued toolbar keeps hugging its edge.
-    const snap = () => {
+    // Re-glues after mount, resize and minimize so a glued toolbar stays in the middle of its
+    // edge. `along` overrides the coordinate on a free bar's own axis.
+    const snap = (along?: number) => {
       const current = positionRef.current;
+      const upright = isVerticalToolbarSide(edgeRef.current);
       const result = snapToolbarPosition({
-        point: current,
+        point: along === undefined ? current : upright ? { x: current.x, y: along } : { x: along, y: current.y },
         size: { width: node.offsetWidth, height: node.offsetHeight },
         viewportWidth: eventTarget.innerWidth,
         viewportHeight: eventTarget.innerHeight,
@@ -538,14 +537,46 @@ function ToolbarComponent(
       }
     };
     snap();
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(snap) : null;
+    // A resize keeps a free bar's middle where it was, so it too opens and switches modes from
+    // its center.
+    const measure = () => {
+      const upright = isVerticalToolbarSide(edgeRef.current);
+      const size = upright ? node.offsetHeight : node.offsetWidth;
+      const at = upright ? positionRef.current.y : positionRef.current.x;
+      return { upright, size, at, center: at + size / 2 };
+    };
+    let anchor = measure();
+    let persistTimer: number | undefined;
+    const onResize = () => {
+      const next = measure();
+      // A drag places the bar itself.
+      if (isDragging()) {
+        anchor = next;
+        return;
+      }
+      const turned = next.upright !== anchor.upright;
+      const resized = !turned && next.size !== anchor.size;
+      // The kept middle survives rounding and clamping, unless a drag has moved the bar since.
+      const center = next.at === anchor.at ? anchor.center : next.at + anchor.size / 2;
+      // Flushed so the new position lands in the same frame as the new size.
+      flushSync(() => snap(resized ? Math.round(center - next.size / 2) : undefined));
+      anchor = turned ? measure() : { ...measure(), center };
+      if (!resized) return;
+      eventTarget.clearTimeout(persistTimer);
+      persistTimer = eventTarget.setTimeout(() => onPositionChangeRef.current?.(positionRef.current), 300);
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(onResize) : null;
     observer?.observe(node);
-    eventTarget.addEventListener("resize", snap);
+    const onViewportResize = () => {
+      if (!isDragging()) snap();
+    };
+    eventTarget.addEventListener("resize", onViewportResize);
     return () => {
       observer?.disconnect();
-      eventTarget.removeEventListener("resize", snap);
+      eventTarget.clearTimeout(persistTimer);
+      eventTarget.removeEventListener("resize", onViewportResize);
     };
-  }, [eventTarget, dock, setEdge, setPosition]);
+  }, [eventTarget, dock, isDragging, setEdge, setPosition]);
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -623,6 +654,36 @@ function ToolbarComponent(
     expandedPanelRef,
     iconSlotRef,
     vertical,
+    centered: dock === "snap",
+  });
+  // A swap between vertical and horizontal swings the bar a quarter turn from its old place.
+  // Runs after the group motion above has settled the new orientation's sizes.
+  useLayoutEffect(() => {
+    const node = motionRef.current;
+    const turn = turnRef.current;
+    if (!node || !turn) return;
+    if (turn.vertical === vertical) {
+      // The turned bar's real size is only known now: put it back under the pointer, or in the
+      // middle of its edge, and swing on the render that follows.
+      if (isDragging()) {
+        if (refreshDrag()) return;
+      } else if (edge) {
+        const centered = centeredDockPosition(
+          edge,
+          { width: node.offsetWidth, height: node.offsetHeight },
+          { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
+        );
+        if (centered.x !== position.x || centered.y !== position.y) {
+          setPosition(centered);
+          return;
+        }
+      }
+      // A minimized toolbar is a square either way: it has nothing to swing.
+      if (!minimized && !eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        playToolbarTurn(node, turn.from, vertical);
+      }
+    }
+    turnRef.current = null;
   });
   const previousToolGroupRef = useRef(toolGroup);
   const preserveToolGroupRef = useRef(false);
@@ -634,7 +695,7 @@ function ToolbarComponent(
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
   const layoutGuidesOpen = openMenu?.type === "layout-guides";
-  const tooltipsEnabled = !guideMenuOpen && !commentMenuOpen && !captureMenuOpen && !settingsOpen && !layoutGuidesOpen && !colorPickerActive;
+  const tooltipsEnabled = !dragging && !guideMenuOpen && !commentMenuOpen && !captureMenuOpen && !settingsOpen && !layoutGuidesOpen && !colorPickerActive;
   const settingsShortcut = getSettingsShortcut(eventTarget);
   const copyCommentsShortcut = /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform) ? "⌘ K" : "Ctrl + K";
 
@@ -1205,7 +1266,13 @@ function ToolbarComponent(
             data-orientation={vertical ? "vertical" : "horizontal"}
             data-edge={edge ?? undefined}
             style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
-            onPointerDown={onDragPointerDown}
+            onPointerDown={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const x = (event.clientX - rect.left) / rect.width;
+              const y = (event.clientY - rect.top) / rect.height;
+              grabRef.current = vertical ? { along: y, across: x } : { along: x, across: y };
+              onDragPointerDown(event);
+            }}
             onMouseDown={(event) => {
               if (event.button !== 0) return
               const target = event.target

@@ -711,13 +711,17 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   padding-right: 0;
 }
 
-.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-expanded,
-.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-minimize-slot[data-slot="icon"] {
-  padding: 6px;
+/* Same thickness, length and spacing as the horizontal bar, turned on its side. */
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-expanded {
+  padding: 4px 4px 0;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-switch {
+  padding: 2px;
 }
 
 .mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-divider {
-  margin: 4px 0;
+  margin: 0 -4px;
 }
 
 /* In a column each caret is a full-width row, 16px tall, with the chevron centered in it. */
@@ -731,6 +735,11 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   margin: 0;
   flex-direction: column;
   align-items: center;
+}
+
+/* A caret that follows its tool sits flush against it, as it does in a row. */
+.mesurer-toolbar-motion[data-orientation="vertical"] [data-tool-id] + .mesurer-toolbar-caret-anchor {
+  margin-top: -4px;
 }
 
 /* Carets point in the direction their menu opens: away from the docked edge. */

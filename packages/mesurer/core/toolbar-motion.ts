@@ -13,6 +13,13 @@ export const toolbarMotionTiming = (motion: string) => {
   return { duration, easing }
 }
 
+// The toolbar's shared motion timing, set by `--msr-toolbar-motion` on the motion element.
+export const readToolbarMotionTiming = (motion: HTMLElement) =>
+  toolbarMotionTiming(
+    getComputedStyle(motion).getPropertyValue("--msr-toolbar-motion").trim() ||
+      `${TOOLBAR_MOTION_FALLBACK_MS}ms ease`,
+  )
+
 export const transformScaleX = (value: string) => {
   if (!value || value === "none") return 1
   try {
@@ -50,6 +57,10 @@ const VERTICAL_AXIS: ToolbarAxis = {
 
 export const toolbarAxis = (vertical: boolean) =>
   vertical ? VERTICAL_AXIS : HORIZONTAL_AXIS
+
+// Value for the `translate` property, which composes with any `transform` already in use.
+export const axisTranslate = (axis: ToolbarAxis, offset: number) =>
+  axis.size === "width" ? `${offset}px 0px` : `0px ${offset}px`
 
 export const transformTranslate = (value: string, axis: ToolbarAxis) => {
   if (!value || value === "none") return 0

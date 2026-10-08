@@ -1,7 +1,7 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **214 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **215 KiB**. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -21,6 +21,8 @@ Measured baselines for `feat/inspect-motion`:
 | Toolbar snap motion: orientation fade, arc glide, release catch-up, and light edge glow (before: 212.9 KiB, after: 213.0 KiB) | 213.0 KiB | 214 KiB |
 | Toolbar snap continuity: magnetic approach, resisting release, and cached glue size (before: 213.0 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
 | Toolbar carets, shared anchored-surface placement for menus and the screenshot card (before: 213.2 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
+| Toolbar axis motion: vertical mode switch and minimize, centered resize in snap mode, and the orientation swing (before: 213.2 KiB, after: 214.1 KiB) | 214.1 KiB | 215 KiB |
+| Toolbar held drag: the dragged toolbar stays under the pointer through glue, turn and release (before: 214.1 KiB, after: 214.4 KiB) | 214.4 KiB | 215 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -57,3 +59,9 @@ The limit is raised to 214 KiB (about 1.0 KiB headroom after this change). Trimm
 the remaining code was not possible without removing behavior.
 
 The continuity change adds about 0.2 KiB; the toolbar caret layout adds about 0.1 KiB (about 0.8 KiB headroom remaining).
+
+The axis motion (vertical mode switch and minimize, centered resize in snap mode, and
+the orientation swing that replaces the fade) adds about 0.9 KiB. The limit is raised to
+215 KiB (about 0.9 KiB headroom after this change).
+
+The held drag (pointer-anchored glue and release) adds about 0.3 KiB (about 0.6 KiB headroom remaining).

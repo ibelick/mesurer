@@ -18,7 +18,8 @@ const dragBy = async (page: Page, toolbar: Locator, dx: number, dy: number) => {
   await page.mouse.down();
   await page.mouse.move(startX + dx, startY + dy, { steps: 10 });
   await page.mouse.up();
-  await page.waitForTimeout(320);
+  // Long enough for a release glide or a turn to finish.
+  await page.waitForTimeout(450);
 };
 
 test.beforeEach(async ({ page }) => {
@@ -49,6 +50,9 @@ test("snap mode glues to the left edge and slides vertically along it", async ({
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
   const glued = await toolbar.boundingBox();
   expect(glued?.x).toBe(16);
+  // Turned on its side, the bar keeps the size it had lying down.
+  expect(glued?.width).toBe(box?.height);
+  expect(glued?.height).toBe(box?.width);
   // Released glued toolbars settle in the middle of the edge.
   expect(Math.abs((glued?.y ?? 0) + (glued?.height ?? 0) / 2 - 350)).toBeLessThan(2);
 
@@ -132,4 +136,266 @@ test("a vertical toolbar animates the mode switch and minimize along its own axi
   await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
   await expect(toolbar).not.toHaveAttribute("data-resizing");
   expect((await toolbar.boundingBox())?.height).toBe(annotate?.height);
+});
+
+test("a snapped toolbar resizes around its middle", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+
+  const box = await toolbar.boundingBox();
+  await dragBy(page, toolbar, 40 - (box?.x ?? 0), 300 - (box?.y ?? 0));
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  const chrome = toolbar.locator(".mesurer-toolbar-chrome");
+  const middle = async () => {
+    const rect = await chrome.boundingBox();
+    return (rect?.y ?? 0) + (rect?.height ?? 0) / 2;
+  };
+  const settled = async () => {
+    await expect(toolbar).not.toHaveAttribute("data-resizing");
+    expect(Math.abs((await middle()) - 350)).toBeLessThanOrEqual(1);
+  };
+  await settled();
+
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await expect(toolbar).toHaveAttribute("data-resizing", "true");
+  await settled();
+
+  // Closing and opening stay centered at every frame, not only once settled.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(toolbar).toHaveAttribute("data-resizing", "collapse");
+  expect(Math.abs((await middle()) - 350)).toBeLessThanOrEqual(1);
+  await settled();
+
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+  await expect(toolbar).toHaveAttribute("data-resizing", "collapse");
+  expect(Math.abs((await middle()) - 350)).toBeLessThanOrEqual(1);
+  await settled();
+});
+
+test("the toolbar swings a quarter turn between horizontal and vertical", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-ready", "true");
+
+  // Hold every turn at its first frame, where the turned bar must still look like the old one.
+  await page.evaluate(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = animate.call(this, keyframes, options);
+      if (typeof options === "object" && options.id === "mesurer-toolbar-turn") animation.pause();
+      return animation;
+    };
+  });
+  const turnStart = () =>
+    toolbar.evaluate((node) => {
+      const turns = (target: Element) => target.getAnimations().filter((animation) => animation.id === "mesurer-toolbar-turn");
+      const rotations = (target: Element) =>
+        turns(target).flatMap((animation) => (animation.effect as KeyframeEffect).getKeyframes().map((frame) => String(frame.rotate)));
+      const rect = (target: Element) => {
+        const box = target.getBoundingClientRect();
+        return [box.x, box.y, box.width, box.height].map(Math.round);
+      };
+      const icon = node.querySelector("[data-tool-id='selection'] button")!;
+      const pill = node.querySelector(".mesurer-toolbar-tool-switch-pill")!;
+      const active = node.querySelector(".mesurer-toolbar-tool-switch button[aria-pressed='true']")!;
+      const finish = () => {
+        for (const target of [node, ...node.querySelectorAll("*")]) for (const animation of turns(target)) animation.finish();
+      };
+      const held = {
+        bar: rotations(node),
+        barBox: rect(node),
+        icon: rotations(icon),
+        iconBox: rect(icon),
+        // The mode switch's pill stays squarely behind the active mode.
+        pillOnActive: String(rect(pill)) === String(rect(active)),
+      };
+      finish();
+      return { ...held, settledBox: rect(node) };
+    });
+  const boxOf = async (name: string) => {
+    const box = await page.getByRole("button", { name }).boundingBox();
+    if (!box) throw new Error(`${name} not visible`);
+    return [box.x, box.y, box.width, box.height].map(Math.round);
+  };
+
+  // Annotate mode, so the pill sits on the second mode and has to travel with the bar.
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  await page.waitForTimeout(250);
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  await page.mouse.move(box.x + box.width / 4, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(60, 300, { steps: 10 });
+  const row = await toolbar.boundingBox();
+  const rowIcon = await boxOf("Select (S)");
+  await page.mouse.move(30, 300);
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+
+  // Turned back a quarter, the column lies exactly where the row was, icons upright in place.
+  const toVertical = await turnStart();
+  expect(toVertical.bar).toEqual(["-90deg", "0deg"]);
+  expect(toVertical.icon).toEqual(["90deg", "0deg"]);
+  expect(toVertical.barBox).toEqual([row?.x, row?.y, row?.width, row?.height].map((value) => Math.round(value ?? 0)));
+  expect(toVertical.pillOnActive).toBe(true);
+  expect(toVertical.iconBox).toEqual(rowIcon);
+  expect(toVertical.settledBox.slice(2)).toEqual([box.height, box.width]);
+
+  // And the same swing the other way when it is pulled off the edge.
+  await page.mouse.move(120, 300, { steps: 5 });
+  const column = await toolbar.boundingBox();
+  const columnIcon = await boxOf("Select (S)");
+  await page.mouse.move(140, 300);
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  const toHorizontal = await turnStart();
+  expect(toHorizontal.bar).toEqual(["90deg", "0deg"]);
+  expect(toHorizontal.icon).toEqual(["-90deg", "0deg"]);
+  expect(toHorizontal.barBox).toEqual([column?.x, column?.y, column?.width, column?.height].map((value) => Math.round(value ?? 0)));
+  expect(toHorizontal.pillOnActive).toBe(true);
+  expect(toHorizontal.iconBox).toEqual(columnIcon);
+  expect(toHorizontal.settledBox.slice(2)).toEqual([box.width, box.height]);
+  await page.mouse.up();
+});
+
+test("a dragged toolbar stays under the pointer through a glue and a release", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-ready", "true");
+
+  const holdsPointer = async (x: number, y: number) => {
+    const box = await toolbar.boundingBox();
+    if (!box) return false;
+    return x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+  };
+  const moveTo = async (x: number, y: number) => {
+    await page.mouse.move(x, y, { steps: 8 });
+    expect(await holdsPointer(x, y)).toBe(true);
+  };
+
+  // Grab the bar a quarter of the way along, well away from its middle.
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  await page.mouse.move(box.x + box.width / 4, box.y + box.height / 2);
+  await page.mouse.down();
+
+  await moveTo(400, 300);
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  // Glue to the left edge: the bar turns under the pointer instead of jumping to the middle.
+  await moveTo(30, 300);
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  await moveTo(30, 300);
+  await moveTo(30, 420);
+  // Pulled off the edge it follows the pointer, still glued, until it releases.
+  await moveTo(100, 420);
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  await moveTo(300, 420);
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await moveTo(300, 420);
+  await moveTo(1075, 350);
+  await expect(toolbar).toHaveAttribute("data-edge", "right");
+  await moveTo(1075, 350);
+  await page.mouse.up();
+});
+
+test("tooltips stay hidden while the toolbar is dragged", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  const tooltips = page.locator(".mesurer-toolbar-tooltips [role='tooltip']");
+
+  const button = await page.getByRole("button", { name: "X-ray (X)" }).boundingBox();
+  if (!button) throw new Error("button not visible");
+  const x = button.x + button.width / 2;
+  const y = button.y + button.height / 2;
+  await page.mouse.move(x, y);
+  await expect(tooltips).toHaveCount(1);
+
+  await page.mouse.down();
+  await page.mouse.move(x + 200, y + 200, { steps: 5 });
+  await expect(tooltips).toHaveCount(0);
+  // Long enough for a hover that started mid-drag to have shown its tooltip.
+  await page.waitForTimeout(900);
+  await expect(tooltips).toHaveCount(0);
+  await page.mouse.up();
+  await expect(tooltips).toHaveCount(0);
+});
+
+test("a minimized toolbar turns without a swing", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-ready", "true");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  await page.evaluate(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (typeof options === "object" && options.id === "mesurer-toolbar-turn") {
+        document.documentElement.dataset.turned = "true";
+      }
+      return animate.call(this, keyframes, options);
+    };
+  });
+
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(30, 300, { steps: 10 });
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  await page.mouse.move(300, 300, { steps: 10 });
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await page.mouse.up();
+  await expect(page.locator("html")).not.toHaveAttribute("data-turned");
+});
+
+test("a glued toolbar stays in the middle of its edge when closed, opened and resized", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const middle = async () => {
+    await expect(toolbar).not.toHaveAttribute("data-resizing");
+    const box = await toolbar.boundingBox();
+    return { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 };
+  };
+  const close = async () => {
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  };
+  const open = () => page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+
+  // Top edge: centered across the viewport's width, open or closed.
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  expect((await middle()).x).toBe(550);
+  await close();
+  expect((await middle()).x).toBe(550);
+  // Dragged along the edge while closed, it settles back in the middle.
+  await dragBy(page, toolbar, 300, 0);
+  expect((await middle()).x).toBe(550);
+  await open();
+  expect((await middle()).x).toBe(550);
+
+  // Left edge: centered down the viewport's height, through a viewport resize too.
+  const box = await toolbar.boundingBox();
+  await dragBy(page, toolbar, 40 - (box?.x ?? 0), 300 - (box?.y ?? 0));
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
+  expect((await middle()).y).toBe(350);
+  await close();
+  expect((await middle()).y).toBe(350);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await expect.poll(async () => (await middle()).y).toBe(450);
+  await open();
+  expect((await middle()).y).toBe(450);
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await expect.poll(async () => (await middle()).y).toBe(350);
 });

@@ -13,9 +13,9 @@ export const useToolbarDrag = (
   eventTarget: Window,
   onDragStart?: () => void,
   onPositionChange?: (position: Point) => void,
-  // Lets the caller adjust each dragged position, e.g. to glue the toolbar to an edge.
-  // When `rebase` is true the drag continues from the returned point instead of the original grab point.
-  constrain?: (point: Point, size: { width: number; height: number }) => { point: Point; rebase: boolean },
+  // Lets the caller place each dragged position itself, e.g. to glue the toolbar to an edge.
+  // `point` is where a plain drag would put the toolbar, `pointer` where the pointer is.
+  constrain?: (point: Point, pointer: Point) => Point,
 ) => {
   const [position, setPosition] = useState(initialPosition)
   const positionRef = useRef(position)
@@ -38,6 +38,7 @@ export const useToolbarDrag = (
     height: 0,
     lastX: 0,
     lastY: 0,
+    place: (): Point | null => null,
     detach: () => {},
   })
 
@@ -61,33 +62,32 @@ export const useToolbarDrag = (
       state.width = rect.width
       state.height = rect.height
 
+      // Places the toolbar for the last pointer position.
+      state.place = () => {
+        const current = dragRef.current
+        const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8)
+        const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8)
+        const free = {
+          x: Math.min(maxX, Math.max(8, current.originX + current.lastX - current.startX)),
+          y: Math.min(maxY, Math.max(8, current.originY + current.lastY - current.startY)),
+        }
+        const next = constrainRef.current?.(free, { x: current.lastX, y: current.lastY }) ?? free
+        setPosition(next)
+        return next
+      }
       const onWindowMove = (moveEvent: PointerEvent) => {
         const current = dragRef.current
         if (current.pointerId !== moveEvent.pointerId) return
         current.lastX = moveEvent.clientX
         current.lastY = moveEvent.clientY
-        const dx = moveEvent.clientX - current.startX
-        const dy = moveEvent.clientY - current.startY
         if (!current.dragging) {
+          const dx = moveEvent.clientX - current.startX
+          const dy = moveEvent.clientY - current.startY
           if (Math.abs(dx) <= TOOLBAR_DRAG_SLOP && Math.abs(dy) <= TOOLBAR_DRAG_SLOP) return
           current.dragging = true
           onDragStartRef.current?.()
         }
-        const maxX = Math.max(8, eventTarget.innerWidth - current.width - 8)
-        const maxY = Math.max(8, eventTarget.innerHeight - current.height - 8)
-        const free = {
-          x: Math.min(maxX, Math.max(8, current.originX + dx)),
-          y: Math.min(maxY, Math.max(8, current.originY + dy)),
-        }
-        const size = { width: current.width, height: current.height }
-        const result = constrainRef.current ? constrainRef.current(free, size) : { point: free, rebase: false }
-        if (result.rebase) {
-          current.startX = moveEvent.clientX
-          current.startY = moveEvent.clientY
-          current.originX = result.point.x
-          current.originY = result.point.y
-        }
-        setPosition(result.point)
+        current.place()
       }
       const onWindowEnd = (endEvent: PointerEvent) => {
         const current = dragRef.current
@@ -112,14 +112,16 @@ export const useToolbarDrag = (
     [eventTarget, position.x, position.y],
   )
 
-  // Continues an active drag from `point`, so later moves are relative to where the caller put the toolbar.
-  const rebaseDrag = useCallback((point: Point) => {
+  const isDragging = useCallback(() => dragRef.current.dragging, [])
+
+  // Places the toolbar again for the pointer's last position, e.g. once its size has changed
+  // mid-drag. Returns whether that moved it.
+  const refreshDrag = useCallback(() => {
     const current = dragRef.current
-    if (!current.dragging) return
-    current.startX = current.lastX
-    current.startY = current.lastY
-    current.originX = point.x
-    current.originY = point.y
+    if (!current.dragging) return false
+    const before = positionRef.current
+    const next = current.place()
+    return next !== null && (next.x !== before.x || next.y !== before.y)
   }, [])
 
   const consumeDragClick = useCallback(() => {
@@ -140,7 +142,8 @@ export const useToolbarDrag = (
   return {
     position,
     setPosition,
-    rebaseDrag,
+    isDragging,
+    refreshDrag,
     onPointerDown,
     onClickCapture,
     consumeDragClick,

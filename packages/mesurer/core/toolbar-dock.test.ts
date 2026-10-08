@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { dockedToolbarPosition, isVerticalToolbarSide, snapToolbarPosition } from "./toolbar-dock"
+import type { ToolbarSide } from "./persistence"
+import { dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition } from "./toolbar-dock"
 
 const viewport = { viewportWidth: 1200, viewportHeight: 800 }
 const bar = { width: 300, height: 40 }
@@ -25,44 +26,21 @@ describe("dockedToolbarPosition", () => {
 describe("snapToolbarPosition", () => {
   it("glues to the middle of the nearest edge within the snap distance", () => {
     const result = snapToolbarPosition({ point: { x: 30, y: 100 }, size: column, glued: null, ...viewport })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 }, preview: null })
-  })
-
-  it("shows a preview and pulls toward the glue spot before gluing", () => {
-    const result = snapToolbarPosition({ point: { x: 80, y: 300 }, size: column, glued: null, ...viewport })
-    expect(result.side).toBe(null)
-    expect(result.preview).toBe("left")
-    expect(result.position.x).toBeLessThan(80)
-    expect(result.position.x).toBeGreaterThan(16)
-  })
-
-  it("lands exactly on the glue spot when the glue happens, so there is no jump", () => {
-    const result = snapToolbarPosition({ point: { x: 40, y: 100 }, size: column, glued: null, ...viewport })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 }, preview: null })
+    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
   })
 
   it("stays free away from every edge", () => {
-    const result = snapToolbarPosition({ point: { x: 400, y: 300 }, size: bar, glued: null, ...viewport })
-    expect(result).toEqual({ side: null, position: { x: 400, y: 300 }, preview: null })
+    const result = snapToolbarPosition({ point: { x: 80, y: 300 }, size: bar, glued: null, ...viewport })
+    expect(result).toEqual({ side: null, position: { x: 80, y: 300 } })
   })
 
-  it("keeps a glued toolbar glued while it moves along the edge", () => {
+  it("keeps a glued toolbar in the middle of its edge, whatever its size", () => {
     const result = snapToolbarPosition({ point: { x: 40, y: 400 }, size: column, glued: "left", ...viewport })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 400 }, preview: null })
-  })
-
-  it("stretches toward the pointer before releasing, so release is continuous", () => {
-    const pulled = snapToolbarPosition({ point: { x: 100, y: 400 }, size: column, glued: "left", ...viewport })
-    expect(pulled.side).toBe("left")
-    expect(pulled.position.x).toBeGreaterThan(16)
-    expect(pulled.position.x).toBeLessThan(100)
-    const released = snapToolbarPosition({ point: { x: 140, y: 400 }, size: column, glued: "left", ...viewport })
-    expect(released).toEqual({ side: null, position: { x: 140, y: 400 }, preview: null })
-  })
-
-  it("releases a glued toolbar only after it is pulled far from the edge", () => {
-    expect(snapToolbarPosition({ point: { x: 100, y: 400 }, size: column, glued: "left", ...viewport }).side).toBe("left")
-    expect(snapToolbarPosition({ point: { x: 300, y: 400 }, size: column, glued: "left", ...viewport }).side).toBe(null)
+    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
+    const icon = snapToolbarPosition({ point: { x: 16, y: 250 }, size: { width: 40, height: 40 }, glued: "left", ...viewport })
+    expect(icon.position).toEqual({ x: 16, y: 380 })
+    const top = snapToolbarPosition({ point: { x: 900, y: 16 }, size: bar, glued: "top", ...viewport })
+    expect(top.position).toEqual({ x: 450, y: 16 })
   })
 
   it("aims the glue at the size the glued orientation will have", () => {
@@ -70,13 +48,63 @@ describe("snapToolbarPosition", () => {
       point: { x: 40, y: 100 }, size: bar, glued: null, ...viewport,
       glueSize: (side) => (side === "left" ? column : undefined),
     })
-    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 }, preview: null })
+    expect(result).toEqual({ side: "left", position: { x: 16, y: 250 } })
   })
 
   it("glues to the top when the top-left corner is reached first", () => {
     const result = snapToolbarPosition({ point: { x: 20, y: 20 }, size: bar, glued: null, ...viewport })
     expect(result.side).toBe("top")
     expect(result.position.y).toBe(16)
+  })
+})
+
+describe("dragToolbarPosition", () => {
+  const sizeFor = (side: ToolbarSide | null) => (isVerticalToolbarSide(side) ? column : bar)
+  const grab = { along: 0.5, across: 0.5 }
+  const drag = (pointer: { x: number; y: number }, glued: ToolbarSide | null) =>
+    dragToolbarPosition({ pointer, grab, glued, sizeFor, ...viewport })
+  const holds = (pointer: { x: number; y: number }, glued: ToolbarSide | null) => {
+    const { side, position } = drag(pointer, glued)
+    const size = sizeFor(side)
+    return (
+      pointer.x >= position.x && pointer.x <= position.x + size.width &&
+      pointer.y >= position.y && pointer.y <= position.y + size.height
+    )
+  }
+
+  it("holds a free toolbar at the grabbed spot", () => {
+    expect(drag({ x: 600, y: 400 }, null)).toEqual({ side: null, position: { x: 450, y: 380 }, preview: null })
+  })
+
+  it("previews the edge before the pointer is close enough to glue", () => {
+    expect(drag({ x: 80, y: 400 }, null)).toMatchObject({ side: null, preview: "left" })
+  })
+
+  it("glues once the pointer is close to an edge, turned under the pointer", () => {
+    expect(drag({ x: 40, y: 400 }, null)).toEqual({ side: "left", position: { x: 20, y: 250 }, preview: null })
+    expect(drag({ x: 20, y: 400 }, null).position).toEqual({ x: 16, y: 250 })
+  })
+
+  it("slides along the glued edge with the pointer", () => {
+    expect(drag({ x: 30, y: 300 }, "left").position).toEqual({ x: 16, y: 150 })
+    expect(drag({ x: 30, y: 5000 }, "left").position).toEqual({ x: 16, y: 800 - 300 - 16 })
+  })
+
+  it("comes off the edge with the pointer and only releases far from it", () => {
+    expect(drag({ x: 100, y: 400 }, "left")).toEqual({ side: "left", position: { x: 80, y: 250 }, preview: null })
+    expect(drag({ x: 140, y: 400 }, "left")).toEqual({ side: null, position: { x: 8, y: 380 }, preview: null })
+  })
+
+  it("keeps the pointer on the toolbar through a glue and a release", () => {
+    for (const x of [600, 140, 100, 60, 40, 20]) {
+      expect(holds({ x, y: 400 }, null)).toBe(true)
+      expect(holds({ x, y: 400 }, "left")).toBe(true)
+      expect(holds({ x: 1200 - x, y: 400 }, "right")).toBe(true)
+    }
+  })
+
+  it("glues to the top when the top-left corner is reached first", () => {
+    expect(drag({ x: 20, y: 20 }, null).side).toBe("top")
   })
 })
 

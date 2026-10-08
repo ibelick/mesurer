@@ -1,12 +1,12 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from "react"
 import {
+  axisTranslate,
   lerp,
   nearlyEqual,
   progress,
+  readToolbarMotionTiming,
   syncToolbarLayoutSizes,
-  TOOLBAR_MOTION_FALLBACK_MS,
   TOOLBAR_RADIUS,
-  toolbarMotionTiming,
   toolbarAxis,
   toolbarRadius,
   transformTranslate,
@@ -226,6 +226,7 @@ export const useToolbarGroupMotion = ({
   expandedPanelRef,
   iconSlotRef,
   vertical = false,
+  centered = false,
 }: {
   eventTarget: Window
   toolGroup: ToolGroup
@@ -240,6 +241,9 @@ export const useToolbarGroupMotion = ({
   iconSlotRef: RefObject<HTMLDivElement | null>
   // Vertical toolbars (docked left/right) run the same motion along the y axis.
   vertical?: boolean
+  // Resizes grow and shrink around the bar's middle instead of its leading edge. The caller
+  // keeps the layout box centered; this only shifts the visuals to match while they scale.
+  centered?: boolean
 }) => {
   const axis = toolbarAxis(vertical)
   const readyRef = useRef(false)
@@ -395,10 +399,7 @@ export const useToolbarGroupMotion = ({
         : 0
     const fromRadius = interrupt ? interrupt.radius : TOOLBAR_RADIUS
     const toRadius = TOOLBAR_RADIUS
-    const timing = toolbarMotionTiming(
-      getComputedStyle(motion).getPropertyValue("--msr-toolbar-motion").trim() ||
-        `${TOOLBAR_MOTION_FALLBACK_MS}ms ease`,
-    )
+    const timing = readToolbarMotionTiming(motion)
     const duration = timing.duration
     const atRest =
       nearlyEqual(fromScale, toScale, 0.002) &&
@@ -488,6 +489,15 @@ export const useToolbarGroupMotion = ({
           duration,
           timing.easing,
         )
+    const shiftFor = (scale: number) => axisTranslate(axis, (toSize * (1 - scale)) / 2)
+    const shiftMotion =
+      centered && !groupSwitch
+        ? motion.animate([{ translate: shiftFor(fromScale) }, { translate: shiftFor(toScale) }], {
+            duration,
+            easing: timing.easing,
+            fill: "both",
+          })
+        : null
     animateTransform(
       nodes.track,
       `${axis.translate}(${fromTrack}px)`,
@@ -563,6 +573,7 @@ export const useToolbarGroupMotion = ({
       if (finished || gen !== genRef.current) return
       finished = true
       stopFollow()
+      shiftMotion?.cancel()
       applyPose(axis, nodes, toPose, collapseMotion, toSize)
       rest()
     }
@@ -571,6 +582,8 @@ export const useToolbarGroupMotion = ({
       eventTarget.clearTimeout(timeout)
       stopFollow()
       if (finished) return
+      // The next run restarts the shift from the pose captured below.
+      shiftMotion?.cancel()
       const play = playRef.current
       if (!motion.isConnected) {
         finish()
@@ -605,6 +618,7 @@ export const useToolbarGroupMotion = ({
   }, [
     annotatePanelRef,
     axis,
+    centered,
     collapseRef,
     eventTarget,
     expandedPanelRef,

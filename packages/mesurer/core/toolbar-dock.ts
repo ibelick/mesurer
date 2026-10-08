@@ -1,11 +1,12 @@
 import type { ToolbarSide } from "./persistence"
 
 export const TOOLBAR_DOCK_MARGIN = 16
-// Within this distance from an edge the toolbar glues to it.
+// Distances to an edge: from the pointer while dragging, from the toolbar itself at rest.
+// Within this distance the toolbar glues to the edge.
 export const SNAP_DISTANCE = 48
 // Within this distance the edge's indicator appears, so the glue is anticipated.
 export const PREVIEW_DISTANCE = 96
-// Once glued, the toolbar only releases after being pulled this far from the edge.
+// Once glued, the toolbar only releases after the pointer has pulled this far from the edge.
 export const RELEASE_DISTANCE = 128
 
 const SNAP_SIDES: ToolbarSide[] = ["top", "bottom", "left", "right"]
@@ -59,8 +60,8 @@ export const centeredDockPosition = (
   dockedToolbarPosition({
     side,
     point: side === "top" || side === "bottom"
-      ? { x: (viewport.width - size.width) / 2, y: 0 }
-      : { x: 0, y: (viewport.height - size.height) / 2 },
+      ? { x: Math.round((viewport.width - size.width) / 2), y: 0 }
+      : { x: 0, y: Math.round((viewport.height - size.height) / 2) },
     ...size,
     viewportWidth: viewport.width,
     viewportHeight: viewport.height,
@@ -86,13 +87,18 @@ export const edgeGap = (
   }
 }
 
-const lerp = (from: number, to: number, t: number) => from + (to - from) * t
-const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
-const smoothstep = (t: number) => t * t * (3 - 2 * t)
+const nearestEdge = (gapTo: (side: ToolbarSide) => number, within: number) => {
+  let nearest: { side: ToolbarSide; gap: number } | null = null
+  for (const side of SNAP_SIDES) {
+    const gap = gapTo(side)
+    if (gap <= within && (!nearest || gap < nearest.gap)) nearest = { side, gap }
+  }
+  return nearest
+}
 
-// Decides where a dragged toolbar goes in snap mode. Continuous on purpose: approaching an edge
-// pulls the toolbar toward its glue spot, and leaving an edge stretches it toward the pointer,
-// so the glue and release never jump. `glueSize` gives the size the toolbar will have on a side.
+// Where a toolbar at rest belongs in snap mode: a glued toolbar sits in the middle of its edge,
+// whatever its size, and one left close to an edge glues there. `glueSize` gives the size it
+// will have on a side.
 export const snapToolbarPosition = ({
   point,
   size,
@@ -109,34 +115,75 @@ export const snapToolbarPosition = ({
   glued: ToolbarSide | null
   glueSize?: (side: ToolbarSide) => { width: number; height: number } | undefined
   margin?: number
-}): { side: ToolbarSide | null; position: { x: number; y: number }; preview: ToolbarSide | null } => {
+}): { side: ToolbarSide | null; position: { x: number; y: number } } => {
   const viewport = { width: viewportWidth, height: viewportHeight }
-
-  if (glued) {
-    const gap = edgeGap(glued, point, size, viewport)
-    if (gap > RELEASE_DISTANCE) return { side: null, position: point, preview: null }
-    const docked = dockedToolbarPosition({ side: glued, point, ...size, viewportWidth, viewportHeight, margin })
-    const r = smoothstep(clamp01((gap - SNAP_DISTANCE) / (RELEASE_DISTANCE - SNAP_DISTANCE)))
-    const position = glued === "top" || glued === "bottom"
-      ? { x: docked.x, y: lerp(docked.y, point.y, r) }
-      : { x: lerp(docked.x, point.x, r), y: docked.y }
-    return { side: glued, position, preview: null }
-  }
-
-  let nearest: { side: ToolbarSide; gap: number } | null = null
-  for (const side of SNAP_SIDES) {
-    const gap = edgeGap(side, point, size, viewport)
-    if (gap <= PREVIEW_DISTANCE && (!nearest || gap < nearest.gap)) nearest = { side, gap }
-  }
-  if (!nearest) return { side: null, position: point, preview: null }
-
-  const target = centeredDockPosition(nearest.side, glueSize?.(nearest.side) ?? size, viewport, margin)
-  if (nearest.gap <= SNAP_DISTANCE) return { side: nearest.side, position: target, preview: null }
-  const t = smoothstep(clamp01((PREVIEW_DISTANCE - nearest.gap) / (PREVIEW_DISTANCE - SNAP_DISTANCE)))
+  if (glued) return { side: glued, position: centeredDockPosition(glued, size, viewport, margin) }
+  const nearest = nearestEdge((side) => edgeGap(side, point, size, viewport), SNAP_DISTANCE)
+  if (!nearest) return { side: null, position: point }
   return {
-    side: null,
-    position: { x: lerp(point.x, target.x, t), y: lerp(point.y, target.y, t) },
-    preview: nearest.side,
+    side: nearest.side,
+    position: centeredDockPosition(nearest.side, glueSize?.(nearest.side) ?? size, viewport, margin),
   }
 }
 
+// Keeps a free toolbar this far inside the viewport while it is dragged.
+const DRAG_INSET = 8
+
+// Decides where a dragged toolbar goes in snap mode. The toolbar is held at the spot it was
+// grabbed, so it stays under the pointer through a glue, a turn and a release. Edges are judged
+// from the pointer: close to one the toolbar glues to it and hugs it, and it only lets go once
+// the pointer has pulled well away. `grab` is the held spot as fractions along the toolbar's
+// length and across its thickness; `sizeFor` gives the toolbar's size on a side (null when free).
+export const dragToolbarPosition = ({
+  pointer,
+  grab,
+  glued,
+  sizeFor,
+  viewportWidth,
+  viewportHeight,
+  margin = TOOLBAR_DOCK_MARGIN,
+}: {
+  pointer: { x: number; y: number }
+  grab: { along: number; across: number }
+  glued: ToolbarSide | null
+  sizeFor: (side: ToolbarSide | null) => { width: number; height: number }
+  viewportWidth: number
+  viewportHeight: number
+  margin?: number
+}): { side: ToolbarSide | null; position: { x: number; y: number }; preview: ToolbarSide | null } => {
+  const gapTo = (side: ToolbarSide) =>
+    edgeGap(side, pointer, { width: 0, height: 0 }, { width: viewportWidth, height: viewportHeight })
+  const nearest = nearestEdge(gapTo, PREVIEW_DISTANCE)
+  const side =
+    glued && gapTo(glued) <= RELEASE_DISTANCE
+      ? glued
+      : nearest && nearest.gap <= SNAP_DISTANCE
+        ? nearest.side
+        : null
+
+  const size = sizeFor(side)
+  const upright = isVerticalToolbarSide(side)
+  const held = {
+    x: Math.round(pointer.x - (upright ? grab.across : grab.along) * size.width),
+    y: Math.round(pointer.y - (upright ? grab.along : grab.across) * size.height),
+  }
+  if (!side) {
+    return {
+      side: null,
+      position: {
+        x: Math.max(DRAG_INSET, Math.min(held.x, viewportWidth - size.width - DRAG_INSET)),
+        y: Math.max(DRAG_INSET, Math.min(held.y, viewportHeight - size.height - DRAG_INSET)),
+      },
+      preview: nearest?.side ?? null,
+    }
+  }
+  // Glued: it slides along the edge, and comes off it with the pointer rather than staying behind.
+  const docked = dockedToolbarPosition({ side, point: held, ...size, viewportWidth, viewportHeight, margin })
+  const position = {
+    top: { x: docked.x, y: Math.max(docked.y, held.y) },
+    bottom: { x: docked.x, y: Math.min(docked.y, held.y) },
+    left: { x: Math.max(docked.x, held.x), y: docked.y },
+    right: { x: Math.min(docked.x, held.x), y: docked.y },
+  }[side]
+  return { side, position, preview: null }
+}
