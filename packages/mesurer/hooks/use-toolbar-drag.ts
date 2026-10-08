@@ -1,9 +1,5 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react"
-
-type Point = {
-  x: number
-  y: number
-}
+import type { Point } from "../core/toolbar-dock"
 
 const TOOLBAR_DRAG_SLOP = 6
 const IGNORE_DRAG = "input, textarea, select, [contenteditable], [data-slider-container], [role='menu'], [role='dialog']"

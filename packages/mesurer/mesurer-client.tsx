@@ -1865,7 +1865,6 @@ export function MesurerClient({
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
               onClose={closeColorPicker}
-              anchored={!(screenRecording.recording || Boolean(screenRecording.video))}
             />
           ),
         },

@@ -10,6 +10,7 @@ import { CheckIcon, CopyIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
+import { surfaceStyle, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement"
 
 const formatCommentDate = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -56,7 +57,7 @@ export function CommentsPanel({
   onDelete: (id: string) => void
   onToggleResolved: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
-  placement: { side: "top" | "bottom"; height: number; right?: number; left?: number; top?: number; bottom?: number }
+  placement: FloatingSurfacePlacement
   fixed?: boolean
   fixedZIndex?: number
   statusFilter: CommentFilter
@@ -143,10 +144,7 @@ export function CommentsPanel({
         width: fixed ? "18rem" : undefined,
         zIndex: fixed ? fixedZIndex : undefined,
         pointerEvents: "auto",
-        left: placement.left,
-        right: placement.right,
-        top: placement.top,
-        bottom: placement.bottom,
+        ...surfaceStyle(placement),
         maxHeight: placement.height,
       }}
       data-mesurer-comment-ui

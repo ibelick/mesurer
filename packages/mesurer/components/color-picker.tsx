@@ -1,10 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type { ColorPickerFormat, ColorSample } from "../core/colors"
 import { colorToHex, formatColor } from "../core/colors"
-import { cn } from "../core/utils"
-import { clampOverlayPosition } from "../core/overlay-position"
 import { CopyableValue } from "./copyable-value"
 import { useTooltip } from "./tooltip"
 
@@ -16,8 +14,6 @@ type ColorPickerProps = {
   favoriteFormat: ColorPickerFormat
   ownerWindow: Window
   onClose: () => void
-  /** When false, panel is positioned by a parent (e.g. toolbar portal). */
-  anchored?: boolean
 }
 
 export function ColorPicker({
@@ -28,10 +24,8 @@ export function ColorPicker({
   favoriteFormat,
   ownerWindow,
   onClose,
-  anchored = true,
 }: ColorPickerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const [side, setSide] = useState<"top" | "bottom">("bottom")
   const tooltip = useTooltip()
 
   const copyValue = useCallback(
@@ -58,57 +52,6 @@ export function ColorPicker({
     }
   }, [active, onClose, ownerWindow])
 
-  useLayoutEffect(() => {
-    if (!active || !anchored) return
-    const panel = panelRef.current
-    const origin = panel?.offsetParent
-    if (!panel || !(origin instanceof HTMLElement)) return
-
-    let frame = 0
-    let scheduled = false
-    const updatePosition = () => {
-      scheduled = false
-      const panel = panelRef.current
-      const origin = panel?.offsetParent
-      if (!panel || !(origin instanceof HTMLElement)) return
-      const originRect = origin.getBoundingClientRect()
-      const button = origin.querySelector("[data-tool-id='color-picker']")
-      const buttonRect = button?.getBoundingClientRect() ?? originRect
-      const panelWidth = panel.offsetWidth
-      const panelHeight = panel.offsetHeight
-       const position = clampOverlayPosition({
-         left: buttonRect.left,
-         top: originRect.bottom + 8,
-         width: panelWidth,
-         height: panelHeight,
-         viewportWidth: ownerWindow.innerWidth,
-         viewportHeight: ownerWindow.innerHeight,
-       })
-       panel.style.left = `${position.left - originRect.left}px`
-      const belowFits =
-        originRect.bottom + 8 + panelHeight <= ownerWindow.innerHeight - 8
-      setSide(belowFits ? "bottom" : "top")
-    }
-    const schedulePosition = () => {
-      if (scheduled) return
-      scheduled = true
-      frame = ownerWindow.requestAnimationFrame(updatePosition)
-    }
-
-    schedulePosition()
-    ownerWindow.addEventListener("resize", schedulePosition)
-    ownerWindow.addEventListener("scroll", schedulePosition, true)
-    const resizeObserver = new ResizeObserver(schedulePosition)
-    resizeObserver.observe(origin)
-    resizeObserver.observe(panel)
-    return () => {
-      if (scheduled) ownerWindow.cancelAnimationFrame(frame)
-      resizeObserver.disconnect()
-      ownerWindow.removeEventListener("resize", schedulePosition)
-      ownerWindow.removeEventListener("scroll", schedulePosition, true)
-    }
-  }, [active, anchored, ownerWindow, sample, unsupported])
-
   if (!active || (!sample && !unsupported)) return null
 
   const headerFormat = formats.includes(favoriteFormat)
@@ -121,11 +64,7 @@ export function ColorPicker({
   return (
     <div
       ref={panelRef}
-      className={cn(
-        "mesurer-color-picker msr:pointer-events-auto msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-floating",
-        anchored && "msr:absolute msr:left-0",
-        anchored && (side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
-      )}
+      className="mesurer-color-picker msr:pointer-events-auto msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-floating"
       role="dialog"
       aria-label="Selected color values"
       onMouseLeave={tooltip.onTooltipContainerLeave}

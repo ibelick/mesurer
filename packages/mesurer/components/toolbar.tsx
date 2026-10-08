@@ -10,18 +10,17 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 import type { OpenMenu, ToolMode } from "../core/types";
 import type { CommentFilter, CommentThread } from "../comments/types";
 import { cn } from "../core/utils";
-import type { ToolbarDock, ToolbarSide } from "../core/persistence";
-import { centeredDockPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition, surfaceAlignFor } from "../core/toolbar-dock";
+import type { ToolbarDock } from "../core/persistence";
+import { surfaceAlignFor } from "../core/toolbar-dock";
 import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
-import { captureToolbarTurn, playToolbarTurn } from "../core/toolbar-turn";
-import { useToolbarDrag } from "../hooks/use-toolbar-drag";
+import { useToolbarDock } from "../hooks/use-toolbar-dock";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
-import { useFloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
+import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
 import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
@@ -155,22 +154,13 @@ type ToolbarProps = {
   openMenu: OpenMenu;
   setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
 };
-const GLIDE_MS = 280;
-// Different timing per axis, so the glide curves in an arc instead of running straight.
-const GLIDE_TRANSITION = `left ${GLIDE_MS}ms cubic-bezier(0.2, 0.9, 0.3, 1), top ${GLIDE_MS * 1.35}ms cubic-bezier(0.3, 1.2, 0.5, 1)`;
 const TOOLBAR_HEIGHT = 40;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
-const floatingMenuStyle = (placement: {
-  top?: number;
-  bottom?: number;
-  left?: number;
-  right?: number;
-}) => ({
+// Menus sit above the toolbar's other surfaces.
+const floatingMenuStyle = (placement: FloatingSurfacePlacement) => ({
   zIndex: 120,
-  top: placement.top,
-  bottom: placement.bottom,
-  ...(placement.left !== undefined ? { left: placement.left } : { right: placement.right }),
+  ...surfaceStyle(placement),
 });
 
 const getSettingsShortcut = (eventTarget: Window) =>
@@ -396,187 +386,9 @@ function ToolbarComponent(
   } = settings;
 
   const motionRef = useRef<HTMLDivElement | null>(null);
-  // The edge mask: stays mounted and fades, so it eases in and out instead of popping.
-  const [snapMask, setSnapMask] = useState<{ side: ToolbarSide; active: boolean }>({ side: "left", active: false });
-  const [edge, setEdgeState] = useState<ToolbarSide | null>(null);
-  const edgeRef = useRef<ToolbarSide | null>(null);
-  const turnRef = useRef<{ from: DOMRect; vertical: boolean } | null>(null);
-  const setEdge = useCallback((next: ToolbarSide | null) => {
-    const node = motionRef.current;
-    // Measure the bar before it turns, so the new orientation swings out of the old one.
-    if (
-      node?.dataset.ready === "true" &&
-      isVerticalToolbarSide(next) !== isVerticalToolbarSide(edgeRef.current)
-    ) {
-      turnRef.current = { from: captureToolbarTurn(node), vertical: isVerticalToolbarSide(next) };
-    }
-    edgeRef.current = next;
-    setEdgeState(next);
-  }, []);
-  const vertical = isVerticalToolbarSide(edge);
-  // Last measured size per orientation, so a glue can aim at the spot the turned bar will occupy.
-  const sizesRef = useRef<{ horizontal?: { width: number; height: number }; vertical?: { width: number; height: number } }>({});
-  // The toolbar's size on a side (null when free). The orientation on screen is measured live;
-  // the other one comes from its last measure, or from the current size turned on its side.
-  const sizeFor = (side: ToolbarSide | null) => {
-    const node = motionRef.current;
-    const live = { width: node?.offsetWidth ?? 0, height: node?.offsetHeight ?? 0 };
-    const upright = isVerticalToolbarSide(side);
-    if (upright === (node?.dataset.orientation === "vertical")) return live;
-    return sizesRef.current[upright ? "vertical" : "horizontal"] ?? { width: live.height, height: live.width };
-  };
-  // Where the pointer holds the toolbar, as fractions along its length and across its thickness.
-  const grabRef = useRef({ along: 0.5, across: 0.5 });
-  const [dragging, setDragging] = useState(false);
-  const { position, setPosition, isDragging, refreshDrag, onPointerDown: onDragPointerDown, onClickCapture, consumeDragClick } = useToolbarDrag(
-    {
-      x: initialPosition.x,
-      y: initialPosition.y,
-    },
-    eventTarget,
-    () => {
-      setDragging(true);
-      setOpenMenu(null);
-      setSettingsOpen(false);
-    },
-    (nextPosition) => {
-      setDragging(false);
-      // Tooltips stay away during a drag, and wait for a fresh hover after it.
-      onToolbarLeave();
-      setSnapMask((mask) => ({ ...mask, active: false }));
-      let settled = nextPosition;
-      const node = motionRef.current;
-      if (dock === "snap" && node) {
-        const viewport = { width: eventTarget.innerWidth, height: eventTarget.innerHeight };
-        // A toolbar released on an edge, or dropped right next to one, settles in the middle of it.
-        const side = snapToolbarPosition({
-          point: nextPosition,
-          size: sizeFor(edgeRef.current),
-          viewportWidth: viewport.width,
-          viewportHeight: viewport.height,
-          glued: edgeRef.current,
-        }).side;
-        if (side) {
-          if (side !== edgeRef.current) setEdge(side);
-          settled = centeredDockPosition(side, sizeFor(side), viewport);
-          if (settled.x !== nextPosition.x || settled.y !== nextPosition.y) {
-            startGlide();
-            setPosition(settled);
-          }
-        }
-      }
-      onPositionChange?.(settled);
-    },
-    dock === "snap"
-      ? (_point, pointer) => {
-        const previous = edgeRef.current;
-        const result = dragToolbarPosition({
-          pointer,
-          grab: grabRef.current,
-          glued: previous,
-          sizeFor,
-          viewportWidth: eventTarget.innerWidth,
-          viewportHeight: eventTarget.innerHeight,
-        });
-        if (result.side !== previous) setEdge(result.side);
-        setSnapMask((mask) => ({ side: result.preview ?? mask.side, active: result.preview !== null }));
-        return result.position;
-      }
-      : undefined,
-  );
-  const positionRef = useRef(position);
-  positionRef.current = position;
-  const onPositionChangeRef = useRef(onPositionChange);
-  onPositionChangeRef.current = onPositionChange;
-  // Every anchored surface (menus and the screenshot card) opens toward the same side.
-  const surfaceAlign = surfaceAlignFor(position.x, eventTarget.innerWidth);
-  useLayoutEffect(() => {
-    const node = motionRef.current;
-    if (node && node.offsetWidth) {
-      sizesRef.current[vertical ? "vertical" : "horizontal"] = { width: node.offsetWidth, height: node.offsetHeight };
-    }
-  });
-  // Gluing eases the toolbar into the middle of the edge instead of jumping there.
-  const [gliding, setGliding] = useState(false);
-  const glideTimerRef = useRef<number | null>(null);
-  const startGlide = () => {
-    if (glideTimerRef.current !== null) eventTarget.clearTimeout(glideTimerRef.current);
-    setGliding(true);
-    glideTimerRef.current = eventTarget.setTimeout(() => {
-      glideTimerRef.current = null;
-      setGliding(false);
-    }, GLIDE_MS);
-  };
-  useLayoutEffect(() => {
-    return () => {
-      if (glideTimerRef.current !== null) eventTarget.clearTimeout(glideTimerRef.current);
-    };
-  }, [eventTarget]);
-  useLayoutEffect(() => {
-    if (dock !== "snap") {
-      setEdge(null);
-      return;
-    }
-    const node = motionRef.current;
-    if (!node) return;
-    // Re-glues after mount, resize and minimize so a glued toolbar stays in the middle of its
-    // edge. `along` overrides the coordinate on a free bar's own axis.
-    const snap = (along?: number) => {
-      const current = positionRef.current;
-      const upright = isVerticalToolbarSide(edgeRef.current);
-      const result = snapToolbarPosition({
-        point: along === undefined ? current : upright ? { x: current.x, y: along } : { x: along, y: current.y },
-        size: { width: node.offsetWidth, height: node.offsetHeight },
-        viewportWidth: eventTarget.innerWidth,
-        viewportHeight: eventTarget.innerHeight,
-        glued: edgeRef.current,
-      });
-      if (result.side !== edgeRef.current) setEdge(result.side);
-      if (result.position.x !== current.x || result.position.y !== current.y) {
-        setPosition(result.position);
-      }
-    };
-    snap();
-    // A resize keeps a free bar's middle where it was, so it too opens and switches modes from
-    // its center.
-    const measure = () => {
-      const upright = isVerticalToolbarSide(edgeRef.current);
-      const size = upright ? node.offsetHeight : node.offsetWidth;
-      const at = upright ? positionRef.current.y : positionRef.current.x;
-      return { upright, size, at, center: at + size / 2 };
-    };
-    let anchor = measure();
-    let persistTimer: number | undefined;
-    const onResize = () => {
-      const next = measure();
-      // A drag places the bar itself.
-      if (isDragging()) {
-        anchor = next;
-        return;
-      }
-      const turned = next.upright !== anchor.upright;
-      const resized = !turned && next.size !== anchor.size;
-      // The kept middle survives rounding and clamping, unless a drag has moved the bar since.
-      const center = next.at === anchor.at ? anchor.center : next.at + anchor.size / 2;
-      // Flushed so the new position lands in the same frame as the new size.
-      flushSync(() => snap(resized ? Math.round(center - next.size / 2) : undefined));
-      anchor = turned ? measure() : { ...measure(), center };
-      if (!resized) return;
-      eventTarget.clearTimeout(persistTimer);
-      persistTimer = eventTarget.setTimeout(() => onPositionChangeRef.current?.(positionRef.current), 300);
-    };
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(onResize) : null;
-    observer?.observe(node);
-    const onViewportResize = () => {
-      if (!isDragging()) snap();
-    };
-    eventTarget.addEventListener("resize", onViewportResize);
-    return () => {
-      observer?.disconnect();
-      eventTarget.clearTimeout(persistTimer);
-      eventTarget.removeEventListener("resize", onViewportResize);
-    };
-  }, [eventTarget, dock, isDragging, setEdge, setPosition]);
+  // The bar's box as laid out. Unlike the bar itself it is never rotated by a turn, so the
+  // surfaces placed against it do not wander while the bar swings.
+  const barBoxRef = useRef<HTMLDivElement | null>(null);
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -585,6 +397,42 @@ function ToolbarComponent(
     onToolbarLeave,
   } =
     useToolbarTooltip();
+  const dismissCaptureToasts = useCallback(() => {
+    onCancelScreenshot();
+    if (!recording) onScreenRecordingCancel();
+  }, [onCancelScreenshot, onScreenRecordingCancel, recording]);
+  // Closes every menu and card the toolbar has open. The recording and motion cards stay:
+  // they belong to work in progress, and follow the bar instead.
+  const closeSurfaces = useCallback(() => {
+    setOpenMenu(null);
+    setSettingsOpen(false);
+    setColorPickerActive(false);
+    dismissCaptureToasts();
+  }, [dismissCaptureToasts, setColorPickerActive, setOpenMenu, setSettingsOpen]);
+  const {
+    position,
+    edge,
+    vertical,
+    dragging,
+    snapMask,
+    transition: positionTransition,
+    settleTurn,
+    onPointerDown: onDragPointerDown,
+    onClickCapture,
+    consumeDragClick,
+  } = useToolbarDock({
+    eventTarget,
+    motionRef,
+    dock,
+    minimized,
+    initialPosition,
+    onPositionChange,
+    // Nothing stays open over a toolbar on the move, and tooltips wait for a fresh hover after it.
+    onDragStart: closeSurfaces,
+    onDragEnd: onToolbarLeave,
+  });
+  // Every anchored surface (menus and cards) opens toward the same side.
+  const surfaceAlign = surfaceAlignFor(position.x, eventTarget.innerWidth);
   const guideMenuOpen = openMenu?.type === "guide-orientation";
   const commentMenuOpen = openMenu?.type === "comments";
   const captureMenuOpen = openMenu?.type === "capture";
@@ -592,22 +440,16 @@ function ToolbarComponent(
     rulersVisible ? "rulers" : "guides",
   );
   const commentsPanelOpen = openMenu?.type === "comments" && openMenu.panel;
-  const dismissCaptureToasts = useCallback(() => {
-    onCancelScreenshot();
-    if (!recording) onScreenRecordingCancel();
-  }, [onCancelScreenshot, onScreenRecordingCancel, recording]);
   const toggleToolbarMenu = useCallback(
     (menu: Exclude<OpenMenu, null>) => {
       if (openMenu?.type === menu.type) {
         setOpenMenu(null);
         return;
       }
-      setSettingsOpen(false);
-      setColorPickerActive(false);
-      dismissCaptureToasts();
+      closeSurfaces();
       setOpenMenu(menu);
     },
-    [dismissCaptureToasts, openMenu, setColorPickerActive, setOpenMenu, setSettingsOpen],
+    [closeSurfaces, openMenu, setOpenMenu],
   );
   const [commentsCopied, setCommentsCopied] = useState(false);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
@@ -656,35 +498,8 @@ function ToolbarComponent(
     vertical,
     centered: dock === "snap",
   });
-  // A swap between vertical and horizontal swings the bar a quarter turn from its old place.
-  // Runs after the group motion above has settled the new orientation's sizes.
-  useLayoutEffect(() => {
-    const node = motionRef.current;
-    const turn = turnRef.current;
-    if (!node || !turn) return;
-    if (turn.vertical === vertical) {
-      // The turned bar's real size is only known now: put it back under the pointer, or in the
-      // middle of its edge, and swing on the render that follows.
-      if (isDragging()) {
-        if (refreshDrag()) return;
-      } else if (edge) {
-        const centered = centeredDockPosition(
-          edge,
-          { width: node.offsetWidth, height: node.offsetHeight },
-          { width: eventTarget.innerWidth, height: eventTarget.innerHeight },
-        );
-        if (centered.x !== position.x || centered.y !== position.y) {
-          setPosition(centered);
-          return;
-        }
-      }
-      // A minimized toolbar is a square either way: it has nothing to swing.
-      if (!minimized && !eventTarget.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        playToolbarTurn(node, turn.from, vertical);
-      }
-    }
-    turnRef.current = null;
-  });
+  // Runs after the group motion above has settled a turned bar's sizes.
+  useLayoutEffect(settleTurn);
   const previousToolGroupRef = useRef(toolGroup);
   const preserveToolGroupRef = useRef(false);
   const previousExclusiveToolIdRef = useRef<string | null>(
@@ -811,11 +626,10 @@ function ToolbarComponent(
       position.y + TOOLBAR_HEIGHT + TOOLTIP_HEIGHT_WITH_GAP > viewportHeight
       ? "top"
       : "bottom";
-  const tooltipSide: "top" | "bottom" | "left" | "right" = vertical
-    ? (edge === "left" ? "right" : "left")
-    : edgeSide;
-  // Floating surfaces open toward the page, beside a vertical toolbar and below/above a horizontal one.
-  const surfaceSide = vertical ? (edge === "left" ? "right" : "left") : undefined;
+  // Floating surfaces and tooltips open toward the page: beside a vertical toolbar, and below
+  // or above a horizontal one.
+  const surfaceSide: "left" | "right" | undefined = vertical ? (edge === "left" ? "right" : "left") : undefined;
+  const tooltipSide = surfaceSide ?? edgeSide;
   const toolbarTooltip = {
     tooltipInstant,
     tooltipSide,
@@ -823,95 +637,52 @@ function ToolbarComponent(
     onTooltipLeave,
   };
   const menuSide: "top" | "bottom" = nearBottom ? "top" : "bottom";
-  const { surfaceRef: settingsMenuRef, placement: settingsPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: motionRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: settingsOpen,
-      refreshKey: `${position.x}:${position.y}`,
-      align: "right",
-      gap: 4,
-      rightOffset: 0,
-    });
-  const { menuRef: commentsPanelRef, placement: commentsPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: commentButtonRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: commentsPanelOpen,
-      refreshKey: `${position.x}:${position.y}`,
-    });
   const recordingPanelOpen = Boolean(screenRecording.panel);
-  const captureAnchorRef = useRef<HTMLDivElement | null>(null);
-  const { menuRef: screenshotCardRef, placement: screenshotCardPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: captureAnchorRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      side: edgeSide,
-      open: screenshotPreviewUrl !== null,
-      refreshKey: `${position.x}:${position.y}:${surfaceAlign}`,
-      align: surfaceAlign,
-    });
-  const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
   const motionPlayerOpen = motion.playable && !recordingPanelOpen;
   const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
-  // Vertical toolbars open their menus beside the bar, which needs the floating placement.
-  const { menuRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: guideMenuButtonRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: guideMenuOpen,
-      refreshKey: `${position.x}:${position.y}:${surfaceAlign}`,
-      align: surfaceAlign,
-    });
-  const { menuRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: captureAnchorRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: captureMenuOpen,
-      refreshKey: `${position.x}:${position.y}`,
-      align: "right",
-    });
-  const { menuRef: commentDropdownPortalRef, placement: commentDropdownPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: commentButtonRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: commentMenuOpen && !commentsPanelOpen,
-      refreshKey: `${position.x}:${position.y}`,
-      align: surfaceAlign,
-    });
+  const captureAnchorRef = useRef<HTMLDivElement | null>(null);
+  const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Every menu and card is placed against the bar the same way: below or above a horizontal
+  // one, beside a vertical one, and within the bar's own span. They are placed again whenever
+  // the bar moves, turns or switches side, and frame by frame while it glides into place.
+  // A control's surface hangs off the control that opened it; a bar surface hangs off the
+  // whole bar.
+  const controlSurface = {
+    eventTarget,
+    barRef: barBoxRef,
+    sideOfAnchor: surfaceSide,
+    refreshKey: `${position.x}:${position.y}:${surfaceAlign}:${edge}`,
+    align: surfaceAlign,
+    follow: positionTransition !== undefined,
+  };
+  const barSurface = { ...controlSurface, anchorRef: barBoxRef, gap: 4, rightOffset: 0 };
+  const { surfaceRef: settingsMenuRef, placement: settingsPlacement } =
+    useFloatingSurfacePlacement({ ...barSurface, open: settingsOpen, align: "right" });
   const { surfaceRef: recordingPanelRef, placement: recordingPanelPlacement } =
+    useFloatingSurfacePlacement({ ...barSurface, open: floatingCardOpen, align: "left" });
+  const { surfaceRef: guideMenuPortalRef, placement: guideMenuPortalPlacement } =
+    useFloatingSurfacePlacement({ ...controlSurface, anchorRef: guideMenuButtonRef, open: guideMenuOpen });
+  const { surfaceRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
+    useFloatingSurfacePlacement({ ...controlSurface, anchorRef: layoutGuidesAnchorRef, open: layoutGuidesOpen });
+  const { surfaceRef: colorPickerPortalRef, placement: colorPickerPortalPlacement } =
+    useFloatingSurfacePlacement({ ...controlSurface, anchorRef: colorPickerAnchorRef, open: colorPickerActive });
+  const { surfaceRef: captureMenuPortalRef, placement: captureMenuPortalPlacement } =
+    useFloatingSurfacePlacement({ ...controlSurface, anchorRef: captureAnchorRef, open: captureMenuOpen });
+  const { surfaceRef: screenshotCardRef, placement: screenshotCardPlacement } =
     useFloatingSurfacePlacement({
-      anchorRef: motionRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: floatingCardOpen,
-      refreshKey: `${position.x}:${position.y}`,
-      align: "left",
-      gap: 4,
-      rightOffset: 0,
+      ...controlSurface,
+      anchorRef: captureAnchorRef,
+      open: screenshotPreviewUrl !== null,
+      side: edgeSide,
     });
-  const { menuRef: colorPickerPortalRef, placement: colorPickerPortalPlacement } =
+  const { surfaceRef: commentDropdownPortalRef, placement: commentDropdownPlacement } =
     useFloatingSurfacePlacement({
-      anchorRef: colorPickerAnchorRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: floatingCardOpen && colorPickerActive,
-      refreshKey: `${position.x}:${position.y}`,
+      ...controlSurface,
+      anchorRef: commentButtonRef,
+      open: commentMenuOpen && !commentsPanelOpen,
     });
-  const { menuRef: layoutGuidesMenuRef, placement: layoutGuidesPlacement } =
-    useFloatingSurfacePlacement({
-      anchorRef: layoutGuidesAnchorRef,
-      eventTarget,
-      sideOfAnchor: surfaceSide,
-      open: layoutGuidesOpen,
-      refreshKey: `${position.x}:${position.y}`,
-    });
+  const { surfaceRef: commentsPanelRef, placement: commentsPlacement } =
+    useFloatingSurfacePlacement({ ...controlSurface, anchorRef: commentButtonRef, open: commentsPanelOpen });
 
   const selectMode = useCallback(() => {
     onCancelTransient();
@@ -1242,7 +1013,7 @@ function ToolbarComponent(
       style={{
         left: position.x,
         top: position.y,
-        transition: gliding ? GLIDE_TRANSITION : undefined,
+        transition: positionTransition,
       }}
     >
       <div
@@ -1251,7 +1022,7 @@ function ToolbarComponent(
         data-side={snapMask.side}
         data-active={snapMask.active ? "true" : "false"}
       />
-      <div className="msr:relative msr:flex">
+      <div ref={barBoxRef} className="msr:relative msr:flex">
         <TooltipLayerContext.Provider value={tooltipLayer}>
           <div
             ref={(node) => {
@@ -1266,13 +1037,7 @@ function ToolbarComponent(
             data-orientation={vertical ? "vertical" : "horizontal"}
             data-edge={edge ?? undefined}
             style={{ visibility: screenshotActive || recordingSelecting ? "hidden" : undefined }}
-            onPointerDown={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              const x = (event.clientX - rect.left) / rect.width;
-              const y = (event.clientY - rect.top) / rect.height;
-              grabRef.current = vertical ? { along: y, across: x } : { along: x, across: y };
-              onDragPointerDown(event);
-            }}
+            onPointerDown={onDragPointerDown}
             onMouseDown={(event) => {
               if (event.button !== 0) return
               const target = event.target
@@ -1543,10 +1308,7 @@ function ToolbarComponent(
                                             className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
                                             style={{
                                               zIndex: 120,
-                                              top: layoutGuidesPlacement.top,
-                                              bottom: layoutGuidesPlacement.bottom,
-                                              left: layoutGuidesPlacement.left,
-                                              right: layoutGuidesPlacement.right,
+                                              ...surfaceStyle(layoutGuidesPlacement),
                                               maxHeight: Math.min(320, layoutGuidesPlacement.height),
                                             }}
                                             data-mesurer-layout-guides-panel
@@ -1579,7 +1341,7 @@ function ToolbarComponent(
                                       >
                                         <ColorPickerIcon size={20} aria-hidden="true" />
                                       </ToolbarButton>
-                                      {floatingCardOpen && colorPickerActive
+                                      {colorPickerActive
                                         ? createPortal(
                                           <div
                                             ref={colorPickerPortalRef}
@@ -1590,7 +1352,7 @@ function ToolbarComponent(
                                           </div>,
                                           commentPanelPortalTarget,
                                         )
-                                        : colorPicker.panel}
+                                        : null}
                                     </div>
                                   </ToolbarGroup>
                                 </div>
@@ -1677,7 +1439,7 @@ function ToolbarComponent(
                                     >
                                       {recording ? <span aria-hidden="true" className="msr:size-3 msr:rounded-[2px] msr:bg-[var(--msr-danger-solid-bg)]" /> : shareMode === "record" ? <RecordIcon size={20} aria-hidden="true" /> : <CameraIcon size={20} aria-hidden="true" />}
                                     </ToolbarButton>
-                                    {screenshotPreviewUrl ? (
+                                    {screenshotPreviewUrl ? createPortal(
                                       <ScreenshotPreview
                                         ref={screenshotCardRef}
                                         url={screenshotPreviewUrl}
@@ -1691,7 +1453,8 @@ function ToolbarComponent(
                                               : "Screenshot saved"
                                         }
                                         onExited={onScreenshotPreviewExited}
-                                      />
+                                      />,
+                                      commentPanelPortalTarget,
                                     ) : null}
                                   </>
                                 ) : null}
@@ -1854,10 +1617,7 @@ function ToolbarComponent(
                                       ref={settingsMenuRef}
                                       className="msr:flex msr:w-auto msr:max-w-[calc(100vw-16px)] msr:flex-col msr:overflow-hidden msr:p-0"
                                       style={{
-                                        top: settingsPlacement.top,
-                                        bottom: settingsPlacement.bottom,
-                                        left: settingsPlacement.left,
-                                        right: settingsPlacement.right,
+                                        ...surfaceStyle(settingsPlacement),
                                         height: settingsPlacement.height,
                                         maxHeight: settingsPlacement.height,
                                       }}
@@ -1920,9 +1680,7 @@ function ToolbarComponent(
                 ref={recordingPanelRef}
                 className="msr:pointer-events-auto msr:fixed msr:z-[101] msr:w-max msr:max-w-[calc(100vw-16px)]"
                 style={{
-                  top: recordingPanelPlacement.top,
-                  bottom: recordingPanelPlacement.bottom,
-                  left: recordingPanelPlacement.left,
+                  ...surfaceStyle(recordingPanelPlacement),
                   zIndex: 101,
                 }}
                 data-mesurer-capture-ui

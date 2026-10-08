@@ -2,24 +2,24 @@ import { describe, expect, it } from "vitest"
 import type { ToolbarSide } from "./persistence"
 import { dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition } from "./toolbar-dock"
 
-const viewport = { viewportWidth: 1200, viewportHeight: 800 }
+const viewport = { viewport: { width: 1200, height: 800 } }
 const bar = { width: 300, height: 40 }
 const column = { width: 40, height: 300 }
 
 describe("dockedToolbarPosition", () => {
   it("pins top and bottom to the edge and keeps the x coordinate", () => {
-    expect(dockedToolbarPosition({ side: "top", point: { x: 240, y: 500 }, ...bar, ...viewport })).toEqual({ x: 240, y: 16 })
-    expect(dockedToolbarPosition({ side: "bottom", point: { x: 240, y: 16 }, ...bar, ...viewport })).toEqual({ x: 240, y: 744 })
+    expect(dockedToolbarPosition({ side: "top", point: { x: 240, y: 500 }, size: bar, ...viewport })).toEqual({ x: 240, y: 16 })
+    expect(dockedToolbarPosition({ side: "bottom", point: { x: 240, y: 16 }, size: bar, ...viewport })).toEqual({ x: 240, y: 744 })
   })
 
   it("pins left and right to the edge and keeps the y coordinate", () => {
-    expect(dockedToolbarPosition({ side: "left", point: { x: 900, y: 120 }, ...column, ...viewport })).toEqual({ x: 16, y: 120 })
-    expect(dockedToolbarPosition({ side: "right", point: { x: 16, y: 120 }, ...column, ...viewport })).toEqual({ x: 1144, y: 120 })
+    expect(dockedToolbarPosition({ side: "left", point: { x: 900, y: 120 }, size: column, ...viewport })).toEqual({ x: 16, y: 120 })
+    expect(dockedToolbarPosition({ side: "right", point: { x: 16, y: 120 }, size: column, ...viewport })).toEqual({ x: 1144, y: 120 })
   })
 
   it("clamps the along-edge coordinate so the toolbar stays on screen", () => {
-    expect(dockedToolbarPosition({ side: "top", point: { x: 5000, y: 0 }, ...bar, ...viewport }).x).toBe(1200 - 300 - 16)
-    expect(dockedToolbarPosition({ side: "left", point: { x: 0, y: 5000 }, ...column, ...viewport }).y).toBe(800 - 300 - 16)
+    expect(dockedToolbarPosition({ side: "top", point: { x: 5000, y: 0 }, size: bar, ...viewport }).x).toBe(1200 - 300 - 16)
+    expect(dockedToolbarPosition({ side: "left", point: { x: 0, y: 5000 }, size: column, ...viewport }).y).toBe(800 - 300 - 16)
   })
 })
 

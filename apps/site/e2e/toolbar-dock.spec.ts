@@ -22,6 +22,63 @@ const dragBy = async (page: Page, toolbar: Locator, dx: number, dy: number) => {
   await page.waitForTimeout(450);
 };
 
+// The color picker samples through the browser's eyedropper, which a test cannot drive.
+const mockEyeDropper = (page: Page) =>
+  page.addInitScript(() => {
+    class MockEyeDropper {
+      open() {
+        return Promise.resolve({ sRGBHex: "#336699" });
+      }
+    }
+    (window as Window & { EyeDropper?: typeof MockEyeDropper }).EyeDropper = MockEyeDropper;
+  });
+
+type Edge = "top" | "left" | "right" | "bottom";
+type Box = { x: number; y: number; width: number; height: number };
+
+// A pointer spot close enough to each edge of the test viewport to glue the toolbar there.
+const EDGE_SPOTS: [edge: Edge, x: number, y: number][] = [
+  ["top", 550, 30],
+  ["left", 30, 350],
+  ["right", 1070, 350],
+  ["bottom", 550, 670],
+];
+
+// Drags the toolbar by its middle onto an edge and waits for it to settle there.
+const glueTo = async (page: Page, toolbar: Locator, [edge, x, y]: (typeof EDGE_SPOTS)[number]) => {
+  const start = await toolbar.boundingBox();
+  if (!start) throw new Error("toolbar not visible");
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(550, 350, { steps: 5 });
+  await page.mouse.move(x, y, { steps: 8 });
+  await page.mouse.up();
+  await expect(toolbar).toHaveAttribute("data-edge", edge);
+  await page.waitForTimeout(450);
+  const bar = await toolbar.boundingBox();
+  if (!bar) throw new Error("toolbar not visible");
+  return bar;
+};
+
+// A surface belongs 4px off the bar on the side facing the page, between the bar's two ends
+// unless it is longer than the bar.
+const expectAgainstBar = (edge: Edge, bar: Box, box: Box | null, label: string) => {
+  if (!box) throw new Error(`${label} is not on screen`);
+  const gap = {
+    top: box.y - (bar.y + bar.height),
+    bottom: bar.y - (box.y + box.height),
+    left: box.x - (bar.x + bar.width),
+    right: bar.x - (box.x + box.width),
+  }[edge];
+  expect(Math.round(gap), label).toBe(4);
+  const vertical = edge === "left" || edge === "right";
+  const [barStart, barEnd] = vertical ? [bar.y, bar.y + bar.height] : [bar.x, bar.x + bar.width];
+  const [start, end] = vertical ? [box.y, box.y + box.height] : [box.x, box.x + box.width];
+  if (end - start > barEnd - barStart) return;
+  expect(start, label).toBeGreaterThanOrEqual(barStart - 1);
+  expect(end, label).toBeLessThanOrEqual(barEnd + 1);
+};
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 700 });
 });
@@ -398,4 +455,125 @@ test("a glued toolbar stays in the middle of its edge when closed, opened and re
   expect((await middle()).y).toBe(450);
   await page.setViewportSize({ width: 1100, height: 700 });
   await expect.poll(async () => (await middle()).y).toBe(350);
+});
+
+test("menus open clear of the toolbar and within its span on every edge", async ({ page }) => {
+  await mockEyeDropper(page);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+
+  const surfaces: [trigger: string, surface: Locator][] = [
+    ["Guide orientation menu", page.getByRole("menu")],
+    ["Layout guides (L)", page.locator("[data-mesurer-layout-guides-panel]")],
+    ["Sample color (P)", page.locator(".mesurer-color-picker")],
+    ["Capture menu", page.getByRole("menu")],
+    ["Comment menu", page.getByRole("menu")],
+  ];
+  for (const spot of EDGE_SPOTS) {
+    const bar = await glueTo(page, toolbar, spot);
+    for (const [trigger, surface] of surfaces) {
+      const button = page.getByRole("button", { name: trigger });
+      await button.click();
+      await expect(surface).toBeVisible();
+      // Placement settles a frame after the surface mounts.
+      await page.waitForTimeout(100);
+      expectAgainstBar(spot[0], bar, await surface.boundingBox(), `${trigger} on ${spot[0]}`);
+
+      if (trigger === "Sample color (P)") await page.mouse.click(700, 420);
+      else await button.click();
+      await expect(surface).toHaveCount(0);
+    }
+  }
+});
+
+test("the motion card follows the toolbar to every edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  // Inspecting an animated element opens the motion card, which stays open through a drag.
+  await page.evaluate(() => {
+    const element = document.createElement("div");
+    element.style.cssText = "position:fixed;left:480px;top:300px;width:120px;height:80px;background:teal;z-index:1";
+    document.body.append(element);
+    element.animate([{ transform: "translateX(-10px)" }, { transform: "translateX(10px)" }], {
+      duration: 2000,
+      iterations: Infinity,
+      direction: "alternate",
+    });
+  });
+  await page.mouse.click(540, 340);
+  const card = page.locator("[data-mesurer-capture-ui]");
+  await expect(card).toBeVisible();
+
+  // Twice round, so every edge is reached from more than one other edge.
+  for (const spot of [...EDGE_SPOTS, ...EDGE_SPOTS.slice().reverse()]) {
+    const bar = await glueTo(page, toolbar, spot);
+    expectAgainstBar(spot[0], bar, await card.boundingBox(), `motion card on ${spot[0]}`);
+  }
+});
+
+test("the screenshot card sticks to the toolbar on every edge", async ({ page }) => {
+  await page.addInitScript(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 100;
+    canvas.getContext("2d")?.fillRect(0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/png");
+    Object.defineProperty(window, "chrome", {
+      configurable: true,
+      value: {
+        runtime: {
+          id: "test-extension",
+          lastError: undefined,
+          sendMessage: (_message: unknown, callback: (response: unknown) => void) => callback({ ok: true, dataUrl }),
+        },
+      },
+    });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { write: async () => {} } });
+  });
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  const card = page.locator(".mesurer-screenshot-preview");
+
+  for (const spot of EDGE_SPOTS) {
+    const bar = await glueTo(page, toolbar, spot);
+    await page.keyboard.press("c");
+    await page.mouse.move(620, 140);
+    await page.mouse.down();
+    await page.mouse.move(780, 240);
+    await page.mouse.up();
+    await expect(card).toBeVisible();
+    await page.waitForTimeout(100);
+    expectAgainstBar(spot[0], bar, await card.boundingBox(), `screenshot card on ${spot[0]}`);
+    // Moving the toolbar dismisses the card, ready for the next edge.
+    await dragBy(page, toolbar, spot[0] === "left" ? 400 : -30, spot[0] === "top" ? 200 : -30);
+    await expect(card).toHaveCount(0);
+  }
+});
+
+test("moving the toolbar closes its menus and cards", async ({ page }) => {
+  await mockEyeDropper(page);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+
+  const surfaces: [trigger: string, surface: Locator][] = [
+    ["Guide orientation menu", page.getByRole("menu")],
+    ["Layout guides (L)", page.locator("[data-mesurer-layout-guides-panel]")],
+    ["Sample color (P)", page.locator(".mesurer-color-picker")],
+    ["Capture menu", page.getByRole("menu")],
+    ["Comment menu", page.getByRole("menu")],
+    ["Settings", page.getByRole("dialog", { name: "Settings" })],
+  ];
+  for (const [trigger, surface] of surfaces) {
+    await page.getByRole("button", { name: trigger }).click();
+    await expect(surface, trigger).toBeVisible();
+    await dragBy(page, toolbar, 30, 40);
+    await expect(surface, trigger).toHaveCount(0);
+  }
 });
