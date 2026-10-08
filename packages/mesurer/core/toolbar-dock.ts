@@ -7,9 +7,6 @@ export type Size = { width: number; height: number }
 export type ToolbarPlacement = Point & { edge?: ToolbarSide | null; align?: DockAlign; vertical?: boolean }
 
 export const TOOLBAR_DOCK_MARGIN = 16
-// Distances to an edge: from the pointer while dragging, from the toolbar itself at rest.
-// Within this distance the toolbar glues to the edge.
-export const SNAP_DISTANCE = 48
 // How deep each edge's zone runs, from the pointer while dragging. Deeper than a glued toolbar
 // (its 40px and the dock margin), so a pointer anywhere on one is inside its zone.
 export const ZONE_DEPTH = 72
@@ -26,12 +23,11 @@ export const PUSH_TURN = 40
 // corner and comes away from one without a dead stretch or a jump.
 export const CORNER_EASE_DISTANCE = 96
 // Within this radius of a screen corner a dragged toolbar glues to no edge at all, so approaching a
-// corner never picks horizontal or vertical. Released there, it glues to that corner.
+// corner never picks horizontal or vertical.
 export const CORNER_RADIUS = 120
 
 // Keeps a free toolbar this far inside the viewport while it is dragged.
 const DRAG_INSET = 8
-
 
 // Anchored surfaces open toward the room on the bar's side of the screen.
 export const surfaceAlignFor = (barX: number, viewportWidth: number): "left" | "right" =>
@@ -88,6 +84,7 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t)
 // Where a glued toolbar sits along its edge: in the middle, or pinned to the corner at either end.
 // It also opens, closes and resizes from there.
 export type DockAlign = "start" | "center" | "end"
+export const DOCK_ALIGNS: DockAlign[] = ["center", "start", "end"]
 
 // A glued toolbar settles on the nearest of its edge's three spots, so it never flies past a
 // corner it was left next to, nor into one from the middle.
@@ -137,16 +134,15 @@ const nearestEdge = (gapTo: (side: ToolbarSide) => number, within: number) => {
   return nearest
 }
 
-// Keeps a free toolbar on screen, where the drag left it.
-export const freeToolbarPosition = (point: Point, size: Size, viewport: Size): Point => ({
+// Keeps a dragged toolbar that is on no edge on screen.
+const freeToolbarPosition = (point: Point, size: Size, viewport: Size): Point => ({
   x: Math.max(DRAG_INSET, Math.min(point.x, viewport.width - size.width - DRAG_INSET)),
   y: Math.max(DRAG_INSET, Math.min(point.y, viewport.height - size.height - DRAG_INSET)),
 })
 
-// Where a toolbar at rest belongs in snap mode. A glued toolbar keeps its spot on its edge
-// whatever its size: `align` is the spot it holds, read from where it is when missing. A free
-// one (null) stays where it is. When the edge is not known yet (undefined), it is read from the
-// toolbar itself: close to an edge it glues there.
+// Where a toolbar at rest belongs in snap mode: always on an edge. A glued toolbar keeps its spot
+// on its edge whatever its size: `align` is the spot it holds, read from where it is when missing.
+// One with no edge yet (null: an older save, or snap mode just turned on) takes the nearest.
 export const snapToolbarPosition = ({
   point,
   size,
@@ -157,14 +153,10 @@ export const snapToolbarPosition = ({
   point: Point
   size: Size
   viewport: Size
-  glued: ToolbarSide | null | undefined
+  glued: ToolbarSide | null
   align?: DockAlign
-}): { side: ToolbarSide | null; align: DockAlign; position: Point } => {
-  const side =
-    glued === undefined
-      ? nearestEdge((edge) => edgeGap(edge, point, size, viewport), SNAP_DISTANCE)?.side
-      : glued
-  if (!side) return { side: null, align: "center", position: freeToolbarPosition(point, size, viewport) }
+}): { side: ToolbarSide; align: DockAlign; position: Point } => {
+  const side = glued ?? nearestEdge((edge) => edgeGap(edge, point, size, viewport), Infinity)!.side
   const settledAlign = (glued && align) || dockAlignFor(side, point, size, viewport)
   return { side, align: settledAlign, position: alignedDockPosition(side, settledAlign, size, viewport) }
 }
@@ -193,17 +185,25 @@ const cornerAt = (pointer: Point, viewport: Size): { x: ToolbarSide; y: ToolbarS
   return Math.hypot(pointer.x - cornerX, pointer.y - cornerY) <= CORNER_RADIUS ? { x, y } : null
 }
 
-// The edge and end a free toolbar released in a corner glues to: a standing one takes the side of
-// that corner, a flat one its top or bottom, at the end nearest the corner.
-export const cornerDropFor = (
+// The spot a free toolbar released here glues to, so a toolbar is never left free in snap mode:
+// the drop zone nearest the pointer. `square` is the size of a zone. A corner's zone belongs to
+// two edges: a standing toolbar takes the side, a flat one the top or bottom.
+export const nearestDropFor = (
   pointer: Point,
   upright: boolean,
+  square: Size,
   viewport: Size,
-): { side: ToolbarSide; align: DockAlign } | null => {
-  const corner = cornerAt(pointer, viewport)
-  if (!corner) return null
-  const nearStart = upright ? pointer.y < viewport.height / 2 : pointer.x < viewport.width / 2
-  return { side: upright ? corner.x : corner.y, align: nearStart ? "start" : "end" }
+): { side: ToolbarSide; align: DockAlign } => {
+  let nearest: { side: ToolbarSide; align: DockAlign; distance: number } | null = null
+  for (const side of TOOLBAR_SIDES) {
+    for (const align of DOCK_ALIGNS) {
+      if (align !== "center" && isVerticalToolbarSide(side) !== upright) continue
+      const at = alignedDockPosition(side, align, square, viewport)
+      const distance = Math.hypot(pointer.x - at.x - square.width / 2, pointer.y - at.y - square.height / 2)
+      if (!nearest || distance < nearest.distance) nearest = { side, align, distance }
+    }
+  }
+  return { side: nearest!.side, align: nearest!.align }
 }
 
 // The screen is cut into fixed, invisible zones, and the zone under the pointer alone decides
@@ -225,8 +225,9 @@ export const toolbarZone = (pointer: Point, viewport: Size, held: ToolbarSide | 
 // stays under the pointer through a glue, a turn and a release, and it takes the edge of the
 // zone the pointer is in, whichever way it came. `upright` is whether it stands vertical now,
 // which the free middle keeps unless the toolbar is pushed into a wall, `pushed` whether a wall
-// is what turned it, and `glued` the edge it is on. `grab` is the held spot as fractions along the toolbar's length
-// and across its thickness; `sizeFor` gives the toolbar's size standing up or lying flat.
+// is what turned it, `latched` whether it was pulled off an edge and has not been back to the
+// middle since, and `glued` the edge it is on. `grab` is the held spot as fractions along the
+// toolbar's length and across its thickness; `sizeFor` gives its size standing up or lying flat.
 export const dragToolbarPosition = ({
   pointer,
   grab,

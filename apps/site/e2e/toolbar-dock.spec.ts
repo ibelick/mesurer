@@ -144,7 +144,7 @@ test("snap mode glues to the left edge and slides vertically along it", async ({
   await expect.poll(async () => (await toolbar.boundingBox())?.x).toBe(16);
 });
 
-test("pulling a glued toolbar away from the edge releases it", async ({ page }) => {
+test("a toolbar pulled off its edge is free while dragged, and glues to the nearest zone when let go", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
   await expect(toolbar).toBeVisible();
@@ -155,11 +155,18 @@ test("pulling a glued toolbar away from the edge releases it", async ({ page }) 
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
 
   // Off the edge it is free, and still the column it was: the middle of the screen turns nothing.
-  await dragBy(page, toolbar, 400, 0);
+  const column = await toolbar.boundingBox();
+  if (!column) throw new Error("toolbar not visible");
+  await page.mouse.move(column.x + column.width / 2, column.y + column.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(300, 350, { steps: 10 });
   await expect(toolbar).not.toHaveAttribute("data-edge");
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
-  const free = await toolbar.boundingBox();
-  expect(free?.x).toBeGreaterThan(300);
+  expect((await toolbar.boundingBox())?.x).toBeGreaterThan(200);
+  // Let go there, it does not stay free: it goes back to the nearest zone, the one it left.
+  await page.mouse.up();
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
+  await expect.poll(async () => (await toolbar.boundingBox())?.x).toBe(16);
 
   // Only the top and bottom zones lay it flat again.
   await dragTo(page, toolbar, 600, 30);
@@ -281,6 +288,13 @@ test("the toolbar swings a quarter turn between horizontal and vertical", async 
       const finish = () => {
         for (const target of [node, ...node.querySelectorAll("*")]) for (const animation of turns(target)) animation.finish();
       };
+      // The swing is short and already under way: rewound, so its first frame is what gets measured.
+      for (const target of [node, ...node.querySelectorAll("*")]) {
+        for (const animation of turns(target)) {
+          animation.pause();
+          animation.currentTime = 0;
+        }
+      }
       const held = {
         bar: rotations(node),
         barBox: rect(node),
@@ -408,7 +422,7 @@ test("tooltips stay hidden while the toolbar is dragged", async ({ page }) => {
   await expect(tooltips).toHaveCount(0);
 });
 
-test("a toolbar pulled straight off its corner comes free instead of turning onto the next edge", async ({ page }) => {
+test("a toolbar pulled straight off its corner stays flat while dragged, then glues to the nearest zone", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
   await expect(toolbar).toBeVisible();
@@ -424,9 +438,10 @@ test("a toolbar pulled straight off its corner comes free instead of turning ont
   await page.mouse.move(x, 400, { steps: 12 });
   await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
   await expect(toolbar).not.toHaveAttribute("data-edge");
+  // Let go beside the left edge's middle zone, that is where it goes.
   await page.mouse.up();
-  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
-  await expect(toolbar).not.toHaveAttribute("data-edge");
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
+  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
 });
 
 test("a toolbar approaching a corner picks no edge until it is released in the corner", async ({ page }) => {
@@ -441,7 +456,8 @@ test("a toolbar approaching a corner picks no edge until it is released in the c
   await page.mouse.down();
   await page.mouse.move(600, 400, { steps: 12 });
   await expect(toolbar).not.toHaveAttribute("data-edge");
-  await expect(page.locator(".mesurer-toolbar-zone[data-active=\"true\"]")).toHaveCount(0);
+  // Off every edge, the zone it would go to is still lit: it never lands nowhere.
+  await expect(page.locator(".mesurer-toolbar-zone[data-active=\"true\"]")).toHaveCount(1);
   // Inside the corner's radius, but not yet over either edge's zone: still free.
   await page.mouse.move(60, 60, { steps: 12 });
   await expect(toolbar).not.toHaveAttribute("data-edge");
@@ -790,34 +806,7 @@ test("auto-hide reveals a tucked toolbar as the pointer nears its edge", async (
   await expect.poll(y).toBe(-34);
 });
 
-test("a free column keeps its menus beside it, toward the middle of the screen", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  const toolbar = page.locator(".mesurer-toolbar-motion");
-  await expect(toolbar).toBeVisible();
-  await setDock(page, "snap");
-
-  // Stood up on an edge, then carried off it into each half of the screen.
-  for (const [spot, x, side] of [[EDGE_SPOTS[1], 300, "left"], [EDGE_SPOTS[2], 800, "right"]] as const) {
-    await glueTo(page, toolbar, spot);
-    await dragTo(page, toolbar, x, 350);
-    await expect(toolbar).not.toHaveAttribute("data-edge");
-    await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
-    const bar = await toolbar.boundingBox();
-    if (!bar) throw new Error("toolbar not visible");
-
-    for (const trigger of ["Guide orientation menu", "Capture menu"]) {
-      const button = page.getByRole("button", { name: trigger });
-      await button.click();
-      await expect(page.getByRole("menu")).toBeVisible();
-      await page.waitForTimeout(100);
-      expectAgainstBar(side, bar, await page.getByRole("menu").boundingBox(), `${trigger}, free column on the ${side}`);
-      await button.click();
-      await expect(page.getByRole("menu")).toHaveCount(0);
-    }
-  }
-});
-
-test("the toolbar comes back as it was left: glued, free, standing or flat", async ({ page }) => {
+test("the toolbar comes back on the edge and spot it was left on", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
   await expect(toolbar).toBeVisible();
@@ -838,27 +827,18 @@ test("the toolbar comes back as it was left: glued, free, standing or flat", asy
   await expect(toolbar).toHaveAttribute("data-edge", "left");
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
 
-  // A free column stays a free column.
-  await dragTo(page, toolbar, 400, 350);
-  await expect(toolbar).not.toHaveAttribute("data-edge");
+  // Let go in the open, it glues to the nearest zone, and comes back there too.
+  await dragTo(page, toolbar, 300, 350);
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
+  expect(Math.round(((await toolbar.boundingBox())?.y ?? 0) + ((await toolbar.boundingBox())?.height ?? 0) / 2)).toBe(350);
   await reloaded();
-  await expect(toolbar).not.toHaveAttribute("data-edge");
-  await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
+  await expect(toolbar).toHaveAttribute("data-edge", "left");
 
-  // A free row left right beside an edge stays free there: nothing glues it back or nudges it.
-  await dragTo(page, toolbar, 400, 30);
-  await page.mouse.move(400, 36);
-  await page.mouse.down();
-  await page.mouse.move(400, 120, { steps: 8 });
-  await page.mouse.move(100, 120, { steps: 8 });
-  const held = await toolbar.boundingBox();
-  await page.mouse.up();
-  await page.waitForTimeout(450);
-  expect(await toolbar.boundingBox()).toEqual(held);
-  expect(held?.x).toBeLessThan(48);
-  await reloaded();
-  await expect(toolbar).not.toHaveAttribute("data-edge");
+  await dragTo(page, toolbar, 700, 500);
+  await expect(toolbar).toHaveAttribute("data-edge", "bottom");
   await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await reloaded();
+  await expect(toolbar).toHaveAttribute("data-edge", "bottom");
 });
 
 test("a pointer resting on a zone's line does not turn the toolbar back and forth", async ({ page }) => {
@@ -892,7 +872,7 @@ test("a pointer resting on a zone's line does not turn the toolbar back and fort
   await expect(page.locator("html")).toHaveAttribute("data-turns", "1");
 });
 
-test("auto-hide starts hidden when the page loads, without sliding away", async ({ page }) => {
+test("auto-hide shows the toolbar when the page loads, and hides it once it has been visited", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
   await expect(toolbar).toBeVisible();
@@ -904,35 +884,22 @@ test("auto-hide starts hidden when the page loads, without sliding away", async 
   const y = async () => Math.round((await toolbar.boundingBox())?.y ?? -1);
   await expect.poll(y).toBe(-34);
 
-  // Any tuck that animates during the load would be a visible slide.
-  await page.addInitScript(() => {
-    (window as Window & { __tuckRuns?: number }).__tuckRuns = 0;
-    const observe = () => {
-      for (const node of document.querySelectorAll("*")) {
-        const root = (node as Element).shadowRoot;
-        if (!root || (root as ShadowRoot & { __watched?: boolean }).__watched) continue;
-        (root as ShadowRoot & { __watched?: boolean }).__watched = true;
-        root.addEventListener("transitionrun", (event) => {
-          if ((event.target as Element).classList?.contains("mesurer-toolbar-container")) {
-            (window as Window & { __tuckRuns?: number }).__tuckRuns! += 1;
-          }
-        }, true);
-      }
-      requestAnimationFrame(observe);
-    };
-    requestAnimationFrame(observe);
-  });
+  // On a fresh page it is there to be seen, and stays while the pointer is elsewhere.
   await page.reload();
   await expect(toolbar).toHaveAttribute("data-ready", "true");
-  expect(await y()).toBe(-34);
-  await page.waitForTimeout(400);
-  expect(await y()).toBe(-34);
-  expect(await page.evaluate(() => (window as Window & { __tuckRuns?: number }).__tuckRuns)).toBe(0);
+  expect(await y()).toBe(16);
+  await page.mouse.move(620, 520, { steps: 3 });
+  await page.waitForTimeout(1000);
+  expect(await y()).toBe(16);
 
-  // It still comes out, and slides, once the pointer reaches for it.
-  await page.mouse.move(300, 30, { steps: 5 });
+  // Once the pointer has been to it, leaving hides it, and from then on it hides as usual.
+  await page.mouse.move(300, 30, { steps: 4 });
+  await page.mouse.move(620, 520, { steps: 4 });
+  await expect.poll(y).toBe(-34);
+  await page.mouse.move(300, 30, { steps: 4 });
   await expect.poll(y).toBe(16);
-  expect(await page.evaluate(() => (window as Window & { __tuckRuns?: number }).__tuckRuns)).toBeGreaterThan(0);
+  await page.mouse.move(620, 520, { steps: 4 });
+  await expect.poll(y).toBe(-34);
 });
 
 test("drop zones are the closed bar's little square on every spot, open or not", async ({ page }) => {
@@ -1209,4 +1176,33 @@ test("a drag lights the drop zone the toolbar would land in, on an edge too", as
   await expect(lit).toHaveCount(1);
   await page.mouse.up();
   await expect(lit).toHaveCount(0);
+});
+
+test("auto-hide leaves a toolbar that was just opened in view", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await page.getByRole("button", { name: /Settings/ }).first().click();
+  await page.getByRole("switch", { name: "Auto-hide" }).click();
+  await page.getByRole("button", { name: "Minimize toolbar" }).click();
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  const y = async () => Math.round((await toolbar.boundingBox())?.y ?? -1);
+  await page.mouse.move(600, 500);
+  await expect.poll(y).toBe(-34);
+
+  // Opened from the keyboard, with the pointer far away: it comes out and stays, even as the
+  // pointer wanders and the keyboard moves on.
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(toolbar).not.toHaveAttribute("data-resizing");
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(620, 520, { steps: 2 });
+  await page.waitForTimeout(1000);
+  expect(await y()).toBe(16);
+
+  // Once the pointer has reached it, leaving hides it as usual.
+  await page.mouse.move(300, 30, { steps: 4 });
+  await page.mouse.move(620, 520, { steps: 4 });
+  await expect.poll(y).toBe(-34);
 });

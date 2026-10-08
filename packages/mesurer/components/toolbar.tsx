@@ -1034,8 +1034,17 @@ function ToolbarComponent(
   // A press that began off the bar (a guide, a stroke, a region being drawn) keeps it hidden
   // until it ends, however close to the bar's edge it goes.
   const [pressedOff, setPressedOff] = useState(false);
+  // New on the page or just opened from its closed state, it stays out until the pointer has
+  // reached it: it shows that it is there, and the pointer may be anywhere when a page loads or
+  // a shortcut opens it. Kept in a ref, so it outlives the effect below being run again.
+  const awaitedRef = useRef(true);
+  const wasMinimizedRef = useRef(minimized);
   useLayoutEffect(() => {
+    if (wasMinimizedRef.current && !minimized) awaitedRef.current = true;
+    wasMinimizedRef.current = minimized;
     if (!idle) {
+      // Only a bar that would otherwise be hiding is waited on.
+      awaitedRef.current = false;
       setRevealed(busy);
       setPressedOff(false);
       return;
@@ -1043,8 +1052,8 @@ function ToolbarComponent(
     let timer: number | undefined;
     const bar = barBoxRef.current;
     const hideSoon = () => {
-      // Not while the keyboard is on it, wherever the pointer goes.
-      if (bar?.querySelector(":focus-visible")) return;
+      // Not before the pointer has been to it, nor while the keyboard is on it.
+      if (awaitedRef.current || bar?.querySelector(":focus-visible")) return;
       timer ??= eventTarget.setTimeout(() => {
         timer = undefined;
         setRevealed(false);
@@ -1064,7 +1073,10 @@ function ToolbarComponent(
         right: event.clientX >= width - reach && alongY,
       }[edge!];
       if (!near) hideSoon();
-      else if (event.buttons === 0) stay();
+      else if (event.buttons === 0) {
+        awaitedRef.current = false;
+        stay();
+      }
     };
     const onPointerDown = (event: PointerEvent) => {
       // The path is read through the shadow root the toolbar lives in.
@@ -1080,7 +1092,8 @@ function ToolbarComponent(
     const onFocusIn = (event: FocusEvent) => {
       if ((event.target as Element).matches(":focus-visible")) stay();
     };
-    hideSoon();
+    if (awaitedRef.current) stay();
+    else hideSoon();
     eventTarget.addEventListener("pointermove", onPointerMove);
     eventTarget.addEventListener("pointerdown", onPointerDown, true);
     eventTarget.addEventListener("pointerup", onPointerEnd, true);
@@ -1096,10 +1109,9 @@ function ToolbarComponent(
       bar?.removeEventListener("focusin", onFocusIn);
       bar?.removeEventListener("focusout", hideSoon);
     };
-  }, [busy, edge, eventTarget, idle]);
+  }, [busy, edge, eventTarget, idle, minimized]);
   const tucked = idle && !revealed;
-  // The tuck only animates once the bar has been painted, so a bar that starts tucked is simply
-  // hidden from the first frame instead of sliding away as the page loads.
+  // The tuck only animates once the bar has been painted, so nothing slides as the page loads.
   const [tuckAnimated, setTuckAnimated] = useState(false);
   useEffect(() => {
     // Two frames: the first one places the bar on its edge.

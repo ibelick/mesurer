@@ -697,9 +697,9 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   pointer-events: none;
   border-radius: 9px;
   box-sizing: border-box;
-  border: 1px dashed rgba(15, 15, 20, 0.08);
+  border: 1px dashed rgba(15, 15, 20, 0.06);
   /* A second, light line just inside, so the square also shows on a dark page. */
-  outline: 1px dashed rgba(255, 255, 255, 0.1);
+  outline: 1px dashed rgba(255, 255, 255, 0.07);
   outline-offset: -2px;
   background: rgba(15, 15, 20, 0.01);
   animation: mesurer-toolbar-zone-in 180ms ease-out both;
@@ -707,8 +707,8 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 
 /* The zone a toolbar released here would glue to: the same square, a little darker. */
 .mesurer-toolbar-zone[data-active="true"] {
-  border-color: rgba(15, 15, 20, 0.2);
-  background: rgba(15, 15, 20, 0.05);
+  border-color: rgba(15, 15, 20, 0.14);
+  background: rgba(15, 15, 20, 0.035);
 }
 
 @keyframes mesurer-toolbar-zone-in {

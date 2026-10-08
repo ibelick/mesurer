@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ToolbarSide } from "./persistence"
-import { cornerDropFor, dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition, toolbarZone } from "./toolbar-dock"
+import { dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, nearestDropFor, snapToolbarPosition, toolbarZone } from "./toolbar-dock"
 
 const viewport = { viewport: { width: 1200, height: 800 } }
 const bar = { width: 300, height: 40 }
@@ -24,18 +24,12 @@ describe("dockedToolbarPosition", () => {
 })
 
 describe("snapToolbarPosition", () => {
-  it("reads an unknown edge from the toolbar: close to one it glues there", () => {
-    const result = snapToolbarPosition({ point: { x: 30, y: 200 }, size: column, glued: undefined, ...viewport })
-    expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
-    const away = snapToolbarPosition({ point: { x: 80, y: 300 }, size: bar, glued: undefined, ...viewport })
-    expect(away).toEqual({ side: null, align: "center", position: { x: 80, y: 300 } })
-  })
-
-  it("leaves a toolbar known to be free where it is, even beside an edge, but on screen", () => {
-    const beside = snapToolbarPosition({ point: { x: 10, y: 300 }, size: bar, glued: null, ...viewport })
-    expect(beside).toEqual({ side: null, align: "center", position: { x: 10, y: 300 } })
-    const outside = snapToolbarPosition({ point: { x: 1100, y: 900 }, size: bar, glued: null, ...viewport })
-    expect(outside.position).toEqual({ x: 892, y: 752 })
+  it("never leaves a toolbar free: one with no edge takes the nearest, however far", () => {
+    const near = snapToolbarPosition({ point: { x: 30, y: 200 }, size: column, glued: null, ...viewport })
+    expect(near).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
+    // In the middle of the screen, a little nearer the bottom than anything else.
+    const away = snapToolbarPosition({ point: { x: 450, y: 500 }, size: bar, glued: null, ...viewport })
+    expect(away).toEqual({ side: "bottom", align: "center", position: { x: 450, y: 744 } })
   })
 
   it("keeps a glued toolbar in the middle of its edge, whatever its size", () => {
@@ -80,7 +74,7 @@ describe("snapToolbarPosition", () => {
   })
 
   it("glues to the top when the top-left corner is reached first", () => {
-    const result = snapToolbarPosition({ point: { x: 20, y: 20 }, size: bar, glued: undefined, ...viewport })
+    const result = snapToolbarPosition({ point: { x: 20, y: 20 }, size: bar, glued: null, ...viewport })
     expect(result.side).toBe("top")
     expect(result.position.y).toBe(16)
   })
@@ -285,13 +279,19 @@ describe("dragToolbarPosition", () => {
     expect(drag({ x: 30, y: 500 }).position).toEqual({ x: 16, y: 350 })
   })
 
-  it("glues to a corner only when released in it, keeping the orientation it was dragged in", () => {
-    const corner = (x: number, y: number, upright: boolean) => cornerDropFor({ x, y }, upright, viewport.viewport)
-    expect(corner(30, 30, false)).toEqual({ side: "top", align: "start" })
-    expect(corner(30, 30, true)).toEqual({ side: "left", align: "start" })
-    expect(corner(1170, 770, false)).toEqual({ side: "bottom", align: "end" })
-    expect(corner(1170, 770, true)).toEqual({ side: "right", align: "end" })
-    expect(corner(400, 30, false)).toBe(null)
+  it("glues a toolbar let go off every edge to the drop zone nearest the pointer", () => {
+    const square = { width: 40, height: 40 }
+    const drop = (x: number, y: number, upright: boolean) => nearestDropFor({ x, y }, upright, square, viewport.viewport)
+    // A corner's zone goes to the edge that keeps the toolbar's orientation.
+    expect(drop(30, 30, false)).toEqual({ side: "top", align: "start" })
+    expect(drop(30, 30, true)).toEqual({ side: "left", align: "start" })
+    expect(drop(1170, 770, false)).toEqual({ side: "bottom", align: "end" })
+    expect(drop(1170, 770, true)).toEqual({ side: "right", align: "end" })
+    // Elsewhere it is simply the nearest zone, turning the toolbar if that edge needs it.
+    expect(drop(600, 300, false)).toEqual({ side: "top", align: "center" })
+    expect(drop(600, 500, true)).toEqual({ side: "bottom", align: "center" })
+    expect(drop(200, 400, false)).toEqual({ side: "left", align: "center" })
+    expect(drop(1000, 400, false)).toEqual({ side: "right", align: "center" })
   })
 
   it("keeps the pointer on the toolbar in every zone", () => {
