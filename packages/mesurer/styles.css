@@ -705,6 +705,12 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   animation: mesurer-toolbar-zone-in 180ms ease-out both;
 }
 
+/* The zone a toolbar released here would glue to: the same square, a little darker. */
+.mesurer-toolbar-zone[data-active="true"] {
+  border-color: rgba(15, 15, 20, 0.2);
+  background: rgba(15, 15, 20, 0.05);
+}
+
 @keyframes mesurer-toolbar-zone-in {
   from {
     opacity: 0;

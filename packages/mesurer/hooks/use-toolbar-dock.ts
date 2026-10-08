@@ -10,6 +10,8 @@ import { flushSync } from "react-dom"
 import { TOOLBAR_SIDES, type ToolbarDock, type ToolbarSide } from "../core/persistence"
 import {
   alignedDockPosition,
+  cornerDropFor,
+  dockAlignFor,
   dragToolbarPosition,
   isVerticalToolbarSide,
   snapToolbarPosition,
@@ -140,6 +142,12 @@ export const useToolbarDock = ({
   const grabRef = useRef({ along: 0.5, across: 0.5 })
   // Whether a wall is what turned the dragged bar, so it turns back when let off it.
   const pushedRef = useRef(false)
+  // Whether a toolbar pulled off an edge is still free, until the pointer is back in the middle.
+  const latchedRef = useRef(false)
+  // The corner a free toolbar is in, where releasing it glues it.
+  const cornerRef = useRef<{ side: ToolbarSide; align: DockAlign } | null>(null)
+  // The zone the toolbar would land in on release, as state, so it lights up while dragged.
+  const [landing, setLanding] = useState<{ side: ToolbarSide; align: DockAlign } | null>(null)
   const [dragging, setDragging] = useState(false)
   const drag = useToolbarDrag(
     { x: initialPosition.x, y: initialPosition.y },
@@ -154,13 +162,19 @@ export const useToolbarDock = ({
       let settled = released
       if (snapping) {
         // The drag already chose the edge, from the pointer. A glued toolbar settles in the
-        // middle of its edge or the corner it was left near; a free one stays where it is.
+        // middle of its edge or the corner it was left near. A free one stays where it is, unless
+        // it was let go in a corner, where it glues to that corner.
+        const corner = edgeRef.current ? null : cornerRef.current
         const result = snapToolbarPosition({
           point: released,
           size: barSize(),
           viewport: viewportSize(),
-          glued: edgeRef.current,
+          glued: corner ? corner.side : edgeRef.current,
+          align: corner?.align,
         })
+        cornerRef.current = null
+        setLanding(null)
+        if (corner) setEdge(result.side)
         setAlign(result.align)
         settled = result.position
         if (!samePoint(settled, released)) {
@@ -178,10 +192,18 @@ export const useToolbarDock = ({
             glued: edgeRef.current,
             upright: verticalRef.current,
             pushed: pushedRef.current,
+            latched: latchedRef.current,
             sizeFor,
             viewport: viewportSize(),
           })
           pushedRef.current = result.pushed
+          latchedRef.current = result.latched
+          // The zone it would land in: the edge and end it is on, or the corner a free one is in.
+          const landed = result.side
+            ? { side: result.side, align: dockAlignFor(result.side, result.position, sizeFor(result.upright), viewportSize()) }
+            : cornerDropFor(pointer, result.upright, viewportSize())
+          cornerRef.current = result.side ? null : landed
+          setLanding((prev) => (prev?.side === landed?.side && prev?.align === landed?.align ? prev : landed))
           setEdge(result.side, result.upright)
           return result.position
         }
@@ -195,12 +217,14 @@ export const useToolbarDock = ({
     const bar = barSize()
     const side = Math.min(bar.width, bar.height)
     const square = { width: side, height: side }
+    // The zone the toolbar would land in on release lights up.
+    const lit = landing && alignedDockPosition(landing.side, landing.align, square, viewportSize())
     // The corners belong to two edges: the top and bottom ones bring them.
     return TOOLBAR_SIDES.flatMap((edge) =>
-      (isVerticalToolbarSide(edge) ? DROP_ALIGNS.slice(0, 1) : DROP_ALIGNS).map((spot) => ({
-        ...alignedDockPosition(edge, spot, square, viewportSize()),
-        ...square,
-      })),
+      (isVerticalToolbarSide(edge) ? DROP_ALIGNS.slice(0, 1) : DROP_ALIGNS).map((spot) => {
+        const at = alignedDockPosition(edge, spot, square, viewportSize())
+        return { ...at, ...square, active: !!lit && samePoint(at, lit) }
+      }),
     )
   }
   const positionRef = useRef(position)
@@ -212,6 +236,7 @@ export const useToolbarDock = ({
     const y = (event.clientY - rect.top) / rect.height
     grabRef.current = vertical ? { along: y, across: x } : { along: x, across: y }
     pushedRef.current = false
+    latchedRef.current = false
     drag.onPointerDown(event)
   }
 

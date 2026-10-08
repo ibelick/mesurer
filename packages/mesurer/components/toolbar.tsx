@@ -1126,6 +1126,7 @@ function ToolbarComponent(
           key={index}
           aria-hidden="true"
           className="mesurer-toolbar-zone"
+          data-active={zone.active ? "true" : undefined}
           style={{ left: zone.x, top: zone.y, width: zone.width, height: zone.height }}
         />
       ))}

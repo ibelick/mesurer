@@ -408,6 +408,49 @@ test("tooltips stay hidden while the toolbar is dragged", async ({ page }) => {
   await expect(tooltips).toHaveCount(0);
 });
 
+test("a toolbar pulled straight off its corner comes free instead of turning onto the next edge", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  // Grabbed near its left end, in the top-left corner, and pulled straight down.
+  const x = box.x + 16;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, 400, { steps: 12 });
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await expect(toolbar).not.toHaveAttribute("data-edge");
+  await page.mouse.up();
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+  await expect(toolbar).not.toHaveAttribute("data-edge");
+});
+
+test("a toolbar approaching a corner picks no edge until it is released in the corner", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(600, 400, { steps: 12 });
+  await expect(toolbar).not.toHaveAttribute("data-edge");
+  await expect(page.locator(".mesurer-toolbar-zone[data-active=\"true\"]")).toHaveCount(0);
+  // Inside the corner's radius, but not yet over either edge's zone: still free.
+  await page.mouse.move(60, 60, { steps: 12 });
+  await expect(toolbar).not.toHaveAttribute("data-edge");
+  await expect(page.locator(".mesurer-toolbar-zone[data-active=\"true\"]")).toHaveCount(1);
+  await page.mouse.up();
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  await expect(toolbar).toHaveAttribute("data-orientation", "horizontal");
+});
+
 test("a minimized toolbar turns without a swing", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
@@ -431,6 +474,8 @@ test("a minimized toolbar turns without a swing", async ({ page }) => {
   if (!box) throw new Error("toolbar not visible");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
+  // Pulled off its corner it stays free, and only turns once it is back in the middle.
+  await page.mouse.move(300, 300, { steps: 10 });
   await page.mouse.move(30, 300, { steps: 10 });
   await expect(toolbar).toHaveAttribute("data-orientation", "vertical");
   await page.mouse.move(300, 300, { steps: 10 });
@@ -463,8 +508,8 @@ test("a glued toolbar stays in the middle of its edge when closed, opened and re
   expect((await middle()).x).toBe(550);
   await close();
   expect((await middle()).x).toBe(550);
-  // Dragged along the edge while closed, it settles back in the middle.
-  await dragBy(page, toolbar, 300, 0);
+  // Dragged along the edge while closed, it settles back in the middle, the nearest spot.
+  await dragBy(page, toolbar, 200, 0);
   expect((await middle()).x).toBe(550);
   await open();
   expect((await middle()).x).toBe(550);
@@ -1145,4 +1190,23 @@ test("auto-hide keeps the toolbar hidden while something is being drawn toward i
   await page.mouse.move(700, 400, { steps: 4 });
   await expect.poll(y).toBe(-34);
   await page.mouse.up();
+});
+
+test("a drag lights the drop zone the toolbar would land in, on an edge too", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  const box = await toolbar.boundingBox();
+  if (!box) throw new Error("toolbar not visible");
+  const lit = page.locator('.mesurer-toolbar-zone[data-active="true"]');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Along the top edge, away from the corners: the middle zone lights up.
+  await page.mouse.move(600, 40, { steps: 12 });
+  await expect(toolbar).toHaveAttribute("data-edge", "top");
+  await expect(lit).toHaveCount(1);
+  await page.mouse.up();
+  await expect(lit).toHaveCount(0);
 });

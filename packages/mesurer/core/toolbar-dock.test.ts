@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ToolbarSide } from "./persistence"
-import { dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition, toolbarZone } from "./toolbar-dock"
+import { cornerDropFor, dockedToolbarPosition, dragToolbarPosition, isVerticalToolbarSide, snapToolbarPosition, toolbarZone } from "./toolbar-dock"
 
 const viewport = { viewport: { width: 1200, height: 800 } }
 const bar = { width: 300, height: 40 }
@@ -25,7 +25,7 @@ describe("dockedToolbarPosition", () => {
 
 describe("snapToolbarPosition", () => {
   it("reads an unknown edge from the toolbar: close to one it glues there", () => {
-    const result = snapToolbarPosition({ point: { x: 30, y: 100 }, size: column, glued: undefined, ...viewport })
+    const result = snapToolbarPosition({ point: { x: 30, y: 200 }, size: column, glued: undefined, ...viewport })
     expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
     const away = snapToolbarPosition({ point: { x: 80, y: 300 }, size: bar, glued: undefined, ...viewport })
     expect(away).toEqual({ side: null, align: "center", position: { x: 80, y: 300 } })
@@ -39,12 +39,24 @@ describe("snapToolbarPosition", () => {
   })
 
   it("keeps a glued toolbar in the middle of its edge, whatever its size", () => {
-    const result = snapToolbarPosition({ point: { x: 40, y: 400 }, size: column, glued: "left", ...viewport })
+    const result = snapToolbarPosition({ point: { x: 40, y: 300 }, size: column, glued: "left", ...viewport })
     expect(result).toEqual({ side: "left", align: "center", position: { x: 16, y: 250 } })
     const icon = snapToolbarPosition({ point: { x: 16, y: 250 }, size: { width: 40, height: 40 }, glued: "left", ...viewport })
     expect(icon.position).toEqual({ x: 16, y: 380 })
     const top = snapToolbarPosition({ point: { x: 450, y: 16 }, size: bar, glued: "top", ...viewport })
     expect(top.position).toEqual({ x: 450, y: 16 })
+  })
+
+  it("settles on the nearest of the edge's three spots", () => {
+    // A 300px bar on a 1200px edge slides between 16 and 884, around a middle at 450.
+    const at = (x: number) => snapToolbarPosition({ point: { x, y: 16 }, size: bar, glued: "top", ...viewport }).align
+    expect(at(16)).toBe("start")
+    expect(at(233)).toBe("start")
+    expect(at(234)).toBe("center")
+    expect(at(450)).toBe("center")
+    expect(at(666)).toBe("center")
+    expect(at(667)).toBe("end")
+    expect(at(884)).toBe("end")
   })
 
   it("settles in a corner when the toolbar sits close to the edge across from its glue", () => {
@@ -100,21 +112,33 @@ describe("toolbarZone", () => {
     expect(held(78, 400, "left")).toBe("left")
     expect(held(81, 400, "left")).toBe(null)
     expect(zone(78, 400)).toBe(null)
-    // In a corner the same margin favours the edge it is on.
-    expect(held(30, 34, "top")).toBe("top")
-    expect(held(30, 34, "left")).toBe("left")
-    expect(held(30, 40, "top")).toBe("left")
   })
 
-  it("splits each corner on its diagonal", () => {
-    expect(zone(30, 20)).toBe("top")
-    expect(zone(20, 30)).toBe("left")
-    expect(zone(1180, 30)).toBe("right")
-    expect(zone(1170, 20)).toBe("top")
-    expect(zone(20, 770)).toBe("left")
-    expect(zone(30, 780)).toBe("bottom")
-    expect(zone(1180, 770)).toBe("right")
-    expect(zone(1170, 780)).toBe("bottom")
+  it("keeps a toolbar in a corner on its edge until the pointer leaves that edge's band", () => {
+    const held = (x: number, y: number, side: ToolbarSide) => toolbarZone({ x, y }, viewport.viewport, side)
+    // Inside the corner's radius a toolbar on either edge keeps it, wherever the pointer is.
+    for (const [x, y] of [[36, 36], [10, 60], [60, 10], [20, 78]]) {
+      expect(held(x, y, "top")).toBe("top")
+      expect(held(x, y, "left")).toBe("left")
+    }
+    // Out of its own band, in the corner, it is free: it never hops onto the adjacent edge.
+    expect(held(36, 81, "top")).toBe(null)
+    expect(held(81, 36, "left")).toBe(null)
+    // Pulled out of the corner toward the middle, it comes free without turning.
+    expect(held(90, 90, "top")).toBe(null)
+    expect(held(90, 90, "left")).toBe(null)
+  })
+
+  it("leaves each corner to no edge within its radius, and the bands take over just outside it", () => {
+    for (const [x, y] of [[30, 20], [20, 30], [1180, 30], [20, 770], [30, 780], [1170, 780]]) {
+      expect(zone(x, y)).toBe(null)
+    }
+    expect(zone(130, 20)).toBe("top")
+    expect(zone(20, 130)).toBe("left")
+    expect(zone(1070, 20)).toBe("top")
+    expect(zone(20, 670)).toBe("left")
+    expect(zone(1180, 130)).toBe("right")
+    expect(zone(130, 780)).toBe("bottom")
   })
 
   it("mirrors exactly across the viewport, so both sides and both ends behave alike", () => {
@@ -165,11 +189,11 @@ describe("dragToolbarPosition", () => {
       dragToolbarPosition({ pointer, grab: { along: 0.9, across: 0.5 }, glued: null, upright, sizeFor, ...viewport })
     expect(byEnd({ x: 270, y: 400 }, false)).toMatchObject({ side: null, upright: false, position: { x: 8, y: 380 } })
     // Pushed 40px further it stands up, free, under the pointer.
-    expect(byEnd({ x: 230, y: 400 }, false)).toEqual({ side: null, upright: true, pushed: true, position: { x: 210, y: 130 } })
+    expect(byEnd({ x: 230, y: 400 }, false)).toEqual({ side: null, upright: true, pushed: true, latched: false, position: { x: 210, y: 130 } })
     // Standing, it is not pushed any more, so it stays that way when the pointer backs off.
     expect(byEnd({ x: 400, y: 400 }, true).upright).toBe(true)
     // The mirror: a column pushed up into the top wall lies flat.
-    expect(byEnd({ x: 600, y: 230 }, true)).toEqual({ side: null, upright: false, pushed: true, position: { x: 330, y: 210 } })
+    expect(byEnd({ x: 600, y: 230 }, true)).toEqual({ side: null, upright: false, pushed: true, latched: false, position: { x: 330, y: 210 } })
     // It does not turn into a wall that would push it straight back: it would flip back and forth.
     expect(byEnd({ x: 230, y: 200 }, false).upright).toBe(false)
     expect(byEnd({ x: 230, y: 250 }, false).upright).toBe(true)
@@ -188,6 +212,29 @@ describe("dragToolbarPosition", () => {
     expect(byEnd({ x: 40, y: 400 }, true, true)).toMatchObject({ side: "left", pushed: false })
   })
 
+  it("lets a toolbar pulled off an edge in a corner go free, not onto the adjacent edge", () => {
+    // Glued to the top, in the top-left corner, pulled straight down past the top band.
+    let state = drag({ x: 36, y: 40 }, false, "top")
+    expect(state.side).toBe("top")
+    const pull = (pointer: { x: number; y: number }) => {
+      state = dragToolbarPosition({
+        pointer,
+        grab,
+        glued: state.side,
+        upright: state.upright,
+        pushed: state.pushed,
+        latched: state.latched,
+        sizeFor,
+        ...viewport,
+      })
+      return state
+    }
+    for (const y of [81, 120, 300]) expect(pull({ x: 36, y }).side).toBe(null)
+    // Back in the middle the toolbar is free to glue again, to whichever edge it reaches first.
+    expect(pull({ x: 600, y: 400 }).side).toBe(null)
+    expect(pull({ x: 36, y: 400 }).side).toBe("left")
+  })
+
   it("leaves the middle of a short edge out of the corners' pull", () => {
     // A 300px column on a 600px edge has 268px to slide in: its middle is 134px from either end.
     const short = { viewport: { width: 1200, height: 600 } }
@@ -195,16 +242,29 @@ describe("dragToolbarPosition", () => {
       dragToolbarPosition({ pointer: { x: 30, y }, grab, glued: "left", upright: true, sizeFor, ...short }).position.y
     expect(at(300)).toBe(150)
     expect(at(280)).toBe(130)
-    expect(at(190)).toBe(16)
+    expect(at(180)).toBe(16)
+  })
+
+  it("draws a toolbar into a corner and lets it out without a dead stretch", () => {
+    // The grab is the bar's middle: its left edge is 150px left of the pointer.
+    const x = (pointerX: number) => drag({ x: pointerX, y: 36 }, false, "top").position.x
+    expect(x(166)).toBe(16)
+    expect(x(182)).toBe(16)
+    // Past the pin it already moves, behind the pointer, and has caught up by the end of the pull.
+    expect(x(200)).toBeGreaterThan(16)
+    expect(x(200)).toBeLessThan(50)
+    expect(x(230)).toBeGreaterThan(x(200))
+    expect(x(262)).toBe(112)
+    expect(x(300)).toBe(150)
   })
 
   it("holds a free toolbar at the grabbed spot", () => {
-    expect(drag({ x: 600, y: 400 })).toEqual({ side: null, upright: false, pushed: false, position: { x: 450, y: 380 } })
+    expect(drag({ x: 600, y: 400 })).toEqual({ side: null, upright: false, pushed: false, latched: false, position: { x: 450, y: 380 } })
   })
 
   it("keeps its orientation in the free middle, and only turns in an edge zone", () => {
     // Pulled off a side edge it stays a column, under the pointer.
-    expect(drag({ x: 90, y: 400 }, true)).toEqual({ side: null, upright: true, pushed: false, position: { x: 70, y: 250 } })
+    expect(drag({ x: 90, y: 400 }, true)).toEqual({ side: null, upright: true, pushed: false, latched: false, position: { x: 70, y: 250 } })
     expect(drag({ x: 600, y: 400 }, true).upright).toBe(true)
     // Pulled off the top it stays a row, even right beside the left edge's zone.
     expect(drag({ x: 90, y: 90 }, false).upright).toBe(false)
@@ -216,13 +276,22 @@ describe("dragToolbarPosition", () => {
   })
 
   it("stands the toolbar up under the pointer in a side zone", () => {
-    expect(drag({ x: 40, y: 400 })).toEqual({ side: "left", upright: true, pushed: false, position: { x: 20, y: 250 } })
+    expect(drag({ x: 40, y: 400 })).toEqual({ side: "left", upright: true, pushed: false, latched: false, position: { x: 20, y: 250 } })
     expect(drag({ x: 20, y: 400 }).position).toEqual({ x: 16, y: 250 })
   })
 
   it("slides along the edge with the pointer", () => {
     expect(drag({ x: 30, y: 300 }).position).toEqual({ x: 16, y: 150 })
-    expect(drag({ x: 30, y: 700 }).position).toEqual({ x: 16, y: 800 - 300 - 16 })
+    expect(drag({ x: 30, y: 500 }).position).toEqual({ x: 16, y: 350 })
+  })
+
+  it("glues to a corner only when released in it, keeping the orientation it was dragged in", () => {
+    const corner = (x: number, y: number, upright: boolean) => cornerDropFor({ x, y }, upright, viewport.viewport)
+    expect(corner(30, 30, false)).toEqual({ side: "top", align: "start" })
+    expect(corner(30, 30, true)).toEqual({ side: "left", align: "start" })
+    expect(corner(1170, 770, false)).toEqual({ side: "bottom", align: "end" })
+    expect(corner(1170, 770, true)).toEqual({ side: "right", align: "end" })
+    expect(corner(400, 30, false)).toBe(null)
   })
 
   it("keeps the pointer on the toolbar in every zone", () => {
