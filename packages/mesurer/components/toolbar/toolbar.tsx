@@ -477,14 +477,6 @@ function ToolbarComponent(
     // Cleared in this order: what was half done first, then what was selected.
     onCancelTransient();
     clearSelection();
-    // The previews are for inspecting: Inspect stays on there rather than switching off, so a
-    // click on the button is never a click that leaves them inert.
-    if (responsive.open) {
-      startTool();
-      tools.setMode("select");
-      onInteract();
-      return;
-    }
     toggleTool("select");
   };
 
