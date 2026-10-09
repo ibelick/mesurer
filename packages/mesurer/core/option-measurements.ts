@@ -39,7 +39,6 @@ export const getOptionPairOverlay = (params: {
   hoverElement: Element | null
   selectedElementRef: Element | null
 }) => {
-  const ownerDocument = params.document ?? document
   const ownerWindow = params.window ?? window
   if (!params.altPressed) return null
   if (!params.selectedGuide && !params.primarySelectedMeasurement) return null

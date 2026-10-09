@@ -1,4 +1,4 @@
-import { SettingsButton } from "./settings-button"
+import { SettingsButton } from "../settings-button"
 
 const twoDigits = (value: number) => String(Math.floor(value)).padStart(2, "0")
 

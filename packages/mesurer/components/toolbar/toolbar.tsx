@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, ReactNode, Ref, SetStateAction } from "react";
+import type { Ref } from "react";
 import {
   forwardRef,
   memo,
@@ -11,158 +11,58 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import type { OpenMenu, ToolMode } from "../core/types";
-import type { CommentFilter, CommentThread } from "../comments/types";
-import { cn } from "../core/utils";
-import type { ToolbarDock } from "../core/persistence";
-import type { ToolbarPlacement } from "../core/toolbar-dock";
-import { surfaceAlignFor } from "../core/toolbar-dock";
-import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
-import { useToolbarDock } from "../hooks/use-toolbar-dock";
-import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
-import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
-import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
-import { useCommentsCopied } from "../hooks/use-comments-copied";
-import { usePageListener } from "../hooks/use-page-listener";
-import { TOOLBAR_SIDE_ATTRIBUTE } from "./screen-recording-editor";
-import { MotionPlayer } from "./motion-player";
-import { CaptureToast } from "./capture-toast";
-import { ScreenshotPreview } from "./screenshot-preview";
-import { Tooltip, TooltipLayerContext } from "./tooltip";
-import { ToolGroupSwitch, type ToolGroup } from "./tool-group-switch";
-import { CommentsPanel } from "./comments-panel";
-import { LayoutGuidesPanel } from "./layout-guides-panel";
-import { findDeleteConfirmation } from "../comments/comment-delete-confirmation";
-import { MenuItem, MenuSurface, ToolbarFloatingSurface, ToolbarMenu, ToolbarMenuItem } from "./menu";
-import type { ResolvedMesurerFeatures } from "../core/features";
-import type { LayoutGuide } from "../core/layout-guides";
+import type { OpenMenu, ToolMode } from "../../core/types";
+import { surfaceAlignFor } from "../../core/toolbar-dock";
+import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../../core/toolbar-motion";
+import { useToolbarAutoHide } from "../../hooks/use-toolbar-auto-hide";
+import { useToolbarDock } from "../../hooks/use-toolbar-dock";
+import { useToolbarGroupMotion } from "../../hooks/use-toolbar-group-motion";
+import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../../hooks/use-floating-surface-placement";
+import { useToolbarTooltip } from "../../hooks/use-toolbar-tooltip";
+import { useCommentsCopied } from "../../hooks/use-comments-copied";
+import { usePageListener } from "../../hooks/use-page-listener";
+import { TOOLBAR_SIDE_ATTRIBUTE } from "../screen-recording";
+import { MotionPlayer } from "../motion-player";
+import { CaptureToast } from "../capture-toast";
+import { ScreenshotPreview } from "../screenshot-preview";
+import { Tooltip, TooltipLayerContext } from "../tooltip";
+import { ToolGroupSwitch, type ToolGroup } from "../tool-group-switch";
+import { CommentsPanel } from "../comments-panel";
+import { LayoutGuidesPanel } from "../layout-guides-panel";
+import { findDeleteConfirmation } from "../../comments/comment-delete-confirmation";
+import { ToolbarFloatingSurface } from "../menu";
 import {
-  CaretDownIcon,
   ArrowIcon,
   PenIcon,
   BoxSelectIcon,
-  CheckIcon,
   CameraIcon,
   RecordIcon,
   ColorPickerIcon,
   CursorIcon,
   GearIcon,
   MesurerMarkIcon,
-  MinusIcon,
   RulerIcon,
   RulersIcon,
   TextIcon,
   XrayIcon,
   CommentIcon,
   LayoutGridIcon,
-} from "./icons";
+} from "../icons";
+import { CaptureMenu, CommentsMenu } from "./toolbar-menus";
+import { GuideOrientationMenu } from "./guide-orientation-menu";
+import { ToolbarButton, ToolbarCaretButton, ToolbarDivider, ToolbarGroup } from "./toolbar-button";
+import { exclusiveToolId, getSettingsShortcut, isAnnotateToolMode, toolGroupForMode } from "./tool-modes";
+import type { ToolbarProps } from "./types";
 
-type ToolbarTools = {
-  mode: ToolMode;
-  setMode: Dispatch<SetStateAction<ToolMode>>;
-  setEnabled: Dispatch<SetStateAction<boolean>>;
-  xrayVisible: boolean;
-  setXrayVisible: Dispatch<SetStateAction<boolean>>;
-  rulersVisible: boolean;
-  setRulersVisible: Dispatch<SetStateAction<boolean>>;
-  guideOrientation: "vertical" | "horizontal";
-  setGuideOrientation: Dispatch<SetStateAction<"vertical" | "horizontal">>;
-  clearSelection: () => void;
-};
-
-type ToolbarColorPicker = {
-  active: boolean;
-  setActive: Dispatch<SetStateAction<boolean>>;
-  onClick: () => void;
-  panel: ReactNode;
-};
-
-type ToolbarScreenshot = {
-  active: boolean;
-  error: boolean;
-  previewUrl: string | null;
-  copy: boolean;
-  download: boolean;
-  shareMode: "screenshot" | "record";
-  onClick: () => void;
-  onCancel: () => void;
-  onPreviewExited: () => void;
-};
-
-type ToolbarScreenRecording = {
-  selecting: boolean;
-  recording: boolean;
-  elapsed: number;
-  error: boolean;
-  panel: ReactNode;
-  onClick: () => void;
-  onCancel: () => void;
-  onStop: () => void;
-};
-
-type ToolbarSettings = {
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-  onToggle: () => void;
-  panel: ReactNode;
-};
-
-type ToolbarComments = {
-  count: number;
-  onCopy: () => void | Promise<void>;
-  comments: CommentThread[];
-  unresolvedIds: ReadonlySet<string>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-  onDeleteAll: () => void;
-  onResolveAll: () => void;
-  onToggleResolved: (id: string) => void;
-  statusFilter: CommentFilter;
-  onStatusFilterChange: (filter: CommentFilter) => void;
-};
-
-type ToolbarLayoutGuides = {
-  items: LayoutGuide[];
-  onChange: Dispatch<SetStateAction<LayoutGuide[]>>;
-  onToggle: () => void;
-  visible: boolean;
-};
-
-type ToolbarProps = {
-  eventTarget: Window;
-  initialPosition: ToolbarPlacement;
-  onPositionChange?: (placement: ToolbarPlacement) => void;
-  dock?: ToolbarDock;
-  autoHide?: boolean;
-  minimized: boolean;
-  onInteract: () => void;
-  onRestore: () => void;
-  onCancelTransient: () => void;
-  tools: ToolbarTools;
-  colorPicker: ToolbarColorPicker;
-  screenshot: ToolbarScreenshot;
-  screenRecording: ToolbarScreenRecording;
-  motion: {
-    element: Element | null;
-    ownerWindow: Window;
-    playable: boolean;
-    observedProperties: string[];
-    observedTargets: import("../core/observed-motion").ObservedMotionTarget[];
-    inspectDetails: (motionDetails: ReactNode) => ReactNode;
-  };
-  comments: ToolbarComments;
-  layoutGuides: ToolbarLayoutGuides;
-  settings: ToolbarSettings;
-  features: ResolvedMesurerFeatures;
-  openMenu: OpenMenu;
-  setOpenMenu: Dispatch<SetStateAction<OpenMenu>>;
-};
 const TOOLBAR_HEIGHT = 40;
-// How long an auto-hidden bar stays out once the pointer has left it.
-const TUCK_DELAY_MS = 600;
-// A little longer than the slide in and out of view takes (260ms in styles.css).
-const TUCK_SLIDE_MS = 320;
+
+// The annotate tools, in the order they sit on the bar.
+const ANNOTATE_TOOLS = [
+  { mode: "selection", label: "Select", shortcut: "S", Icon: CursorIcon },
+  { mode: "arrows", label: "Arrows", shortcut: "D", Icon: ArrowIcon },
+  { mode: "pen", label: "Pen", shortcut: "N", Icon: PenIcon },
+  { mode: "text", label: "Text", shortcut: "T", Icon: TextIcon },
+] as const;
 const TOOLTIP_HEIGHT_WITH_GAP = 34;
 
 // Menus sit above the toolbar's other surfaces.
@@ -170,154 +70,6 @@ const floatingMenuStyle = (placement: FloatingSurfacePlacement) => ({
   zIndex: 120,
   ...surfaceStyle(placement),
 });
-
-const getSettingsShortcut = (eventTarget: Window) =>
-  /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform)
-    ? "⌘ ,"
-    : "Ctrl + ,";
-
-const toolGroupForMode = (
-  mode: ToolMode,
-  colorPickerActive: boolean,
-): ToolGroup | null => {
-  if (colorPickerActive) return "inspect";
-  // Comments sit in the trailing cluster; keep whichever inspect/annotate group is open.
-  if (mode === "comments") return null;
-  if (
-    mode === "select" ||
-    mode === "guides" ||
-    mode === "xray" ||
-    mode === "rulers"
-  ) {
-    return "inspect";
-  }
-  if (
-    mode === "selection" ||
-    mode === "arrows" ||
-    mode === "pen" ||
-    mode === "text"
-  ) {
-    return "annotate";
-  }
-  return null;
-};
-
-const isAnnotateToolMode = (mode: ToolMode) =>
-  mode === "selection" || mode === "arrows" || mode === "pen" || mode === "text" || mode === "comments";
-
-const exclusiveToolId = (
-  mode: ToolMode,
-  colorPickerActive: boolean,
-): string | null => {
-  if (colorPickerActive) return "color-picker";
-  switch (mode) {
-    case "select":
-    case "guides":
-    case "selection":
-    case "arrows":
-    case "pen":
-    case "text":
-    case "comments":
-      return mode;
-    default:
-      return null;
-  }
-};
-
-type ToolbarTooltipProps = {
-  tooltipInstant: boolean;
-  tooltipSide: "top" | "bottom" | "left" | "right";
-  onTooltipEnter: (id: string) => void;
-  onTooltipLeave: (id: string) => void;
-};
-
-type ToolbarButtonProps = {
-  id: string;
-  active: boolean;
-  label: string;
-  shortcut?: string;
-  onClick: () => void;
-  tooltipVisible: boolean;
-  tooltip: ToolbarTooltipProps;
-  children: ReactNode;
-  className?: string;
-};
-
-function ToolbarButton({
-  id,
-  active,
-  label,
-  shortcut,
-  onClick,
-  tooltipVisible,
-  tooltip,
-  children,
-  className,
-}: ToolbarButtonProps) {
-  const anchorRef = useRef<HTMLDivElement | null>(null);
-  return (
-    <div
-      ref={anchorRef}
-      className="msr:relative"
-      data-tool-id={id}
-      onMouseEnter={() => tooltip.onTooltipEnter(id)}
-      onMouseLeave={() => tooltip.onTooltipLeave(id)}
-    >
-      <button
-        type="button"
-        aria-pressed={active}
-        aria-label={`${label} (${shortcut})`}
-        className={cn(
-          "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:outline-none",
-          active
-            ? "msr:bg-[#0d99ff] msr:text-white"
-            : "msr:bg-transparent msr:text-ink-900 msr:hover:bg-black/4",
-          className,
-        )}
-        onClick={onClick}
-      >
-        {children}
-      </button>
-      <Tooltip
-        label={label}
-        shortcut={shortcut}
-        visible={tooltipVisible}
-        instant={tooltip.tooltipInstant}
-        side={tooltip.tooltipSide}
-        anchorRef={anchorRef}
-      />
-    </div>
-  );
-}
-
-function ToolbarGroup({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label={label}
-      className={cn("mesurer-toolbar-flow msr:flex msr:items-center msr:gap-1 msr:py-1", className)}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ToolbarDivider() {
-  return (
-    <div
-      aria-hidden="true"
-      className="mesurer-toolbar-divider"
-    />
-  );
-}
 
 function ToolbarComponent(
   {
@@ -398,9 +150,6 @@ function ToolbarComponent(
   // The bar's box as laid out. Unlike the bar itself it is never rotated by a turn, so the
   // surfaces placed against it do not wander while the bar swings.
   const barBoxRef = useRef<HTMLDivElement | null>(null);
-  // Whether an auto-hidden bar is sliding in or out of view. It slides with a transform, which
-  // nothing that watches its layout sees, so its surfaces are placed again on every frame of it.
-  const [tuckSliding, setTuckSliding] = useState(false);
   const {
     visibleTooltipId,
     tooltipInstant,
@@ -508,7 +257,6 @@ function ToolbarComponent(
   );
   const xrayWasVisibleRef = useRef(xrayVisible);
   const rulersWereVisibleRef = useRef(rulersVisible);
-  const [activeMenuIndex, setActiveMenuIndex] = useState(0);
   const [tooltipLayer, setTooltipLayer] = useState<HTMLElement | null>(null);
   const layoutGuidesOpen = openMenu?.type === "layout-guides";
   const tooltipsEnabled = !dragging && !guideMenuOpen && !commentMenuOpen && !captureMenuOpen && !settingsOpen && !layoutGuidesOpen && !colorPickerActive;
@@ -637,12 +385,34 @@ function ToolbarComponent(
     onTooltipEnter,
     onTooltipLeave,
   };
+  // What every tool button needs for its tooltip.
+  const tool = (id: string) => ({
+    id,
+    tooltip: toolbarTooltip,
+    tooltipVisible: tooltipsEnabled && visibleTooltipId === id,
+  });
   const menuSide: "top" | "bottom" = nearBottom ? "top" : "bottom";
   const recordingPanelOpen = Boolean(screenRecording.panel);
   const motionPlayerOpen = motion.playable && !recordingPanelOpen;
   const floatingCardOpen = recordingPanelOpen || motionPlayerOpen;
   const captureAnchorRef = useRef<HTMLDivElement | null>(null);
   const colorPickerAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Auto-hide: a bar glued to an edge slides mostly out of view until the pointer comes back.
+  // It stays out while anything hangs off it: a menu, the settings, a card or the color picker.
+  const { tucked, pressedOff, tuckAnimated, tuckSliding } = useToolbarAutoHide({
+    eventTarget,
+    barRef: barBoxRef,
+    enabled: autoHide,
+    edge,
+    minimized,
+    busy:
+      dragging ||
+      settingsOpen ||
+      openMenu !== null ||
+      floatingCardOpen ||
+      colorPickerActive ||
+      screenshotPreviewUrl !== null,
+  });
   // Every menu and card is placed against the bar the same way: below or above a horizontal
   // one, beside a vertical one, and within the bar's own span. They are placed again whenever
   // the bar moves, turns or switches side, and frame by frame while it glides into place.
@@ -687,92 +457,55 @@ function ToolbarComponent(
   const { surfaceRef: commentsPanelRef, placement: commentsPlacement } =
     useFloatingSurfacePlacement({ ...controlSurface, anchorRef: commentButtonRef, open: commentsPanelOpen });
 
-  const selectMode = useCallback(() => {
+  // What every tool does first: drop whatever was half done and close what would be in its way.
+  const startTool = useCallback(() => {
+    onCancelTransient();
+    setEnabled(true);
+    setColorPickerActive(false);
+    onCancelScreenshot();
+  }, [onCancelScreenshot, onCancelTransient, setColorPickerActive, setEnabled]);
+  // Switches a tool on, or off when it is already the one in use.
+  const toggleTool = useCallback(
+    (mode: ToolMode) => {
+      startTool();
+      setToolMode((prev) => (prev === mode ? "none" : mode));
+      onInteract();
+    },
+    [onInteract, setToolMode, startTool],
+  );
+
+  const selectMode = () => {
+    // Cleared in this order: what was half done first, then what was selected.
     onCancelTransient();
     clearSelection();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
-    setToolMode((prev) => (prev === "select" ? "none" : "select"));
-    onInteract();
-  }, [clearSelection, onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
+    toggleTool("select");
+  };
 
-  const selectionMode = useCallback(() => {
-    onCancelTransient()
-    setEnabled(true)
-    setColorPickerActive(false)
-    onCancelScreenshot()
-    setToolMode((prev) => (prev === "selection" ? "none" : "selection"))
-    onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
-
-  const guidesMode = useCallback(() => {
-    onCancelTransient();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
-    setToolMode((prev) => (prev === "guides" ? "none" : "guides"));
+  const guidesMode = () => {
+    toggleTool("guides");
     setOpenMenu(null);
-    onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setOpenMenu, setToolMode]);
+  };
 
-  const arrowsMode = useCallback(() => {
-    onCancelTransient()
-    setEnabled(true)
-    setColorPickerActive(false)
-    onCancelScreenshot()
-    setToolMode((prev) => (prev === "arrows" ? "none" : "arrows"))
-    onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
+  // Comments sit in the trailing cluster, so they keep whichever tool group is open.
+  const commentsMode = () => {
+    preserveToolGroupRef.current = true;
+    setToolGroup("annotate");
+    toggleTool("comments");
+    setOpenMenu(null);
+  };
 
-  const penMode = useCallback(() => {
-    onCancelTransient()
-    setEnabled(true)
-    setColorPickerActive(false)
-    onCancelScreenshot()
-    setToolMode((prev) => (prev === "pen" ? "none" : "pen"))
-    onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode])
-
-  const textMode = useCallback(() => {
-    onCancelTransient();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
-    setToolMode((prev) => (prev === "text" ? "none" : "text"));
-    onInteract();
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setToolMode]);
-
-  const commentsMode = useCallback(() => {
-    onCancelTransient()
-    setEnabled(true)
-    setColorPickerActive(false)
-    onCancelScreenshot()
-    preserveToolGroupRef.current = true
-    setToolGroup("annotate")
-    setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
-    setOpenMenu(null)
-    onInteract()
-  }, [onCancelScreenshot, onCancelTransient, onInteract, setColorPickerActive, setEnabled, setOpenMenu, setToolMode])
-
-  const openCommentsPanel = useCallback(() => {
-    onCancelTransient()
-    setEnabled(true)
-    setColorPickerActive(false)
-    onCancelScreenshot()
+  const openCommentsPanel = () => {
+    startTool();
     if (toolMode !== "comments") {
-      preserveToolGroupRef.current = true
-      setToolGroup("annotate")
-      setToolMode("comments")
+      preserveToolGroupRef.current = true;
+      setToolGroup("annotate");
+      setToolMode("comments");
     }
-    setOpenMenu({ type: "comments", panel: true })
-  }, [onCancelScreenshot, onCancelTransient, setColorPickerActive, setEnabled, setOpenMenu, setToolMode, toolMode])
+    setOpenMenu({ type: "comments", panel: true });
+  };
 
   const xrayMode = useCallback(() => {
-    onCancelTransient();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
+    startTool();
     setXrayVisible((prev) => {
       const next = !prev;
       if (next && isAnnotateToolMode(toolMode)) {
@@ -834,10 +567,7 @@ function ToolbarComponent(
   }, [recordMode, recording, onScreenRecordingStop, screenshotMode, shareMode]);
 
   const rulersMode = useCallback(() => {
-    onCancelTransient();
-    setEnabled(true);
-    setColorPickerActive(false);
-    onCancelScreenshot();
+    startTool();
     setRulersVisible((prev) => {
       const next = !prev;
       if (next) setGuideControl("rulers");
@@ -1008,116 +738,6 @@ function ToolbarComponent(
         ? "msr:right-0"
         : "msr:left-1/2 msr:-translate-x-1/2";
 
-  // Auto-hide: a bar glued to an edge slides mostly out of view until the pointer comes back.
-  // It stays out while anything hangs off it: a menu, the settings, a card or the color picker.
-  const busy =
-    dragging ||
-    settingsOpen ||
-    openMenu !== null ||
-    floatingCardOpen ||
-    colorPickerActive ||
-    screenshotPreviewUrl !== null;
-  const idle = autoHide && edge !== null && !busy;
-  // The bar comes out as soon as the pointer is within reach of its edge, not only over the tab,
-  // or the keyboard reaches it, and only goes back a moment after they have left. Just dropped
-  // or just used, it starts out and waits that same moment, so it is seen landing before it hides.
-  const [revealed, setRevealed] = useState(false);
-  // A press that began off the bar (a guide, a stroke, a region being drawn) keeps it hidden
-  // until it ends, however close to the bar's edge it goes.
-  const [pressedOff, setPressedOff] = useState(false);
-  // New on the page or just opened from its closed state, it stays out until the pointer has
-  // reached it: it shows that it is there, and the pointer may be anywhere when a page loads or
-  // a shortcut opens it. Kept in a ref, so it outlives the effect below being run again.
-  const awaitedRef = useRef(true);
-  const wasMinimizedRef = useRef(minimized);
-  useLayoutEffect(() => {
-    if (wasMinimizedRef.current && !minimized) awaitedRef.current = true;
-    wasMinimizedRef.current = minimized;
-    if (!idle) {
-      // Only a bar that would otherwise be hiding is waited on.
-      awaitedRef.current = false;
-      setRevealed(busy);
-      setPressedOff(false);
-      return;
-    }
-    let timer: number | undefined;
-    const bar = barBoxRef.current;
-    const hideSoon = () => {
-      // Not before the pointer has been to it, nor while the keyboard is on it.
-      if (awaitedRef.current || bar?.querySelector(":focus-visible")) return;
-      timer ??= eventTarget.setTimeout(() => {
-        timer = undefined;
-        setRevealed(false);
-      }, TUCK_DELAY_MS);
-    };
-    const reach = 48;
-    const onPointerMove = (event: PointerEvent) => {
-      const rect = barBoxRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const { innerWidth: width, innerHeight: height } = eventTarget;
-      const alongX = event.clientX >= rect.left - 16 && event.clientX <= rect.right + 16;
-      const alongY = event.clientY >= rect.top - 16 && event.clientY <= rect.bottom + 16;
-      const near = {
-        top: event.clientY <= reach && alongX,
-        bottom: event.clientY >= height - reach && alongX,
-        left: event.clientX <= reach && alongY,
-        right: event.clientX >= width - reach && alongY,
-      }[edge!];
-      if (!near) hideSoon();
-      else if (event.buttons === 0) {
-        awaitedRef.current = false;
-        stay();
-      }
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      // The path is read through the shadow root the toolbar lives in.
-      setPressedOff(bar !== null && !event.composedPath().includes(bar));
-    };
-    const onPointerEnd = () => setPressedOff(false);
-    const stay = () => {
-      eventTarget.clearTimeout(timer);
-      timer = undefined;
-      setRevealed(true);
-    };
-    // Focus that came from the keyboard: a click on the bar leaves focus behind without it.
-    const onFocusIn = (event: FocusEvent) => {
-      if ((event.target as Element).matches(":focus-visible")) stay();
-    };
-    if (awaitedRef.current) stay();
-    else hideSoon();
-    eventTarget.addEventListener("pointermove", onPointerMove);
-    eventTarget.addEventListener("pointerdown", onPointerDown, true);
-    eventTarget.addEventListener("pointerup", onPointerEnd, true);
-    eventTarget.addEventListener("pointercancel", onPointerEnd, true);
-    bar?.addEventListener("focusin", onFocusIn);
-    bar?.addEventListener("focusout", hideSoon);
-    return () => {
-      eventTarget.clearTimeout(timer);
-      eventTarget.removeEventListener("pointermove", onPointerMove);
-      eventTarget.removeEventListener("pointerdown", onPointerDown, true);
-      eventTarget.removeEventListener("pointerup", onPointerEnd, true);
-      eventTarget.removeEventListener("pointercancel", onPointerEnd, true);
-      bar?.removeEventListener("focusin", onFocusIn);
-      bar?.removeEventListener("focusout", hideSoon);
-    };
-  }, [busy, edge, eventTarget, idle, minimized]);
-  const tucked = idle && !revealed;
-  // A surface opened while the bar is tucked (a shortcut, a capture that just finished) would
-  // otherwise be placed against where the bar was hiding, and end up on top of it.
-  useLayoutEffect(() => {
-    setTuckSliding(true);
-    const timer = eventTarget.setTimeout(() => setTuckSliding(false), TUCK_SLIDE_MS);
-    return () => eventTarget.clearTimeout(timer);
-  }, [eventTarget, tucked]);
-  // The tuck only animates once the bar has been painted, so nothing slides as the page loads.
-  const [tuckAnimated, setTuckAnimated] = useState(false);
-  useEffect(() => {
-    // Two frames: the first one places the bar on its edge.
-    let frame = eventTarget.requestAnimationFrame(() => {
-      frame = eventTarget.requestAnimationFrame(() => setTuckAnimated(true));
-    });
-    return () => eventTarget.cancelAnimationFrame(frame);
-  }, [eventTarget]);
   return (
     <div
       className="mesurer-toolbar-container msr:absolute msr:z-[100]"
@@ -1213,35 +833,29 @@ function ToolbarComponent(
                                 <div ref={inspectPanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
                                   <ToolbarGroup label="Select and inspect">
                                     <ToolbarButton
-                                      id="select"
+                                      {...tool("select")}
                                       active={toolMode === "select"}
                                       label="Inspect"
                                       shortcut="I"
                                       onClick={selectMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "select"}
                                     >
                                       <BoxSelectIcon size={20} />
                                     </ToolbarButton>
                                     <ToolbarButton
-                                      id="xray"
+                                      {...tool("xray")}
                                       active={xrayVisible}
                                       label="X-ray"
                                       shortcut="X"
                                       onClick={xrayMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "xray"}
                                     >
                                       <XrayIcon size={20} />
                                     </ToolbarButton>
                                     <ToolbarButton
-                                      id="guides"
+                                      {...tool("guides")}
                                       active={guideControl === "rulers" ? rulersVisible : toolMode === "guides"}
                                       label={guideControl === "rulers" ? "Rulers" : "Guides"}
                                       shortcut={guideControl === "rulers" ? "R" : "G"}
                                       onClick={guideControl === "rulers" ? rulersMode : guidesMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "guides"}
                                     >
                                       {guideControl === "rulers" ? (
                                         <RulersIcon size={20} />
@@ -1258,34 +872,12 @@ function ToolbarComponent(
                                       onMouseEnter={() => onTooltipEnter("guide-menu")}
                                       onMouseLeave={() => onTooltipLeave("guide-menu")}
                                     >
-                                      <button
-                                        type="button"
+                                      <ToolbarCaretButton
                                         ref={guideMenuButtonRef}
-                                        aria-label="Guide orientation menu"
-                                        aria-haspopup="menu"
-                                        aria-expanded={guideMenuOpen}
-                                        data-mesurer-menu-trigger
-                                        className={cn(
-                                          "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-                                          guideMenuOpen
-                                            ? "msr:bg-black/4 msr:text-ink-900"
-                                            : "msr:text-ink-900",
-                                        )}
-                                        onClick={() => {
-                                          if (!guideMenuOpen) {
-                                            setActiveMenuIndex(
-                                              features.rulers && guideControl === "rulers"
-                                                ? 0
-                                                : guideOrientation === "horizontal"
-                                                  ? features.rulers ? 1 : 0
-                                                  : features.rulers ? 2 : 1,
-                                            );
-                                          }
-                                          toggleToolbarMenu({ type: "guide-orientation" });
-                                        }}
-                                      >
-                                        <CaretDownIcon size={8} className="mesurer-toolbar-caret" />
-                                      </button>
+                                        label="Guide orientation menu"
+                                        open={guideMenuOpen}
+                                        onClick={() => toggleToolbarMenu({ type: "guide-orientation" })}
+                                      />
                                       <Tooltip
                                         label="Orientation Guide"
                                         visible={tooltipsEnabled && visibleTooltipId === "guide-menu"}
@@ -1293,121 +885,27 @@ function ToolbarComponent(
                                         side={tooltipSide}
                                         anchorRef={guideMenuRef}
                                       />
-                                      {guideMenuOpen ? (() => {
-                                        const menu = (
-                                          <ToolbarMenu
+                                      {guideMenuOpen
+                                        ? createPortal(
+                                          <GuideOrientationMenu
                                             ref={guideMenuPortalRef}
-                                            floating
-                                            floatingStyle={floatingMenuStyle(guideMenuPortalPlacement)}
+                                            style={floatingMenuStyle(guideMenuPortalPlacement)}
                                             side={menuSide}
-                                            tabIndex={0}
-                                            onKeyDown={(event) => {
-                                              const key = event.key.toLowerCase();
-                                              const itemCount = features.rulers ? 3 : 2;
-                                              const horizontalIndex = features.rulers ? 1 : 0;
-                                              const verticalIndex = features.rulers ? 2 : 1;
-                                              if (event.key === "ArrowDown") {
-                                                event.preventDefault();
-                                                setActiveMenuIndex((prev) => (prev + 1) % itemCount);
-                                              }
-                                              if (event.key === "ArrowUp") {
-                                                event.preventDefault();
-                                                setActiveMenuIndex((prev) => (prev - 1 + itemCount) % itemCount);
-                                              }
-                                              if (event.key === "Enter") {
-                                                event.preventDefault();
-                                                if (features.rulers && activeMenuIndex === 0) selectRulers();
-                                                else if (activeMenuIndex === horizontalIndex) selectGuideOrientation("horizontal");
-                                                else if (activeMenuIndex === verticalIndex) selectGuideOrientation("vertical");
-                                              }
-                                              if (features.rulers && key === "r") {
-                                                event.preventDefault();
-                                                selectRulers();
-                                              }
-                                              if (key === "h") {
-                                                event.preventDefault();
-                                                selectGuideOrientation("horizontal");
-                                              }
-                                              if (key === "v") {
-                                                event.preventDefault();
-                                                selectGuideOrientation("vertical");
-                                              }
-                                              if (event.key === "Escape") {
-                                                event.preventDefault();
-                                                event.stopPropagation();
-                                                setOpenMenu(null);
-                                              }
-                                            }}
-                                          >
-                                            {features.rulers ? (
-                                              <MenuItem
-                                                className={cn(
-                                                  "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                                                  activeMenuIndex === 0 || guideControl === "rulers"
-                                                    ? "msr:bg-[#0d99ff] msr:text-white"
-                                                    : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                                                )}
-                                                onClick={() => selectRulers()}
-                                              >
-                                                <CheckIcon
-                                                  size={12}
-                                                  className={cn(guideControl === "rulers" ? "msr:opacity-100" : "msr:opacity-0")}
-                                                />
-                                                <RulersIcon size={12} />
-                                                <span className="msr:flex-1">Rulers</span>
-                                                <span>R</span>
-                                              </MenuItem>
-                                            ) : null}
-                                            <MenuItem
-                                              className={cn(
-                                                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                                                activeMenuIndex === (features.rulers ? 1 : 0) || (guideControl === "guides" && guideOrientation === "horizontal")
-                                                  ? "msr:bg-[#0d99ff] msr:text-white"
-                                                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                                              )}
-                                              onClick={() => selectGuideOrientation("horizontal")}
-                                            >
-                                              <CheckIcon
-                                                size={12}
-                                                className={cn(
-                                                  guideControl === "guides" && guideOrientation === "horizontal"
-                                                    ? "msr:opacity-100"
-                                                    : "msr:opacity-0",
-                                                )}
-                                              />
-                                              <MinusIcon size={12} />
-                                              <span className="msr:flex-1">Horizontal</span>
-                                              <span>H</span>
-                                            </MenuItem>
-                                            <MenuItem
-                                              className={cn(
-                                                "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
-                                                activeMenuIndex === (features.rulers ? 2 : 1) || (guideControl === "guides" && guideOrientation === "vertical")
-                                                  ? "msr:bg-[#0d99ff] msr:text-white"
-                                                  : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
-                                              )}
-                                              onClick={() => selectGuideOrientation("vertical")}
-                                            >
-                                              <CheckIcon
-                                                size={12}
-                                                className={cn(
-                                                  guideControl === "guides" && guideOrientation === "vertical"
-                                                    ? "msr:opacity-100"
-                                                    : "msr:opacity-0",
-                                                )}
-                                              />
-                                              <MinusIcon size={12} className="msr:rotate-90" />
-                                              <span className="msr:flex-1">Vertical</span>
-                                              <span>V</span>
-                                            </MenuItem>
-                                          </ToolbarMenu>
-                                        );
-                                        return createPortal(menu, commentPanelPortalTarget);
-                                      })() : null}
+                                            rulers={features.rulers}
+                                            control={guideControl}
+                                            orientation={guideOrientation}
+                                            onSelect={(choice) =>
+                                              choice === "rulers" ? selectRulers() : selectGuideOrientation(choice)
+                                            }
+                                            onClose={() => setOpenMenu(null)}
+                                          />,
+                                          commentPanelPortalTarget,
+                                        )
+                                        : null}
                                     </div>
                                     <div ref={layoutGuidesAnchorRef} className="msr:relative msr:flex">
                                       <ToolbarButton
-                                        id="layout-guides"
+                                        {...tool("layout-guides")}
                                         active={layoutGuides.visible}
                                         label="Layout guides"
                                         shortcut="L"
@@ -1415,8 +913,6 @@ function ToolbarComponent(
                                           dismissCaptureToasts();
                                           layoutGuides.onToggle();
                                         }}
-                                        tooltip={toolbarTooltip}
-                                        tooltipVisible={tooltipsEnabled && visibleTooltipId === "layout-guides"}
                                       >
                                         <LayoutGridIcon size={20} />
                                       </ToolbarButton>
@@ -1450,13 +946,11 @@ function ToolbarComponent(
                                     </div>
                                     <div ref={colorPickerAnchorRef} className="msr:relative msr:flex">
                                       <ToolbarButton
-                                        id="color-picker"
+                                        {...tool("color-picker")}
                                         active={colorPickerActive}
                                         label="Sample color"
                                         shortcut="P"
                                         onClick={colorPickerMode}
-                                        tooltip={toolbarTooltip}
-                                        tooltipVisible={tooltipsEnabled && visibleTooltipId === "color-picker"}
                                       >
                                         <ColorPickerIcon size={20} aria-hidden="true" />
                                       </ToolbarButton>
@@ -1485,50 +979,18 @@ function ToolbarComponent(
                               >
                                 <div ref={annotatePanelRef} className="mesurer-toolbar-tool-panel msr:px-1">
                                   <ToolbarGroup label="Annotate">
-                                    <ToolbarButton
-                                      id="selection"
-                                      active={toolMode === "selection"}
-                                      label="Select"
-                                      shortcut="S"
-                                      onClick={selectionMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "selection"}
-                                    >
-                                      <CursorIcon size={20} />
-                                    </ToolbarButton>
-                                    <ToolbarButton
-                                      id="arrows"
-                                      active={toolMode === "arrows"}
-                                      label="Arrows"
-                                      shortcut="D"
-                                      onClick={arrowsMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "arrows"}
-                                    >
-                                      <ArrowIcon size={20} aria-hidden="true" />
-                                    </ToolbarButton>
-                                    <ToolbarButton
-                                      id="pen"
-                                      active={toolMode === "pen"}
-                                      label="Pen"
-                                      shortcut="N"
-                                      onClick={penMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "pen"}
-                                    >
-                                      <PenIcon size={20} aria-hidden="true" />
-                                    </ToolbarButton>
-                                    <ToolbarButton
-                                      id="text"
-                                      active={toolMode === "text"}
-                                      label="Text"
-                                      shortcut="T"
-                                      onClick={textMode}
-                                      tooltip={toolbarTooltip}
-                                      tooltipVisible={tooltipsEnabled && visibleTooltipId === "text"}
-                                    >
-                                      <TextIcon size={20} aria-hidden="true" />
-                                    </ToolbarButton>
+                                    {ANNOTATE_TOOLS.map(({ mode, label, shortcut, Icon }) => (
+                                      <ToolbarButton
+                                        key={mode}
+                                        {...tool(mode)}
+                                        active={toolMode === mode}
+                                        label={label}
+                                        shortcut={shortcut}
+                                        onClick={() => toggleTool(mode)}
+                                      >
+                                        <Icon size={20} aria-hidden="true" />
+                                      </ToolbarButton>
+                                    ))}
                                   </ToolbarGroup>
                                 </div>
                               </div>
@@ -1577,90 +1039,42 @@ function ToolbarComponent(
                                     ) : null}
                                   </>
                                 ) : null}
-                                <button
-                                  type="button"
-                                  aria-label="Capture menu"
-                                  aria-haspopup="menu"
-                                  aria-expanded={captureMenuOpen}
-                                  data-mesurer-menu-trigger
-                                  className={cn(
-                                    "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-                                    captureMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
-                                  )}
+                                <ToolbarCaretButton
+                                  label="Capture menu"
+                                  open={captureMenuOpen}
                                   onClick={() => toggleToolbarMenu({ type: "capture" })}
-                                >
-                                  <CaretDownIcon size={8} aria-hidden="true" className="mesurer-toolbar-caret" />
-                                </button>
-                                {captureMenuOpen ? (() => {
-                                  const menu = (
-                                    <ToolbarMenu
+                                />
+                                {captureMenuOpen
+                                  ? createPortal(
+                                    <CaptureMenu
                                       ref={captureMenuPortalRef}
-                                      floating
-                                      floatingStyle={floatingMenuStyle(captureMenuPortalPlacement)}
+                                      style={floatingMenuStyle(captureMenuPortalPlacement)}
                                       side={menuSide}
-                                      align="right"
-                                      onKeyDown={(event) => {
-                                        if (event.key !== "Escape") return
-                                        event.preventDefault()
-                                        event.stopPropagation()
-                                        setOpenMenu(null)
-                                      }}
-                                    >
-                                      <ToolbarMenuItem
-                                        onClick={() => {
-                                          setOpenMenu(null)
-                                          screenshotMode()
-                                        }}
-                                      >
-                                        <CameraIcon size={12} />
-                                        <span className="msr:flex-1">Screenshot</span>
-                                        <span>C</span>
-                                      </ToolbarMenuItem>
-                                      <ToolbarMenuItem
-                                        onClick={() => {
-                                          setOpenMenu(null)
-                                          if (recording) onScreenRecordingStop()
-                                          else recordMode()
-                                        }}
-                                      >
-                                        <RecordIcon size={12} />
-                                        <span className="msr:flex-1">{recording ? "Stop recording" : "Screen record"}</span>
-                                        <span>V</span>
-                                      </ToolbarMenuItem>
-                                    </ToolbarMenu>
-                                  );
-                                  return createPortal(menu, commentPanelPortalTarget);
-                                })() : null}
+                                      recording={recording}
+                                      onScreenshot={screenshotMode}
+                                      onRecord={recording ? onScreenRecordingStop : recordMode}
+                                      onClose={() => setOpenMenu(null)}
+                                    />,
+                                    commentPanelPortalTarget,
+                                  )
+                                  : null}
                               </div>
                               <div ref={commentMenuRef} className="mesurer-toolbar-caret-anchor msr:relative msr:flex msr:flex-none" data-mesurer-comment-ui>
                                 <ToolbarButton
-                                  id="comments"
+                                  {...tool("comments")}
                                   active={toolMode === "comments"}
                                   label="Comments"
                                   shortcut="M"
                                   onClick={commentsMode}
-                                  tooltip={toolbarTooltip}
-                                  tooltipVisible={tooltipsEnabled && visibleTooltipId === "comments"}
                                 >
                                   <CommentIcon size={20} />
                                 </ToolbarButton>
-                                <button
-                                  type="button"
+                                <ToolbarCaretButton
                                   ref={commentButtonRef}
-                                  aria-label="Comment menu"
-                                  aria-haspopup="menu"
-                                  aria-expanded={commentMenuOpen}
-                                  data-mesurer-menu-trigger
-                                  className={cn(
-                                    "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:hover:bg-black/4",
-                                    commentMenuOpen ? "msr:bg-black/4 msr:text-ink-900" : "msr:text-ink-900",
-                                  )}
-                                  onClick={() => {
-                                    toggleToolbarMenu({ type: "comments", panel: false })
-                                  }}
-                                >
-                                  <CaretDownIcon size={8} className="mesurer-toolbar-caret" />
-                                </button>
+                                  label="Comment menu"
+                                  open={commentMenuOpen}
+                                  onClick={() => toggleToolbarMenu({ type: "comments", panel: false })}
+                                />
                                 {commentMenuOpen ? (
                                   commentsPanelOpen ? (
                                     createPortal(<CommentsPanel
@@ -1687,28 +1101,18 @@ function ToolbarComponent(
                                     />, commentPanelPortalTarget)
                                   ) : (
                                     createPortal(
-                                      <MenuSurface
+                                      <CommentsMenu
                                         ref={commentDropdownPortalRef}
-                                        className="msr:pointer-events-auto msr:fixed msr:flex msr:w-44 msr:flex-col msr:gap-px"
                                         style={floatingMenuStyle(commentDropdownPlacement)}
-                                        data-mesurer-comment-ui
-                                      >
-                                        <>
-                                          <MenuItem disabled={commentCount === 0} onClick={openCommentsPanel}>
-                                            <span className="msr:flex-1">Show all comments</span>
-                                          </MenuItem>
-                                          <MenuItem
-                                            disabled={commentCount === 0}
-                                            onClick={() => {
-                                              void onCopyComments()
-                                              setOpenMenu(null)
-                                            }}
-                                          >
-                                            <span className="msr:flex-1">Copy comments</span>
-                                            {commentsCopied ? <CheckIcon size={12} /> : <span>{copyCommentsShortcut}</span>}
-                                          </MenuItem>
-                                        </>
-                                      </MenuSurface>,
+                                        empty={commentCount === 0}
+                                        copied={commentsCopied}
+                                        copyShortcut={copyCommentsShortcut}
+                                        onShowAll={openCommentsPanel}
+                                        onCopy={() => {
+                                          void onCopyComments()
+                                          setOpenMenu(null)
+                                        }}
+                                      />,
                                       commentPanelPortalTarget,
                                     )
                                   )
@@ -1716,7 +1120,7 @@ function ToolbarComponent(
                               </div>
                               {features.settings ? <div ref={settingsRef} className="msr:relative msr:flex">
                                 <ToolbarButton
-                                  id="settings"
+                                  {...tool("settings")}
                                   className="msr:relative msr:z-[71]"
                                   active={settingsOpen}
                                   label="Settings"
@@ -1725,8 +1129,6 @@ function ToolbarComponent(
                                     dismissCaptureToasts();
                                     onToggleSettings();
                                   }}
-                                  tooltip={toolbarTooltip}
-                                  tooltipVisible={tooltipsEnabled && visibleTooltipId === "settings"}
                                 >
                                   <GearIcon size={20} aria-hidden="true" />
                                 </ToolbarButton>

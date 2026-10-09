@@ -1,7 +1,7 @@
-import type { ScreenshotRect } from "../core/screenshot"
-import { ControlNumberInput, SettingsFieldRow } from "./control-field"
-import { RecordIcon } from "./icons"
-import { SettingsButton } from "./settings-button"
+import type { ScreenshotRect } from "../../core/screenshot"
+import { ControlNumberInput, SettingsFieldRow } from "../control-field"
+import { RecordIcon } from "../icons"
+import { SettingsButton } from "../settings-button"
 
 type RecordingSelectionPanelProps = {
   rect: ScreenshotRect

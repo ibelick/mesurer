@@ -1,6 +1,6 @@
 import { forwardRef, type PointerEvent as ReactPointerEvent } from "react";
 import { MeasureTag } from "./measure-tag";
-import { RecordingSelectionPanel } from "./recording-selection-panel";
+import { RecordingSelectionPanel } from "./screen-recording";
 import type { ScreenshotRect } from "../core/screenshot";
 import { formatValue } from "../core/utils";
 import { RESIZE_HANDLES, resizeCursor, type ResizeHandle } from "../core/text-transform";

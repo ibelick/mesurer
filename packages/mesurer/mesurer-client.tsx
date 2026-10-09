@@ -2,8 +2,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type SetStateAction,
@@ -34,8 +32,7 @@ import { useScreenshot } from "./hooks/use-screenshot";
 import { useScreenRecording } from "./hooks/use-screen-recording";
 import { usePlayableMotion } from "./hooks/use-playable-motion";
 import { InspectInfoCard } from "./components/inspect-info-card";
-import { ScreenRecordingEditor } from "./components/screen-recording-editor";
-import { ScreenRecordingTimer } from "./components/screen-recording-timer";
+import { ScreenRecordingEditor, ScreenRecordingTimer } from "./components/screen-recording";
 import { useSelectionAnimationCleanup } from "./hooks/use-selection-animation-cleanup";
 import { useSelectedTypography } from "./hooks/use-selected-typography";
 import { useSelectorCopy } from "./hooks/use-selector-copy";
@@ -63,13 +60,8 @@ export type ExtensionRecordingSession = {
   dispose?: () => void;
 };
 import {
-  createLocalStoragePersistence,
-  createPageScopedPersistence,
-  isPagedWorkspaceStore,
-  toPageArtifacts,
   type MesurerPersistence,
   type MesurerStoredWorkspace,
-  type MesurerPageArtifacts,
   type GuideStyle,
   type RulerSettings,
   type ThemeMode,
@@ -79,13 +71,8 @@ import {
   type TextStyleSettings,
 } from "./core/text-style";
 import type { MesurerFeatures, ResolvedMesurerFeatures } from "./core/features";
-import {
-  getTabId,
-  LEGACY_STORAGE_KEY,
-  SETTINGS_STORAGE_KEY,
-  sanitizeStoredSettings,
-} from "./core/workspace";
-import { usePageKey } from "./hooks/use-page-key";
+import { useMesurerStorage } from "./hooks/use-mesurer-storage";
+import { usePageWorkspaceSwitch } from "./hooks/use-page-workspace-switch";
 export type MesurerProps = {
   highlightColor?: string;
   guideColor?: string;
@@ -139,7 +126,6 @@ export type MesurerProps = {
     layoutGuides?: MesurerStoredWorkspace["layoutGuides"];
   };
 };
-let mesurerInstanceCount = 0;
 export function MesurerClient({
   highlightColor,
   guideColor,
@@ -204,51 +190,20 @@ export function MesurerClient({
     textStyle: TextStyleSettings;
     features: ResolvedMesurerFeatures;
   }) {
-  const instanceIdRef = useRef<number | null>(null);
-  if (instanceIdRef.current === null) {
-    instanceIdRef.current = ++mesurerInstanceCount;
-  }
   const ownerDocument = portalTarget.ownerDocument ?? document;
   const ownerWindow = ownerDocument.defaultView ?? window;
-  const tabIdRef = useRef<string | null>(null);
-  if (tabIdRef.current === null) tabIdRef.current = getTabId(ownerWindow);
-  const storageKey =
-    persistKey ??
-    (instanceIdRef.current === 1
-      ? `mesurer-state:${tabIdRef.current}`
-      : `mesurer-state:${tabIdRef.current}:${instanceIdRef.current}`);
-  const legacyStorageKey = persistKey ? undefined : LEGACY_STORAGE_KEY;
-  const pageKey = usePageKey(ownerWindow);
-  const appliedPageKeyRef = useRef(pageKey);
-  const pageWorkspacesRef = useRef(new Map<string, MesurerPageArtifacts>());
+  const {
+    pageKey,
+    appliedPageKeyRef,
+    pageWorkspacesRef,
+    activePersistence,
+    storedState,
+    persistedState,
+    persistedSettings,
+  } = useMesurerStorage({ ownerWindow, persistKey, persistence, persistOnReload, persistSession });
   const toolbarRef = useRef<HTMLDivElement>(null);
   const persistenceErrorHandlerRef = useRef(onPersistenceError);
   persistenceErrorHandlerRef.current = onPersistenceError;
-  const activePersistence = useMemo(() => {
-    const next =
-      persistence ??
-      createLocalStoragePersistence(
-        ownerWindow,
-        storageKey,
-        SETTINGS_STORAGE_KEY,
-        legacyStorageKey,
-      );
-    return createPageScopedPersistence(next, () => appliedPageKeyRef.current);
-  }, [legacyStorageKey, ownerWindow, persistence, storageKey]);
-  const storedState = useMemo(
-    () => activePersistence.load(),
-    [activePersistence],
-  );
-  const persistedState =
-    persistOnReload || persistSession || storedState?.settings.persistOnReload
-      ? (isPagedWorkspaceStore(storedState?.workspace)
-          ? null
-          : storedState?.workspace ?? null)
-      : null;
-  const persistedSettings = sanitizeStoredSettings(
-    ownerWindow,
-    storedState?.settings ?? {},
-  );
   const closeScreenshotRef = useRef<() => void>(() => {});
   const clearWorkspaceTransientRef = useRef<() => void>(() => {});
   const cancelArrowInteractionRef = useRef<() => void>(() => {});
@@ -296,7 +251,6 @@ export function MesurerClient({
     penStrokes,
     selectedPenStrokeIds,
     setSelectedPenStrokeIds,
-    setPenStrokes,
     penPreview,
     setPenPreview,
     textAnnotationsRef,
@@ -342,9 +296,7 @@ export function MesurerClient({
     isDragging,
     setIsDragging,
     activeMeasurement,
-    setActiveMeasurement,
     measurements,
-    setMeasurements,
     selectedMeasurement,
     setSelectedMeasurement,
     selectedMeasurements,
@@ -352,19 +304,14 @@ export function MesurerClient({
     hoverRect,
     setHoverRect,
     heldDistances,
-    setHeldDistances,
     guides,
     setGuides,
     draggingGuideId,
     setDraggingGuideId,
     selectedGuideIds,
-    setSelectedGuideIds,
     arrows,
     selectedArrowIds,
-    setArrows,
-    setSelectedArrowIds,
     textAnnotations,
-    setTextAnnotations,
     textDraft,
     setTextDraft,
     selectedTextIds,
@@ -379,7 +326,6 @@ export function MesurerClient({
     setToolbarActive,
     minimizedRef,
     minimized,
-    setMinimized,
     settingsOpen,
     setSettingsOpen,
     openMenu,
@@ -405,7 +351,6 @@ export function MesurerClient({
     updateMessage: updateCommentMessage,
     layoutGuides,
     layoutGuidesRef,
-    setLayoutGuides,
   } = workspace;
   const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
     setCommentFilter(filter);
@@ -439,51 +384,7 @@ export function MesurerClient({
   const committedTextEditorsRef = useRef(new WeakSet<HTMLElement>());
   const suppressTextCreateRef = useRef(false);
   textDraftRef.current = textDraft;
-  const {
-    highlightColor: settingsHighlightColor,
-    setHighlightColor: setSettingsHighlightColor,
-    guideColor: settingsGuideColor,
-    setGuideColor: setSettingsGuideColor,
-    arrowColor: settingsArrowColor,
-    setArrowColor: setSettingsArrowColor,
-    guideHighlightEnabled: settingsGuideHighlightEnabled,
-    setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
-    hoverHighlightEnabled: settingsHoverHighlight,
-    setHoverHighlightEnabled: setSettingsHoverHighlight,
-    layoutDetailsEnabled: settingsLayoutDetailsEnabled,
-    setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
-    infoCardMode: settingsInfoCardMode,
-    setInfoCardMode: setSettingsInfoCardMode,
-    persistOnReload: settingsPersistOnReload,
-    setPersistOnReload: setSettingsPersistOnReload,
-    shortcutsEnabled: settingsShortcutsEnabled,
-    setShortcutsEnabled: setSettingsShortcutsEnabled,
-    theme: settingsTheme,
-    setTheme: setSettingsTheme,
-    lastToolMode: settingsLastToolMode,
-    setLastToolMode: setSettingsLastToolMode,
-    toolbarPosition: settingsToolbarPosition,
-    setToolbarPosition: setSettingsToolbarPosition,
-    toolbarDock: settingsToolbarDock,
-    setToolbarDock: setSettingsToolbarDock,
-    toolbarAutoHide: settingsToolbarAutoHide,
-    setToolbarAutoHide: setSettingsToolbarAutoHide,
-    colorPickerFormats: settingsColorFormats,
-    setColorPickerFormats: setSettingsColorFormats,
-    colorPickerClickFormat: settingsColorClickFormat,
-    setColorPickerClickFormat: setSettingsColorClickFormat,
-    guideStyle: settingsGuideStyle,
-    setGuideStyle: setSettingsGuideStyle,
-    rulerSettings: settingsRulerSettings,
-    setRulerSettings: setSettingsRulerSettings,
-    screenshotSettings: settingsScreenshot,
-    setScreenshotSettings: setSettingsScreenshot,
-    textStyle: settingsTextStyle,
-    setTextStyle: setSettingsTextStyle,
-    resetSettings,
-    persistSettings,
-    applyPersistedSettings,
-  } = useMesurerSettings({
+  const settings = useMesurerSettings({
     activePersistence,
     persistedSettings,
     defaults: {
@@ -524,12 +425,13 @@ export function MesurerClient({
       setMultiMeasureEnabled,
     },
   });
+  const { resetSettings, persistSettings, applyPersistedSettings } = settings;
   const workspaceLifecycle = useWorkspaceLifecycle({
     ownerWindow,
     activePersistence,
     settings: {
-      persistOnReload: settingsPersistOnReload,
-      persistWorkspace: persistSession || settingsPersistOnReload,
+      persistOnReload: settings.persistOnReload,
+      persistWorkspace: persistSession || settings.persistOnReload,
       applyPersistedSettings,
       persistSettings,
     },
@@ -571,43 +473,23 @@ export function MesurerClient({
     setLayoutGuidesPersisted,
   } = workspaceLifecycle;
   persistCommentsRef.current = setCommentsPersisted;
-  useLayoutEffect(() => {
-    if (appliedPageKeyRef.current === pageKey) return;
-    pageWorkspacesRef.current.set(appliedPageKeyRef.current, readPageArtifacts());
-    saveWorkspace();
-    appliedPageKeyRef.current = pageKey;
-    const cached = pageWorkspacesRef.current.get(pageKey);
-    if (cached) {
-      applyPageArtifacts(cached);
-      return;
-    }
-    const stored =
-      persistSession || settingsPersistOnReload
-        ? activePersistence.load()?.workspace ?? null
-        : null;
-    if (stored && !isPagedWorkspaceStore(stored)) {
-      const artifacts = toPageArtifacts(stored);
-      pageWorkspacesRef.current.set(pageKey, artifacts);
-      applyPageArtifacts(artifacts);
-      return;
-    }
-    clearPageArtifacts();
-  }, [
+  usePageWorkspaceSwitch({
+    pageKey,
+    appliedPageKeyRef,
+    pageWorkspacesRef,
     activePersistence,
+    persistWorkspace: persistSession || settings.persistOnReload,
+    readPageArtifacts,
     applyPageArtifacts,
     clearPageArtifacts,
-    pageKey,
-    readPageArtifacts,
-    persistSession,
     saveWorkspace,
-    settingsPersistOnReload,
-  ]);
+  });
   usePersistenceLifecycle({
     ownerWindow,
     activePersistence,
     persistSettings,
     persistState,
-    persistWorkspace: persistSession || settingsPersistOnReload,
+    persistWorkspace: persistSession || settings.persistOnReload,
     saveWorkspace,
     applyPersistenceSnapshot,
     storedState,
@@ -782,7 +664,7 @@ export function MesurerClient({
   } = annotationSelection;
   const colorPicker = useColorPicker({
     ownerWindow,
-    clickFormat: settingsColorClickFormat,
+    clickFormat: settings.colorPickerClickFormat,
     setEnabled: (value) => setEnabledWithHistory(value),
     setToolModeNone: () => setToolModeWithHistory("none"),
   });
@@ -792,7 +674,7 @@ export function MesurerClient({
     ownerWindow,
     overlayRef,
     captureVisibleTab,
-    settings: settingsScreenshot,
+    settings: settings.screenshotSettings,
     setEnabled: (value) => setEnabledWithHistory(value),
     setToolbarActive: (active) => {
       if (active) setMinimizedPersisted(false);
@@ -882,14 +764,14 @@ export function MesurerClient({
   const setArrowColor = useCallback(
     (value: SetStateAction<string>) => {
       const color = typeof value === "function"
-        ? value(settingsArrowColor)
+        ? value(settings.arrowColor)
         : value;
-      setSettingsArrowColor(color);
+      settings.setArrowColor(color);
       setArrowsPersisted((previous) =>
         previous.map((arrow) => ({ ...arrow, color })),
       );
     },
-    [setArrowsPersisted, setSettingsArrowColor, settingsArrowColor],
+    [setArrowsPersisted, settings.setArrowColor, settings.arrowColor],
   );
   // How many annotations are selected, and whether they make a group: several of them, or
   // one together with a guide.
@@ -1003,10 +885,10 @@ export function MesurerClient({
     guidesEnabled,
     guidePreview,
     displayedMeasurements,
-    hoverHighlightEnabled: settingsHoverHighlight,
-    guideHighlightEnabled: settingsGuideHighlightEnabled,
-    highlightColor: settingsHighlightColor,
-    guideColor: settingsGuideColor,
+    hoverHighlightEnabled: settings.hoverHighlightEnabled,
+    guideHighlightEnabled: settings.guideHighlightEnabled,
+    highlightColor: settings.highlightColor,
+    guideColor: settings.guideColor,
   });
   const { copySelector, isCopied: isSelectorCopied } = useSelectorCopy(ownerWindow);
   const selectedTypography = useSelectedTypography(selectedElement, ownerDocument, ownerWindow);
@@ -1080,8 +962,8 @@ export function MesurerClient({
     settingsOpen,
     snapArrowsEnabled,
     arrowClickToPlace,
-    color: settingsArrowColor,
-    width: Math.max(settingsGuideStyle.width, 1),
+    color: settings.arrowColor,
+    width: Math.max(settings.guideStyle.width, 1),
     overlayRef,
     ownerDocument,
     guides,
@@ -1118,7 +1000,7 @@ export function MesurerClient({
     enabled,
     settingsOpen,
     toolMode,
-    color: settingsArrowColor,
+    color: settings.arrowColor,
     scrollOffset,
     createActionCommit,
     setPenStrokes: setPenStrokesPersisted,
@@ -1156,7 +1038,6 @@ export function MesurerClient({
     finishTextDraft,
     activateTextEditor,
     selectTextAnnotation,
-    moveTextAnnotation,
     transformTextAnnotation,
     editTextAnnotation,
     handleTextPointerDown,
@@ -1235,7 +1116,7 @@ export function MesurerClient({
     rulersVisible,
     toolbarActive,
     minimized,
-    shortcutsEnabled: settingsShortcutsEnabled,
+    shortcutsEnabled: settings.shortcutsEnabled,
     settingsOpen,
     layoutGuidesOpen: openMenu?.type === "layout-guides",
     ownerDocument,
@@ -1429,14 +1310,14 @@ export function MesurerClient({
       toolMode === "pen" ||
       toolMode === "text" ||
       toolMode === "comments") &&
-    settingsLastToolMode !== toolMode
+    settings.lastToolMode !== toolMode
   ) {
-    setSettingsLastToolMode(toolMode);
+    settings.setLastToolMode(toolMode);
   }
   return (
     <MesurerPortal
       portalTarget={portalTarget}
-      theme={settingsTheme}
+      theme={settings.theme}
       enabled={enabled}
       rootRef={overlayRef}
       toolbarRef={toolbarRef}
@@ -1444,7 +1325,7 @@ export function MesurerClient({
       rulers={{
         ownerWindow,
         visible: enabled && features.rulers && rulersVisible,
-        settings: settingsRulerSettings,
+        settings: settings.rulerSettings,
         interactive: !settingsOpen && !minimized,
         forceVisible: settingsOpen,
         onStartGuide: startGuideFromRuler,
@@ -1483,7 +1364,7 @@ export function MesurerClient({
         onEndGroupRotate: endGroupRotate,
         fillColor,
         outlineColor,
-        layoutDetailsEnabled: settingsLayoutDetailsEnabled,
+        layoutDetailsEnabled: settings.layoutDetailsEnabled,
         pointers: {
           ...pointerHandlers,
         },
@@ -1496,7 +1377,7 @@ export function MesurerClient({
           selected: displayedSelectedMeasurements,
           selectedEdges: selectedEdgeVisibility,
           selectorPreview:
-            settingsInfoCardMode === "hover" && hoverElement && hoverRect
+            settings.infoCardMode === "hover" && hoverElement && hoverRect
               ? {
                   element: hoverElement,
                   rect: hoverRect,
@@ -1504,7 +1385,7 @@ export function MesurerClient({
                 }
               : null,
           ownerWindow,
-          highlightColor: settingsHighlightColor,
+          highlightColor: settings.highlightColor,
             selectedSelectorCopied: isSelectorCopied(selectedElement),
              selectedTypography,
              selectedMeasurementCount: selectedMeasurements.length,
@@ -1525,9 +1406,9 @@ export function MesurerClient({
           moveOffset: selectionDragOffset,
            hover: hoverGuide,
            draggingId: draggingGuideId,
-           highlightEnabled: settingsGuideHighlightEnabled,
+           highlightEnabled: settings.guideHighlightEnabled,
            selectEnabled: selectNewGuideEnabled,
-           style: settingsGuideStyle,
+           style: settings.guideStyle,
           pointerEvents:
             overlayInteractive && (toolMode !== "none" || (features.rulers && rulersVisible)),
           colors: {
@@ -1549,7 +1430,7 @@ export function MesurerClient({
           moveOffset: selectionDragOffset,
           preview: arrowsPointer.preview,
           scrollOffset,
-          color: settingsArrowColor,
+          color: settings.arrowColor,
           onSelect: (id) => setSelectedArrowIdsPersisted([id]),
           onChange: (arrow) =>
             setArrowsPersisted((previous) =>
@@ -1595,8 +1476,8 @@ export function MesurerClient({
           onDraftKeyDown: handleTextKeyDown,
           onDraftBlur: () => finishTextDraft(false, true),
           onActivateEditor: activateTextEditor,
-          fontFamily: resolveTextFontFamily(settingsTextStyle),
-          color: settingsTextStyle.color,
+          fontFamily: resolveTextFontFamily(settings.textStyle),
+          color: settings.textStyle.color,
         },
         comments: comments.length > 0 || toolMode === "comments" ? {
           comments,
@@ -1656,10 +1537,10 @@ export function MesurerClient({
         }}
         toolbar={{
         eventTarget: ownerWindow,
-        initialPosition: settingsToolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
-        onPositionChange: setSettingsToolbarPosition,
-        dock: settingsToolbarDock,
-        autoHide: settingsToolbarAutoHide,
+        initialPosition: settings.toolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
+        onPositionChange: settings.setToolbarPosition,
+        dock: settings.toolbarDock,
+        autoHide: settings.toolbarAutoHide,
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
@@ -1693,8 +1574,8 @@ export function MesurerClient({
               sample={colorPicker.sample}
               unsupported={colorPicker.unsupported}
               ownerWindow={ownerWindow}
-              formats={settingsColorFormats}
-              favoriteFormat={settingsColorClickFormat}
+              formats={settings.colorPickerFormats}
+              favoriteFormat={settings.colorPickerClickFormat}
               onClose={closeColorPicker}
             />
           ),
@@ -1703,9 +1584,9 @@ export function MesurerClient({
           active: screenshot.active,
           error: screenshot.error,
           previewUrl: screenshot.previewUrl,
-          copy: settingsScreenshot.copy,
-          download: settingsScreenshot.download,
-          shareMode: settingsScreenshot.shareMode,
+          copy: settings.screenshotSettings.copy,
+          download: settings.screenshotSettings.download,
+          shareMode: settings.screenshotSettings.shareMode,
           onClick: screenshot.toggleSelection,
           onCancel: screenshot.closeUi,
           onPreviewExited: screenshot.dismissPreview,
@@ -1738,7 +1619,7 @@ export function MesurerClient({
                 rect={displayedSelectedMeasurements[0].rect}
                  element={motionElement}
                 measurement={displayedSelectedMeasurements[0]}
-                layoutDetailsEnabled={settingsLayoutDetailsEnabled}
+                layoutDetailsEnabled={settings.layoutDetailsEnabled}
                 copied={isSelectorCopied(selectedElement)}
                 typography={selectedMeasurements.length === 1 ? selectedTypography : null}
               />
@@ -1774,51 +1655,51 @@ export function MesurerClient({
               ownerWindow={ownerWindow}
               focusSection={settingsFocus}
               select={{
-                highlightColor: settingsHighlightColor,
-                setHighlightColor: setSettingsHighlightColor,
-                hoverHighlight: settingsHoverHighlight,
-                setHoverHighlight: setSettingsHoverHighlight,
-                layoutDetailsEnabled: settingsLayoutDetailsEnabled,
-                setLayoutDetailsEnabled: setSettingsLayoutDetailsEnabled,
+                highlightColor: settings.highlightColor,
+                setHighlightColor: settings.setHighlightColor,
+                hoverHighlight: settings.hoverHighlightEnabled,
+                setHoverHighlight: settings.setHoverHighlightEnabled,
+                layoutDetailsEnabled: settings.layoutDetailsEnabled,
+                setLayoutDetailsEnabled: settings.setLayoutDetailsEnabled,
                 snapEnabled,
                 setSnapEnabled,
                 multiMeasureEnabled,
                 setMultiMeasureEnabled,
-                 infoCardMode: settingsInfoCardMode,
-                 setInfoCardMode: setSettingsInfoCardMode,
+                 infoCardMode: settings.infoCardMode,
+                 setInfoCardMode: settings.setInfoCardMode,
               }}
               guides={{
-                guideColor: settingsGuideColor,
-                setGuideColor: setSettingsGuideColor,
-                guideStyle: settingsGuideStyle,
-                setGuideStyle: setSettingsGuideStyle,
+                guideColor: settings.guideColor,
+                setGuideColor: settings.setGuideColor,
+                guideStyle: settings.guideStyle,
+                setGuideStyle: settings.setGuideStyle,
                 snapGuidesEnabled,
                 setSnapGuidesEnabled,
-                guideHighlightEnabled: settingsGuideHighlightEnabled,
-                setGuideHighlightEnabled: setSettingsGuideHighlightEnabled,
+                guideHighlightEnabled: settings.guideHighlightEnabled,
+                setGuideHighlightEnabled: settings.setGuideHighlightEnabled,
                 selectNewGuideEnabled,
                 setSelectNewGuideEnabled,
               }}
               color={{
-                colorFormats: settingsColorFormats,
-                setColorFormats: setSettingsColorFormats,
-                colorClickFormat: settingsColorClickFormat,
-                setColorClickFormat: setSettingsColorClickFormat,
+                colorFormats: settings.colorPickerFormats,
+                setColorFormats: settings.setColorPickerFormats,
+                colorClickFormat: settings.colorPickerClickFormat,
+                setColorClickFormat: settings.setColorPickerClickFormat,
               }}
               camera={{
-                settings: settingsScreenshot,
-                setSettings: setSettingsScreenshot,
+                settings: settings.screenshotSettings,
+                setSettings: settings.setScreenshotSettings,
               }}
               rulers={{
-                settings: settingsRulerSettings,
-                setSettings: setSettingsRulerSettings,
+                settings: settings.rulerSettings,
+                setSettings: settings.setRulerSettings,
               }}
               text={{
-                settings: settingsTextStyle,
-                setSettings: setSettingsTextStyle,
+                settings: settings.textStyle,
+                setSettings: settings.setTextStyle,
               }}
               arrows={{
-                color: settingsArrowColor,
+                color: settings.arrowColor,
                 setColor: setArrowColor,
                 snapArrowsEnabled,
                 setSnapArrowsEnabled,
@@ -1826,16 +1707,16 @@ export function MesurerClient({
                 setArrowClickToPlace,
               }}
               general={{
-                persistOnReload: settingsPersistOnReload,
-                setPersistOnReload: setSettingsPersistOnReload,
-                shortcutsEnabled: settingsShortcutsEnabled,
-                setShortcutsEnabled: setSettingsShortcutsEnabled,
-                theme: settingsTheme,
-                setTheme: setSettingsTheme,
-                toolbarDock: settingsToolbarDock,
-                setToolbarDock: setSettingsToolbarDock,
-                toolbarAutoHide: settingsToolbarAutoHide,
-                setToolbarAutoHide: setSettingsToolbarAutoHide,
+                persistOnReload: settings.persistOnReload,
+                setPersistOnReload: settings.setPersistOnReload,
+                shortcutsEnabled: settings.shortcutsEnabled,
+                setShortcutsEnabled: settings.setShortcutsEnabled,
+                theme: settings.theme,
+                setTheme: settings.setTheme,
+                toolbarDock: settings.toolbarDock,
+                setToolbarDock: settings.setToolbarDock,
+                toolbarAutoHide: settings.toolbarAutoHide,
+                setToolbarAutoHide: settings.setToolbarAutoHide,
                 onMinimize: minimizeMesurer,
                 onResetSettings: resetSettings,
                 onClearWorkspace: clearWorkspace,

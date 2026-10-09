@@ -1,7 +1,7 @@
 import { rotateArrowAround } from "./arrow-transform"
 import { rotatePenStrokeAround } from "./pen-transform"
 import type { Arrow, PenStroke, Point, Rect, TextAnnotation } from "./types"
-import { boxCenter, rotatePoint, textAnnotationBounds, type ResizeHandle } from "./text-transform"
+import { boxCenter, rotatePoint, type ResizeHandle } from "./text-transform"
 
 export type GroupResizeSnapshot = {
   rect: Rect

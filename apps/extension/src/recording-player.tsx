@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ScreenRecordingEditor } from "../../../packages/mesurer/components/screen-recording-editor";
+import { ScreenRecordingEditor } from "../../../packages/mesurer/components/screen-recording";
 import { TooltipLayerContext } from "../../../packages/mesurer/components/tooltip";
 import { encodeGifClip, encodeMp4Clip, isFullClipExport, reencodeVideoClip } from "../../../packages/mesurer/core/screen-recording";
 import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../../../packages/mesurer/hooks/screen-recording-export";

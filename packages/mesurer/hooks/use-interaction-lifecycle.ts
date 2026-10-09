@@ -127,7 +127,6 @@ export const useInteractionLifecycle = (options: Options) => {
     setHoverRect,
     setHoverPointer,
     setHoverElement,
-    setSelectedElement,
     setArrowStart,
     setArrowMiddle,
     setArrowPreviewEnd,

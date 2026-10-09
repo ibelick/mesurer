@@ -1,19 +1,22 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
-import { listenPointerDrag } from "../core/pointer-drag"
-import { cn, formatValue } from "../core/utils"
-import { usePageListener } from "../hooks/use-page-listener"
-import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
-import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../hooks/screen-recording-export"
-import { supportedRecordingFormats } from "../hooks/screen-recording-export"
-import { CloseIcon } from "./icons"
-import { CheckIcon } from "./icons/menu-icons"
-import { MenuItem, MenuSurface } from "./menu"
-import { SettingsButton } from "./settings-button"
-import { StatusEllipsis } from "./status-ellipsis"
-import { clampOverlayPosition } from "../core/overlay-position"
-import { supportsMp4Encoding } from "../core/screen-recording-mp4"
-import { OverlayPortal, Tooltip, TooltipLayerContext } from "./tooltip"
-import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "./player-layout"
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { listenPointerDrag } from "../../core/pointer-drag"
+import { cn, formatValue } from "../../core/utils"
+import { usePageListener } from "../../hooks/use-page-listener"
+import { useToolbarTooltip } from "../../hooks/use-toolbar-tooltip"
+import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../../hooks/screen-recording-export"
+import { supportedRecordingFormats } from "../../hooks/screen-recording-export"
+import { CloseIcon } from "../icons"
+import { CheckIcon } from "../icons/menu-icons"
+import { MenuItem, MenuSurface } from "../menu"
+import { SettingsButton } from "../settings-button"
+import { StatusEllipsis } from "../status-ellipsis"
+import { clampOverlayPosition } from "../../core/overlay-position"
+import { supportsMp4Encoding } from "../../core/screen-recording-mp4"
+import { OverlayPortal, Tooltip, TooltipLayerContext } from "../tooltip"
+import { playerCardClassName, playerPreviewClassName, playerControlsClassName } from "../player-layout"
+
+import { ExtensionRecordingFrame } from "./extension-recording-frame"
+import { CollapseIcon, DownloadIcon, ExpandIcon, PauseIcon, PlayIcon, PlayerIconButton, TIMELINE_BAR_MOTION, TrimHandle, timestamp, type DragKind } from "./player-controls"
 
 type ScreenRecordingEditorProps = {
   url: string
@@ -25,11 +28,7 @@ type ScreenRecordingEditorProps = {
   fillFrame?: boolean
 }
 
-type DragKind = "start" | "end" | "playhead"
-
 const MIN_CLIP_SECONDS = 0.1
-
-const TIMELINE_BAR_MOTION = "msr:transition-[height] msr:duration-300 msr:ease-[cubic-bezier(0.22,1,0.36,1)]"
 
 const SCALE_OPTIONS = [1, 2, 3] as const
 
@@ -50,302 +49,12 @@ const exportMenuRowClass = (selected: boolean) =>
     selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100",
   )
 
-const timestamp = (value: number) => {
-  const seconds = Math.max(0, Math.floor(value))
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-}
-
-export const PlayIcon = () => (
-  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
-    <path d="M1.4.6v6.8L7.2 4z" />
-  </svg>
-)
-
-export const PauseIcon = () => (
-  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="msr:block">
-    <rect x="1.4" y="1" width="1.8" height="6" rx="0.2" />
-    <rect x="4.8" y="1" width="1.8" height="6" rx="0.2" />
-  </svg>
-)
-
-const ExpandIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" className="msr:block">
-    <path d="M1.5 3.5V1.5H3.5M6.5 1.5H8.5V3.5M8.5 6.5V8.5H6.5M3.5 8.5H1.5V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
-  </svg>
-)
-
-const CollapseIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" className="msr:block">
-    <path d="M3.5 1.5V3.5H1.5M8.5 3.5H6.5V1.5M6.5 8.5V6.5H8.5M1.5 6.5H3.5V8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
-  </svg>
-)
-
-const DownloadIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" className="msr:block">
-    <path d="M5 1.5v5M2.5 4.75 5 7.25 7.5 4.75M1.75 8.5h6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
-  </svg>
-)
-
-export function PlayerIconButton({
-  label,
-  tooltipId,
-  tooltip,
-  pressed,
-  expanded,
-  controls,
-  disabled,
-  onClick,
-  onPointerDown,
-  children,
-}: {
-  label: string
-  tooltipId?: string
-  tooltip: ReturnType<typeof useToolbarTooltip>
-  pressed?: boolean
-  expanded?: boolean
-  controls?: string
-  disabled?: boolean
-  onClick?: () => void
-  onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void
-  children: ReactNode
-}) {
-  const anchorRef = useRef<HTMLDivElement>(null)
-  const showTooltip = Boolean(tooltipId)
-
-  return (
-    <div
-      ref={anchorRef}
-      className="msr:relative msr:flex msr:size-5 msr:shrink-0 msr:items-center msr:justify-center"
-      onMouseEnter={() => {
-        if (tooltipId) tooltip.onTooltipEnter(tooltipId)
-      }}
-      onMouseLeave={() => {
-        if (tooltipId) tooltip.onTooltipLeave(tooltipId)
-      }}
-      onFocus={() => {
-        if (tooltipId) tooltip.onTooltipEnter(tooltipId)
-      }}
-      onBlur={() => {
-        if (tooltipId) tooltip.onTooltipLeave(tooltipId)
-      }}
-    >
-      <SettingsButton
-        shape="icon"
-        variant="ghost"
-        type="button"
-        aria-label={label}
-        aria-pressed={pressed}
-        aria-expanded={expanded}
-        aria-controls={controls}
-        disabled={disabled}
-        onPointerDown={onPointerDown}
-        onClick={onClick}
-      >
-        {children}
-      </SettingsButton>
-      {showTooltip && tooltipId ? (
-        <Tooltip
-          label={label}
-          visible={tooltip.visibleTooltipId === tooltipId}
-          instant={tooltip.tooltipInstant}
-          side="top"
-          anchorRef={anchorRef}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-function TrimHandle({
-  label,
-  value,
-  min,
-  max,
-  active,
-  style,
-  onPointerDown,
-  onNudge,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  active: boolean
-  style: { left: string }
-  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void
-  onNudge: (next: number) => void
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "msr:group msr:absolute msr:top-0 msr:z-20 msr:flex msr:h-full msr:-translate-x-1/2 msr:cursor-ew-resize msr:items-center msr:justify-center msr:border-0 msr:bg-transparent msr:px-1 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--color-ink-700)]",
-        !active && "msr:transition-[left] msr:duration-300 msr:ease-[cubic-bezier(0.22,1,0.36,1)]",
-      )}
-      style={style}
-      aria-label={label}
-      role="slider"
-      aria-valuemin={min}
-      aria-valuemax={max}
-      aria-valuenow={value}
-      aria-valuetext={timestamp(value)}
-      onPointerDown={onPointerDown}
-      onKeyDown={(event) => {
-        if (event.key === "ArrowLeft") {
-          event.preventDefault()
-          onNudge(value - 0.1)
-        }
-        if (event.key === "ArrowRight") {
-          event.preventDefault()
-          onNudge(value + 0.1)
-        }
-      }}
-    >
-      <span
-        className={cn(
-          "mesurer-recording-trim-bar msr:block msr:h-2 msr:w-0.5 msr:rounded-full msr:bg-ink-900",
-          TIMELINE_BAR_MOTION,
-          active ? "msr:h-3" : "msr:group-hover:h-3 msr:group-focus-visible:h-3",
-        )}
-      />
-    </button>
-  )
-}
-
 export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
   if (props.playerUrl) {
     return <ExtensionRecordingFrame playerUrl={props.playerUrl} onDiscard={props.onDiscard} />
   }
 
   return <StandardScreenRecordingEditor {...props} />
-}
-
-const RECORDING_FRAME_WIDTH = 22 * 16
-const RECORDING_FRAME_SHADOW = 28
-
-// The toolbar marks the card's wrapper with the side of the card that faces the toolbar.
-export const TOOLBAR_SIDE_ATTRIBUTE = "data-mesurer-toolbar-side"
-type ToolbarFacingSide = "top" | "bottom" | "left" | "right"
-
-// The iframe is larger than the card so its shadow can paint. The strip on the side facing the
-// toolbar is clipped away; otherwise that transparent strip sits on the toolbar and swallows
-// its clicks.
-const shadowClip = (side: ToolbarFacingSide, shadow: number) =>
-  ({
-    top: `inset(${shadow}px 0 0 0)`,
-    bottom: `inset(0 0 ${shadow}px 0)`,
-    left: `inset(0 0 0 ${shadow}px)`,
-    right: `inset(0 ${shadow}px 0 0)`,
-  })[side]
-
-const recordingTheme = (from?: Element | null) => {
-  const theme = (from?.closest("[data-mesurer-root]") ?? document.querySelector("[data-mesurer-root]"))?.getAttribute("data-theme")
-  return theme === "light" || theme === "dark" || theme === "system" ? theme : "system"
-}
-
-function ExtensionRecordingFrame({
-  playerUrl,
-  onDiscard,
-}: Pick<ScreenRecordingEditorProps, "onDiscard"> & { playerUrl: string }) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const frameRef = useRef<HTMLIFrameElement>(null)
-  const [frameSize, setFrameSize] = useState({ width: RECORDING_FRAME_WIDTH, height: 280, menuExtra: 0 })
-  const [toolbarSide, setToolbarSide] = useState<ToolbarFacingSide>("top")
-  const [src, setSrc] = useState<string | null>(null)
-  useLayoutEffect(() => {
-    const url = new URL(playerUrl)
-    url.searchParams.set("theme", recordingTheme(hostRef.current))
-    setSrc(url.toString())
-  }, [playerUrl])
-  const postFrameState = useCallback(() => {
-    const frame = frameRef.current
-    const panel = (frame ?? hostRef.current)?.closest(`[${TOOLBAR_SIDE_ATTRIBUTE}]`)
-    const side = (panel?.getAttribute(TOOLBAR_SIDE_ATTRIBUTE) ?? "top") as ToolbarFacingSide
-    setToolbarSide(side)
-    frame?.contentWindow?.postMessage({ type: "mesurer:recording-theme", theme: recordingTheme(frame ?? hostRef.current) }, "*")
-    // Inside the frame the card hangs from the top unless the toolbar is below it; beside a
-    // vertical toolbar it hangs from the top too.
-    frame?.contentWindow?.postMessage({ type: "mesurer:recording-anchor", side: side === "bottom" ? "bottom" : "top" }, "*")
-  }, [])
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== frameRef.current?.contentWindow) return
-      if (event.data?.type === "mesurer:recording-discard") onDiscard()
-      if (event.data?.type === "mesurer:recording-frame-intent" && typeof event.data.expanded === "boolean") {
-        setFrameSize((current) => ({
-          ...current,
-          width: event.data.expanded ? 36 * 16 : RECORDING_FRAME_WIDTH,
-          height: event.data.expanded ? Math.max(current.height, 520) : current.height,
-        }))
-      }
-      if (
-        event.data?.type === "mesurer:recording-frame-size" &&
-        typeof event.data.width === "number" &&
-        typeof event.data.height === "number" &&
-        event.data.width >= 32 &&
-        event.data.height >= 32
-      ) {
-        setFrameSize({
-          width: event.data.width,
-          height: event.data.height,
-          menuExtra: typeof event.data.menuExtra === "number" ? event.data.menuExtra : 0,
-        })
-      }
-    }
-    window.addEventListener("message", onMessage)
-    const root = (frameRef.current ?? hostRef.current)?.closest("[data-mesurer-root]")
-    const panel = (frameRef.current ?? hostRef.current)?.closest(`[${TOOLBAR_SIDE_ATTRIBUTE}]`)
-    const observer = new MutationObserver(postFrameState)
-    if (root) observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] })
-    if (panel) observer.observe(panel, { attributes: true, attributeFilter: [TOOLBAR_SIDE_ATTRIBUTE] })
-    postFrameState()
-    return () => {
-      window.removeEventListener("message", onMessage)
-      observer.disconnect()
-    }
-  }, [onDiscard, postFrameState, src])
-  const menuAbove = toolbarSide === "bottom"
-  const shadow = RECORDING_FRAME_SHADOW
-  const frameWidth = frameSize.width + shadow * 2
-  const frameHeight = frameSize.height + frameSize.menuExtra + shadow * 2
-  return (
-    <div
-      ref={hostRef}
-      className="msr:relative msr:max-w-[calc(100vw-16px)] msr:bg-transparent"
-      style={{
-        width: frameSize.width,
-        height: frameSize.height,
-      }}
-    >
-      {src ? (
-        <div
-          className="msr:pointer-events-none msr:absolute"
-          style={{
-            width: frameWidth,
-            height: frameHeight,
-            left: -shadow,
-            top: menuAbove ? -(frameSize.menuExtra + shadow) : -shadow,
-            clipPath: shadowClip(toolbarSide, shadow),
-          }}
-        >
-          <iframe
-            ref={frameRef}
-            title="Recording preview"
-            src={src}
-            onLoad={postFrameState}
-            allowTransparency
-            className="msr:pointer-events-auto msr:absolute msr:inset-0 msr:size-full msr:border-0 msr:bg-transparent msr:shadow-none"
-            style={{
-              backgroundColor: "transparent",
-              colorScheme: "light",
-              border: 0,
-              boxShadow: "none",
-            }}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument, fillFrame }: ScreenRecordingEditorProps) {
