@@ -27,7 +27,7 @@ export function OptionContainerLinesOverlay({
             }}
           />
           <MeasureTag
-            className="msr:-translate-y-1/2 msr:bg-ink-900/90"
+            className="msr:-translate-y-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
             style={{
               left: lines.top.x + MEASURE_LABEL_OFFSET,
               top: (lines.top.y1 + lines.top.y2) / 2,
@@ -49,7 +49,7 @@ export function OptionContainerLinesOverlay({
             }}
           />
           <MeasureTag
-            className="msr:-translate-y-1/2 msr:bg-ink-900/90"
+            className="msr:-translate-y-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
             style={{
               left: lines.bottom.x + MEASURE_LABEL_OFFSET,
               top: (lines.bottom.y1 + lines.bottom.y2) / 2,
@@ -71,7 +71,7 @@ export function OptionContainerLinesOverlay({
             }}
           />
           <MeasureTag
-            className="msr:-translate-x-1/2 msr:bg-ink-900/90"
+            className="msr:-translate-x-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
             style={{
               left: (lines.left.x1 + lines.left.x2) / 2,
               top: lines.left.y + MEASURE_LABEL_OFFSET,
@@ -93,7 +93,7 @@ export function OptionContainerLinesOverlay({
             }}
           />
           <MeasureTag
-            className="msr:-translate-x-1/2 msr:bg-ink-900/90"
+            className="msr:-translate-x-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
             style={{
               left: (lines.right.x1 + lines.right.x2) / 2,
               top: lines.right.y + MEASURE_LABEL_OFFSET,
