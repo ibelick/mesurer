@@ -120,7 +120,7 @@ export function CommentsPanel({
       role="dialog"
       aria-label="Comments"
       className={cn(
-        "mesurer-menu-surface msr:right-0 msr:z-[100] msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
+        "mesurer-menu-surface msr:right-0 msr:z-[100] msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-surface msr:p-0 msr:shadow-floating",
         fixed ? "msr:fixed" : "msr:absolute",
         openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden",
         !fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
@@ -289,7 +289,7 @@ export function CommentsPanel({
           aria-label="Comment actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-surface msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -302,7 +302,7 @@ export function CommentsPanel({
           aria-label="Comment list actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-            className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+            className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-surface msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >

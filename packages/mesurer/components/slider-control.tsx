@@ -78,7 +78,7 @@ export function SliderControl({
             <div className="msr:absolute msr:left-[8px] msr:right-[8px] msr:rounded-full" style={{ top: 8, height: 4, backgroundColor: "var(--msr-slider-track)" }} aria-hidden="true" />
             <div className="msr:absolute msr:left-[8px] msr:rounded-full" style={{ top: 8, width: `calc(${percentage}% - ${percentage * thumbInset * 2 / 100}px)`, height: 4, backgroundColor: "var(--msr-accent)" }} aria-hidden="true" />
             <div
-              className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-white msr:shadow-[0_1px_2px_rgb(0_0_0_/_0.06)] msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[var(--msr-accent)]/25"
+              className="mesurer-control-thumb msr:absolute msr:rounded-control msr:bg-surface msr:shadow-[0_1px_2px_rgb(0_0_0_/_0.06)] msr:transition-shadow msr:outline-none msr:focus-visible:ring-1 msr:focus-visible:ring-[var(--msr-accent)]/25"
               style={{ left: `calc(8px + (100% - 16px) * ${percentage / 100})`, top: 4, width: thumbSize, height: thumbSize, border: "0", transform: "translateX(-50%)" }}
               role="slider"
               tabIndex={0}

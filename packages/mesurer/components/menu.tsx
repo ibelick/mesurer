@@ -12,7 +12,7 @@ export const FloatingSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(
         {...props}
         ref={ref}
         className={cn(
-          "mesurer-menu-surface msr:rounded-lg msr:bg-white msr:shadow-floating msr:outline-none msr:focus:outline-none",
+          "mesurer-menu-surface msr:rounded-lg msr:bg-surface msr:shadow-floating msr:outline-none msr:focus:outline-none",
           className,
         )}
       >
@@ -106,7 +106,7 @@ export function MenuItem({
       className={cn(
         "msr:flex msr:w-full msr:items-center msr:rounded-control msr:px-2 msr:py-1.5 msr:text-left msr:text-[11px] msr:leading-4 msr:text-ink-700",
         variant === "accent"
-          ? "msr:hover:bg-[#0d99ff] msr:hover:text-white"
+          ? "msr:hover:bg-accent msr:hover:text-white"
           : "msr:hover:bg-ink-50",
         "msr:disabled:cursor-not-allowed msr:disabled:opacity-40",
         className,
@@ -128,7 +128,7 @@ export function ToolbarMenuItem({
       {...props}
       variant="accent"
       className={cn(
-        "msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+        "msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-ink-700 msr:hover:bg-accent msr:hover:text-white",
         className,
       )}
     >

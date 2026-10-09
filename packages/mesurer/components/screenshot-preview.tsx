@@ -33,7 +33,7 @@ export const ScreenshotPreview = forwardRef<HTMLDivElement, ScreenshotPreviewPro
       <img
         src={url}
         alt=""
-        className="msr:block msr:h-auto msr:max-h-[120px] msr:max-w-[180px] msr:rounded-[2px] msr:bg-white msr:object-contain"
+        className="msr:block msr:h-auto msr:max-h-[120px] msr:max-w-[180px] msr:rounded-[2px] msr:bg-surface msr:object-contain"
       />
     </div>
   );

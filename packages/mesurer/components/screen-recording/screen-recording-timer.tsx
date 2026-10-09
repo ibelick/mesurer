@@ -6,7 +6,7 @@ const twoDigits = (value: number) => String(Math.floor(value)).padStart(2, "0")
 export function ScreenRecordingTimer({ elapsed, onStop }: { elapsed: number; onStop: () => void }) {
   return (
     <section
-      className="mesurer-menu-surface msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-white msr:px-3 msr:py-2 msr:shadow-floating"
+      className="mesurer-menu-surface msr:flex msr:items-center msr:gap-2 msr:rounded-lg msr:bg-surface msr:px-3 msr:py-2 msr:shadow-floating"
       aria-label="Screen recording"
     >
       <span className="msr:size-1.5 msr:rounded-full msr:bg-[var(--msr-danger-solid-bg)]" />

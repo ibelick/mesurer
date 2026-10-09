@@ -64,8 +64,8 @@ export const GuideOrientationMenu = forwardRef<
           className={cn(
             "msr:group msr:flex msr:w-full msr:items-center msr:gap-2 msr:rounded-[4px] msr:px-2 msr:py-1 msr:text-left msr:text-[11px] msr:leading-4",
             activeIndex === index || checked === choice.id
-              ? "msr:bg-[#0d99ff] msr:text-white"
-              : "msr:text-ink-700 msr:hover:bg-[#0d99ff] msr:hover:text-white",
+              ? "msr:bg-accent msr:text-white"
+              : "msr:text-ink-700 msr:hover:bg-accent msr:hover:text-white",
           )}
           onClick={() => onSelect(choice.id)}
         >

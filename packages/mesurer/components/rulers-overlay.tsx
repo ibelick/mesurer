@@ -146,7 +146,7 @@ export const RulersOverlay = memo(function RulersOverlay({
       }}
     >
       <div
-        className="msr:absolute msr:left-[18px] msr:right-0 msr:top-0 msr:overflow-hidden msr:bg-white"
+        className="msr:absolute msr:left-[18px] msr:right-0 msr:top-0 msr:overflow-hidden msr:bg-surface"
         style={{
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
           height: RULER_SIZE,
@@ -242,7 +242,7 @@ export const RulersOverlay = memo(function RulersOverlay({
       </div>
 
       <div
-        className="msr:absolute msr:bottom-0 msr:left-0 msr:top-[18px] msr:w-[18px] msr:overflow-hidden msr:bg-white"
+        className="msr:absolute msr:bottom-0 msr:left-0 msr:top-[18px] msr:w-[18px] msr:overflow-hidden msr:bg-surface"
         style={{
           boxShadow: "1px 0 3px rgba(0, 0, 0, 0.12)",
           width: RULER_SIZE,
@@ -344,7 +344,7 @@ export const RulersOverlay = memo(function RulersOverlay({
         </svg>
       </div>
 
-      <div className="msr:absolute msr:left-0 msr:top-0 msr:size-[18px] msr:bg-white" />
+      <div className="msr:absolute msr:left-0 msr:top-0 msr:size-[18px] msr:bg-surface" />
     </div>
   );
 });

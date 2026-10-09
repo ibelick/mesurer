@@ -23,7 +23,7 @@ export function SettingsButton({ className, variant = "default", shape = "defaul
           : variant === "danger-solid"
             ? "msr:border-transparent msr:bg-[var(--msr-danger-solid-bg)] msr:text-[var(--msr-danger-solid-text)] msr:hover:bg-[var(--msr-danger-solid-hover)]"
           : variant === "ghost"
-            ? "mesurer-settings-button-ghost msr:border-transparent msr:bg-transparent msr:text-ink-500 msr:hover:bg-black/4 msr:hover:text-ink-900"
+            ? "mesurer-settings-button-ghost msr:border-transparent msr:bg-transparent msr:text-ink-500 msr:hover:bg-content/6 msr:hover:text-ink-900"
             : variant === "overlay"
               ? "msr:opacity-100 msr:border-transparent msr:!bg-black/50 msr:text-white msr:hover:!bg-black/60 msr:hover:text-white msr:focus-visible:opacity-100 [&_svg]:msr:text-white"
               : "mesurer-settings-button-default msr:border-ink-200 msr:text-ink-700 msr:hover:bg-ink-50 msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",

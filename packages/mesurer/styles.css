@@ -21,6 +21,29 @@
   --color-ink-900: #18181b;
 }
 
+/* The colours that follow the theme, as Tailwind colours: `msr:bg-surface`, `msr:bg-accent`,
+   `msr:hover:bg-content/6`. Inlined, because the variables behind them are set on .mesurer-root,
+   below the place the theme's own variables are declared. */
+/* The dark theme: picked in the settings, or the system's when the theme is left to it. Written
+   once with `@variant dark { … }`, instead of once per way of getting there. */
+@custom-variant dark {
+  &:is(.mesurer-root[data-theme="dark"], .mesurer-root[data-theme="dark"] *) {
+    @slot;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:is(.mesurer-root[data-theme="system"], .mesurer-root[data-theme="system"] *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-surface: var(--msr-surface);
+  --color-accent: var(--msr-accent);
+  --color-content: var(--msr-content);
+}
+
 @layer base {
   .mesurer-root {
     font-family: var(--msr-font-sans);
@@ -47,26 +70,6 @@
 }
 }
 
-@layer utilities {
-  .msr\:rounded-control {
-    border-radius: var(--msr-radius-control);
-  }
-
-  .msr\:rounded-wide-card {
-    border-radius: var(--msr-radius-wide-card);
-  }
-}
-
-:root,
-:host {
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #f1f5f9;
-  --color-ink-200: #e2e8f0;
-  --color-ink-300: #cbd5e1;
-  --color-ink-500: #64748b;
-  --color-ink-700: #334155;
-  --color-ink-900: #18181b;
-}
 
 :host {
   all: initial;
@@ -112,30 +115,6 @@
   color-scheme: light;
 }
 
-.mesurer-root [class~="msr:bg-white"] {
-  background-color: var(--msr-surface) !important;
-}
-
-.mesurer-root [class~="msr:bg-[#0d99ff]"] {
-  background-color: var(--msr-accent) !important;
-}
-
-.mesurer-root [class~="msr:hover:bg-[#0d99ff]"]:hover {
-  background-color: var(--msr-accent) !important;
-}
-
-.mesurer-root [class~="msr:border-[#0d99ff]"] {
-  border-color: var(--msr-accent) !important;
-}
-
-.mesurer-root [class~="msr:bg-[#0d99ff]/8"] {
-  background-color: color-mix(in srgb, var(--msr-accent) 8%, transparent) !important;
-}
-
-.mesurer-root [class~="msr:text-black"] {
-  color: var(--msr-content) !important;
-}
-
 .mesurer-root .mesurer-control-thumb {
   background-color: var(--msr-control-thumb) !important;
 }
@@ -170,11 +149,6 @@
 
 .mesurer-root .mesurer-switch-thumb[data-checked="false"] {
   background-color: var(--msr-color-ink-200) !important;
-}
-
-.mesurer-root [class~="msr:hover:bg-black\/4"]:hover,
-.mesurer-root [class~="msr:hover:bg-black\/5"]:hover {
-  background-color: color-mix(in srgb, var(--msr-content) 6%, transparent) !important;
 }
 
 .mesurer-root .mesurer-menu-surface,
@@ -229,52 +203,29 @@
   background-color: var(--msr-color-ink-50);
 }
 
-.mesurer-root[data-theme="dark"] .mesurer-control-shell {
-  background-color: var(--msr-color-ink-100);
-}
-
-.mesurer-root[data-theme="dark"] .mesurer-settings-panel select {
-  background-color: var(--msr-surface-raised) !important;
-  border-color: var(--msr-color-ink-200) !important;
-}
-
-.mesurer-root[data-theme="dark"] .mesurer-settings-select,
-.mesurer-root[data-theme="dark"] .mesurer-settings-select-menu {
-  background-color: var(--msr-surface-raised) !important;
-  border-color: var(--msr-color-ink-200) !important;
-}
-
-.mesurer-root[data-theme="dark"] .mesurer-settings-button-default:hover {
-  background-color: var(--msr-surface) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  .mesurer-root[data-theme="system"] .mesurer-control-shell {
+.mesurer-root .mesurer-control-shell {
+  @variant dark {
     background-color: var(--msr-color-ink-100);
   }
+}
 
-  .mesurer-root[data-theme="system"] .mesurer-settings-panel select {
+.mesurer-root .mesurer-settings-panel select,
+.mesurer-root .mesurer-settings-select,
+.mesurer-root .mesurer-settings-select-menu {
+  @variant dark {
     background-color: var(--msr-surface-raised) !important;
     border-color: var(--msr-color-ink-200) !important;
   }
+}
 
-  .mesurer-root[data-theme="system"] .mesurer-settings-select,
-  .mesurer-root[data-theme="system"] .mesurer-settings-select-menu {
-    background-color: var(--msr-surface-raised) !important;
-    border-color: var(--msr-color-ink-200) !important;
-  }
-
-  .mesurer-root[data-theme="system"] .mesurer-settings-button-default:hover {
+.mesurer-root .mesurer-settings-button-default:hover {
+  @variant dark {
     background-color: var(--msr-surface) !important;
   }
 }
 
-.mesurer-root[data-theme="dark"] .mesurer-switch-track[data-checked="false"] {
-  background-color: var(--msr-color-ink-100) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  .mesurer-root[data-theme="system"] .mesurer-switch-track[data-checked="false"] {
+.mesurer-root .mesurer-switch-track[data-checked="false"] {
+  @variant dark {
     background-color: var(--msr-color-ink-100) !important;
   }
 }
@@ -284,46 +235,8 @@
   box-shadow: none !important;
 }
 
-.mesurer-root[data-theme="dark"] {
-  --msr-accent: #0c8ce9;
-  --msr-color-red-50: #3f2020;
-  --msr-color-red-200: #7f3f46;
-  --msr-color-red-600: #f87171;
-  --msr-color-red-700: #fca5a5;
-  --msr-danger-bg: #3f2020;
-  --msr-danger-border: #7f3f46;
-  --msr-danger-text: #f87171;
-  --msr-danger-solid-bg: #c95058;
-  --msr-danger-solid-hover: #b7424b;
-  --msr-danger-solid-text: #f5f5f5;
-  --msr-color-ink-50: #3a3a3a;
-  --msr-color-ink-100: #414141;
-  --msr-color-ink-200: #4a4a4a;
-  --msr-color-ink-300: #5a5a5a;
-  --msr-color-ink-500: #a0a0a0;
-  --msr-color-ink-700: #dedede;
-  --msr-color-ink-900: #f5f5f5;
-  --msr-surface: #323232;
-  --msr-surface-raised: #3a3a3a;
-  --msr-surface-muted: #3a3a3a;
-  --msr-color-white: #f5f5f5;
-  --msr-color-black: #171717;
-  --msr-control-thumb: #f4f4f5;
-  --msr-slider-track: rgba(245, 245, 245, 0.24);
-  --msr-shadow-toolbar:
-    drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10))
-    drop-shadow(0 3px 8px lch(0% 0 0 / 0.125))
-    drop-shadow(0 2px 5px lch(0% 0 0 / 0.125))
-    drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
-  --msr-shadow-floating: 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
-  --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
-  --msr-comment-menu-surface: #323232;
-  --msr-shadow-comment-menu: 0 0 0 0.5px lch(100% 0 0 / 0.16), 0 5px 14px lch(0% 0 0 / 0.26), 0 1px 3px lch(0% 0 0 / 0.18);
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  .mesurer-root[data-theme="system"] {
+.mesurer-root {
+  @variant dark {
     --msr-accent: #0c8ce9;
     --msr-color-red-50: #3f2020;
     --msr-color-red-200: #7f3f46;
@@ -349,7 +262,11 @@
     --msr-color-black: #171717;
     --msr-control-thumb: #f4f4f5;
     --msr-slider-track: rgba(245, 245, 245, 0.24);
-    --msr-shadow-toolbar: drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10)) drop-shadow(0 3px 8px lch(0% 0 0 / 0.125)) drop-shadow(0 2px 5px lch(0% 0 0 / 0.125)) drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
+    --msr-shadow-toolbar:
+      drop-shadow(0 0 0.4px lch(100% 0 0 / 0.10))
+      drop-shadow(0 3px 8px lch(0% 0 0 / 0.125))
+      drop-shadow(0 2px 5px lch(0% 0 0 / 0.125))
+      drop-shadow(0 1px 1px lch(0% 0 0 / 0.125));
     --msr-shadow-floating: 0 0 0.4px lch(100% 0 0 / 0.10), 0 3px 8px lch(0% 0 0 / 0.125), 0 2px 5px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
     --msr-shadow-select-menu: 0 0 0 0.4px lch(100% 0 0 / 0.14), 0 4px 12px lch(0% 0 0 / 0.22), 0 1px 3px lch(0% 0 0 / 0.18);
     --msr-comment-menu-surface: #323232;
@@ -443,18 +360,6 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   max-width: 100%;
 }
 
-.mesurer-layout-guides,
-.mesurer-layout-guides-layer,
-.mesurer-layout-guides-grid {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.mesurer-layout-guides {
-  z-index: 2;
-  overflow: hidden;
-}
 
 .mesurer-toolbar-chrome {
   position: absolute;
@@ -939,6 +844,8 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   background: transparent;
 }
 
+/* Not `msr:shadow-floating`: that utility carries the light theme's shadow, and this one follows
+   the theme. */
 .mesurer-toast-surface {
   box-shadow: var(--msr-shadow-floating);
 }

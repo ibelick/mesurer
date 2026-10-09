@@ -154,7 +154,7 @@ export function InspectInfoCard({
       <div
         ref={setCardRef}
         data-mesurer-inspect-info-card
-        className={cn("msr:pointer-events-auto msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-white msr:shadow-floating")}
+        className={cn("msr:pointer-events-auto msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-surface msr:shadow-floating")}
         style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: embedded ? undefined : 50 }}
         onPointerDown={(event) => event.stopPropagation()}
         onPointerMove={(event) => event.stopPropagation()}

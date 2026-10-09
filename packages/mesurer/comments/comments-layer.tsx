@@ -266,12 +266,12 @@ export function CommentsLayer({
         <div
           data-mesurer-comment-draft-target
           data-mesurer-comment-ui
-          className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8"
+          className="msr:pointer-events-none msr:absolute msr:border msr:border-accent msr:bg-accent/8"
           style={draftRect ?? draft.target.rect}
         />
       ) : null}
       {hoverRect && !draft && (movingId || (!hoveredId && !selectedId)) ? (
-        <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
+        <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-accent msr:bg-accent/8" style={hoverRect} />
       ) : null}
 
       {visibleComments.map((comment, index) => {
@@ -300,7 +300,7 @@ export function CommentsLayer({
             data-mesurer-comment-pin
             data-mesurer-comment-ui
             aria-label={`Comment ${index + 1}`}
-             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
+             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-accent msr:text-white" : "msr:bg-accent msr:text-white"}`}
             style={{
               ...markerStyleWithOffset(
                 point,
@@ -382,7 +382,7 @@ export function CommentsLayer({
             ref={draftOverlay.overlayRef}
             data-mesurer-comment-popover
             data-mesurer-comment-ui
-             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-white msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
+             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-surface msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <CommentComposer

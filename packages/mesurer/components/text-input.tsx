@@ -20,7 +20,7 @@ export const TextInput = forwardRef(function TextInput(
         ref={ref}
         {...props}
         className={cn(
-          "msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:text-ink-900 msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]",
+          "msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:text-[11px] msr:text-ink-900 msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_#0d99ff]",
           Boolean(leftIcon) && "msr:pl-6",
           Boolean(rightIcon) && "msr:pr-6",
           className,

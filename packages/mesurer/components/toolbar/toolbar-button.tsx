@@ -43,8 +43,8 @@ export function ToolbarButton({
         className={cn(
           "msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:outline-none",
           active
-            ? "msr:bg-[#0d99ff] msr:text-white"
-            : "msr:bg-transparent msr:text-ink-900 msr:hover:bg-black/4",
+            ? "msr:bg-accent msr:text-white"
+            : "msr:bg-transparent msr:text-ink-900 msr:hover:bg-content/6",
           className,
         )}
         onClick={onClick}
@@ -106,7 +106,7 @@ export const ToolbarCaretButton = forwardRef<
       aria-expanded={open}
       data-mesurer-menu-trigger
       className={cn(
-        "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:text-ink-900 msr:outline-none msr:hover:bg-black/4",
+        "mesurer-toolbar-caret-btn msr:relative msr:z-80 msr:flex msr:h-8 msr:w-4 msr:items-center msr:justify-center msr:rounded-control msr:text-ink-900 msr:outline-none msr:hover:bg-content/6",
         open && "msr:bg-black/4",
       )}
       onClick={onClick}

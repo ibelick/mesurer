@@ -64,7 +64,7 @@ export function ColorPicker({
   return (
     <div
       ref={panelRef}
-      className="mesurer-color-picker msr:pointer-events-auto msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:bg-white msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-floating"
+      className="mesurer-color-picker msr:pointer-events-auto msr:z-[100] msr:w-max msr:min-w-36 msr:cursor-default msr:rounded-lg msr:bg-surface msr:px-2 msr:py-2 msr:font-mono msr:text-[10px] msr:leading-4 msr:shadow-floating"
       role="dialog"
       aria-label="Selected color values"
       onMouseLeave={tooltip.onTooltipContainerLeave}

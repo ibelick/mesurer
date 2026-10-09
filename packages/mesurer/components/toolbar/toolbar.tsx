@@ -920,7 +920,7 @@ function ToolbarComponent(
                                         ? createPortal(
                                           <div
                                             ref={layoutGuidesMenuRef}
-                                            className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating"
+                                            className="mesurer-menu-surface msr:pointer-events-auto msr:fixed msr:z-[100] msr:flex msr:w-60 msr:flex-col msr:overflow-hidden msr:rounded-lg msr:bg-surface msr:p-0 msr:shadow-floating"
                                             style={{
                                               zIndex: 120,
                                               ...surfaceStyle(layoutGuidesPlacement),
@@ -1173,7 +1173,7 @@ function ToolbarComponent(
                       <button
                         type="button"
                         aria-label="Show Mesurer toolbar"
-                        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:bg-transparent msr:text-ink-900 msr:outline-none msr:hover:bg-black/4"
+                        className="mesurer-toolbar-restore msr:flex msr:size-8 msr:select-none msr:items-center msr:justify-center msr:rounded-control msr:bg-transparent msr:text-ink-900 msr:outline-none msr:hover:bg-content/6"
                         onClick={(event) => {
                           if (event.defaultPrevented || consumeDragClick()) return;
                           onRestore();
