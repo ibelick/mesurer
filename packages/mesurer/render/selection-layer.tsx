@@ -25,6 +25,8 @@ type SelectionLayerProps = {
   selectedTypography: TypographyInfo | null
   selectedMeasurementCount: number
   hideInfoCard: boolean
+  /** The card lets clicks through, as it does over the responsive previews. */
+  passThroughCard?: boolean
 }
 
 export function SelectionLayer({
@@ -45,6 +47,7 @@ export function SelectionLayer({
   selectedTypography,
   selectedMeasurementCount,
   hideInfoCard,
+  passThroughCard = false,
 }: SelectionLayerProps) {
   if (!visible) return null
   const transitionMs = dragging ? 0 : MEASURE_TRANSITION_MS
@@ -109,6 +112,7 @@ export function SelectionLayer({
       ))}
       {!hideInfoCard && selectedMeasurement ? (
         <InspectInfoCard
+          passThrough={passThroughCard}
           ownerWindow={ownerWindow}
           rect={selectedMeasurement.rect}
           element={selectedMeasurement.elementRef}
@@ -118,7 +122,7 @@ export function SelectionLayer({
           typography={selectedMeasurementCount === 1 ? selectedTypography : null}
         />
       ) : !hideInfoCard && selectorPreview ? (
-        <InspectInfoCard ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />
+        <InspectInfoCard passThrough={passThroughCard} ownerWindow={ownerWindow} rect={selectorPreview.rect} element={selectorPreview.element} layoutDetailsEnabled={layoutDetailsEnabled} copied={selectorPreview.copied} />
       ) : null}
     </>
   )

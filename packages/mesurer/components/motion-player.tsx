@@ -22,12 +22,12 @@ const timestamp = (milliseconds: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-function MotionValues({ motions, ownerWindow, element, observedProperties }: {
+function MotionValues({ motions, element, observedProperties }: {
   motions: MotionDetails[]
-  ownerWindow: Window
   element: Element
   observedProperties: string[]
 }) {
+  const ownerWindow = element.ownerDocument.defaultView ?? window
   const tooltip = useTooltip()
   const [keyframesExpanded, setKeyframesExpanded] = useState(false)
   const keyframesId = useId()
@@ -113,7 +113,12 @@ function MotionValues({ motions, ownerWindow, element, observedProperties }: {
   )
 }
 
-export function MotionPlayer({ element, ownerWindow, observedProperties, observedTargets, inspectDetails }: { element: Element | null | undefined; ownerWindow: Window | null; observedProperties: string[]; observedTargets: ObservedMotionTarget[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
+export function MotionPlayer({ element, observedProperties, observedTargets, inspectDetails }: { element: Element | null | undefined; observedProperties: string[]; observedTargets: ObservedMotionTarget[]; inspectDetails?: (motionDetails: ReactNode) => ReactNode }) {
+  // The element's own window, read from it here. It is never handed down as a prop: it changes
+  // with the element (to a frame's window, for one in a frame), and React's development build
+  // reads through every prop that changed. Through a window that is into its child frames, where
+  // one from another origin throws and leaves React unable to render again.
+  const ownerWindow = element?.ownerDocument?.defaultView ?? null
   const trackRef = useRef<HTMLDivElement>(null)
   const animationsRef = useRef<Animation[]>([])
   const dragRef = useRef<DOMRect | null>(null)
@@ -218,7 +223,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
 
   const details = useMemo(() => {
     if (!inspectOpen || !element || !ownerWindow) return null
-    const values = <MotionValues motions={motions} ownerWindow={ownerWindow} element={element} observedProperties={observedProperties} />
+    const values = <MotionValues motions={motions} element={element} observedProperties={observedProperties} />
     return inspectDetails ? inspectDetails(values) : values
   }, [inspectOpen, element, ownerWindow, motions, observedProperties, inspectDetails])
 
@@ -271,7 +276,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
     >
       <div className="msr:relative msr:p-2">
         <div className={playerPreviewClassName} onClick={controllable ? togglePlay : undefined}>
-          <MotionPreview element={element} ownerWindow={ownerWindow} observedTargets={observedTargets} wakeRef={previewWakeRef} />
+          <MotionPreview element={element} observedTargets={observedTargets} wakeRef={previewWakeRef} />
         </div>
         <div className={playerControlsClassName}>
          {observedOnly ? (

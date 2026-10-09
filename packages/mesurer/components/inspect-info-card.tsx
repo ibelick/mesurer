@@ -19,6 +19,8 @@ import { InspectCardToggle } from "./inspect-card-toggle"
 import { TooltipLayerContext, useTooltip } from "./tooltip"
 
 type InspectInfoCardProps = {
+  /** Lets clicks through to what is under the card, so inspecting goes on beneath it. */
+  passThrough?: boolean
   ownerWindow: Window | null
   rect: Rect
   element?: Element | null
@@ -79,6 +81,7 @@ const InspectCardBody = ({
 }
 
 export function InspectInfoCard({
+  passThrough = false,
   ownerWindow,
   rect,
   element,
@@ -157,8 +160,8 @@ export function InspectInfoCard({
       <div
         ref={setCardRef}
         data-mesurer-inspect-info-card
-        className={cn("msr:pointer-events-auto msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-surface msr:shadow-floating")}
-        style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: embedded ? undefined : 50 }}
+        className={cn(passThrough ? "msr:pointer-events-none" : "msr:pointer-events-auto", "msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-surface msr:shadow-floating")}
+        style={{ pointerEvents: passThrough ? "none" : "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: embedded ? undefined : 50 }}
         onPointerDown={(event) => event.stopPropagation()}
         onPointerMove={(event) => event.stopPropagation()}
         onPointerUp={(event) => event.stopPropagation()}

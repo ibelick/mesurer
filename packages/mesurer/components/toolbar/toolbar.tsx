@@ -477,6 +477,14 @@ function ToolbarComponent(
     // Cleared in this order: what was half done first, then what was selected.
     onCancelTransient();
     clearSelection();
+    // The previews are for inspecting: Inspect stays on there rather than switching off, so a
+    // click on the button is never a click that leaves them inert.
+    if (responsive.open) {
+      startTool();
+      tools.setMode("select");
+      onInteract();
+      return;
+    }
     toggleTool("select");
   };
 
@@ -1216,7 +1224,7 @@ function ToolbarComponent(
               >
                  {recordingPanelOpen ? screenRecording.panel : (
                    <div className="msr:w-[22rem] msr:max-w-[calc(100vw-24px)]" data-mesurer-motion-surface>
-                      <MotionPlayer element={motion.element} ownerWindow={motion.ownerWindow} observedProperties={motion.observedProperties} observedTargets={motion.observedTargets} inspectDetails={motion.inspectDetails} />
+                      <MotionPlayer element={motion.element} observedProperties={motion.observedProperties} observedTargets={motion.observedTargets} inspectDetails={motion.inspectDetails} />
                    </div>
                  )}
               </div>,

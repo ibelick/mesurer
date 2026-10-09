@@ -100,7 +100,6 @@ export type ToolbarProps = {
   screenRecording: ToolbarScreenRecording;
   motion: {
     element: Element | null;
-    ownerWindow: Window;
     playable: boolean;
     observedProperties: string[];
     observedTargets: ObservedMotionTarget[];

@@ -8,7 +8,9 @@ import { createMotionDependencies, cssVariables } from "../core/motion-dependenc
 type PreviewBounds = { left: number; top: number; right: number; bottom: number }
 
 // Read-only mirror. Metadata is polled at 4Hz; JS updates paint at up to 60Hz.
-export function MotionPreview({ element, ownerWindow, observedTargets, wakeRef }: { element: Element; ownerWindow: Window; observedTargets: ObservedMotionTarget[]; wakeRef?: { current: (() => void) | null } }) {
+export function MotionPreview({ element, observedTargets, wakeRef }: { element: Element; observedTargets: ObservedMotionTarget[]; wakeRef?: { current: (() => void) | null } }) {
+  // Read from the element rather than passed in: see MotionPlayer.
+  const ownerWindow = element.ownerDocument.defaultView ?? window
   const hostRef = useRef<HTMLDivElement>(null)
   const internalSeekRef = useRef<(() => void) | null>(null)
   const seekRef = wakeRef ?? internalSeekRef

@@ -1658,7 +1658,6 @@ export function MesurerClient({
          },
           motion: {
             element: motionElement,
-            ownerWindow: motionElement?.ownerDocument.defaultView ?? ownerWindow,
              playable: selectedMotionPlayable,
               observedProperties: selectedObservedProperties,
               observedTargets: selectedObservedTargets,

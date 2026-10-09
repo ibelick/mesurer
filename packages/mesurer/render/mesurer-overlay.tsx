@@ -313,6 +313,7 @@ export const MesurerOverlay = memo(function MesurerOverlay({
          selectedTypography={selection.selectedTypography}
          selectedMeasurementCount={selection.selectedMeasurementCount}
           hideInfoCard={selectionVisible && (altPressed || Boolean(selection.hideInfoCard))}
+          passThroughCard={!pageLayers}
        />
 
       {pageLayers ? (
