@@ -63,7 +63,6 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
   const captureNodesRef = useRef<{
     source: HTMLVideoElement
     canvas: HTMLCanvasElement | null
-    cropTarget: HTMLElement | null
   } | null>(null)
   const extensionRecordingActiveRef = useRef(false)
   const extensionRecordingPreparingRef = useRef(false)
@@ -95,7 +94,6 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
       nodes.source.srcObject = null
       nodes.source.remove()
       nodes.canvas?.remove()
-      nodes.cropTarget?.remove()
     }
     extensionRecording?.abort()
     extensionRecordingActiveRef.current = false
@@ -191,7 +189,6 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
       captureNodesRef.current = {
         source: displayCapture.source,
         canvas: displayCapture.canvas,
-        cropTarget: displayCapture.cropTarget,
       }
       runDisplayRecordingDrawLoop(ownerWindow, displayCapture, nextRect, viewport, drawFrameRef)
 
