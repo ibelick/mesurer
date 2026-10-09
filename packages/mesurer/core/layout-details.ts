@@ -54,12 +54,3 @@ export const formatLayoutDetailParts = (options: {
   return parts
 }
 
-export const formatLayoutDetailsLabel = (options: {
-  padding: BoxEdges
-  gap: { row: number; column: number } | null
-}): string | null => {
-  const parts = formatLayoutDetailParts(options)
-  return parts.length > 0
-    ? parts.map((part) => `${part.label} ${part.value}`).join("   ")
-    : null
-}

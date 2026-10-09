@@ -95,55 +95,6 @@ export const getSnapGuidePosition = (params: {
       : point.y
 }
 
-export const getNearestElementToGuide = (params: {
-  guide: Guide
-  overlayNode: HTMLDivElement | null
-}) => {
-  const elements = getBodyElementsCached()
-  const position = params.guide.position
-  let bestElement: HTMLElement | null = null
-  let bestDistance = Number.POSITIVE_INFINITY
-  let bestArea = Number.POSITIVE_INFINITY
-
-  for (const element of elements) {
-    if (!(element instanceof HTMLElement)) continue
-    if (params.overlayNode && params.overlayNode.contains(element)) continue
-    if (element === document.body || element === document.documentElement)
-      continue
-    const rect = getRectFromDomCached(element)
-    if (
-      rect.width < MIN_SINGLE_TARGET_SIZE ||
-      rect.height < MIN_SINGLE_TARGET_SIZE
-    )
-      continue
-
-    const distance =
-      params.guide.orientation === "vertical"
-        ? position < rect.left
-          ? rect.left - position
-          : position > rect.left + rect.width
-            ? position - (rect.left + rect.width)
-            : 0
-        : position < rect.top
-          ? rect.top - position
-          : position > rect.top + rect.height
-            ? position - (rect.top + rect.height)
-            : 0
-
-    const area = rect.width * rect.height
-    if (
-      distance < bestDistance ||
-      (distance === bestDistance && area < bestArea)
-    ) {
-      bestDistance = distance
-      bestArea = area
-      bestElement = element
-    }
-  }
-
-  return bestElement
-}
-
 export const getElementBetweenGuides = (params: {
   document: Document
   overlayNode: HTMLElement | null

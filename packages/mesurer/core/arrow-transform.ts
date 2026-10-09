@@ -23,15 +23,6 @@ export const transformedArrowBounds = (arrow: Arrow): ArrowBounds => {
   return rotatedBounds(arrowBounds(arrow), arrow.rotation ?? 0)
 }
 
-export const moveArrow = (arrow: Arrow, dx: number, dy: number): Arrow => ({
-  ...arrow,
-  start: { x: arrow.start.x + dx, y: arrow.start.y + dy },
-  end: { x: arrow.end.x + dx, y: arrow.end.y + dy },
-  control: arrow.control
-    ? { x: arrow.control.x + dx, y: arrow.control.y + dy }
-    : undefined,
-})
-
 export const resizeArrow = (arrow: Arrow, handle: ResizeHandle, pointer: Point): Arrow => {
   const box = arrowBounds(arrow)
   const rotation = arrow.rotation ?? 0

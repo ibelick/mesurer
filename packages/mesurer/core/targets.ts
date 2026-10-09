@@ -2,7 +2,6 @@ import {
   ANCESTOR_KEEP_COVERAGE,
   ANCESTOR_PRUNE_SCALE,
   MIN_MULTI_ELEMENT_COVERAGE,
-  MIN_SINGLE_ELEMENT_COVERAGE,
   MIN_SINGLE_TARGET_SIZE,
 } from "./constants"
 import { getDistanceToRect, intersectionArea, rectArea } from "./geometry"
@@ -58,33 +57,6 @@ export const pickMultiTargets = (
   return (pruned.length > 0 ? pruned : candidates)
     .sort((a, b) => rectArea(a.rect) - rectArea(b.rect))
     .map(({ element }) => element)
-}
-
-export const pickSingleTarget = (
-  selectionRect: Rect,
-  point: Point,
-  items: Array<{ element: Element; rect: Rect }>
-) => {
-  const selectionArea = Math.max(1, rectArea(selectionRect))
-  let best: { element: Element; score: number } | null = null
-  for (const { element, rect } of items) {
-    if (rect.width < MIN_SINGLE_TARGET_SIZE || rect.height < MIN_SINGLE_TARGET_SIZE) continue
-    const overlap = intersectionArea(selectionRect, rect)
-    const elementArea = Math.max(1, rectArea(rect))
-    const coverage = overlap / elementArea
-    if (coverage < MIN_SINGLE_ELEMENT_COVERAGE) continue
-    const areaRatio = elementArea / selectionArea
-    const areaSimilarity = 1 - Math.min(1, Math.abs(Math.log(areaRatio)) / 2)
-    const pointerInside =
-      point.x >= rect.left &&
-      point.x <= rect.left + rect.width &&
-      point.y >= rect.top &&
-      point.y <= rect.top + rect.height
-    const largeContainerPenalty = elementArea > selectionArea * 4 && coverage < 0.9 ? 0.25 : 0
-    const score = coverage * 0.55 + areaSimilarity * 0.35 + (pointerInside ? 0.2 : 0) - largeContainerPenalty
-    if (!best || score > best.score) best = { element, score }
-  }
-  return best?.element ?? null
 }
 
 export const pickPointTarget = (

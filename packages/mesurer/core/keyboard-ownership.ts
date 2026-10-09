@@ -216,16 +216,6 @@ export const setMesurerKeyboardOwned = (document: Document, owned: boolean) => {
 export const isMesurerKeyboardOwned = (eventTarget: Window) =>
   eventTarget.document.documentElement.hasAttribute(MESURER_KEYBOARD_ATTR)
 
-export const getMesurerPageWindow = (view: Window | null) => {
-  if (!view) return null
-  try {
-    if (view.frameElement) return view.parent
-  } catch {
-    return view
-  }
-  return view
-}
-
 export const isPageTextEntry = (node: EventTarget | null) => {
   if (!(node instanceof Element) || isInsideMesurer(node)) return false
   if (isEditableElement(node)) return true
@@ -249,8 +239,3 @@ export const findMesurerTypingTarget = (view: Window) => {
   return null
 }
 
-export const blurPageFocus = (eventTarget: Window) => {
-  const active = getDeepActiveElement(eventTarget)
-  if (!active || isInsideMesurer(active)) return
-  if (active instanceof HTMLElement) active.blur()
-}
