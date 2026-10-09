@@ -234,6 +234,10 @@ export function CommentsPanel({
             const replyCount = Math.max(0, comment.messages.length - 1)
             const unresolved = unresolvedIds.has(comment.id)
             const selected = selectedId === comment.id
+            // Left in a responsive preview: its size says which. It is found again when one of
+            // that size is open, so until then it is not a target that went missing.
+            const { preview, viewport } = comment.target
+            const place = preview && viewport ? ` · ${viewport.width} × ${viewport.height} preview` : ""
             return (
               <li key={comment.id} className="msr:relative">
                   <div className={`msr:pl-3 msr:pr-2 msr:py-1.5 ${selected ? "msr:bg-ink-50" : "msr:hover:bg-ink-100"}`}>
@@ -242,7 +246,7 @@ export function CommentsPanel({
                       <span className="msr:text-[11px] msr:font-medium msr:text-ink-700">You</span>
                       <span className="msr:text-[10px] msr:text-ink-500">{formatCommentDate(comment.updatedAt)}</span>
                       <span className="msr:line-clamp-2 msr:w-full msr:text-[11px] msr:leading-4 msr:text-ink-700">{message?.text ?? "Empty comment"}</span>
-                      <span className="msr:text-[10px] msr:text-ink-500">{replyCount} {replyCount === 1 ? "reply" : "replies"}{unresolved ? " · target not found" : ""}</span>
+                      <span className="msr:text-[10px] msr:text-ink-500">{replyCount} {replyCount === 1 ? "reply" : "replies"}{place}{unresolved && !preview ? " · target not found" : ""}</span>
                     </button>
                     <div className="msr:flex msr:shrink-0 msr:items-center msr:gap-0.5">
                       <CommentIconButton

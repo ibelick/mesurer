@@ -6,7 +6,7 @@ import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { useTimeout } from "../hooks/use-timeout"
-import { getRectFromDom } from "../core/dom"
+import { getRectFromDom, isConnectedElement } from "../core/dom"
 import { COMMENT_CHROME_SELECTOR, eventPathHits, isRectEqual } from "./dom"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
 
@@ -163,6 +163,11 @@ export function CommentsLayer({
     if (!ownerWindow) return
     let frame: number | null = null
     const update = () => {
+      // What it was started on is gone (a preview that was removed, say), and so is the draft.
+      if (!isConnectedElement(draft.element)) {
+        onDraftCancel()
+        return
+      }
       const next = getRectFromDom(draft.element)
       setDraftRect((previous) => previous && isRectEqual(previous, next) ? previous : next)
       frame = ownerWindow.requestAnimationFrame(update)
@@ -175,13 +180,17 @@ export function CommentsLayer({
 
   // Leaving a comment hides its preview a moment later; coming back before then keeps it.
   const hideHover = () => startHoverTimeout(() => setHoveredId(null), 120)
+  // Where the draft is: on what it was started on, wherever that has moved to since.
+  const draftPoint = draft
+    ? draftRect ? markerPoint(draftRect, draft.target.anchor) : draft.point
+    : null
   const draftOverlay = useOverlayPosition({
     ownerWindow,
-    position: draft
-      ? { left: draft.point.x + 16, top: draft.point.y - 12 }
+    position: draftPoint
+      ? { left: draftPoint.x + 16, top: draftPoint.y - 12 }
       : { left: 0, top: 0 },
-    avoidRect: draft
-      ? { left: draft.point.x - 12, top: draft.point.y - 12, width: 24, height: 24 }
+    avoidRect: draftPoint
+      ? { left: draftPoint.x - 12, top: draftPoint.y - 12, width: 24, height: 24 }
       : undefined,
     gap: 4,
     enabled: draft !== null,

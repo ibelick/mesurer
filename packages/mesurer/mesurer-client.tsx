@@ -1334,6 +1334,7 @@ export function MesurerClient({
       ? Boolean(comment.target.preview) && !commentRuntimeSnapshot.unresolvedIds.has(comment.id)
       : !comment.target.preview,
   )
+  const previewCommentSizes = comments.flatMap(({ target }) => (target.preview && target.viewport ? [target.viewport] : []))
   const overlayInteractive = enabled && !settingsOpen && !minimized
   const movingGroupRect = (() => {
     if (!selectionIsGroup) return null
@@ -1400,7 +1401,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation, wanted: wantedPreview } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation, wanted: wantedPreview, commented: previewCommentSizes } : null}
       overlay={{
         enabled,
         pageLayers: !responsiveOpen,

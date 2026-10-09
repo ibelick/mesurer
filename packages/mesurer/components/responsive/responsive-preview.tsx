@@ -12,7 +12,7 @@ import { cn } from "../../core/utils"
 import { ControlNumberInput } from "../control-field"
 import { CloseIcon } from "../icons/close"
 import { LayoutGuidesOverlay } from "../layout-guides-overlay"
-import { iconButton, surface } from "./shared"
+import { dangerIconButton, iconButton, surface } from "./shared"
 import { PreviewGuides } from "./preview-guides"
 import { SizeSelect, sizeName } from "./size-select"
 
@@ -40,6 +40,7 @@ export function ResponsivePreview({
   breakpoints,
   layoutGuides,
   guides,
+  comments,
   guidesActive,
   guideOrientation,
   onGuides,
@@ -59,6 +60,8 @@ export function ResponsivePreview({
   layoutGuides: LayoutGuide[]
   /** This preview's own guides, and whether the guides tool is in use. */
   guides: PreviewGuide[]
+  /** How many comments were left at this preview's width, which go from view with it. */
+  comments: number
   guidesActive: boolean
   guideOrientation: "horizontal" | "vertical"
   onGuides: (guides: PreviewGuide[]) => void
@@ -74,6 +77,9 @@ export function ResponsivePreview({
   onRemove?: () => void
 }) {
   const [resizing, setResizing] = useState(false)
+  // Removing it puts its comments out of view: it is asked for twice, the first press a warning.
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const commentsNoun = `${comments} ${comments === 1 ? "comment" : "comments"}`
   // Whether the page turned out to refuse being shown in a frame. Known once it first loads.
   const [refused, setRefused] = useState<boolean | null>(null)
   const name = sizeName(size, breakpoints) ?? "Custom"
@@ -178,7 +184,16 @@ export function ResponsivePreview({
             onChange={(height) => onResize({ ...size, height })}
           />
         </div>
-        <button type="button" aria-label="Remove preview" title="Remove" className={iconButton} disabled={!onRemove} onClick={onRemove}>
+        <button
+          type="button"
+          aria-label={confirmingRemove ? `Remove preview and put away its ${commentsNoun}` : "Remove preview"}
+          title={confirmingRemove ? `Its ${commentsNoun} stay in the list. Press again to remove.` : "Remove"}
+          className={confirmingRemove ? dangerIconButton : iconButton}
+          disabled={!onRemove}
+          onClick={() => (comments > 0 && !confirmingRemove ? setConfirmingRemove(true) : onRemove?.())}
+          onBlur={() => setConfirmingRemove(false)}
+          onPointerLeave={() => setConfirmingRemove(false)}
+        >
           <CloseIcon size={12} />
         </button>
       </header>

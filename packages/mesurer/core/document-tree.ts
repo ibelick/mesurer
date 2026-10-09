@@ -18,8 +18,10 @@ export const getAccessibleFrameDocument = (element: Element): Document | null =>
   }
 }
 
+// In its document, and that document still in a window: one in a frame that was removed stays
+// in its document, which is no longer shown anywhere.
 export const isConnectedElement = (element: Element | null | undefined): element is Element =>
-  Boolean(element?.isConnected)
+  Boolean(element?.isConnected && element.ownerDocument.defaultView)
 
 export const getViewportRect = (element: Element): Rect => {
   const rect = element.getBoundingClientRect()
