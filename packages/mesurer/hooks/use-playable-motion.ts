@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { getMotionAnimations, motionDuration, readMotionDetails } from "../core/motion"
+import { motionDuration, readMotionDetails, scopedMotionAnimations } from "../core/motion"
 import { useObservedMotion } from "./use-observed-motion"
 
 export const usePlayableMotion = (
@@ -20,7 +20,7 @@ export const usePlayableMotion = (
       if (element.isConnected) {
         try {
           const motions = readMotionDetails(element, view)
-          const effects = getMotionAnimations(element)
+          const effects = scopedMotionAnimations(element)
           ready = motions.some((motion) => motionDuration(motion) > 0) || effects.some((animation) => {
             try {
               const timing = animation.effect?.getTiming()

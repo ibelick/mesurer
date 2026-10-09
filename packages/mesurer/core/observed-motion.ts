@@ -1,4 +1,4 @@
-import { getMotionAnimations, hasTransientScriptMotion, motionCssProperty, OBSERVED_MOTION_PROPERTIES } from "./motion"
+import { getMotionAnimations, hasTransientScriptMotion, motionCssProperty, OBSERVED_MOTION_PROPERTIES, scopedMotionAnimations } from "./motion"
 import { createMotionDependencies, cssVariables } from "./motion-dependencies"
 export { OBSERVED_MOTION_PROPERTIES } from "./motion"
 
@@ -97,7 +97,7 @@ export function observeMotion(root: Element, view: Window, onChange: (targets: O
         } catch { /* Some effects cannot expose keyframes. */ }
       }
       let changed = false
-      if (hasTransientScriptMotion(root, animations) && !detected.has(root)) {
+      if (hasTransientScriptMotion(root, scopedMotionAnimations(root, animations)) && !detected.has(root)) {
         detected.set(root, new Set(["animation"]))
         changed = true
       }

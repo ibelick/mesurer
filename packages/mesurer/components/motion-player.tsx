@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
-import { controlMotion, getMotionAnimations, motionCssProperty, motionDuration, motionPlaybackState, readMotionDetails, readMotionKeyframes, scrubAnimations, type MotionDetails } from "../core/motion"
+import { controlMotion, getMotionAnimations, motionCssProperty, motionDuration, motionPlaybackState, readMotionDetails, readMotionKeyframes, scopedMotionAnimations, scrubAnimations, type MotionDetails } from "../core/motion"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { Tooltip, useTooltip } from "./tooltip"
 import { FloatingSurface } from "./menu"
@@ -162,7 +162,7 @@ export function MotionPlayer({ element, ownerWindow, observedProperties, observe
       try {
         const motions = readMotionDetails(element, ownerWindow)
         const nextDuration = Math.max(0, ...motions.map(motionDuration))
-        setReady(motions.length > 0 || getMotionAnimations(element).length > 0)
+        setReady(motions.length > 0 || scopedMotionAnimations(element).length > 0)
         setDuration(nextDuration)
         setMotions(motions)
         animationsRef.current = [...new Set(motions.flatMap((motion) => motion.animation ? [motion.animation] : []))]

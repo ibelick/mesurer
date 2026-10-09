@@ -5,7 +5,7 @@ const controlledAnimations = new WeakSet<Animation>()
 
 // Finite, running script-created effects may be transient pieces of a JS
 // lifecycle. CSS effects and animations explicitly controlled here remain seekable.
-export const hasTransientScriptMotion = (element: Element, animations = getMotionAnimations(element)) => animations.some((animation) => {
+export const hasTransientScriptMotion = (element: Element, animations = scopedMotionAnimations(element)) => animations.some((animation) => {
   if (controlledAnimations.has(animation) || "animationName" in animation || "transitionProperty" in animation || animation.playState !== "running") return false
   try {
     const timing = animation.effect?.getTiming()
@@ -92,6 +92,37 @@ export const getMotionAnimations = (element: Element) => {
   return [...animations]
 }
 
+// How many levels below the inspected element its motion still counts for it: the element, its
+// children and its grandchildren. Deeper motion belongs to a more specific element.
+export const MOTION_LEVELS = 2
+
+// How many levels below `element` `target` sits, or null when it is outside MOTION_LEVELS.
+export const motionLevel = (element: Element, target: Element): number | null => {
+  let level = 0
+  let node: Element | null = target
+  while (node && node !== element && level <= MOTION_LEVELS) {
+    node = node.parentElement ?? (node.getRootNode?.() as ShadowRoot | undefined)?.host ?? null
+    level++
+  }
+  return node === element && level <= MOTION_LEVELS ? level : null
+}
+
+// The animations that make the element's motion: its own and those of its children within
+// MOTION_LEVELS. Pseudo-element animations are left out.
+export const scopedMotionAnimations = (element: Element, animations = getMotionAnimations(element)) =>
+  animations.filter((animation) => {
+    const effect = animation.effect as KeyframeEffect | null
+    if (effect?.pseudoElement) return false
+    return !effect?.target || motionLevel(element, effect.target) !== null
+  })
+
+// Only the element's own animations, for the rows that name its CSS animations and transitions.
+export const ownMotionAnimations = (element: Element, animations = getMotionAnimations(element)) =>
+  animations.filter((animation) => {
+    const effect = animation.effect as KeyframeEffect | null
+    return (!effect?.target || effect.target === element) && !effect?.pseudoElement
+  })
+
 const animationFor = (animations: Animation[], name: string, index: number) => {
   const named = animations.filter((animation) => {
     const candidate = animation as Animation & { animationName?: string }
@@ -104,10 +135,7 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
   ownerWindow = element.ownerDocument?.defaultView ?? ownerWindow
   const style = ownerWindow.getComputedStyle(element)
   const animations = getMotionAnimations(element)
-  const ownAnimations = animations.filter((animation) => {
-    const effect = animation.effect as KeyframeEffect | null
-    return (!effect?.target || effect.target === element) && !effect?.pseudoElement
-  })
+  const ownAnimations = ownMotionAnimations(element, animations)
   const names = splitList(style.animationName)
   const durations = splitList(style.animationDuration)
   const delays = splitList(style.animationDelay)
@@ -154,7 +182,7 @@ export const readMotionDetails = (element: Element, ownerWindow: Window): Motion
      .filter((motion) => motion.name !== "none" && motion.duration > 0 && motion.animation !== null)
 
   const claimed = new Set([...animationDetails, ...transitionDetails].map((motion) => motion.animation))
-  const webAnimations = animations.filter((animation) => !claimed.has(animation))
+  const webAnimations = scopedMotionAnimations(element, animations).filter((animation) => !claimed.has(animation))
     .flatMap((animation, index) => {
       let timing: EffectTiming | undefined
       try { timing = animation.effect?.getTiming() } catch { return [] }
