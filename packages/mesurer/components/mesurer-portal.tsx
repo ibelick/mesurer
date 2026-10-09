@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, type ComponentPropsWithoutRef, type RefObject } from "react";
+import { type ComponentPropsWithoutRef, type RefObject } from "react";
 import { RulersOverlay } from "./rulers-overlay";
 import { LayoutGuidesOverlay } from "./layout-guides-overlay";
 import { RegionDimMask, ScreenshotSelectOverlay } from "./screenshot-select-overlay";
@@ -7,6 +7,7 @@ import { Toolbar } from "./toolbar";
 import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
+import { usePageListener } from "../hooks/use-page-listener";
 
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
@@ -51,28 +52,26 @@ export function MesurerPortal({
   layoutGuides,
   layoutGuidesVisible = false,
 }: MesurerPortalProps) {
-  useEffect(() => {
-    const ownerWindow = portalTarget.ownerDocument.defaultView;
-    if (!ownerWindow) return;
-    const root = rootRef.current;
-
-    const keepToolSwitchPressInsideMesurer = (event: PointerEvent) => {
-      const ElementConstructor = ownerWindow.Element;
-      if (!root || !event.composedPath().some((node) => node instanceof ElementConstructor && root.contains(node) && node.classList.contains("mesurer-toolbar-tool-switch"))) {
-        return;
-      }
-
-      // Base UI dismisses floating surfaces from document capture listeners.
-      // Stop the native press before it reaches those listeners; the button's
-      // later click event still changes the active Mesurer tool.
-      event.stopImmediatePropagation();
-    };
-
-    ownerWindow.addEventListener("pointerdown", keepToolSwitchPressInsideMesurer, true);
-    return () => {
-      ownerWindow.removeEventListener("pointerdown", keepToolSwitchPressInsideMesurer, true);
-    };
-  }, [portalTarget, rootRef]);
+  const ownerWindow = portalTarget.ownerDocument.defaultView;
+  // Keeps a press on the tool switch inside Mesurer. Base UI dismisses floating surfaces from
+  // document capture listeners: the native press is stopped before it reaches those, and the
+  // button's later click event still changes the active tool.
+  usePageListener({
+    view: ownerWindow,
+    types: "pointerdown",
+    phase: "capture",
+    onEvent: (event) => {
+      const root = rootRef.current;
+      if (!ownerWindow || !root) return;
+      const onToolSwitch = event.composedPath().some(
+        (node) =>
+          node instanceof ownerWindow.Element &&
+          root.contains(node) &&
+          node.classList.contains("mesurer-toolbar-tool-switch"),
+      );
+      if (onToolSwitch) event.stopImmediatePropagation();
+    },
+  });
 
   return createPortal(
     <div

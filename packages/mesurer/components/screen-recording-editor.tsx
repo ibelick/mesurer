@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
-import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { listenPointerDrag } from "../core/pointer-drag"
 import { cn, formatValue } from "../core/utils"
+import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult } from "../hooks/screen-recording-export"
 import { supportedRecordingFormats } from "../hooks/screen-recording-export"
@@ -369,7 +369,9 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
   const [expanded, setExpanded] = useState(false)
   const [mp4Supported, setMp4Supported] = useState(false)
   const formats = useMemo(() => mp4Supported ? [...supportedRecordingFormats(), "mp4" as const] : supportedRecordingFormats(), [mp4Supported])
-  const [format, setFormat] = useState<RecordingExportFormat>(formats[0] ?? "webm")
+  const [chosenFormat, setFormat] = useState<RecordingExportFormat>(formats[0] ?? "webm")
+  // MP4 is only offered once this clip is known to encode; until then the choice falls back.
+  const format = !mp4Supported && chosenFormat === "mp4" ? "webm" : chosenFormat
   const [scale, setScale] = useState(1)
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
@@ -393,27 +395,38 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     return () => { active = false }
   }, [frameSize, ownerDocument])
 
-  useEffect(() => {
-    if (!mp4Supported && format === "mp4") setFormat("webm")
-  }, [format, mp4Supported])
-
-  useEffect(() => {
+  // Another clip starts untrimmed, from its beginning. Reset while rendering, so the old trim
+  // is never shown on the new clip.
+  const [clip, setClip] = useState({ url, duration })
+  if (clip.url !== url || clip.duration !== duration) {
+    setClip({ url, duration })
     setStart(0)
     setEnd(duration)
     setCurrentTime(0)
-  }, [duration, url])
+  }
 
-  useEffect(() => {
-    const view = ownerDocument.defaultView
-    if (!view) return
-    const closeIfOutside = (event: Event) => {
-      if (!exportMenuOpen) return
-      const path = event.composedPath()
-      if (exportMenuRef.current && path.includes(exportMenuRef.current)) return
-      if (exportMenuSurfaceRef.current && path.includes(exportMenuSurfaceRef.current)) return
-      setExportMenuOpen(false)
-    }
-    const onKeyDown = (event: Event) => {
+  // A press outside the export menu closes it. Listened for on the window and on the document,
+  // since either can be where the app's own listeners sit.
+  const closeExportMenuIfOutside = (event: Event) => {
+    const path = event.composedPath()
+    if (exportMenuRef.current && path.includes(exportMenuRef.current)) return
+    if (exportMenuSurfaceRef.current && path.includes(exportMenuSurfaceRef.current)) return
+    setExportMenuOpen(false)
+  }
+  const ownerView = ownerDocument.defaultView
+  usePageListener({ active: exportMenuOpen, view: ownerView, types: "pointerdown", onEvent: closeExportMenuIfOutside })
+  usePageListener({
+    active: exportMenuOpen,
+    view: ownerView,
+    target: () => ownerDocument,
+    types: "pointerdown",
+    onEvent: closeExportMenuIfOutside,
+  })
+  // Escape closes the export menu, or the card when the menu is closed; Space plays and pauses.
+  usePageListener({
+    view: ownerView,
+    types: "keydown",
+    onEvent: (event) => {
       if (!("key" in event)) return
       const keyEvent = event as KeyboardEvent
       if (keyEvent.key === "Escape") {
@@ -437,20 +450,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
       }
       keyEvent.preventDefault()
       togglePlaybackRef.current()
-    }
-    const detachWindow = exportMenuOpen
-      ? addMesurerCaptureListener(view, view, "pointerdown", closeIfOutside)
-      : () => { }
-    const detachDocument = exportMenuOpen
-      ? addMesurerCaptureListener(view, ownerDocument, "pointerdown", closeIfOutside)
-      : () => { }
-    const detachKeys = addMesurerCaptureListener(view, view, "keydown", onKeyDown)
-    return () => {
-      detachWindow()
-      detachDocument()
-      detachKeys()
-    }
-  }, [exportMenuOpen, onDiscard, ownerDocument])
+    },
+  })
 
   useLayoutEffect(() => {
     if (!exportMenuOpen || !overlayLayer) return
@@ -592,7 +593,8 @@ function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, own
     return () => observer.disconnect()
   }, [duration, ownerDocument, updatePlayheadPosition, url])
 
-  useEffect(() => {
+  // Before paint, so the playhead never trails the time it shows by a frame.
+  useLayoutEffect(() => {
     if (!playing) updatePlayheadPosition(currentTime)
   }, [currentTime, playing, updatePlayheadPosition])
 

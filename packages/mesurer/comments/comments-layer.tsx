@@ -5,6 +5,7 @@ import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { useTimeout } from "../hooks/use-timeout"
 import { getRectFromDom } from "../core/dom"
 import { COMMENT_CHROME_SELECTOR, eventPathHits, isRectEqual } from "./dom"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
@@ -126,14 +127,8 @@ export function CommentsLayer({
   const [draftNudge, setDraftNudge] = useState(false)
   const draftOutsideAttemptRef = useRef(false)
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
-  const hoverTimeoutRef = useRef<number | null>(null)
   const ownerWindow = ownerDocument.defaultView
-  useEffect(
-    () => () => {
-      if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
-    },
-    [ownerWindow],
-  )
+  const { start: startHoverTimeout, clear: showHover } = useTimeout(ownerWindow)
   const visibleComments = comments.filter((comment) =>
     comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
   )
@@ -153,12 +148,12 @@ export function CommentsLayer({
   const previewComment = movingComment ?? hovered
   const previewPoint = movingPoint ?? hoveredPoint
   const previewGroup = previewComment ? [previewComment] : []
-  useEffect(() => {
-    if (!draft || !draftText.trim()) {
-      draftOutsideAttemptRef.current = false
-      setDraftNudge(false)
-    }
-  }, [draft, draftText])
+  // An empty draft has nothing to lose, so its nudge is dropped. Done while rendering: it is
+  // only state, and it never shows for a frame on a draft that was just emptied.
+  if (!draft || !draftText.trim()) {
+    draftOutsideAttemptRef.current = false
+    if (draftNudge) setDraftNudge(false)
+  }
 
   useEffect(() => {
     if (!draft) {
@@ -178,12 +173,8 @@ export function CommentsLayer({
     }
   }, [draft?.element, ownerWindow])
 
-  const showHover = () => {
-    if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
-  }
-  const hideHover = () => {
-    if (ownerWindow) hoverTimeoutRef.current = ownerWindow.setTimeout(() => setHoveredId(null), 120)
-  }
+  // Leaving a comment hides its preview a moment later; coming back before then keeps it.
+  const hideHover = () => startHoverTimeout(() => setHoveredId(null), 120)
   const draftOverlay = useOverlayPosition({
     ownerWindow,
     position: draft

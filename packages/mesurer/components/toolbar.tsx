@@ -17,12 +17,13 @@ import { cn } from "../core/utils";
 import type { ToolbarDock } from "../core/persistence";
 import type { ToolbarPlacement } from "../core/toolbar-dock";
 import { surfaceAlignFor } from "../core/toolbar-dock";
-import { addMesurerCaptureListener } from "../core/keyboard-gate";
 import { toolbarAxis, toolbarMotionMs, syncToolbarLayoutSizes } from "../core/toolbar-motion";
 import { useToolbarDock } from "../hooks/use-toolbar-dock";
 import { useToolbarGroupMotion } from "../hooks/use-toolbar-group-motion";
 import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip";
+import { useCommentsCopied } from "../hooks/use-comments-copied";
+import { usePageListener } from "../hooks/use-page-listener";
 import { TOOLBAR_SIDE_ATTRIBUTE } from "./screen-recording-editor";
 import { MotionPlayer } from "./motion-player";
 import { CaptureToast } from "./capture-toast";
@@ -459,7 +460,7 @@ function ToolbarComponent(
     },
     [closeSurfaces, openMenu, setOpenMenu],
   );
-  const [commentsCopied, setCommentsCopied] = useState(false);
+  const { copied: commentsCopied } = useCommentsCopied(eventTarget);
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
   );
@@ -478,19 +479,6 @@ function ToolbarComponent(
   const collapseStageRef = useRef<HTMLDivElement | null>(null);
   const expandedPanelRef = useRef<HTMLDivElement | null>(null);
   const iconSlotRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    let timeout: number | undefined;
-    const handleCopied = () => {
-      setCommentsCopied(true);
-      if (timeout !== undefined) eventTarget.clearTimeout(timeout);
-      timeout = eventTarget.setTimeout(() => setCommentsCopied(false), 1800);
-    };
-    eventTarget.addEventListener("mesurer:comments-copied", handleCopied);
-    return () => {
-      eventTarget.removeEventListener("mesurer:comments-copied", handleCopied);
-      if (timeout !== undefined) eventTarget.clearTimeout(timeout);
-    };
-  }, [eventTarget]);
   const { markReady: markToolbarMotionReady } = useToolbarGroupMotion({
     eventTarget,
     toolGroup,
@@ -967,10 +955,14 @@ function ToolbarComponent(
     };
   }, [eventTarget, guideMenuOpen]);
 
-  useEffect(() => {
-    if (!openMenu || openMenu.type === "settings") return;
-    const menu = openMenu
-    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+  // A press outside an open menu closes it, unless it lands on something that belongs to it.
+  usePageListener({
+    active: openMenu !== null && openMenu.type !== "settings",
+    view: eventTarget,
+    types: "pointerdown",
+    onEvent: (event) => {
+      const menu = openMenu
+      if (!menu) return
       const path = event.composedPath()
       const pathHas = (selector: string) =>
         path.some((target) => {
@@ -1000,14 +992,8 @@ function ToolbarComponent(
         return
       }
       setOpenMenu(null)
-    };
-    return addMesurerCaptureListener(
-      eventTarget,
-      eventTarget,
-      "pointerdown",
-      closeOnOutsidePointerDown as EventListener,
-    );
-  }, [eventTarget, openMenu, setOpenMenu]);
+    },
+  });
 
   const toolbarWidth = settingsRef.current?.parentElement?.offsetWidth ?? 0;
   const toastAlignment =

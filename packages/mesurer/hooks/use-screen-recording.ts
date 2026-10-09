@@ -31,6 +31,7 @@ import {
   supportedWebmMimeType,
 } from "./screen-recording-export"
 import { encodeMp4Clip } from "../core/screen-recording-mp4"
+import { usePageListener } from "./use-page-listener"
 
 export type { RecordingExportFormat, RecordingExportOptions, RecordingExportResult }
 export { supportedRecordingFormats }
@@ -280,22 +281,25 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
     void start(nextRect)
   }, [start])
 
-  useEffect(() => {
-    if (!selecting) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+  // While a region is being chosen, Escape cancels and Enter confirms the one being adjusted.
+  usePageListener({
+    active: selecting,
+    view: ownerWindow,
+    types: "keydown",
+    phase: "bubble",
+    onEvent: (event) => {
+      const { key } = event as KeyboardEvent
+      if (key === "Escape") {
         event.preventDefault()
         cancelSelection()
         return
       }
-      if (adjusting && event.key === "Enter") {
+      if (adjusting && key === "Enter") {
         event.preventDefault()
         confirmRecording()
       }
-    }
-    ownerWindow.addEventListener("keydown", onKeyDown)
-    return () => ownerWindow.removeEventListener("keydown", onKeyDown)
-  }, [adjusting, cancelSelection, confirmRecording, ownerWindow, selecting])
+    },
+  })
 
   const beginDraw = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return

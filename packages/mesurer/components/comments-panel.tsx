@@ -1,14 +1,15 @@
 import type { CommentFilter, CommentThread } from "../comments/types"
 import type { RefObject } from "react"
 import { createPortal } from "react-dom"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { CommentDeleteConfirmation, readDeleteAnchor, type DeleteAnchorRect } from "../comments/comment-delete-confirmation"
-import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
 import { CheckIcon, CopyIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
+import { useCommentsCopied } from "../hooks/use-comments-copied"
+import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { surfaceStyle, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement"
 
@@ -72,7 +73,7 @@ export function CommentsPanel({
   const [listMenuPosition, setListMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copied, flash: flashCopied } = useCommentsCopied(ownerWindow)
   const [searchQuery, setSearchQuery] = useState("")
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const statusFilteredComments = statusFilter === "all"
@@ -87,28 +88,14 @@ export function CommentsPanel({
     panelRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body
   const tooltipGroup = useToolbarTooltip()
 
-  useEffect(() => {
-    let copiedTimeout: number | null = null
-    const handleCopied = () => {
-      setCopied(true)
-      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
-      copiedTimeout = ownerWindow.setTimeout(() => setCopied(false), 1800)
-    }
-    ownerWindow.addEventListener("mesurer:comments-copied", handleCopied)
-    return () => {
-      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
-      ownerWindow.removeEventListener("mesurer:comments-copied", handleCopied)
-    }
-  }, [ownerWindow])
-
-  useEffect(() => {
-    if (!openMenuId && !deleteId && !deleteAllOpen) return
-    const ownerDocument = panelRef.current?.ownerDocument
-    const ownerView = ownerDocument?.defaultView
-    if (!ownerDocument || !ownerView) return
-    const handlePointerDown = (event: Event) => {
-      const pointerEvent = event as PointerEvent
-      const path = pointerEvent.composedPath()
+  // A press outside closes the row menu, and the delete confirmations unless it is on one.
+  usePageListener({
+    active: Boolean(openMenuId || deleteId || deleteAllOpen),
+    view: () => panelRef.current?.ownerDocument.defaultView,
+    target: () => panelRef.current?.ownerDocument,
+    types: "pointerdown",
+    onEvent: (event) => {
+      const path = event.composedPath()
       const clickedMenu = path.some((target) => {
         if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
         return (target as Element).getAttribute("data-mesurer-comment-actions") !== null
@@ -124,9 +111,8 @@ export function CommentsPanel({
         setDeleteAllOpen(false)
         setDeleteAllAnchor(null)
       }
-    }
-    return addMesurerCaptureListener(ownerView, ownerDocument, "pointerdown", handlePointerDown)
-  }, [deleteAllOpen, deleteId, openMenuId, panelRef])
+    },
+  })
 
   return (
     <div
@@ -165,8 +151,7 @@ export function CommentsPanel({
           wrapperClassName="msr:h-6 msr:w-6"
           onClick={async () => {
             await onCopy()
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 1800)
+            flashCopied()
           }}
         >
           {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}

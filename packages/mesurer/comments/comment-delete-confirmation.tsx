@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom"
-import { useEffect, useRef } from "react"
-import { addMesurerCaptureListener } from "../core/keyboard-gate"
+import { useRef } from "react"
+import { usePageListener } from "../hooks/use-page-listener"
 import { cn } from "../core/utils"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { SettingsButton } from "../components/settings-button"
@@ -52,8 +52,6 @@ export function CommentDeleteConfirmation({
   portalTarget = null,
 }: CommentDeleteConfirmationProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null)
-  const onCancelRef = useRef(onCancel)
-  onCancelRef.current = onCancel
   const anchored = Boolean(anchor && ownerWindow)
   const overlay = useOverlayPosition({
     ownerWindow: ownerWindow ?? null,
@@ -69,18 +67,19 @@ export function CommentDeleteConfirmation({
     enabled: anchored,
   })
 
-  useEffect(() => {
-    const node = dialogRef.current
-    const view = ownerWindow ?? node?.ownerDocument.defaultView
-    if (!view) return
-    return addMesurerCaptureListener(view, view, "pointerdown", (event) => {
+  // A press outside cancels, and goes no further: it must not also act on what is under it.
+  usePageListener({
+    view: () => ownerWindow ?? dialogRef.current?.ownerDocument.defaultView,
+    types: "pointerdown",
+    onEvent: (event) => {
+      const node = dialogRef.current
       if (!node || event.composedPath().includes(node)) return
       event.preventDefault()
       event.stopPropagation()
-      if ("stopImmediatePropagation" in event) event.stopImmediatePropagation()
-      onCancelRef.current()
-    })
-  }, [ownerWindow])
+      event.stopImmediatePropagation()
+      onCancel()
+    },
+  })
 
   const dialog = (
     <div

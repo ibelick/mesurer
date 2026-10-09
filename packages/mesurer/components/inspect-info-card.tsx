@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useContext, useMemo, useState, type ReactNode } from "react"
 import { isConnectedElement, readInspectBoxSpacing, resolveInspectLayoutElement } from "../core/dom"
 import type { LayoutDetailPart } from "../core/layout-details"
 import { getElementSelector } from "../core/selector"
@@ -129,9 +129,13 @@ export function InspectInfoCard({
   const showCssToggle = !embedded && (cssParts.length > INSPECT_CSS_VISIBLE_ROWS || cssExpanded)
   const hasBodyContent = visibleCssParts.length > 0 || Boolean(typography)
 
-  useEffect(() => {
+  // Another element starts collapsed again. Reset while rendering, so it is never shown expanded
+  // for a frame first.
+  const [shownFor, setShownFor] = useState({ element, id: measurement?.id })
+  if (shownFor.element !== element || shownFor.id !== measurement?.id) {
+    setShownFor({ element, id: measurement?.id })
     setCssExpanded(false)
-  }, [element, measurement?.id])
+  }
 
   const dimensions = `${formatValue(displayRect.width)} x ${formatValue(displayRect.height)}`
   const copyValue = async (value: string) => {

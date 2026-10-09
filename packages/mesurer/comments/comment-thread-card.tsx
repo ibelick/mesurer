@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
+import { useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
 import type { CommentThread } from "./types"
 import { CloseIcon, MoreIcon } from "../components/icons"
 import { CommentDeleteConfirmation, readDeleteAnchor } from "./comment-delete-confirmation"
@@ -6,6 +6,7 @@ import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { CommentIconButton } from "./comment-icon-button"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { copyCommentSelector } from "./export"
 
@@ -98,9 +99,14 @@ export function CommentThreadCard({
   const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
   const [threadMenuAnchor, setThreadMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
   const [messageMenuAnchor, setMessageMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
-  useEffect(() => {
-    if (!ownerWindow || (!threadOverflowOpen && !overflowOpenId)) return
-    const handleOutsidePointerDown = (event: Event) => {
+  // A press outside the overflow menus closes them.
+  usePageListener({
+    active: threadOverflowOpen || overflowOpenId !== null,
+    view: ownerWindow,
+    target: () => ownerWindow?.document,
+    types: "pointerdown",
+    phase: "capture",
+    onEvent: (event) => {
       const isMenuEvent = event.composedPath().some((target) =>
         typeof (target as Element).matches === "function" &&
         (target as Element).matches("[data-mesurer-comment-overflow-menu], [data-mesurer-comment-actions]"),
@@ -110,10 +116,8 @@ export function CommentThreadCard({
       setOverflowOpenId(null)
       setThreadMenuAnchor(null)
       setMessageMenuAnchor(null)
-    }
-    ownerWindow.document.addEventListener("pointerdown", handleOutsidePointerDown, true)
-    return () => ownerWindow.document.removeEventListener("pointerdown", handleOutsidePointerDown, true)
-  }, [overflowOpenId, ownerWindow, threadOverflowOpen])
+    },
+  })
   useLayoutEffect(() => {
     const node = overlay.overlayRef.current
     if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
