@@ -15,6 +15,7 @@ import { CloseIcon } from "../icons/close"
 import { ResponsivePreview } from "./responsive-preview"
 import { iconButton, stop, surface } from "./shared"
 import { SizeSelect, type SizeChoice } from "./size-select"
+import { passWheelOn } from "./wheel"
 import { ZoomSelect, percent } from "./zoom-select"
 
 type Preview = ResponsiveSize & { id: number; guides: PreviewGuide[] }
@@ -36,34 +37,6 @@ const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++,
 let lastPreviews: Preview[] = [createPreview(DEFAULT_RESPONSIVE_DEVICE)]
 let lastZoom: number | null = null
 
-type Axis = "x" | "y"
-
-// Whether there is anything left of it to scroll that way.
-const hasRoom = (node: Element, axis: Axis, delta: number) => {
-  const at = axis === "x" ? node.scrollLeft : node.scrollTop
-  const room = axis === "x" ? node.scrollWidth - node.clientWidth : node.scrollHeight - node.clientHeight
-  return delta < 0 ? at > 0 : at < room - 1
-}
-
-// The nearest thing around `start`, itself included, with room left to scroll that way.
-const scrollerFor = (start: Element | null, axis: Axis, delta: number): Element | null => {
-  const view = start?.ownerDocument.defaultView
-  if (!view) return null
-  const overflowOf = (style: CSSStyleDeclaration) => (axis === "x" ? style.overflowX : style.overflowY)
-  for (let node = start; node; node = node.parentElement ?? (node.getRootNode() as Partial<ShadowRoot>).host ?? null) {
-    const page = node.ownerDocument
-    let style = view.getComputedStyle(node)
-    let scrolls = overflowOf(style) === "auto" || overflowOf(style) === "scroll"
-    // The page itself scrolls unless it is told not to, and its body may be what tells it.
-    if (node === page.scrollingElement) {
-      if (style.overflowX === "visible" && style.overflowY === "visible" && page.body) style = view.getComputedStyle(page.body)
-      scrolls = overflowOf(style) !== "hidden" && overflowOf(style) !== "clip"
-    }
-    if (scrolls && hasRoom(node, axis, delta)) return node
-  }
-  return null
-}
-
 const Divider = () => <span className="msr:mx-1 msr:h-4 msr:w-px msr:shrink-0 msr:bg-ink-200" aria-hidden="true" />
 
 // The page at several screen sizes at once, side by side, over the page itself.
@@ -71,8 +44,11 @@ export function ResponsiveInspector({
   layoutGuides,
   guidesActive,
   guideOrientation,
+  wanted,
   onClose,
 }: {
+  /** A size one of the previews is to have: a comment left at it is being looked at. */
+  wanted?: ResponsiveSize | null
   /** The layout guides that are showing, drawn in each preview at its own size. */
   layoutGuides: LayoutGuide[]
   /** The guides tool is in use: the previews' guides can be drawn and moved. */
@@ -105,42 +81,7 @@ export function ResponsiveInspector({
     const page = ownerWindow.document.documentElement
     const overflow = page.style.overflow
     page.style.overflow = "hidden"
-    // With a tool in hand the pointer is the tool's, over the previews too, and a wheel turned
-    // there never reaches the page in one, nor the row. It is passed on: up and down to what
-    // scrolls under the pointer in that preview and past its end to the row, sideways the
-    // other way round.
-    const onWheel = (event: WheelEvent) => {
-      // Only what the overlay took. Anywhere else the wheel already scrolls what it is over.
-      if (!event.composedPath().some((node) => (node as Partial<Element>).matches?.("[data-mesurer-overlay]"))) return
-      let under: Element | null = null
-      let drawn = 1
-      for (const frame of listRef.current?.querySelectorAll("iframe") ?? []) {
-        const box = frame.getBoundingClientRect()
-        if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) continue
-        drawn = box.width / frame.offsetWidth || 1
-        const page = frame.contentDocument
-        under = page?.elementFromPoint((event.clientX - box.left) / drawn, (event.clientY - box.top) / drawn) ?? page?.scrollingElement ?? null
-        break
-      }
-      const step = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? ownerWindow.innerHeight : 1
-      // A trackpad never moves quite straight. Only the way it mostly goes is followed, so going
-      // down a preview does not also slide the row.
-      const sideways = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-      for (const axis of ["x", "y"] as const) {
-        const delta = (axis === "x" ? event.deltaX : event.deltaY) * step
-        if (!delta || (axis === "x") !== sideways) continue
-        const row = rowRef.current
-        // Sideways is the row's first, so the previews can be gone through from over any of
-        // them: a page that is a little too wide would otherwise keep the wheel for itself.
-        const rowFirst = axis === "x" && row !== null && hasRoom(row, axis, delta)
-        const inPreview = rowFirst ? null : scrollerFor(under, axis, delta)
-        // Instant: a page that scrolls smoothly would start over at every turn of the wheel.
-        ;(inPreview ?? row)?.scrollBy({
-          [axis === "x" ? "left" : "top"]: inPreview ? delta / drawn : delta,
-          behavior: "instant",
-        })
-      }
-    }
+    const onWheel = (event: WheelEvent) => passWheelOn(event, listRef.current?.querySelectorAll("iframe") ?? [], rowRef.current)
     ownerWindow.addEventListener("wheel", onWheel, { passive: true })
     return () => {
       ownerWindow.removeEventListener("resize", measure)
@@ -148,6 +89,16 @@ export function ResponsiveInspector({
       page.style.overflow = overflow
     }
   }, [])
+
+  // A wanted size no preview has the width of is added, in place of the last one in a full row.
+  useEffect(() => {
+    if (!wanted) return
+    setPreviews((current) =>
+      current.some((preview) => preview.width === wanted.width)
+        ? current
+        : [...current.slice(0, RESPONSIVE_MAX_PREVIEWS - 1), createPreview(wanted)],
+    )
+  }, [wanted])
 
   // A preview that was just added is brought into view at the end of the row.
   const countRef = useRef(previews.length)

@@ -544,3 +544,88 @@ test("closes when Mesurer is minimized", async ({ page }) => {
   await page.getByRole("button", { name: "Minimize toolbar" }).click();
   await expect(inspector).toHaveCount(0);
 });
+
+test("switches Inspect off and on again inside the previews", async ({ page }) => {
+  const inspector = await open(page);
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+  await expect(inspect).toHaveAttribute("aria-pressed", "true");
+
+  await inspect.click();
+  await expect(inspect).toHaveAttribute("aria-pressed", "false");
+  await expect(inspector).toBeVisible();
+  await inspect.click();
+  await expect(inspect).toHaveAttribute("aria-pressed", "true");
+});
+
+test("with a tool in hand, goes down a preview without sliding the row, and slides the row from over a preview", async ({ page }) => {
+  const inspector = await open(page);
+  await addSize(inspector, "Laptop · 1280 × 800");
+  await addSize(inspector, "Full HD · 1920 × 1080");
+  await expect(frames(page)).toHaveCount(3);
+  await expect.poll(() => frameSize(page, 2)).toEqual({ width: 1920, height: 1080 });
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+
+  const rowLeft = () =>
+    inspector.locator("section").first().evaluate((section) => section.parentElement!.parentElement!.scrollLeft);
+  // The row stands at its end, on the preview that was added last.
+  const start = await rowLeft();
+  expect(start).toBeGreaterThan(0);
+  const frame = page.frameLocator("iframe[data-mesurer-responsive-frame]").nth(2);
+  await frame.locator("body").evaluate((body) => { body.style.minHeight = "4000px"; });
+  const box = (await frames(page).nth(2).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  await page.mouse.wheel(0, 300);
+  await expect.poll(() => frame.locator("html").evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  expect(await rowLeft()).toBe(start);
+
+  await page.mouse.wheel(-300, 0);
+  await expect.poll(rowLeft).toBeLessThan(start);
+  expect(await frame.locator("html").evaluate(() => window.scrollX)).toBe(0);
+});
+
+test("comments on a preview, and copies it under that preview's page and size", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const inspector = await open(page);
+  await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
+  await expect.poll(() => frameSize(page)).toEqual({ width: 1280, height: 800 });
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  // Commenting leaves the previews open.
+  await expect(inspector).toBeVisible();
+
+  const target = page.frameLocator("iframe[data-mesurer-responsive-frame]").first().getByRole("button", { name: "Nested inner button" });
+  const box = (await target.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Too small here.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  const pins = page.locator("[data-mesurer-comment-pin]");
+  await expect(pins).toHaveCount(1);
+
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Too small here.");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  // Under the preview's own size, not the window's, and by the element's place in the page.
+  expect(copied).toContain(
+    `URL: ${page.url()}\nViewport: 1280 × 800 CSS px\n\n1. Too small here.\n[<button>Nested inner button</button> selector:`,
+  );
+  expect(copied.match(/Viewport:/g)).toHaveLength(1);
+
+  // Escape closes what is open over the previews before the previews.
+  await pins.click();
+  const thread = page.locator("[data-mesurer-comment-popover]");
+  await expect(thread).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(thread).toHaveCount(0);
+  await expect(inspector).toBeVisible();
+
+  // The comment belongs to the preview: it goes with the previews, and is back with them.
+  const toggle = page.getByRole("button", { name: "Responsive (B)" });
+  await toggle.click();
+  await expect(inspector).toHaveCount(0);
+  await expect(pins).toHaveCount(0);
+  await toggle.click();
+  await expect(inspector).toBeVisible();
+  await expect(pins).toHaveCount(1);
+});

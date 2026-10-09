@@ -382,6 +382,9 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           />
         ) : null}
         </>
+      ) : comments ? (
+        // Over the previews the page's own layers are put away, but a preview is commented on.
+        <CommentsLayer {...comments} />
       ) : null}
 
       <DistancesLayer

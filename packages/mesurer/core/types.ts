@@ -51,6 +51,12 @@ export type CommentTarget = {
   rect: Rect
   documentPoint: Point
   anchor?: Point
+  /** The address of the page the element was on when it was commented on. */
+  url?: string
+  /** The size, in CSS px, of the window that page was in. */
+  viewport?: { width: number; height: number }
+  /** That window was a responsive preview of this size, not the page itself. */
+  preview?: boolean
 }
 
 export type CommentThread = {

@@ -1,5 +1,6 @@
 import { getRectFromDom } from "../core/dom"
-import { getAccessibleFrameDocument } from "../core/document-tree"
+import { getAccessibleFrameDocument, getOwnFrameDocuments } from "../core/document-tree"
+import { isResponsivePreview } from "../core/responsive"
 import { getTargetElement } from "../core/selection"
 import { createId } from "../core/utils"
 import { getElementSelector } from "../core/selector"
@@ -22,13 +23,40 @@ const getElementAttributes = (element: Element) => {
 const getFramePath = (element: Element) => {
   const path: string[] = []
   const shadowPaths: string[][] = []
-  let frame = element.ownerDocument.defaultView?.frameElement
-  while (frame) {
+  let view = element.ownerDocument.defaultView
+  // A preview's own frame is Mesurer's, not the page's: the path stops at the page in it.
+  while (view?.frameElement && !isResponsivePreview(view)) {
+    const frame = view.frameElement
     path.unshift(getElementSelector(frame))
     shadowPaths.unshift(getShadowPath(frame))
-    frame = frame.ownerDocument.defaultView?.frameElement
+    view = frame.ownerDocument.defaultView
   }
   return { path, shadowPaths }
+}
+
+// The window of the page the element is part of: the preview it is in, or the page itself.
+const getPageView = (element: Element, ownerWindow: Window) => {
+  let view = element.ownerDocument.defaultView ?? ownerWindow
+  while (view !== ownerWindow && !isResponsivePreview(view) && view.frameElement) {
+    view = view.frameElement.ownerDocument.defaultView ?? ownerWindow
+  }
+  return view
+}
+
+// A page's address without the place in it.
+const pageAddress = (url: string) => url.split("#")[0]
+
+// The page in the preview a comment was left in: the one of that size, or failing that of that
+// width, while it still shows the page the comment is about.
+const getPreviewDocument = (target: CommentTarget, ownerDocument: Document) => {
+  const previews = getOwnFrameDocuments(ownerDocument).filter(
+    ({ defaultView }) =>
+      defaultView &&
+      isResponsivePreview(defaultView) &&
+      defaultView.innerWidth === target.viewport?.width &&
+      (!target.url || pageAddress(defaultView.location.href) === pageAddress(target.url)),
+  )
+  return previews.find(({ defaultView }) => defaultView?.innerHeight === target.viewport?.height) ?? previews[0] ?? null
 }
 
 const getShadowPath = (element: Element) => {
@@ -80,7 +108,11 @@ export const captureCommentTarget = (
   const html = element.outerHTML.replace(/\s+/g, " ").trim()
   const rect = getRectFromDom(element)
   const frame = getFramePath(element)
+  const pageView = getPageView(element, ownerWindow)
   return {
+    url: pageView.location.href,
+    viewport: { width: pageView.innerWidth, height: pageView.innerHeight },
+    ...(isResponsivePreview(pageView) ? { preview: true } : null),
     selector: getElementSelector(element),
     framePath: frame.path,
     frameShadowPaths: frame.shadowPaths,
@@ -116,6 +148,12 @@ export const resolveCommentTarget = (
 ) => {
   try {
     let targetDocument = ownerDocument
+    if (target.preview) {
+      // Left in a preview: it is found there again while one of its size is open.
+      const previewDocument = getPreviewDocument(target, ownerDocument)
+      if (!previewDocument) return null
+      targetDocument = previewDocument
+    }
     for (const [index, frameSelector] of (target.framePath ?? []).entries()) {
       let frameRoot: Document | ShadowRoot = targetDocument
       for (const hostSelector of target.frameShadowPaths?.[index] ?? []) {

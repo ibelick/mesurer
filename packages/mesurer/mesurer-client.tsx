@@ -743,11 +743,16 @@ export function MesurerClient({
 
   // The previews are frames of this page, so the tools work in them as they do on the page.
   const [responsiveOpen, setResponsiveOpen] = useState(false);
+  // The size of the preview a comment being looked at was left in, for the previews to show.
+  const [wantedPreview, setWantedPreview] = useState<{ width: number; height: number } | null>(null);
   const toggleResponsive = useCallback(() => {
     // What is selected belongs to where it was selected: the page, or a preview that is closing.
     clearSelection();
     setSelectedMeasurement(null);
     setSelectedMeasurements([]);
+    setSelectedCommentId(null);
+    cancelCommentDraft();
+    setWantedPreview(null);
     if (responsiveOpen) {
       setResponsiveOpen(false);
       return;
@@ -757,11 +762,13 @@ export function MesurerClient({
     setOpenMenu(null);
     colorPicker.setActive(false);
     screenshot.closeUi();
-    // Inspecting is the tool that works in the previews, with X-ray and the layout guides.
-    if (toolMode !== "select") setToolModePersisted("none");
+    // Inspecting and commenting are the tools that work in the previews, with X-ray and the
+    // layout guides.
+    if (toolMode !== "select" && toolMode !== "comments") setToolModePersisted("none");
     setRulersVisible(false);
     setResponsiveOpen(true);
   }, [
+    cancelCommentDraft,
     clearSelection,
     colorPicker,
     responsiveOpen,
@@ -774,12 +781,12 @@ export function MesurerClient({
     setToolModePersisted,
     toolMode,
   ]);
-  // A tool that draws on the page itself (guides, rulers, annotations, comments) leaves the
-  // previews for the page. Putting Mesurer away takes them along.
+  // A tool that draws on the page itself (rulers, annotations) leaves the previews for the
+  // page. Putting Mesurer away takes them along.
   useEffect(() => {
     if (!responsiveOpen) return;
-    // Guides work in the previews; rulers and the page's other tools belong to the page.
-    if (minimized || rulersVisible || (toolMode !== "none" && toolMode !== "select" && toolMode !== "guides")) setResponsiveOpen(false);
+    // Guides and comments work in the previews; rulers and the page's other tools belong to the page.
+    if (minimized || rulersVisible || (toolMode !== "none" && toolMode !== "select" && toolMode !== "guides" && toolMode !== "comments")) setResponsiveOpen(false);
   }, [minimized, responsiveOpen, rulersVisible, toolMode]);
 
   const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
@@ -1320,6 +1327,13 @@ export function MesurerClient({
     scheduleGuideDragHold,
     clearGuideDragHold,
   });
+  // A comment is shown where it was left: on the page, or over the previews while the one it
+  // was left in is open.
+  const overlayComments = comments.filter((comment) =>
+    responsiveOpen
+      ? Boolean(comment.target.preview) && !commentRuntimeSnapshot.unresolvedIds.has(comment.id)
+      : !comment.target.preview,
+  )
   const overlayInteractive = enabled && !settingsOpen && !minimized
   const movingGroupRect = (() => {
     if (!selectionIsGroup) return null
@@ -1386,7 +1400,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation, wanted: wantedPreview } : null}
       overlay={{
         enabled,
         pageLayers: !responsiveOpen,
@@ -1532,8 +1546,8 @@ export function MesurerClient({
           fontFamily: resolveTextFontFamily(settings.textStyle),
           color: settings.textStyle.color,
         },
-        comments: comments.length > 0 || toolMode === "comments" ? {
-          comments,
+        comments: overlayComments.length > 0 || toolMode === "comments" ? {
+          comments: overlayComments,
           commentFilter,
           rects: commentRuntimeSnapshot.rects,
           unresolvedIds: commentRuntimeSnapshot.unresolvedIds,
@@ -1685,6 +1699,14 @@ export function MesurerClient({
           selectedId: selectedCommentId,
           onSelect: (id) => {
             setEnabled(true)
+            // A comment is looked at where it was left: in the previews, with one of its size
+            // among them, or on the page. Going from one to the other leaves this list open.
+            const target = comments.find((comment) => comment.id === id)?.target
+            if (Boolean(target?.preview) !== responsiveOpen) {
+              toggleResponsive()
+              setOpenMenu(openMenu)
+            }
+            if (target?.preview && target.viewport) setWantedPreview({ ...target.viewport })
             setToolMode("comments")
             setSelectedCommentId(id)
             commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })

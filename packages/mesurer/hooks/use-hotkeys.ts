@@ -202,11 +202,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
           current.onCloseLayoutGuidesMenu()
           return
         }
-        if (current.isResponsiveOpen()) {
-          lastEscapeAtRef.current = now
-          current.onToggleResponsive()
-          return
-        }
         if (current.isScreenshotActive()) {
           lastEscapeAtRef.current = now
           current.onCloseScreenshot()
@@ -220,6 +215,12 @@ export const useHotkeys = (options: HotkeyOptions) => {
         if (current.hasOpenComment()) {
           lastEscapeAtRef.current = now
           current.closeComment()
+          return
+        }
+        // After what may be open over the previews, which goes first.
+        if (current.isResponsiveOpen()) {
+          lastEscapeAtRef.current = now
+          current.onToggleResponsive()
           return
         }
         if (!current.isToolbarIdle()) {
