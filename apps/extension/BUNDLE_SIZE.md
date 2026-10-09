@@ -1,7 +1,7 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **217 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **217.5 KiB**. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -28,6 +28,7 @@ Measured baselines for `feat/inspect-motion`:
 | Toolbar drop: square drop zones, turning against a wall, and the auto-hide delay (before: 215.8 KiB, after: 216.0 KiB) | 216.0 KiB | 217 KiB |
 | Toolbar polish: auto-hide while in use, saved placement on resize, and resumed swings (before: 216.0 KiB, after: 216.4 KiB) | 216.4 KiB | 217 KiB |
 | Toolbar corners: corner zones, the lit drop zone, and settling on the nearest spot (before: 216.4 KiB, after: 216.9 KiB) | 216.9 KiB | 217 KiB |
+| Comment commands: resolve-all shortcut, shared resolve icon and copy/resolve success feedback | 217.1 KiB | 217.5 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -86,3 +87,7 @@ resuming an interrupted swing add about 0.4 KiB (about 0.6 KiB headroom remainin
 
 The corner zones, the drop zone that lights up and settling on the nearest spot add about
 0.5 KiB (about 0.1 KiB headroom remaining).
+
+The comment commands measure 217.1 KiB after consolidating the feedback hook,
+action handlers, and resolve icon. The last documented baseline is 216.9 KiB;
+the new limit is 217.5 KiB, leaving about 0.4 KiB of headroom for this feature.

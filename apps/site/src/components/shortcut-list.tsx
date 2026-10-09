@@ -23,6 +23,7 @@ const shortcuts = [
   { keys: "Cmd/Ctrl + A", description: "Select all annotations" },
   { keys: "Cmd/Ctrl + ,", description: "Open Settings" },
   { keys: "Cmd/Ctrl + K", description: "Copy comments for an agent" },
+  { keys: "Cmd/Ctrl + Shift + K", description: "Resolve all comments" },
 ] as const;
 
 function KeyLabel({ keys }: { keys: string | readonly string[] }) {

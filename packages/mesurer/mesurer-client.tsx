@@ -352,6 +352,16 @@ export function MesurerClient({
     layoutGuides,
     layoutGuidesRef,
   } = workspace;
+  const copyAllComments = async () => {
+    const copied = await copyCommentsForAgent(comments, ownerWindow);
+    if (copied) ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"));
+    return copied;
+  };
+  const resolveAllCommentsWithFeedback = () => {
+    if (!comments.some((comment) => comment.status === "open")) return;
+    resolveAllComments();
+    ownerWindow.dispatchEvent(new Event("mesurer:comments-resolved"));
+  };
   const setCommentFilterAndSelection = useCallback((filter: CommentFilter) => {
     setCommentFilter(filter);
     const selectedComment = comments.find((comment) => comment.id === selectedCommentId);
@@ -1189,13 +1199,8 @@ export function MesurerClient({
     onToggleSettings: toggleSettings,
     onToggleLayoutGuides: toggleLayoutGuides,
     onCloseLayoutGuidesMenu: closeLayoutGuidesMenu,
-    onCopyComments: async () => {
-      const copied = await copyCommentsForAgent(comments, ownerWindow)
-      if (copied) {
-        ownerWindow.dispatchEvent(new Event("mesurer:comments-copied"))
-      }
-      return copied
-    },
+    onCopyComments: copyAllComments,
+    onResolveAllComments: resolveAllCommentsWithFeedback,
     dismissInspectorPins: () => {
       if (heldDistancesRef.current.length === 0) return false
       recordSnapshot()
@@ -1638,13 +1643,11 @@ export function MesurerClient({
           },
            onDelete: deleteComment,
            onDeleteAll: deleteAllComments,
-           onResolveAll: resolveAllComments,
+           onResolveAll: resolveAllCommentsWithFeedback,
            onToggleResolved: toggleResolvedComment,
            statusFilter: commentFilter,
            onStatusFilterChange: setCommentFilterAndSelection,
-          onCopy: async () => {
-            await copyCommentsForAgent(comments, ownerWindow)
-          },
+          onCopy: copyAllComments,
         },
         settings: {
           open: settingsOpen,

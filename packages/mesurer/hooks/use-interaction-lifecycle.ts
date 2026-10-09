@@ -110,7 +110,8 @@ type Options = {
   onToggleSettings: () => void;
   onToggleLayoutGuides: () => void;
   onCloseLayoutGuidesMenu: () => void;
-   onCopyComments: () => void | Promise<boolean>;
+  onCopyComments: () => void | Promise<boolean>;
+  onResolveAllComments: () => void;
   dismissInspectorPins: () => boolean;
   selectedCommentId: string | null;
   closeComment: () => void;
@@ -284,6 +285,7 @@ export const useInteractionLifecycle = (options: Options) => {
       options.screenRecording.toggleSelection();
     },
     onCopyComments: options.onCopyComments,
+    onResolveAllComments: options.onResolveAllComments,
     onCloseScreenshot: () => {
       options.screenshot.closeUi();
       options.screenRecording.cancelSelection();

@@ -19,7 +19,7 @@ import { useToolbarDock } from "../../hooks/use-toolbar-dock";
 import { useToolbarGroupMotion } from "../../hooks/use-toolbar-group-motion";
 import { surfaceStyle, useFloatingSurfacePlacement, type FloatingSurfacePlacement } from "../../hooks/use-floating-surface-placement";
 import { useToolbarTooltip } from "../../hooks/use-toolbar-tooltip";
-import { useCommentsCopied } from "../../hooks/use-comments-copied";
+import { useCommentsFeedback } from "../../hooks/use-comments-feedback";
 import { usePageListener } from "../../hooks/use-page-listener";
 import { TOOLBAR_SIDE_ATTRIBUTE } from "../screen-recording";
 import { MotionPlayer } from "../motion-player";
@@ -214,7 +214,7 @@ function ToolbarComponent(
     },
     [closeSurfaces, openMenu, setOpenMenu],
   );
-  const { copied: commentsCopied } = useCommentsCopied(eventTarget);
+  const commentsCopied = useCommentsFeedback(eventTarget, "copied");
   const [toolGroup, setToolGroup] = useState<ToolGroup>(
     () => toolGroupForMode(toolMode, colorPickerActive) ?? "inspect",
   );
@@ -251,7 +251,6 @@ function ToolbarComponent(
   // Runs after the group motion above has settled a turned bar's sizes.
   useLayoutEffect(settleTurn);
   const previousToolGroupRef = useRef(toolGroup);
-  const preserveToolGroupRef = useRef(false);
   const previousExclusiveToolIdRef = useRef<string | null>(
     exclusiveToolId(toolMode, colorPickerActive),
   );
@@ -261,7 +260,9 @@ function ToolbarComponent(
   const layoutGuidesOpen = openMenu?.type === "layout-guides";
   const tooltipsEnabled = !dragging && !guideMenuOpen && !commentMenuOpen && !captureMenuOpen && !settingsOpen && !layoutGuidesOpen && !colorPickerActive;
   const settingsShortcut = getSettingsShortcut(eventTarget);
-  const copyCommentsShortcut = /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform) ? "⌘ K" : "Ctrl + K";
+  const macShortcuts = /Mac|iPhone|iPad|iPod/.test(eventTarget.navigator.platform);
+  const copyCommentsShortcut = macShortcuts ? "⌘ K" : "Ctrl + K";
+  const resolveCommentsShortcut = macShortcuts ? "⌘ ⇧ K" : "Ctrl + Shift + K";
 
   const selectToolGroup = useCallback(
     (group: "inspect" | "annotate") => {
@@ -303,10 +304,6 @@ function ToolbarComponent(
     }
     const fromMode = toolGroupForMode(toolMode, colorPickerActive);
     if (fromMode) {
-      if (preserveToolGroupRef.current) {
-        preserveToolGroupRef.current = false;
-        return;
-      }
       setToolGroup(fromMode);
     }
   }, [colorPickerActive, rulersVisible, toolMode, xrayVisible]);
@@ -488,8 +485,6 @@ function ToolbarComponent(
 
   // Comments sit in the trailing cluster, so they keep whichever tool group is open.
   const commentsMode = () => {
-    preserveToolGroupRef.current = true;
-    setToolGroup("annotate");
     toggleTool("comments");
     setOpenMenu(null);
   };
@@ -497,8 +492,6 @@ function ToolbarComponent(
   const openCommentsPanel = () => {
     startTool();
     if (toolMode !== "comments") {
-      preserveToolGroupRef.current = true;
-      setToolGroup("annotate");
       setToolMode("comments");
     }
     setOpenMenu({ type: "comments", panel: true });
@@ -1092,10 +1085,8 @@ function ToolbarComponent(
                                       onStatusFilterChange={onStatusFilterChange}
                                       ownerWindow={eventTarget}
                                       copyShortcut={copyCommentsShortcut}
-                                      onSelect={(id) => {
-                                        if (toolMode !== "comments") preserveToolGroupRef.current = true;
-                                        onSelectComment(id)
-                                      }}
+                                      resolveShortcut={resolveCommentsShortcut}
+                                      onSelect={onSelectComment}
                                       fixed
                                       fixedZIndex={floatingCardOpen ? 120 : 100}
                                     />, commentPanelPortalTarget)

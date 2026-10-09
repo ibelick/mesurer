@@ -59,7 +59,7 @@ export type ToolbarSettings = {
 
 export type ToolbarComments = {
   count: number;
-  onCopy: () => void | Promise<void>;
+  onCopy: () => void | Promise<boolean>;
   comments: CommentThread[];
   unresolvedIds: ReadonlySet<string>;
   selectedId: string | null;

@@ -5,6 +5,7 @@ import { CommentDeleteConfirmation, readDeleteAnchor } from "./comment-delete-co
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { CommentIconButton } from "./comment-icon-button"
+import { CommentResolveIcon } from "./comment-resolve-icon"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
 import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
@@ -194,10 +195,7 @@ export function CommentThreadCard({
           className={comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}
           onClick={() => onToggleResolved(comment.id)}
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" className="msr:block">
-            <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <CommentResolveIcon resolved={comment.status === "resolved"} size={14} />
         </CommentIconButton>
         <CommentIconButton
           label="Close comment"

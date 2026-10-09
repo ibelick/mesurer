@@ -8,7 +8,8 @@ import { TextInput } from "./text-input"
 import { CheckIcon, CopyIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
-import { useCommentsCopied } from "../hooks/use-comments-copied"
+import { CommentResolveIcon } from "../comments/comment-resolve-icon"
+import { useCommentsFeedback } from "../hooks/use-comments-feedback"
 import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { surfaceStyle, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement"
@@ -37,6 +38,7 @@ export function CommentsPanel({
   onResolveAll,
   ownerWindow,
   copyShortcut,
+  resolveShortcut,
   onDelete,
   onToggleResolved,
   panelRef,
@@ -50,11 +52,12 @@ export function CommentsPanel({
   unresolvedIds: ReadonlySet<string>
   selectedId: string | null
   onSelect: (id: string) => void
-  onCopy: () => void | Promise<void>
+  onCopy: () => void | Promise<boolean>
   onDeleteAll: () => void
   onResolveAll: () => void
   ownerWindow: Window
   copyShortcut: string
+  resolveShortcut: string
   onDelete: (id: string) => void
   onToggleResolved: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
@@ -65,6 +68,7 @@ export function CommentsPanel({
   onStatusFilterChange: (filter: CommentFilter) => void
 }) {
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
+  const hasOpenComments = comments.some((comment) => comment.status === "open")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [commentMenuPosition, setCommentMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [commentMenuAnchor, setCommentMenuAnchor] = useState<DeleteAnchorRect | null>(null)
@@ -73,7 +77,8 @@ export function CommentsPanel({
   const [listMenuPosition, setListMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
-  const { copied, flash: flashCopied } = useCommentsCopied(ownerWindow)
+  const copied = useCommentsFeedback(ownerWindow, "copied")
+  const resolved = useCommentsFeedback(ownerWindow, "resolved")
   const [searchQuery, setSearchQuery] = useState("")
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const statusFilteredComments = statusFilter === "all"
@@ -141,21 +146,33 @@ export function CommentsPanel({
       <div className="msr:flex msr:min-h-0 msr:flex-1 msr:flex-col msr:py-1">
       <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:pl-3 msr:pr-2">
         <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
-        <CommentIconButton
-          label={copied ? "Comments copied" : "Copy comments"}
-          tooltip={copied ? "Copied" : "Copy comments"}
-          shortcut={copied ? undefined : copyShortcut}
-          tooltipId="copy-comments"
-          tooltipGroup={tooltipGroup}
-          className="msr:size-6"
-          wrapperClassName="msr:h-6 msr:w-6"
-          onClick={async () => {
-            await onCopy()
-            flashCopied()
-          }}
-        >
-          {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-        </CommentIconButton>
+        <div className="msr:flex msr:items-center msr:gap-1">
+          <CommentIconButton
+            label="Resolve all comments"
+            tooltip={resolved ? "Comments resolved" : "Resolve all comments"}
+            shortcut={resolved ? undefined : resolveShortcut}
+            tooltipId="resolve-all-comments"
+            tooltipGroup={tooltipGroup}
+            className="msr:size-6"
+            wrapperClassName="msr:h-6 msr:w-6"
+            disabled={!hasOpenComments}
+            onClick={onResolveAll}
+          >
+            {resolved ? <CheckIcon size={12} /> : <CommentResolveIcon />}
+          </CommentIconButton>
+          <CommentIconButton
+            label={copied ? "Comments copied" : "Copy comments"}
+            tooltip={copied ? "Copied" : "Copy comments"}
+            shortcut={copied ? undefined : copyShortcut}
+            tooltipId="copy-comments"
+            tooltipGroup={tooltipGroup}
+            className="msr:size-6"
+            wrapperClassName="msr:h-6 msr:w-6"
+            onClick={() => { void onCopy() }}
+          >
+            {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+          </CommentIconButton>
+        </div>
       </div>
       <div className="msr:shrink-0 msr:pl-3 msr:pr-2 msr:pb-2">
         <div className="msr:relative msr:flex msr:items-center msr:gap-1.5">
@@ -241,10 +258,7 @@ export function CommentsPanel({
                           onToggleResolved(comment.id)
                         }}
                       >
-                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" className="msr:block">
-                          <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-                          <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <CommentResolveIcon resolved={comment.status === "resolved"} />
                       </CommentIconButton>
                       <CommentIconButton
                         data-mesurer-comment-actions

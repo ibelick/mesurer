@@ -36,7 +36,7 @@ const MESURER_BRIDGED_KEYS = new Set([
   "x",
 ])
 
-const MESURER_MODIFIED_KEYS = new Set([",", "a", "z"])
+const MESURER_MODIFIED_KEYS = new Set([",", "a", "k", "z"])
 
 export const getMesurerToolGroupShortcut = ({
   key,
@@ -84,7 +84,7 @@ export const isMesurerKeyboardBridgeKey = (
         !modifiers.shiftKey) ||
       (MESURER_MODIFIED_KEYS.has(key.toLowerCase()) &&
         (modifiers.ctrlKey || modifiers.metaKey) &&
-        (key.toLowerCase() === "z" || !modifiers.shiftKey)))
+        (["k", "z"].includes(key.toLowerCase()) || !modifiers.shiftKey)))
   )
 }
 
@@ -204,6 +204,7 @@ export const isBrowserReservedChord = (event: KeyboardEvent) => {
     event.getModifierState("Control")
   if (!hasMod) return false
   const key = event.key.toLowerCase()
+  if (key === "k" && !event.altKey) return false
   return key !== "z" && key !== "a" && key !== ","
 }
 
@@ -238,4 +239,3 @@ export const findMesurerTypingTarget = (view: Window) => {
   }
   return null
 }
-
