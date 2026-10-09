@@ -85,7 +85,8 @@ export function ResponsiveInspector({
     const overflow = page.style.overflow
     page.style.overflow = "hidden"
     const onWheel = (event: WheelEvent) => passWheelOn(event, listRef.current?.querySelectorAll("iframe") ?? [], rowRef.current)
-    ownerWindow.addEventListener("wheel", onWheel, { passive: true })
+    // Not passive: a wheel that is passed on is kept from the browser.
+    ownerWindow.addEventListener("wheel", onWheel, { passive: false })
     return () => {
       ownerWindow.removeEventListener("resize", measure)
       ownerWindow.removeEventListener("wheel", onWheel)

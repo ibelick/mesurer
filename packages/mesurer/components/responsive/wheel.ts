@@ -51,6 +51,11 @@ export const passWheelOn = (event: WheelEvent, frames: Iterable<HTMLIFrameElemen
   // Only what the overlay took, and not over a comment that is open on it. Anywhere else the
   // wheel already scrolls what it is over.
   if (!pathHits(event, "[data-mesurer-overlay]") || pathHits(event, "[data-mesurer-comment-popover]")) return
+  // Pinching to zoom is the browser's.
+  if (event.ctrlKey) return
+  // The wheel is taken here, and said to be: one the page leaves alone is the browser's to use,
+  // and sideways it goes back a page in the history rather than along the row.
+  event.preventDefault()
   // A trackpad never moves quite straight. Only the way it mostly goes is followed, so going
   // down a preview does not also slide the row.
   const axis: Axis = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? "x" : "y"
