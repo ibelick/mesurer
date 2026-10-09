@@ -5,6 +5,12 @@ const activateSelect = async (page: Page) => {
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();
 };
 
+const setFreeDock = async (page: Page) => {
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("Toolbar dock").selectOption("free");
+  await page.keyboard.press("Escape");
+};
+
 const enableRulers = async (page: Page) => {
   await page.getByRole("button", { name: "Guide orientation menu" }).click();
   await page.getByRole("menuitem", { name: "Rulers" }).click();
@@ -329,6 +335,7 @@ test("minimizes to one button and restores the workspace", async ({ page }) => {
 
 test("dragging a toolbar tool moves the toolbar without selecting the tool", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await setFreeDock(page);
   const toolbar = page.locator(".mesurer-toolbar-surface");
   const guides = page.getByRole("button", { name: "Guides (G)" });
   await expect(guides).toHaveAttribute("aria-pressed", "false");
@@ -353,6 +360,7 @@ test("dragging a toolbar tool moves the toolbar without selecting the tool", asy
 
 test("toolbar position stays after a full page navigation", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
+  await setFreeDock(page);
   const toolbar = page.locator(".mesurer-toolbar-surface");
   const guides = page.getByRole("button", { name: "Guides (G)" });
   const before = await toolbar.boundingBox();

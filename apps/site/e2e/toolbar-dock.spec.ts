@@ -98,6 +98,7 @@ test("free mode keeps the toolbar wherever it is dropped", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   const toolbar = page.locator(".mesurer-toolbar-motion");
   await expect(toolbar).toBeVisible();
+  await setDock(page, "free");
 
   await dragBy(page, toolbar, 300, 200);
   const box = await toolbar.boundingBox();

@@ -1,5 +1,11 @@
 # mesurer
 
+## 0.2.5
+
+- add a toolbar dock that snaps to the edges and corners of the screen, with a vertical layout on the left and right; choose Free in Settings to keep the toolbar floating
+- add Auto-hide in Settings, off by default: a docked toolbar tucks to a thin tab and comes back on hover or as the pointer nears its edge
+- improve internal structure and dark mode colors
+
 ## 0.2.4
 
 - add CSS and JavaScript motion inspection with playback, scrubbing, and previews

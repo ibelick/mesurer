@@ -28,7 +28,7 @@ export const TOOLBAR_SIDES: ToolbarSide[] = ["top", "bottom", "left", "right"]
 export type ToolbarDock = "free" | "snap"
 
 export const TOOLBAR_DOCKS: ToolbarDock[] = ["free", "snap"]
-export const DEFAULT_TOOLBAR_DOCK: ToolbarDock = "free"
+export const DEFAULT_TOOLBAR_DOCK: ToolbarDock = "snap"
 
 export type GuideStyle = {
   opacity: number
