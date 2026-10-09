@@ -778,7 +778,8 @@ export function MesurerClient({
   // previews for the page. Putting Mesurer away takes them along.
   useEffect(() => {
     if (!responsiveOpen) return;
-    if (minimized || rulersVisible || (toolMode !== "none" && toolMode !== "select")) setResponsiveOpen(false);
+    // Guides work in the previews; rulers and the page's other tools belong to the page.
+    if (minimized || rulersVisible || (toolMode !== "none" && toolMode !== "select" && toolMode !== "guides")) setResponsiveOpen(false);
   }, [minimized, responsiveOpen, rulersVisible, toolMode]);
 
   const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
@@ -861,7 +862,7 @@ export function MesurerClient({
     setActiveMeasurement: setActiveMeasurementPersisted,
     setHeldDistances: setHeldDistancesPersisted,
   });
-  useXray(ownerDocument, xrayVisible);
+  useXray(ownerDocument, xrayVisible, responsiveOpen);
   useGuideWindowEvents({
     ownerDocument,
     ownerWindow,
@@ -929,7 +930,8 @@ export function MesurerClient({
     selectedGuideIds,
     hoverPointer,
     hoverRect,
-    hoverElement,
+    // While the previews are open, the page behind is not measured: only what is inside a preview.
+    hoverElement: responsiveOpen && hoverElement?.ownerDocument === ownerDocument ? null : hoverElement,
     selectedElement,
     altPressed,
     guidesEnabled,
@@ -1384,7 +1386,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { onClose: toggleResponsive } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation } : null}
       overlay={{
         enabled,
         pageLayers: !responsiveOpen,
@@ -1443,7 +1445,8 @@ export function MesurerClient({
         distances: {
           held: heldDistances,
           optionPair: optionPairOverlay,
-          guideDistance: guideDistanceOverlay,
+          // The page's own guides are not measured over the previews: each preview measures its own.
+          guideDistance: responsiveOpen ? null : guideDistanceOverlay,
           containerLines: optionContainerLines,
           containerElement: selectedMeasurement?.elementRef ?? selectedElement,
           onRemoveHeld: removeHeldDistance,

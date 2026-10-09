@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { trackOwnFrame } from "../../core/document-tree"
 import type { LayoutGuide } from "../../core/layout-guides"
+import type { PreviewGuide } from "../../core/responsive"
 import {
   RESPONSIVE_FRAME_ATTRIBUTE,
   RESPONSIVE_MAX_SIZE,
@@ -12,6 +13,7 @@ import { ControlNumberInput } from "../control-field"
 import { CloseIcon } from "../icons/close"
 import { LayoutGuidesOverlay } from "../layout-guides-overlay"
 import { iconButton, surface } from "./shared"
+import { PreviewGuides } from "./preview-guides"
 import { SizeSelect, sizeName } from "./size-select"
 
 // The narrowest a preview's header gets, so its controls always fit above a small frame.
@@ -37,6 +39,10 @@ export function ResponsivePreview({
   size,
   breakpoints,
   layoutGuides,
+  guides,
+  guidesActive,
+  guideOrientation,
+  onGuides,
   scale,
   order,
   onResize,
@@ -51,6 +57,11 @@ export function ResponsivePreview({
   breakpoints: readonly number[]
   /** The layout guides to draw over the page in this preview, at its size. */
   layoutGuides: LayoutGuide[]
+  /** This preview's own guides, and whether the guides tool is in use. */
+  guides: PreviewGuide[]
+  guidesActive: boolean
+  guideOrientation: "horizontal" | "vertical"
+  onGuides: (guides: PreviewGuide[]) => void
   scale: number
   /** Where it stands in the row. The row is reordered without moving a frame, which would reload it. */
   order: number
@@ -172,7 +183,10 @@ export function ResponsivePreview({
         </button>
       </header>
 
-      <div className="msr:relative" style={{ width: size.width * scale, height: size.height * scale }}>
+      <div
+        className={cn("msr:relative", guidesActive && "msr:z-[1]")}
+        style={{ width: size.width * scale, height: size.height * scale }}
+      >
         <div className="msr:absolute msr:inset-0 msr:overflow-hidden msr:rounded-lg msr:bg-white msr:shadow-floating">
           <iframe
             ref={frameRef}
@@ -213,6 +227,15 @@ export function ResponsivePreview({
             </p>
           ) : null}
         </div>
+        <PreviewGuides
+          guides={guides}
+          size={size}
+          scale={scale}
+          active={guidesActive}
+          orientation={guideOrientation}
+          getDocument={() => frameRef.current?.contentDocument ?? null}
+          onChange={onGuides}
+        />
         <div
           className="msr:group msr:absolute msr:z-[1] msr:top-0 msr:-right-4 msr:flex msr:h-full msr:w-4 msr:cursor-ew-resize msr:touch-none msr:items-center msr:justify-center"
           role="separator"

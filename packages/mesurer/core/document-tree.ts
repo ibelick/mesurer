@@ -172,6 +172,10 @@ export const getAccessibleDocumentElements = (ownerDocument: Document = document
   return elements
 }
 
+// Every document inside Mesurer's own frames (the responsive previews), and the frames within those.
+export const getOwnFrameDocuments = (ownerDocument: Document): Document[] =>
+  ownFrameDocuments(ownerDocument).flatMap((childDocument) => getAccessibleDocuments(childDocument))
+
 export const getAccessibleDocuments = (ownerDocument: Document = document): Document[] => {
   const documents = [ownerDocument]
   for (const element of getBodyElementsCached(ownerDocument)) {

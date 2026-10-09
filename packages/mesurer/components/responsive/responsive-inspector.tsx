@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import type { LayoutGuide } from "../../core/layout-guides"
+import type { PreviewGuide } from "../../core/responsive"
 import {
   DEFAULT_RESPONSIVE_DEVICE,
   RESPONSIVE_MAX_PREVIEWS,
@@ -16,7 +17,7 @@ import { iconButton, stop, surface } from "./shared"
 import { SizeSelect, type SizeChoice } from "./size-select"
 import { ZoomSelect, percent } from "./zoom-select"
 
-type Preview = ResponsiveSize & { id: number }
+type Preview = ResponsiveSize & { id: number; guides: PreviewGuide[] }
 
 // Room kept around the previews: above for the toolbar, at the sides so one always fits whole,
 // and below for the resize handle and the row's scrollbar.
@@ -29,7 +30,7 @@ const BAR_GAP = 12
 const PREVIEW_HEADER = 40
 
 let nextPreviewId = 1
-const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++, ...clampResponsiveSize(size) })
+const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++, guides: [], ...clampResponsiveSize(size) })
 
 // The previews and their zoom as they were last left, for the next time the tool opens on this page.
 let lastPreviews: Preview[] = [createPreview(DEFAULT_RESPONSIVE_DEVICE)]
@@ -40,10 +41,15 @@ const Divider = () => <span className="msr:mx-1 msr:h-4 msr:w-px msr:shrink-0 ms
 // The page at several screen sizes at once, side by side, over the page itself.
 export function ResponsiveInspector({
   layoutGuides,
+  guidesActive,
+  guideOrientation,
   onClose,
 }: {
   /** The layout guides that are showing, drawn in each preview at its own size. */
   layoutGuides: LayoutGuide[]
+  /** The guides tool is in use: the previews' guides can be drawn and moved. */
+  guidesActive: boolean
+  guideOrientation: "horizontal" | "vertical"
   onClose: () => void
 }) {
   const [previews, setPreviews] = useState(lastPreviews)
@@ -119,7 +125,9 @@ export function ResponsiveInspector({
     if (!full) setPreviews((current) => [...current, createPreview({ height: current[0].height, ...choice })])
   }
   const resize = (id: number, size: ResponsiveSize) =>
-    setPreviews((current) => current.map((preview) => (preview.id === id ? { id, ...clampResponsiveSize(size) } : preview)))
+    setPreviews((current) => current.map((preview) => (preview.id === id ? { ...preview, ...clampResponsiveSize(size) } : preview)))
+  const setGuides = (id: number, guides: PreviewGuide[]) =>
+    setPreviews((current) => current.map((preview) => (preview.id === id ? { ...preview, guides } : preview)))
   const remove = (id: number) => setPreviews((current) => current.filter((preview) => preview.id !== id))
   const move = (id: number, to: (from: number) => number) =>
     setPreviews((current) => {
@@ -190,6 +198,10 @@ export function ResponsiveInspector({
               size={preview}
               breakpoints={breakpoints}
               layoutGuides={layoutGuides}
+              guides={preview.guides}
+              guidesActive={guidesActive}
+              guideOrientation={guideOrientation}
+              onGuides={(guides) => setGuides(preview.id, guides)}
               scale={scale}
               order={previews.indexOf(preview)}
               onResize={(size) => resize(preview.id, size)}

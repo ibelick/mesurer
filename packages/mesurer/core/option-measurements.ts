@@ -1,6 +1,7 @@
 import { GUIDE_SNAP_DISTANCE } from "./constants"
 import { getDistanceOverlay } from "./distances"
 import { getRectFromDom } from "./dom"
+import { projectRect } from "./frame-geometry"
 import { getPaddingBoxRect } from "./geometry"
 import { getGuideDistance, getGuideRect } from "./guides"
 import type { Guide, InspectMeasurement, OptionTarget, Point } from "./types"
@@ -157,17 +158,19 @@ export const getOptionContainerLines = (params: {
     params.hoverElement,
   )
 
+  // With no container but the page, the lines run to the edges of the window the element is in:
+  // for one in a frame that is the frame, not the window around it.
+  const elementDocument = params.selectedElement?.ownerDocument ?? ownerDocument
+  const elementWindow = elementDocument.defaultView ?? ownerWindow
   const containerRect =
     containerElement &&
-    containerElement !== ownerDocument.body &&
-    containerElement !== ownerDocument.documentElement
+    containerElement !== elementDocument.body &&
+    containerElement !== elementDocument.documentElement
       ? getPaddingBoxRect(getRectFromDom(containerElement), containerElement, ownerWindow)
-      : {
-          left: 0,
-          top: 0,
-          width: ownerWindow.innerWidth,
-          height: ownerWindow.innerHeight,
-        }
+      : projectRect(
+          { left: 0, top: 0, width: elementWindow.innerWidth, height: elementWindow.innerHeight },
+          elementDocument,
+        )
 
   const rect = params.primarySelectedMeasurement.rect
   const right = rect.left + rect.width

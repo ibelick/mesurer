@@ -1,4 +1,9 @@
+import type { Guide } from "./types"
+
 export type ResponsiveSize = { width: number; height: number }
+
+// A guide of one preview: the page's own guide, at a position in that preview's pixels.
+export type PreviewGuide = Guide
 
 export type ResponsiveDeviceKind = "phone" | "tablet" | "desktop"
 export type ResponsiveDevice = ResponsiveSize & { id: string; name: string; kind: ResponsiveDeviceKind }
