@@ -10,6 +10,8 @@ import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
 import { usePageListener } from "../hooks/use-page-listener";
 
+const NO_LAYOUT_GUIDES: LayoutGuide[] = [];
+
 type MesurerPortalProps = {
   portalTarget: HTMLElement | ShadowRoot;
   rootRef: RefObject<HTMLDivElement | null>;
@@ -36,7 +38,7 @@ type MesurerPortalProps = {
   enabled: boolean;
   layoutGuides: LayoutGuide[];
   layoutGuidesVisible?: boolean;
-  responsive?: ComponentPropsWithoutRef<typeof ResponsiveInspector> | null;
+  responsive?: Omit<ComponentPropsWithoutRef<typeof ResponsiveInspector>, "layoutGuides"> | null;
 };
 
 export function MesurerPortal({
@@ -85,7 +87,7 @@ export function MesurerPortal({
       data-theme={theme}
       tabIndex={-1}
     >
-      <LayoutGuidesOverlay enabled={enabled && layoutGuidesVisible} guides={layoutGuides} />
+      <LayoutGuidesOverlay enabled={enabled && layoutGuidesVisible && !responsive} guides={layoutGuides} />
       {rulers.visible ? (
         <RulersOverlay
           ownerWindow={rulers.ownerWindow}
@@ -100,6 +102,10 @@ export function MesurerPortal({
           selectedGuideIds={rulers.selectedGuideIds}
         />
       ) : null}
+      {/* Under the overlay, which draws on the previews as it does on the page. */}
+      {responsive ? (
+        <ResponsiveInspector {...responsive} layoutGuides={enabled && layoutGuidesVisible ? layoutGuides : NO_LAYOUT_GUIDES} />
+      ) : null}
       <MesurerOverlay {...overlay} />
       <ScreenshotSelectOverlay ref={screenshotOverlayRef} {...screenshot} />
       {screenRecording.recording && screenRecording.rect ? (
@@ -107,7 +113,6 @@ export function MesurerPortal({
           <RegionDimMask rect={screenRecording.rect} />
         </div>
       ) : null}
-      {responsive ? <ResponsiveInspector {...responsive} /> : null}
       <Toolbar ref={toolbarRef} {...toolbar} />
     </div>,
     portalTarget,

@@ -4,6 +4,7 @@ import { memo, useRef, type PointerEvent } from "react";
 import { MeasureTag } from "../components/measure-tag";
 import { getPinnedLabelPoint, isElementRect } from "../core/distances";
 import type { DistanceOverlay } from "../core/types";
+import { ownFrameScale } from "../core/document-tree";
 import { formatValue } from "../core/utils";
 
 type DistanceOverlayItemProps = {
@@ -20,6 +21,8 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
   const showRectA = isElementRect(distance.rectA);
   const showRectB = isElementRect(distance.rectB);
   const pinPoint = getPinnedLabelPoint(distance);
+  // In a responsive preview drawn smaller than it is, a distance is told as the page has it there.
+  const drawn = ownFrameScale(distance.elementRefA ?? distance.elementRefB);
   // A pin is created under a stationary cursor, so it only becomes removable
   // once the pointer has actually moved onto its label. Without this the click
   // that places the next guide would land on the fresh label and delete it.
@@ -111,7 +114,7 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
                 onPointerEnter={arm}
                 onPointerDown={handleRemove}
               >
-                {formatValue(segment.value)}
+                {formatValue(segment.value / drawn)}
               </MeasureTag>
             </div>
           ) : null,
@@ -139,7 +142,7 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
                 onPointerEnter={arm}
                 onPointerDown={handleRemove}
               >
-                {formatValue(segment.value)}
+                {formatValue(segment.value / drawn)}
               </MeasureTag>
             </div>
           ) : null,

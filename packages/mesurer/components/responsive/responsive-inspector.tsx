@@ -1,22 +1,22 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import type { LayoutGuide } from "../../core/layout-guides"
 import {
   DEFAULT_RESPONSIVE_DEVICE,
   RESPONSIVE_MAX_PREVIEWS,
-  activeBreakpoint,
   clampResponsiveSize,
+  moveItem,
   readBreakpoints,
   responsiveFitScale,
   type ResponsiveSize,
 } from "../../core/responsive"
 import { cn } from "../../core/utils"
 import { CloseIcon } from "../icons/close"
-import { DeviceSelect } from "./device-select"
 import { ResponsivePreview } from "./responsive-preview"
 import { iconButton, stop, surface } from "./shared"
+import { SizeSelect, type SizeChoice } from "./size-select"
 import { ZoomSelect, percent } from "./zoom-select"
 
-// `zoom` is a preview's own, when it does not follow the one they share.
-type Preview = ResponsiveSize & { id: number; zoom: number | null }
+type Preview = ResponsiveSize & { id: number }
 
 // Room kept around the previews: above for the toolbar, at the sides so one always fits whole,
 // and below for the resize handle and the row's scrollbar.
@@ -29,42 +29,67 @@ const BAR_GAP = 12
 const PREVIEW_HEADER = 40
 
 let nextPreviewId = 1
-const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++, zoom: null, ...clampResponsiveSize(size) })
+const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++, ...clampResponsiveSize(size) })
 
 // The previews and their zoom as they were last left, for the next time the tool opens on this page.
 let lastPreviews: Preview[] = [createPreview(DEFAULT_RESPONSIVE_DEVICE)]
 let lastZoom: number | null = null
 
-const chip =
-  "msr:flex msr:h-5 msr:shrink-0 msr:items-center msr:rounded-control msr:px-1.5 msr:font-mono msr:text-[11px] msr:font-medium msr:tabular-nums msr:text-ink-500 msr:outline-none msr:hover:bg-ink-100 msr:hover:text-ink-900 msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)] msr:disabled:pointer-events-none msr:disabled:opacity-40"
-
 const Divider = () => <span className="msr:mx-1 msr:h-4 msr:w-px msr:shrink-0 msr:bg-ink-200" aria-hidden="true" />
 
 // The page at several screen sizes at once, side by side, over the page itself.
-export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Window; onClose: () => void }) {
+export function ResponsiveInspector({
+  layoutGuides,
+  onClose,
+}: {
+  /** The layout guides that are showing, drawn in each preview at its own size. */
+  layoutGuides: LayoutGuide[]
+  onClose: () => void
+}) {
   const [previews, setPreviews] = useState(lastPreviews)
-  // The scale the previews share, or none for the one that fits them in the window.
+  // The scale the previews are drawn at, or none for the one that fits them in the window.
   const [zoom, setZoom] = useState(lastZoom)
-  const [viewport, setViewport] = useState({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight })
-  const breakpoints = useMemo(() => readBreakpoints(ownerWindow.document), [ownerWindow])
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const rowRef = useRef<HTMLDivElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  // The window this is drawn in, found from its own element. It is not handed in as a prop:
+  // React's development build reads through props, and from a window into the page's frames,
+  // where one from another origin stops it with an error.
+  const [view, setView] = useState<Window | null>(null)
+  const [viewport, setViewport] = useState({ width: 0, height: 0 })
+  const breakpoints = useMemo(() => (view ? readBreakpoints(view.document) : []), [view])
   const full = previews.length >= RESPONSIVE_MAX_PREVIEWS
 
-  useEffect(() => {
-    const onResize = () => setViewport({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight })
-    ownerWindow.addEventListener("resize", onResize)
-    return () => ownerWindow.removeEventListener("resize", onResize)
-  }, [ownerWindow])
-
-  // The page behind stays where it is while the previews are over it.
-  useEffect(() => {
-    const root = ownerWindow.document.documentElement
-    const overflow = root.style.overflow
-    root.style.overflow = "hidden"
-    return () => {
-      root.style.overflow = overflow
+  useLayoutEffect(() => {
+    const ownerWindow = rootRef.current?.ownerDocument.defaultView
+    if (!ownerWindow) return
+    setView(ownerWindow)
+    const measure = () => setViewport({ width: ownerWindow.innerWidth, height: ownerWindow.innerHeight })
+    measure()
+    ownerWindow.addEventListener("resize", measure)
+    // The page behind stays where it is while the previews are over it.
+    const page = ownerWindow.document.documentElement
+    const overflow = page.style.overflow
+    page.style.overflow = "hidden"
+    // With a tool in hand the pointer is the tool's, over the previews too, and a wheel turned
+    // there never reaches the page in one. It is passed on to the preview under the pointer.
+    const onWheel = (event: WheelEvent) => {
+      for (const frame of listRef.current?.querySelectorAll("iframe") ?? []) {
+        const box = frame.getBoundingClientRect()
+        if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) continue
+        const drawn = box.width / frame.offsetWidth || 1
+        const step = event.deltaMode === 1 ? 16 : 1
+        frame.contentWindow?.scrollBy((event.deltaX * step) / drawn, (event.deltaY * step) / drawn)
+        return
+      }
     }
-  }, [ownerWindow])
+    ownerWindow.addEventListener("wheel", onWheel, { passive: true })
+    return () => {
+      ownerWindow.removeEventListener("resize", measure)
+      ownerWindow.removeEventListener("wheel", onWheel)
+      page.style.overflow = overflow
+    }
+  }, [])
 
   // A preview that was just added is brought into view at the end of the row.
   const countRef = useRef(previews.length)
@@ -75,8 +100,8 @@ export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Win
     countRef.current = previews.length
   }, [previews, zoom])
 
-  // One scale for all that have none of their own, so they stay comparable. Fitting is the one
-  // that lets the largest be seen whole.
+  // One scale for all of them, so they stay comparable. Fitting is the one that lets the largest
+  // be seen whole.
   const fit = responsiveFitScale(
     {
       width: Math.max(...previews.map((preview) => preview.width)),
@@ -89,12 +114,28 @@ export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Win
   )
   const scale = zoom ?? fit
 
-  const add = (size: ResponsiveSize) => {
-    if (!full) setPreviews((current) => [...current, createPreview(size)])
+  // A breakpoint is only a width: the new preview takes the height of the first one.
+  const add = (choice: SizeChoice) => {
+    if (!full) setPreviews((current) => [...current, createPreview({ height: current[0].height, ...choice })])
   }
-  const change = (id: number, changes: Partial<Preview>) =>
-    setPreviews((current) => current.map((preview) => (preview.id === id ? { ...preview, ...changes } : preview)))
+  const resize = (id: number, size: ResponsiveSize) =>
+    setPreviews((current) => current.map((preview) => (preview.id === id ? { id, ...clampResponsiveSize(size) } : preview)))
   const remove = (id: number) => setPreviews((current) => current.filter((preview) => preview.id !== id))
+  const move = (id: number, to: (from: number) => number) =>
+    setPreviews((current) => {
+      const from = current.findIndex((preview) => preview.id === id)
+      const target = Math.max(0, Math.min(current.length - 1, to(from)))
+      return target === from ? current : moveItem(current, from, target)
+    })
+  // A dragged preview takes the place of the last one whose middle the pointer has passed.
+  const dragTo = (id: number, clientX: number) => {
+    const passed = [...(listRef.current?.children ?? [])].filter((section) => {
+      if (section.getAttribute("data-preview") === String(id)) return false
+      const box = section.getBoundingClientRect()
+      return box.left + box.width / 2 < clientX
+    }).length
+    move(id, () => passed)
+  }
   // A press on the empty stage, not on something in it.
   const closeFromStage = (event: ReactMouseEvent) => {
     if (event.target === event.currentTarget) onClose()
@@ -102,7 +143,8 @@ export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Win
 
   return (
     <div
-      className="msr:pointer-events-auto msr:absolute msr:inset-0 msr:z-[90] msr:flex msr:flex-col msr:bg-[rgba(9,9,11,0.78)]"
+      className="msr:pointer-events-auto msr:absolute msr:inset-0 msr:flex msr:flex-col msr:bg-[rgba(9,9,11,0.78)]"
+      ref={rootRef}
       style={{ paddingTop: STAGE_TOP }}
       data-mesurer-responsive
       role="dialog"
@@ -121,36 +163,8 @@ export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Win
         style={{ height: BAR_HEIGHT, marginBottom: BAR_GAP }}
       >
         <div className="msr:flex msr:w-28 msr:shrink-0">
-          <DeviceSelect label="Add a size" placeholder="Add a size" sizes disabled={full} onSelect={add} />
+          <SizeSelect label="Add a size" placeholder="Add a size" breakpoints={breakpoints} detailed disabled={full} onSelect={add} />
         </div>
-        {breakpoints.length ? (
-          <>
-            <Divider />
-            <div
-              className="mesurer-thin-scrollbar msr:flex msr:min-w-0 msr:items-center msr:gap-0.5 msr:overflow-x-auto"
-              role="group"
-              aria-label="Breakpoints"
-            >
-              <span className="msr:shrink-0 msr:px-1 msr:text-[11px] msr:text-ink-500">Breakpoints</span>
-              {breakpoints.map((breakpoint) => {
-                const shown = previews.some((preview) => activeBreakpoint(breakpoints, preview.width) === breakpoint)
-                return (
-                  <button
-                    key={breakpoint}
-                    type="button"
-                    aria-pressed={shown}
-                    title={`Add a preview at ${breakpoint}px`}
-                    disabled={full}
-                    className={cn(chip, shown && "msr:bg-ink-100 msr:text-ink-900")}
-                    onClick={() => add({ width: breakpoint, height: previews[0].height })}
-                  >
-                    {breakpoint}
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        ) : null}
         <Divider />
         <div className="msr:w-[84px] msr:shrink-0">
           <ZoomSelect label="Zoom" value={zoom} auto={`Fit · ${percent(fit)}`} onChange={setZoom} />
@@ -166,16 +180,21 @@ export function ResponsiveInspector({ ownerWindow, onClose }: { ownerWindow: Win
         className="mesurer-thin-scrollbar msr:min-h-0 msr:flex-1 msr:overflow-auto msr:overscroll-contain"
         onClick={closeFromStage}
       >
-        <div className="msr:mx-auto msr:flex msr:w-max msr:items-start msr:gap-8 msr:px-8 msr:pb-10" onClick={closeFromStage}>
-          {previews.map((preview) => (
+        <div ref={listRef} className="msr:mx-auto msr:flex msr:w-max msr:items-start msr:gap-8 msr:px-8 msr:pb-10" onClick={closeFromStage}>
+          {/* Kept in the order they were added: a frame moved in the document loads again. */}
+          {(view ? [...previews].sort((a, b) => a.id - b.id) : []).map((preview) => (
             <ResponsivePreview
               key={preview.id}
-              url={ownerWindow.location.href}
+              id={preview.id}
+              url={view?.location.href ?? ""}
               size={preview}
-              scale={preview.zoom ?? scale}
-              zoom={preview.zoom}
-              onZoom={(next) => change(preview.id, { zoom: next })}
-              onResize={(size) => change(preview.id, clampResponsiveSize(size))}
+              breakpoints={breakpoints}
+              layoutGuides={layoutGuides}
+              scale={scale}
+              order={previews.indexOf(preview)}
+              onResize={(size) => resize(preview.id, size)}
+              onDrag={(clientX) => dragTo(preview.id, clientX)}
+              onStep={(places) => move(preview.id, (from) => from + places)}
               onRemove={previews.length > 1 ? () => remove(preview.id) : undefined}
             />
           ))}

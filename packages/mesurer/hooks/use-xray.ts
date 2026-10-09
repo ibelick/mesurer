@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react"
-import { getAccessibleDocuments } from "../core/document-tree"
+import { getAccessibleDocuments, onOwnFramesChange } from "../core/document-tree"
 import { syncXrayStyles } from "../runtime/xray-styles"
 
 export const useXray = (ownerDocument: Document, visible: boolean) => {
@@ -16,6 +16,7 @@ export const useXray = (ownerDocument: Document, visible: boolean) => {
 
     sync()
     ownerDocument.addEventListener("load", sync, true)
+    const offOwnFrames = onOwnFramesChange(sync)
     const observer = typeof MutationObserver === "undefined" || !ownerDocument.body
       ? null
       : new MutationObserver(sync)
@@ -23,6 +24,7 @@ export const useXray = (ownerDocument: Document, visible: boolean) => {
 
     return () => {
       ownerDocument.removeEventListener("load", sync, true)
+      offOwnFrames()
       observer?.disconnect()
       for (const document of appliedDocumentsRef.current) syncXrayStyles(document, false)
       appliedDocumentsRef.current = []

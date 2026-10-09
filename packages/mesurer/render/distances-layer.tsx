@@ -1,4 +1,5 @@
 import { MEASURE_LABEL_OFFSET } from "../core/constants"
+import { ownFrameScale } from "../core/document-tree"
 import type { DistanceOverlay } from "../core/types"
 import { DistanceOverlayItem } from "./distance-overlay-item"
 import {
@@ -12,6 +13,8 @@ type DistancesLayerProps = {
   optionPair: DistanceOverlay | null
   guideDistance: DistanceOverlay | null
   containerLines: OptionContainerLines | null
+  /** The element the container lines are measured from. */
+  containerElement?: Element | null
   showOption: boolean
   showGuideDistance: boolean
   showContainer: boolean
@@ -23,6 +26,7 @@ export function DistancesLayer({
   optionPair,
   guideDistance,
   containerLines,
+  containerElement,
   showOption,
   showGuideDistance,
   showContainer,
@@ -55,7 +59,7 @@ export function DistancesLayer({
       ) : null}
 
       {showContainer && containerLines ? (
-        <OptionContainerLinesOverlay lines={containerLines} />
+        <OptionContainerLinesOverlay lines={containerLines} drawn={ownFrameScale(containerElement)} />
       ) : null}
     </>
   )

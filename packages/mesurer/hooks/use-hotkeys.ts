@@ -381,7 +381,8 @@ export const useHotkeys = (options: HotkeyOptions) => {
       }
 
       if (key === "b") {
-        if (!isFeatureAvailable("responsive")) return
+        // From either tool group, like the other toggles: its button is only in one of them.
+        if (!current.features.responsive) return
         event.preventDefault()
         current.onInteract()
         current.onToggleResponsive()

@@ -23,6 +23,8 @@ export const XRAY_STYLES = `
 `
 
 export const syncXrayStyles = (ownerDocument: Document, visible: boolean) => {
+  // A frame's document that is still loading has no head yet. It is synced again once loaded.
+  if (!ownerDocument.head) return
   let style = ownerDocument.getElementById(XRAY_STYLE_ID)
   if (!style) {
     style = ownerDocument.createElement("style")

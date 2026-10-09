@@ -61,6 +61,7 @@ type OverlayDistances = {
   optionPair: DistanceOverlay | null
   guideDistance: DistanceOverlay | null
   containerLines: OptionContainerLines | null
+  containerElement?: Element | null
   onRemoveHeld: (id: string) => void
 }
 
@@ -92,6 +93,9 @@ type OverlayGuides = {
 
 type MesurerOverlayProps = {
   enabled: boolean
+  /** Whether what is drawn on the page itself shows: its annotations, comments, guides and pinned
+   *  distances. Not while something else stands over the page, as the responsive previews do. */
+  pageLayers?: boolean
   interactive?: boolean
   minimized?: boolean
   toolMode: ToolMode
@@ -173,8 +177,11 @@ type MesurerOverlayProps = {
   comments?: ComponentPropsWithoutRef<typeof CommentsLayer>
 }
 
+const NO_HELD_DISTANCES: DistanceOverlay[] = []
+
 export const MesurerOverlay = memo(function MesurerOverlay({
   enabled,
+  pageLayers = true,
   interactive = true,
   minimized = false,
   toolMode,
@@ -308,76 +315,81 @@ export const MesurerOverlay = memo(function MesurerOverlay({
           hideInfoCard={selectionVisible && (altPressed || Boolean(selection.hideInfoCard))}
        />
 
-      {toolMode === "selection" && marqueeRect ? (
-        <MarqueeRect rect={marqueeRect} color={outlineColor} />
-      ) : null}
+      {pageLayers ? (
+        <>
+        {toolMode === "selection" && marqueeRect ? (
+          <MarqueeRect rect={marqueeRect} color={outlineColor} />
+        ) : null}
 
-      <TextLayer {...text} selectionCount={selectionCount} />
+        <TextLayer {...text} selectionCount={selectionCount} />
 
-      <PenLayer {...pen} selectionCount={selectionCount} />
+        <PenLayer {...pen} selectionCount={selectionCount} />
 
-      <ArrowsLayer
-        arrows={arrows.items}
-        selectedIds={arrows.selectedIds}
-        moveOffset={arrows.moveOffset}
-        preview={arrows.preview}
-        scrollOffset={arrows.scrollOffset}
-        color={arrows.color}
-        onSelect={arrows.onSelect}
-        onChange={arrows.onChange}
-        onChangeStart={arrows.onChangeStart}
-        editingArrowId={arrows.editingArrowId}
-        selectionCount={selectionCount}
-        interactive={arrows.interactive}
-      />
-
-      {comments ? <CommentsLayer {...comments} /> : null}
-
-      {showGuidePreview || guides.items.length > 0 ? (
-        <GuidesLayer
-          openMenu={guides.openMenu}
-          setOpenMenu={guides.setOpenMenu}
-          guides={guides.items}
-          selectedIds={guides.selectedIds}
-          moveOffset={guides.moveOffset}
-          hoverId={guides.hover?.id ?? null}
-          draggingId={guides.draggingId}
-          highlightEnabled={guides.highlightEnabled}
-          selectEnabled={guides.selectEnabled}
-          style={guides.style}
-          pointerEvents={guides.pointerEvents}
-          colors={guides.colors}
-          preview={showGuidePreview ? guides.preview : null}
-          onPointerDown={guides.onPointerDown}
-          onPointerUp={guides.onPointerUp}
-          onPointerCancel={guides.onPointerCancel}
-          onRemoveGuides={guides.onRemoveGuides}
-        />
-      ) : null}
-
-      {toolMode === "selection" && groupBounds ? (
-        <GroupSelectionFrame
-          rect={groupBounds}
-          rotation={groupFrameRotation}
+        <ArrowsLayer
+          arrows={arrows.items}
+          selectedIds={arrows.selectedIds}
+          moveOffset={arrows.moveOffset}
+          preview={arrows.preview}
           scrollOffset={arrows.scrollOffset}
-           onResize={onResizeSelection}
-           onMove={onMoveSelection}
-           onMoveStart={onMoveSelectionStart}
-           onMoveEnd={onMoveSelectionEnd}
-          onResizeStart={onStartGroupResize}
-          onResizeEnd={onEndGroupResize}
-          onRotateStart={onStartGroupRotate}
-          onRotate={onUpdateGroupRotate}
-          onRotateEnd={onEndGroupRotate}
+          color={arrows.color}
+          onSelect={arrows.onSelect}
+          onChange={arrows.onChange}
+          onChangeStart={arrows.onChangeStart}
+          editingArrowId={arrows.editingArrowId}
+          selectionCount={selectionCount}
+          interactive={arrows.interactive}
         />
+
+        {comments ? <CommentsLayer {...comments} /> : null}
+
+        {showGuidePreview || guides.items.length > 0 ? (
+          <GuidesLayer
+            openMenu={guides.openMenu}
+            setOpenMenu={guides.setOpenMenu}
+            guides={guides.items}
+            selectedIds={guides.selectedIds}
+            moveOffset={guides.moveOffset}
+            hoverId={guides.hover?.id ?? null}
+            draggingId={guides.draggingId}
+            highlightEnabled={guides.highlightEnabled}
+            selectEnabled={guides.selectEnabled}
+            style={guides.style}
+            pointerEvents={guides.pointerEvents}
+            colors={guides.colors}
+            preview={showGuidePreview ? guides.preview : null}
+            onPointerDown={guides.onPointerDown}
+            onPointerUp={guides.onPointerUp}
+            onPointerCancel={guides.onPointerCancel}
+            onRemoveGuides={guides.onRemoveGuides}
+          />
+        ) : null}
+
+        {toolMode === "selection" && groupBounds ? (
+          <GroupSelectionFrame
+            rect={groupBounds}
+            rotation={groupFrameRotation}
+            scrollOffset={arrows.scrollOffset}
+             onResize={onResizeSelection}
+             onMove={onMoveSelection}
+             onMoveStart={onMoveSelectionStart}
+             onMoveEnd={onMoveSelectionEnd}
+            onResizeStart={onStartGroupResize}
+            onResizeEnd={onEndGroupResize}
+            onRotateStart={onStartGroupRotate}
+            onRotate={onUpdateGroupRotate}
+            onRotateEnd={onEndGroupRotate}
+          />
+        ) : null}
+        </>
       ) : null}
 
       <DistancesLayer
-        held={distances.held}
+        held={pageLayers ? distances.held : NO_HELD_DISTANCES}
         onRemoveHeld={distances.onRemoveHeld}
         optionPair={distances.optionPair}
         guideDistance={distances.guideDistance}
         containerLines={distances.containerLines}
+        containerElement={distances.containerElement}
         showOption={(selectionVisible || guides.selectedIds.length > 0) && altPressed}
         showGuideDistance={interactive && guidesEnabled && altPressed}
         showContainer={selectionVisible && altPressed}

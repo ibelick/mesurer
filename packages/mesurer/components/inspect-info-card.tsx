@@ -1,4 +1,5 @@
 import { useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { ownFrameScale } from "../core/document-tree"
 import { isConnectedElement, readInspectBoxSpacing, resolveInspectLayoutElement } from "../core/dom"
 import type { LayoutDetailPart } from "../core/layout-details"
 import { getElementSelector } from "../core/selector"
@@ -137,7 +138,9 @@ export function InspectInfoCard({
     setCssExpanded(false)
   }
 
-  const dimensions = `${formatValue(displayRect.width)} x ${formatValue(displayRect.height)}`
+  // In a responsive preview drawn smaller than it is, the size told is the one the page has there.
+  const drawn = ownFrameScale(element)
+  const dimensions = `${formatValue(displayRect.width / drawn)} x ${formatValue(displayRect.height / drawn)}`
   const copyValue = async (value: string) => {
     try {
       const clipboardWrite = ownerWindow?.navigator.clipboard?.writeText(value)

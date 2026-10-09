@@ -35,7 +35,7 @@ test("opens the page in a phone-sized preview, and keeps Mesurer out of it", asy
   const inspector = await open(page);
   await expect(page.getByRole("button", { name: "Responsive (B)" })).toHaveAttribute("aria-pressed", "true");
   await expect(frames(page)).toHaveCount(1);
-  await expect(inspector.getByRole("combobox", { name: "Device" })).toHaveValue("iphone-15");
+  await expect(inspector.getByRole("combobox", { name: "Size", exact: true })).toHaveValue("iphone-15");
   await expect.poll(() => frameSize(page)).toEqual({ width: 393, height: 852 });
 
   const frame = page.frameLocator("iframe[data-mesurer-responsive-frame]").first();
@@ -63,33 +63,40 @@ test("keeps the page behind from scrolling while it is open", async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("auto");
 });
 
-test("changes a preview's size from its device menu, its fields and rotate", async ({ page }) => {
+test("changes a preview's size from its menu and its fields", async ({ page }) => {
   const inspector = await open(page);
-  const device = inspector.getByRole("combobox", { name: "Device" });
-  await device.selectOption({ label: "iPhone X" });
+  const size = inspector.getByRole("combobox", { name: "Size", exact: true });
+  await size.selectOption({ label: "iPhone X" });
   await expect.poll(() => frameSize(page)).toEqual({ width: 375, height: 812 });
   await expect(inspector.getByRole("region", { name: "iPhone X, 375 × 812" })).toBeVisible();
-
-  await inspector.getByRole("button", { name: "Rotate" }).click();
-  await expect.poll(() => frameSize(page)).toEqual({ width: 812, height: 375 });
-  // Still the same phone, turned.
-  await expect(device).toHaveValue("iphone-x");
 
   const width = inspector.getByRole("textbox", { name: "Width" });
   await width.fill("500");
   await width.blur();
-  await expect.poll(() => frameSize(page)).toEqual({ width: 500, height: 375 });
+  await expect.poll(() => frameSize(page)).toEqual({ width: 500, height: 812 });
   // A size no device has.
-  await expect(device).toHaveValue("");
-  await expect(inspector.getByRole("region", { name: "Custom, 500 × 375" })).toBeVisible();
+  await expect(size).toHaveValue("");
+  await expect(inspector.getByRole("region", { name: "Custom, 500 × 812" })).toBeVisible();
+
+  const height = inspector.getByRole("textbox", { name: "Height" });
+  await height.fill("600");
+  await height.blur();
+  await expect.poll(() => frameSize(page)).toEqual({ width: 500, height: 600 });
 
   // Out of bounds comes back within them.
   await width.fill("50");
   await width.blur();
   await expect.poll(async () => (await frameSize(page)).width).toBe(240);
+
+  // A preview has one menu, and nothing to turn it or zoom it on its own.
+  await expect(inspector.getByRole("region").getByRole("combobox")).toHaveCount(1);
+  await expect(inspector.getByRole("button", { name: "Rotate" })).toHaveCount(0);
 });
 
 test("shows several sizes side by side, added and removed one at a time", async ({ page }) => {
+  // Mesurer reaches into the frames of the page it is on: none of that may fail on a preview.
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   const inspector = await open(page);
   // The only preview stays.
   await expect(inspector.getByRole("button", { name: "Remove preview" })).toBeDisabled();
@@ -105,6 +112,7 @@ test("shows several sizes side by side, added and removed one at a time", async 
   await inspector.getByRole("region", { name: /^iPhone 15,/ }).getByRole("button", { name: "Remove preview" }).click();
   await expect(frames(page)).toHaveCount(1);
   await expect.poll(() => frameSize(page, 0)).toEqual({ width: 820, height: 1180 });
+  expect(errors).toEqual([]);
 });
 
 test("draws every preview at one scale, in a row that scrolls sideways", async ({ page }) => {
@@ -168,56 +176,41 @@ test("draws the previews at a chosen zoom, and scrolls to what no longer fits", 
   await expect(zoom.locator("option:checked")).toHaveText(`Fit · ${Math.round(fitted * 100)}%`);
 });
 
-test("gives one preview a zoom of its own, and the rest keep the shared one", async ({ page }) => {
-  const inspector = await open(page);
-  await addSize(inspector, "iPad · 820 × 1180");
-  const shared = await frameScale(page, 1);
-  const own = inspector.getByRole("region", { name: /^iPhone 15,/ }).getByRole("combobox", { name: "Preview zoom" });
-  // It follows the shared zoom until it is given one.
-  await expect(own).toHaveValue("");
-  await expect(own.locator("option:checked")).toHaveText("Auto");
-
-  await own.selectOption({ label: "100%" });
-  await expect.poll(() => frameScale(page, 0)).toBeCloseTo(1, 3);
-  expect(await frameScale(page, 1)).toBeCloseTo(shared, 3);
-  await expect.poll(() => frameSize(page, 0)).toEqual({ width: 393, height: 852 });
-
-  // The shared zoom moves the others and leaves this one alone.
-  await inspector.getByRole("combobox", { name: "Zoom", exact: true }).selectOption({ label: "25%" });
-  await expect.poll(() => frameScale(page, 1)).toBeCloseTo(0.25, 3);
-  expect(await frameScale(page, 0)).toBeCloseTo(1, 3);
-
-  // Back to following it, and it keeps its zoom through a change of size.
-  await own.selectOption({ label: "50%" });
-  await inspector.getByRole("region", { name: /^iPhone 15,/ }).getByRole("button", { name: "Rotate" }).click();
-  await expect.poll(() => frameScale(page, 0)).toBeCloseTo(0.5, 3);
-  await own.selectOption({ label: "Auto" });
-  await expect.poll(() => frameScale(page, 0)).toBeCloseTo(0.25, 3);
-});
-
 test("stops adding at six previews", async ({ page }) => {
   const inspector = await open(page);
   for (let count = 1; count < 6; count++) await addSize(inspector, "iPhone SE · 375 × 667");
   await expect(frames(page)).toHaveCount(6);
   await expect(inspector.getByRole("combobox", { name: "Add a size" })).toBeDisabled();
-  await expect(inspector.getByRole("group", { name: "Breakpoints" }).getByRole("button").first()).toBeDisabled();
 });
 
-test("lists the page's own breakpoints, and adds a preview at one", async ({ page }) => {
+test("offers the page's own breakpoints among the sizes, to add one or to set a preview to", async ({ page }) => {
   const inspector = await open(page);
-  const breakpoints = inspector.getByRole("group", { name: "Breakpoints" });
-  // min-width 640, the first width past max-width 1023.98, and 80rem.
-  for (const width of ["640", "1024", "1280"]) {
-    await expect(breakpoints.getByRole("button", { name: width, exact: true })).toBeVisible();
-  }
-  // A phone is below every one of them.
-  await expect(breakpoints.locator("[aria-pressed='true']")).toHaveCount(0);
+  const add = inspector.getByRole("combobox", { name: "Add a size" });
+  // min-width 640, the first width past max-width 1023.98, and 80rem, ahead of the devices.
+  await expect(add.locator("optgroup").first()).toHaveAttribute("label", "Breakpoints");
+  await expect(add.locator("optgroup[label='Breakpoints'] option")).toHaveText(["640px", "1024px", "1280px"]);
 
-  await breakpoints.getByRole("button", { name: "1024", exact: true }).click();
+  // A breakpoint is a width: the new preview is as tall as the first.
+  await add.selectOption({ label: "1024px" });
   await expect(frames(page)).toHaveCount(2);
   await expect.poll(() => frameSize(page, 1)).toEqual({ width: 1024, height: 852 });
-  await expect(breakpoints.getByRole("button", { name: "1024", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(breakpoints.locator("[aria-pressed='true']")).toHaveCount(1);
+  await expect(inspector.getByRole("region", { name: "1024px, 1024 × 852" })).toBeVisible();
+
+  // And a preview set to one keeps its height.
+  const size = inspector.getByRole("region", { name: /^iPhone 15,/ }).getByRole("combobox", { name: "Size", exact: true });
+  await size.selectOption({ label: "640px" });
+  await expect.poll(() => frameSize(page, 0)).toEqual({ width: 640, height: 852 });
+  await expect(inspector.getByRole("region", { name: "640px, 640 × 852" }).getByRole("combobox", { name: "Size", exact: true })).toHaveValue("breakpoint-640");
+});
+
+test("lists only devices on a page with no breakpoints", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    for (const sheet of [...document.styleSheets]) (sheet.ownerNode as Element | null)?.remove();
+  });
+  await page.getByRole("button", { name: "Responsive (B)" }).click();
+  const add = page.getByRole("dialog", { name: "Responsive preview" }).getByRole("combobox", { name: "Add a size" });
+  expect(await add.locator("optgroup").evaluateAll((groups) => groups.map((group) => group.getAttribute("label")))).toEqual(["Phones", "Tablets", "Desktops"]);
 });
 
 test("resizes a preview by dragging its edges", async ({ page }) => {
@@ -239,9 +232,12 @@ test("resizes a preview by dragging its edges", async ({ page }) => {
   expect((await frameSize(page)).height).toBeLessThan(852);
 });
 
-test("closes with Escape, its button, B, a press beside the previews, or by picking a tool", async ({ page }) => {
+test("closes with Escape, its button, B, or a press beside the previews", async ({ page }) => {
   const inspector = await open(page);
   const toggle = page.getByRole("button", { name: "Responsive (B)" });
+  // With no tool in hand, so a press on the stage is a press on the stage.
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) === "true") await inspect.click();
 
   await page.keyboard.press("Escape");
   await expect(inspector).toHaveCount(0);
@@ -261,32 +257,260 @@ test("closes with Escape, its button, B, a press beside the previews, or by pick
   await expect(inspector).toBeVisible();
   await page.mouse.click(60, 600);
   await expect(inspector).toHaveCount(0);
-
-  // Another tool takes over from the previews.
-  await toggle.click();
-  await expect(inspector).toBeVisible();
-  await page.getByRole("button", { name: "Inspect (I)" }).click();
-  await expect(inspector).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Inspect (I)" })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("gives back the tool that was in use, and the previews as they were left", async ({ page }) => {
-  await page.goto("/e2e/fixtures/guide-overlay.html");
-  const inspect = page.getByRole("button", { name: "Inspect (I)" });
-  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
-  await page.getByRole("button", { name: "Responsive (B)" }).click();
-  const inspector = page.getByRole("dialog", { name: "Responsive preview" });
-  await expect(inspect).toHaveAttribute("aria-pressed", "false");
-  await inspector.getByRole("combobox", { name: "Device" }).selectOption({ label: "Pixel 8" });
+test("reopens with the previews as they were left", async ({ page }) => {
+  const inspector = await open(page);
+  await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Pixel 8" });
   await addSize(inspector, "iPad mini · 744 × 1133");
 
-  await page.keyboard.press("Escape");
-  await expect(inspect).toHaveAttribute("aria-pressed", "true");
-
+  await page.keyboard.press("b");
+  await expect(inspector).toHaveCount(0);
   await page.keyboard.press("b");
   await expect(frames(page)).toHaveCount(2);
   await expect.poll(() => frameSize(page, 0)).toEqual({ width: 412, height: 915 });
   await expect.poll(() => frameSize(page, 1)).toEqual({ width: 744, height: 1133 });
+});
+
+test("inspects an element inside a preview, at the size it has there", async ({ page }) => {
+  const inspector = await open(page);
+  await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
+  await expect.poll(() => frameSize(page)).toEqual({ width: 1280, height: 800 });
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+  // A tool in hand leaves the previews open.
+  await expect(inspector).toBeVisible();
+
+  const scale = await frameScale(page);
+  expect(scale).toBeLessThan(1);
+  const target = page.frameLocator("iframe[data-mesurer-responsive-frame]").first().getByRole("button", { name: "Nested inner button" });
+  // Where it is drawn, in the scaled preview, and the size the page gives it there.
+  const drawn = (await target.boundingBox())!;
+  const real = await target.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: Math.round(rect.width), height: Math.round(rect.height) };
+  });
+  expect(drawn.width).toBeCloseTo(real.width * scale, 0);
+
+  const point = { x: drawn.x + drawn.width / 2, y: drawn.y + drawn.height / 2 };
+  await page.mouse.move(point.x, point.y, { steps: 4 });
+  // The highlight is drawn on the element, where it is on screen.
+  const hover = (await page.locator("[data-mesurer-hover='true']").first().boundingBox())!;
+  expect(hover.x).toBeCloseTo(drawn.x, 0);
+  expect(hover.y).toBeCloseTo(drawn.y, 0);
+  expect(hover.width).toBeCloseTo(drawn.width, 0);
+  expect(hover.height).toBeCloseTo(drawn.height, 0);
+
+  await page.mouse.click(point.x, point.y);
+  const card = page.locator("[data-mesurer-inspect-info-card]");
+  await expect(card).toBeVisible();
+  // And the card tells the size it has on that screen, not the size it is drawn at.
+  await expect(card).toContainText(`${real.width} x ${real.height}`);
+  await expect(card).not.toContainText(`${Math.round(drawn.width)} x ${Math.round(drawn.height)}`);
+});
+
+test("puts the page's annotations away while the previews are open, and leaves for a tool that draws on the page", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  // An arrow and a note on the page, where the previews will be.
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Arrows (D)" }).click();
+  await page.mouse.move(500, 300);
+  await page.mouse.down();
+  await page.mouse.move(800, 420, { steps: 8 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Text (T)" }).click();
+  await page.mouse.click(620, 240);
+  await page.getByRole("textbox", { name: "Text annotation" }).fill("On the page");
+  await page.keyboard.press("Escape");
+  const arrows = page.locator("[data-mesurer-arrow]");
+  const notes = page.locator("[data-mesurer-text]");
+  await expect(arrows).toHaveCount(1);
+  await expect(notes).toHaveCount(1);
+
+  // Its button is in the other tool group just now: the shortcut reaches it from either.
+  await page.keyboard.press("b");
+  const inspector = page.getByRole("dialog", { name: "Responsive preview" });
+  await expect(inspector).toBeVisible();
+  await expect(arrows).toHaveCount(0);
+  await expect(notes).toHaveCount(0);
+
+  // Nothing is in the way of the page in a preview: with no tool in hand it is used as a page.
+  await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
+  const frame = page.frameLocator("iframe[data-mesurer-responsive-frame]").first();
+  await frame.getByRole("button", { name: "Underlying app button" }).click();
+  await expect(frame.getByTestId("underlying-click-count")).toHaveText("1");
+  await expect(page.getByTestId("underlying-click-count")).toHaveText("0");
+
+  // A tool that draws on the page goes back to it, with what was drawn there.
+  await page.getByRole("button", { name: "Annotate tools (2)" }).click();
+  await page.getByRole("button", { name: "Arrows (D)" }).click();
+  await expect(inspector).toHaveCount(0);
+  await expect(arrows).toHaveCount(1);
+  await expect(notes).toHaveCount(1);
+});
+
+test("leaves the previews for the guides and the rulers, which measure the page", async ({ page }) => {
+  const inspector = await open(page);
+  await page.keyboard.press("g");
+  await expect(inspector).toHaveCount(0);
+
+  await page.keyboard.press("b");
+  await expect(inspector).toBeVisible();
+  await page.getByRole("button", { name: "Guide orientation menu" }).click();
+  await page.getByRole("menuitem", { name: "Rulers" }).click();
+  await expect(inspector).toHaveCount(0);
+});
+
+test("leaves the page behind the previews alone: nothing in it is inspected", async ({ page }) => {
+  const inspector = await open(page);
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+
+  // Over the stage, beside the preview, where the page's own button is underneath.
+  const behind = (await page.getByRole("button", { name: "Underlying app button" }).boundingBox())!;
+  const frame = (await frames(page).first().boundingBox())!;
+  const point = { x: behind.x + 12, y: behind.y + behind.height / 2 };
+  expect(point.x < frame.x || point.x > frame.x + frame.width || point.y < frame.y || point.y > frame.y + frame.height).toBe(true);
+
+  await page.mouse.move(point.x, point.y, { steps: 4 });
+  await expect(page.locator("[data-mesurer-hover='true']")).toHaveCount(0);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveCount(0);
+  await expect(page.getByTestId("underlying-click-count")).toHaveText("0");
+  await expect(inspector).toBeVisible();
+});
+
+test("drops what was selected on the page when the previews open", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+  const target = (await page.getByTestId("nested-target").boundingBox())!;
+  await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toBeVisible();
+
+  await page.keyboard.press("b");
+  await expect(page.getByRole("dialog", { name: "Responsive preview" })).toBeVisible();
+  await expect(page.locator("[data-mesurer-inspect-info-card]")).toHaveCount(0);
+});
+
+test("scrolls the preview under the pointer while a tool has the pointer", async ({ page }) => {
+  const inspector = await open(page);
+  const inspect = page.getByRole("button", { name: "Inspect (I)" });
+  if ((await inspect.getAttribute("aria-pressed")) !== "true") await inspect.click();
+  const frame = page.frameLocator("iframe[data-mesurer-responsive-frame]").first();
+  await frame.locator("body").evaluate((body) => { body.style.minHeight = "4000px"; });
+  const box = (await frames(page).first().boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(() => frame.locator("html").evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  // The page behind stays where it is.
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(inspector).toBeVisible();
+});
+
+test("opens on a page that has a frame from another origin", async ({ page }) => {
+  // React's development build reads through a component's props. A window among them leads it
+  // into the page's frames, and one it may not read stops it with an error.
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await page.evaluate(() => {
+    const frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "");
+    frame.srcdoc = "<p>opaque</p>";
+    document.body.prepend(frame);
+  });
+  await page.getByRole("button", { name: "Responsive (B)" }).click();
+  const inspector = page.getByRole("dialog", { name: "Responsive preview" });
+  await expect(inspector).toBeVisible();
+  await addSize(inspector, "iPad · 820 × 1180");
+  await expect(frames(page)).toHaveCount(2);
+  await expect.poll(() => frameSize(page, 1)).toEqual({ width: 820, height: 1180 });
+  expect(errors).toEqual([]);
+});
+
+test("shows X-ray in every preview", async ({ page }) => {
+  const inspector = await open(page);
+  await addSize(inspector, "iPad · 820 × 1180");
+  await page.getByRole("button", { name: "X-ray (X)" }).click();
+  await expect(page.getByRole("button", { name: "X-ray (X)" })).toHaveAttribute("aria-pressed", "true");
+  for (const index of [0, 1]) {
+    await expect(page.frameLocator("iframe[data-mesurer-responsive-frame]").nth(index).locator("body")).toHaveClass(/xray-mode/);
+  }
+  await expect(inspector).toBeVisible();
+});
+
+test("draws the layout guides in each preview, at its own size", async ({ page }) => {
+  const inspector = await open(page);
+  await addSize(inspector, "iPad · 820 × 1180");
+  await page.keyboard.press("l");
+  await expect(page.getByRole("dialog", { name: "Layout guides" })).toBeVisible();
+
+  // Not across the window, but once in each preview, as wide as that preview.
+  const guides = page.locator("[data-mesurer-layout-guides]");
+  await expect(guides).toHaveCount(2);
+  for (const index of [0, 1]) {
+    const frame = (await frames(page).nth(index).boundingBox())!;
+    const drawn = (await guides.nth(index).boundingBox())!;
+    expect(drawn.x).toBeCloseTo(frame.x, 0);
+    expect(drawn.width).toBeCloseTo(frame.width, 0);
+    expect(drawn.height).toBeCloseTo(frame.height, 0);
+  }
+
+  // Closed, they are the page's again.
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("b");
+  await expect(inspector).toHaveCount(0);
+  await expect(guides).toHaveCount(1);
+  expect((await guides.boundingBox())!.width).toBe(page.viewportSize()!.width);
+});
+
+test("reorders the previews by dragging one, or from the keyboard, without reloading them", async ({ page }) => {
+  const inspector = await open(page);
+  await addSize(inspector, "iPad · 820 × 1180");
+  await addSize(inspector, "iPhone SE · 375 × 667");
+  await expect.poll(() => frameSize(page, 2)).toEqual({ width: 375, height: 667 });
+  // Something a reload would lose.
+  for (const index of [0, 1, 2]) {
+    await page.frameLocator("iframe[data-mesurer-responsive-frame]").nth(index).locator("html").evaluate((root, mark) => {
+      (window as Window & { mark?: number }).mark = mark;
+    }, index);
+  }
+  // The previews from left to right, by name.
+  const order = () =>
+    inspector.getByRole("region").evaluateAll((sections) =>
+      sections
+        .map((section) => ({ left: section.getBoundingClientRect().left, name: section.getAttribute("aria-label")!.split(",")[0] }))
+        .sort((a, b) => a.left - b.left)
+        .map((section) => section.name),
+    );
+  expect(await order()).toEqual(["iPhone 15", "iPad", "iPhone SE"]);
+
+  // The last one, dragged by its grip to the front.
+  const grip = inspector.getByRole("region", { name: /^iPhone SE,/ }).getByRole("button", { name: "Move preview", exact: true });
+  const from = (await grip.boundingBox())!;
+  const first = (await inspector.getByRole("region", { name: /^iPhone 15,/ }).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(first.x + 10, from.y + from.height / 2, { steps: 12 });
+  await page.mouse.up();
+  expect(await order()).toEqual(["iPhone SE", "iPhone 15", "iPad"]);
+
+  // And one place along from the keyboard.
+  await grip.focus();
+  await page.keyboard.press("ArrowRight");
+  expect(await order()).toEqual(["iPhone 15", "iPhone SE", "iPad"]);
+  // It stops at the end of the row.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  expect(await order()).toEqual(["iPhone 15", "iPad", "iPhone SE"]);
+
+  // None of them loaded again.
+  const marks = [];
+  for (const index of [0, 1, 2]) {
+    marks.push(await page.frameLocator("iframe[data-mesurer-responsive-frame]").nth(index).locator("html").evaluate(() => (window as Window & { mark?: number }).mark));
+  }
+  expect(marks).toEqual([0, 1, 2]);
 });
 
 // Answers a preview's own load of the page, and leaves the page itself alone.

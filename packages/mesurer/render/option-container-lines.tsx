@@ -11,8 +11,11 @@ export type OptionContainerLines = {
 
 export function OptionContainerLinesOverlay({
   lines,
+  drawn = 1,
 }: {
   lines: OptionContainerLines
+  /** How much smaller than it is the page these are measured on is drawn. */
+  drawn?: number
 }) {
   return (
     <>
@@ -33,7 +36,7 @@ export function OptionContainerLinesOverlay({
               top: (lines.top.y1 + lines.top.y2) / 2,
             }}
           >
-            {formatValue(lines.top.value)}
+            {formatValue(lines.top.value / drawn)}
           </MeasureTag>
         </>
       ) : null}
@@ -55,7 +58,7 @@ export function OptionContainerLinesOverlay({
               top: (lines.bottom.y1 + lines.bottom.y2) / 2,
             }}
           >
-            {formatValue(lines.bottom.value)}
+            {formatValue(lines.bottom.value / drawn)}
           </MeasureTag>
         </>
       ) : null}
@@ -77,7 +80,7 @@ export function OptionContainerLinesOverlay({
               top: lines.left.y + MEASURE_LABEL_OFFSET,
             }}
           >
-            {formatValue(lines.left.value)}
+            {formatValue(lines.left.value / drawn)}
           </MeasureTag>
         </>
       ) : null}
@@ -99,7 +102,7 @@ export function OptionContainerLinesOverlay({
               top: lines.right.y + MEASURE_LABEL_OFFSET,
             }}
           >
-            {formatValue(lines.right.value)}
+            {formatValue(lines.right.value / drawn)}
           </MeasureTag>
         </>
       ) : null}

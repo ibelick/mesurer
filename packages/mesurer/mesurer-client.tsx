@@ -741,13 +741,15 @@ export function MesurerClient({
     toolMode,
   ]);
 
+  // The previews are frames of this page, so the tools work in them as they do on the page.
   const [responsiveOpen, setResponsiveOpen] = useState(false);
-  // The tool in use before the preview opened, given back when it closes.
-  const responsiveToolModeRef = useRef<ToolMode>("none");
   const toggleResponsive = useCallback(() => {
+    // What is selected belongs to where it was selected: the page, or a preview that is closing.
+    clearSelection();
+    setSelectedMeasurement(null);
+    setSelectedMeasurements([]);
     if (responsiveOpen) {
       setResponsiveOpen(false);
-      setToolModePersisted(responsiveToolModeRef.current);
       return;
     }
     setEnabledWithHistory(true);
@@ -755,15 +757,29 @@ export function MesurerClient({
     setOpenMenu(null);
     colorPicker.setActive(false);
     screenshot.closeUi();
-    // The page in the preview is used as a page, so no tool listens on it meanwhile.
-    responsiveToolModeRef.current = toolMode;
-    setToolModePersisted("none");
+    // Inspecting is the tool that works in the previews, with X-ray and the layout guides.
+    if (toolMode !== "select") setToolModePersisted("none");
+    setRulersVisible(false);
     setResponsiveOpen(true);
-  }, [colorPicker, responsiveOpen, screenshot, setEnabledWithHistory, setOpenMenu, setToolModePersisted, toolMode]);
-  // Picking a tool leaves the preview for that tool, and putting Mesurer away takes it along.
+  }, [
+    clearSelection,
+    colorPicker,
+    responsiveOpen,
+    screenshot,
+    setEnabledWithHistory,
+    setOpenMenu,
+    setRulersVisible,
+    setSelectedMeasurement,
+    setSelectedMeasurements,
+    setToolModePersisted,
+    toolMode,
+  ]);
+  // A tool that draws on the page itself (guides, rulers, annotations, comments) leaves the
+  // previews for the page. Putting Mesurer away takes them along.
   useEffect(() => {
-    if (responsiveOpen && (toolMode !== "none" || minimized)) setResponsiveOpen(false);
-  }, [minimized, responsiveOpen, toolMode]);
+    if (!responsiveOpen) return;
+    if (minimized || rulersVisible || (toolMode !== "none" && toolMode !== "select")) setResponsiveOpen(false);
+  }, [minimized, responsiveOpen, rulersVisible, toolMode]);
 
   const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
   const toggleLayoutGuides = useCallback(() => {
@@ -1368,9 +1384,10 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { ownerWindow, onClose: toggleResponsive } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive } : null}
       overlay={{
         enabled,
+        pageLayers: !responsiveOpen,
         interactive: overlayInteractive,
         minimized,
         toolMode,
@@ -1428,6 +1445,7 @@ export function MesurerClient({
           optionPair: optionPairOverlay,
           guideDistance: guideDistanceOverlay,
           containerLines: optionContainerLines,
+          containerElement: selectedMeasurement?.elementRef ?? selectedElement,
           onRemoveHeld: removeHeldDistance,
         },
         guides: {

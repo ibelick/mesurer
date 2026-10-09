@@ -38,13 +38,9 @@ export const DEFAULT_RESPONSIVE_DEVICE = RESPONSIVE_DEVICES[2]
 // Each preview is the whole page loaded once more, so there is a limit to how many are kept.
 export const RESPONSIVE_MAX_PREVIEWS = 6
 
-// The device a size belongs to, held either way up.
+// The device a size is the screen of.
 export const responsiveDeviceFor = ({ width, height }: ResponsiveSize) =>
-  RESPONSIVE_DEVICES.find(
-    (candidate) =>
-      (candidate.width === width && candidate.height === height) ||
-      (candidate.width === height && candidate.height === width),
-  )
+  RESPONSIVE_DEVICES.find((candidate) => candidate.width === width && candidate.height === height)
 
 // Marks the preview's frame, so the page loaded in it knows it is one.
 export const RESPONSIVE_FRAME_ATTRIBUTE = "data-mesurer-responsive-frame"
@@ -126,9 +122,12 @@ export const readBreakpoints = (ownerDocument: Document): number[] => {
   return [...widths].filter((width) => width > 0 && width <= RESPONSIVE_MAX_SIZE).sort((a, b) => a - b)
 }
 
-// The breakpoint a width falls on: the last one it has reached, if any.
-export const activeBreakpoint = (breakpoints: readonly number[], width: number) =>
-  breakpoints.reduce<number | null>((active, breakpoint) => (breakpoint <= width ? breakpoint : active), null)
+// A list with one of its items moved to another place in it.
+export const moveItem = <Item,>(items: readonly Item[], from: number, to: number): Item[] => {
+  const next = [...items]
+  next.splice(Math.max(0, Math.min(items.length - 1, to)), 0, ...next.splice(from, 1))
+  return next
+}
 
 // How much a size has to shrink to fit in the room there is. Never grows it.
 export const responsiveFitScale = (size: ResponsiveSize, room: ResponsiveSize) =>

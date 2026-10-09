@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   RESPONSIVE_DEVICES,
-  activeBreakpoint,
   clampResponsiveSize,
   mediaWidthBreakpoints,
+  moveItem,
   readBreakpoints,
   responsiveDeviceFor,
   responsiveFitScale,
@@ -53,12 +53,16 @@ describe("readBreakpoints", () => {
   })
 })
 
-describe("activeBreakpoint", () => {
-  it("is the last breakpoint a width has reached", () => {
-    expect(activeBreakpoint([640, 768, 1024], 390)).toBe(null)
-    expect(activeBreakpoint([640, 768, 1024], 640)).toBe(640)
-    expect(activeBreakpoint([640, 768, 1024], 1000)).toBe(768)
-    expect(activeBreakpoint([640, 768, 1024], 2000)).toBe(1024)
+describe("moveItem", () => {
+  it("moves one item and keeps the others in order", () => {
+    expect(moveItem(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"])
+    expect(moveItem(["a", "b", "c", "d"], 3, 0)).toEqual(["d", "a", "b", "c"])
+    expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "b", "c"])
+  })
+
+  it("stops at either end", () => {
+    expect(moveItem(["a", "b", "c"], 0, 9)).toEqual(["b", "c", "a"])
+    expect(moveItem(["a", "b", "c"], 2, -4)).toEqual(["c", "a", "b"])
   })
 })
 
@@ -81,9 +85,9 @@ describe("responsive devices", () => {
     for (const device of RESPONSIVE_DEVICES) expect(clampResponsiveSize(device)).toEqual({ width: device.width, height: device.height })
   })
 
-  it("finds the device a size belongs to, held either way up", () => {
+  it("finds the device a size is the screen of", () => {
     expect(responsiveDeviceFor({ width: 375, height: 812 })?.name).toBe("iPhone X")
-    expect(responsiveDeviceFor({ width: 812, height: 375 })?.name).toBe("iPhone X")
+    expect(responsiveDeviceFor({ width: 812, height: 375 })).toBeUndefined()
     expect(responsiveDeviceFor({ width: 500, height: 812 })).toBeUndefined()
   })
 })
