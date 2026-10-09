@@ -4,6 +4,7 @@ import { RulersOverlay } from "./rulers-overlay";
 import { LayoutGuidesOverlay } from "./layout-guides-overlay";
 import { RegionDimMask, ScreenshotSelectOverlay } from "./screenshot-select-overlay";
 import { Toolbar } from "./toolbar";
+import { ResponsiveInspector } from "./responsive";
 import { MesurerOverlay } from "../render/mesurer-overlay";
 import type { LayoutGuide } from "../core/layout-guides";
 import type { ScreenshotRect } from "../core/screenshot";
@@ -35,6 +36,7 @@ type MesurerPortalProps = {
   enabled: boolean;
   layoutGuides: LayoutGuide[];
   layoutGuidesVisible?: boolean;
+  responsive?: ComponentPropsWithoutRef<typeof ResponsiveInspector> | null;
 };
 
 export function MesurerPortal({
@@ -51,6 +53,7 @@ export function MesurerPortal({
   enabled,
   layoutGuides,
   layoutGuidesVisible = false,
+  responsive = null,
 }: MesurerPortalProps) {
   const ownerWindow = portalTarget.ownerDocument.defaultView;
   // Keeps a press on the tool switch inside Mesurer. Base UI dismisses floating surfaces from
@@ -104,6 +107,7 @@ export function MesurerPortal({
           <RegionDimMask rect={screenRecording.rect} />
         </div>
       ) : null}
+      {responsive ? <ResponsiveInspector {...responsive} /> : null}
       <Toolbar ref={toolbarRef} {...toolbar} />
     </div>,
     portalTarget,

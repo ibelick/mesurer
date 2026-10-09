@@ -47,6 +47,7 @@ import {
   XrayIcon,
   CommentIcon,
   LayoutGridIcon,
+  ResponsiveIcon,
 } from "../icons";
 import { CaptureMenu, CommentsMenu } from "./toolbar-menus";
 import { GuideOrientationMenu } from "./guide-orientation-menu";
@@ -89,6 +90,7 @@ function ToolbarComponent(
     motion,
     comments,
     layoutGuides,
+    responsive,
     settings,
     features,
     openMenu,
@@ -937,6 +939,20 @@ function ToolbarComponent(
                                         )
                                         : null}
                                     </div>
+                                    {features.responsive ? (
+                                      <ToolbarButton
+                                        {...tool("responsive")}
+                                        active={responsive.open}
+                                        label="Responsive"
+                                        shortcut="B"
+                                        onClick={() => {
+                                          dismissCaptureToasts();
+                                          responsive.onToggle();
+                                        }}
+                                      >
+                                        <ResponsiveIcon size={20} />
+                                      </ToolbarButton>
+                                    ) : null}
                                     <div ref={colorPickerAnchorRef} className="msr:relative msr:flex">
                                       <ToolbarButton
                                         {...tool("color-picker")}

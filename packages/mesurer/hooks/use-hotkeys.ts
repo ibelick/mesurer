@@ -102,6 +102,8 @@ type HotkeyOptions = {
   onToggleSettings: () => void
   onToggleLayoutGuides: () => void
   onCloseLayoutGuidesMenu: () => void
+  onToggleResponsive: () => void
+  isResponsiveOpen: () => boolean
   isSettingsOpen: () => boolean
   isLayoutGuidesOpen: () => boolean
   onCloseColorPicker: () => void
@@ -198,6 +200,11 @@ export const useHotkeys = (options: HotkeyOptions) => {
         if (current.isLayoutGuidesOpen()) {
           lastEscapeAtRef.current = now
           current.onCloseLayoutGuidesMenu()
+          return
+        }
+        if (current.isResponsiveOpen()) {
+          lastEscapeAtRef.current = now
+          current.onToggleResponsive()
           return
         }
         if (current.isScreenshotActive()) {
@@ -370,6 +377,14 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.onInteract()
         current.setEnabled(true)
         current.onToggleLayoutGuides()
+        return
+      }
+
+      if (key === "b") {
+        if (!isFeatureAvailable("responsive")) return
+        event.preventDefault()
+        current.onInteract()
+        current.onToggleResponsive()
         return
       }
 

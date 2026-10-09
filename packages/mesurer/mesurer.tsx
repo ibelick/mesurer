@@ -10,6 +10,7 @@ import {
 } from "./core/persistence";
 import { DEFAULT_TEXT_STYLE } from "./core/text-style";
 import { resolveMesurerFeatures } from "./core/features";
+import { isResponsivePreview } from "./core/responsive";
 
 export type { MesurerProps } from "./mesurer-client";
 
@@ -54,6 +55,9 @@ export default function Mesurer({
 
   const hydrated = useHydrated();
   if (!hydrated) return null;
+  // A page loaded in the responsive preview is there to be looked at: Mesurer stays out of it,
+  // or it would open a preview of its own.
+  if (isResponsivePreview(window)) return null;
 
   return (
     <MesurerClient

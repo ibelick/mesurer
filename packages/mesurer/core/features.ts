@@ -2,6 +2,7 @@ export type MesurerFeatures = {
   screenshot?: boolean
   rulers?: boolean
   settings?: boolean
+  responsive?: boolean
 }
 
 export type ResolvedMesurerFeatures = Required<MesurerFeatures>
@@ -10,6 +11,7 @@ export const DEFAULT_MESURER_FEATURES: ResolvedMesurerFeatures = {
   screenshot: true,
   rulers: true,
   settings: true,
+  responsive: true,
 }
 
 export const resolveMesurerFeatures = (

@@ -79,6 +79,11 @@ export type ToolbarLayoutGuides = {
   visible: boolean;
 };
 
+export type ToolbarResponsive = {
+  open: boolean;
+  onToggle: () => void;
+};
+
 export type ToolbarProps = {
   eventTarget: Window;
   initialPosition: ToolbarPlacement;
@@ -103,6 +108,7 @@ export type ToolbarProps = {
   };
   comments: ToolbarComments;
   layoutGuides: ToolbarLayoutGuides;
+  responsive: ToolbarResponsive;
   settings: ToolbarSettings;
   features: ResolvedMesurerFeatures;
   openMenu: OpenMenu;

@@ -741,6 +741,30 @@ export function MesurerClient({
     toolMode,
   ]);
 
+  const [responsiveOpen, setResponsiveOpen] = useState(false);
+  // The tool in use before the preview opened, given back when it closes.
+  const responsiveToolModeRef = useRef<ToolMode>("none");
+  const toggleResponsive = useCallback(() => {
+    if (responsiveOpen) {
+      setResponsiveOpen(false);
+      setToolModePersisted(responsiveToolModeRef.current);
+      return;
+    }
+    setEnabledWithHistory(true);
+    setSettingsOpen(false);
+    setOpenMenu(null);
+    colorPicker.setActive(false);
+    screenshot.closeUi();
+    // The page in the preview is used as a page, so no tool listens on it meanwhile.
+    responsiveToolModeRef.current = toolMode;
+    setToolModePersisted("none");
+    setResponsiveOpen(true);
+  }, [colorPicker, responsiveOpen, screenshot, setEnabledWithHistory, setOpenMenu, setToolModePersisted, toolMode]);
+  // Picking a tool leaves the preview for that tool, and putting Mesurer away takes it along.
+  useEffect(() => {
+    if (responsiveOpen && (toolMode !== "none" || minimized)) setResponsiveOpen(false);
+  }, [minimized, responsiveOpen, toolMode]);
+
   const [layoutGuidesVisible, setLayoutGuidesVisible] = useState(false);
   const toggleLayoutGuides = useCallback(() => {
     if (layoutGuidesVisible) {
@@ -1129,6 +1153,7 @@ export function MesurerClient({
     shortcutsEnabled: settings.shortcutsEnabled,
     settingsOpen,
     layoutGuidesOpen: openMenu?.type === "layout-guides",
+    responsiveOpen,
     ownerDocument,
     ownerWindow,
     toolbarRef,
@@ -1199,6 +1224,7 @@ export function MesurerClient({
     onToggleSettings: toggleSettings,
     onToggleLayoutGuides: toggleLayoutGuides,
     onCloseLayoutGuidesMenu: closeLayoutGuidesMenu,
+    onToggleResponsive: toggleResponsive,
     onCopyComments: copyAllComments,
     onResolveAllComments: resolveAllCommentsWithFeedback,
     dismissInspectorPins: () => {
@@ -1342,6 +1368,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
+      responsive={responsiveOpen ? { ownerWindow, onClose: toggleResponsive } : null}
       overlay={{
         enabled,
         interactive: overlayInteractive,
@@ -1569,6 +1596,7 @@ export function MesurerClient({
           onToggle: toggleLayoutGuides,
           visible: layoutGuidesVisible,
         },
+        responsive: { open: responsiveOpen, onToggle: toggleResponsive },
         colorPicker: {
           active: colorPicker.active,
           setActive: colorPicker.setActive,

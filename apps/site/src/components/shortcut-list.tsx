@@ -9,6 +9,7 @@ const shortcuts = [
   { keys: "C", description: "Drag a screenshot region (Chrome extension)" },
   { keys: "V", description: "Drag a region to record a video (Chrome extension)" },
   { keys: "L", description: "Toggle layout guides" },
+  { keys: "B", description: "Preview the page at other screen sizes" },
   { keys: "G", description: "Toggle Guides mode" },
   { keys: "X", description: "Toggle X-ray mode" },
   { keys: "R", description: "Toggle pixel rulers" },
