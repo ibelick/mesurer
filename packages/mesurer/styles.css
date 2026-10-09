@@ -505,12 +505,12 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 .mesurer-toolbar-minimize-stage {
   flex: none;
   min-width: 0;
-  width: var(--msr-expanded-w, auto);
+  width: var(--msr-expanded-size, auto);
   overflow: visible;
 }
 
 .mesurer-toolbar-minimize-stage[data-minimized="true"] {
-  width: var(--msr-icon-w, auto);
+  width: var(--msr-icon-size, auto);
   overflow: hidden;
 }
 
@@ -519,7 +519,7 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-minimize-stage[data-minimized="true"] .mesurer-toolbar-minimize-track {
-  transform: translateX(calc(-1 * var(--msr-expanded-w, 0px)));
+  transform: translateX(calc(-1 * var(--msr-expanded-size, 0px)));
 }
 
 .mesurer-toolbar-minimize-stage:has([role="dialog"]),
@@ -540,7 +540,7 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-minimize-slot[data-slot="expanded"] {
-  width: var(--msr-expanded-w, auto);
+  width: var(--msr-expanded-size, auto);
 }
 
 .mesurer-toolbar-minimize-slot[data-slot="icon"] {
@@ -567,16 +567,16 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 .mesurer-toolbar-tool-stage {
   flex: none;
   min-width: 0;
-  width: var(--msr-inspect-w, auto);
+  width: var(--msr-inspect-size, auto);
   overflow: hidden;
 }
 
 .mesurer-toolbar-tool-stage[data-group="annotate"] {
-  width: var(--msr-annotate-w, auto);
+  width: var(--msr-annotate-size, auto);
 }
 
 .mesurer-toolbar-tool-stage[data-group="annotate"] .mesurer-toolbar-tool-track {
-  transform: translateX(calc(-1 * var(--msr-inspect-w, 0px)));
+  transform: translateX(calc(-1 * var(--msr-inspect-size, 0px)));
 }
 
 .mesurer-toolbar-tool-stage:has([role="menu"]),
@@ -603,11 +603,11 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
 }
 
 .mesurer-toolbar-tool-slot[data-group="inspect"] {
-  width: var(--msr-inspect-w, auto);
+  width: var(--msr-inspect-size, auto);
 }
 
 .mesurer-toolbar-tool-slot[data-group="annotate"] {
-  width: var(--msr-annotate-w, auto);
+  width: var(--msr-annotate-size, auto);
 }
 
 .mesurer-toolbar-tool-slot:not([data-open="true"]) {
@@ -668,7 +668,176 @@ html[data-mesurer-resize-cursor] [data-mesurer-overlay][data-mesurer-inspect] *,
   z-index: 1;
 }
 
+/* Auto-hide: a bar glued to an edge slides out of view and leaves a 6px tab on that edge.
+   Hovering the bar brings it back, unless a press that began elsewhere is passing over it. The 10px is the 16px dock margin less the tab. */
+.mesurer-toolbar-container[data-tuck-animated="true"] {
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:is(:not(:hover), [data-tuck-locked="true"])[data-tuck-edge="top"] {
+  transform: translateY(calc(-100% - 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:is(:not(:hover), [data-tuck-locked="true"])[data-tuck-edge="bottom"] {
+  transform: translateY(calc(100% + 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:is(:not(:hover), [data-tuck-locked="true"])[data-tuck-edge="left"] {
+  transform: translateX(calc(-100% - 10px));
+}
+
+.mesurer-toolbar-container[data-tucked="true"]:is(:not(:hover), [data-tuck-locked="true"])[data-tuck-edge="right"] {
+  transform: translateX(calc(100% + 10px));
+}
+
+/* Drop zones: where the bar can land in snap mode. Fixed to the viewport, so they stay put. */
+.mesurer-toolbar-zone {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 9px;
+  box-sizing: border-box;
+  border: 1px dashed rgba(15, 15, 20, 0.06);
+  /* A second, light line just inside, so the square also shows on a dark page. */
+  outline: 1px dashed rgba(255, 255, 255, 0.07);
+  outline-offset: -2px;
+  background: rgba(15, 15, 20, 0.01);
+  animation: mesurer-toolbar-zone-in 180ms ease-out both;
+}
+
+/* The zone a toolbar released here would glue to: the same square, a little darker. */
+.mesurer-toolbar-zone[data-active="true"] {
+  border-color: rgba(15, 15, 20, 0.14);
+  background: rgba(15, 15, 20, 0.035);
+}
+
+@keyframes mesurer-toolbar-zone-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Vertical toolbar (docked left/right). Flow containers stack top to bottom, the stages
+   and tracks size and slide along the y axis, and dividers turn horizontal. */
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-flow {
+  flex-direction: column;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-flow,
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-panel {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Same thickness, length and spacing as the horizontal bar, turned on its side. */
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-expanded {
+  padding: 4px 4px 0;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-switch {
+  padding: 2px;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-divider {
+  margin: 0 -4px;
+}
+
+/* In a column each caret is a full-width row, 16px tall, with the chevron centered in it. */
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-caret-btn {
+  width: 100%;
+  height: 16px;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-caret-anchor {
+  width: 100%;
+  margin: 0;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* A caret that follows its tool sits flush against it, as it does in a row. */
+.mesurer-toolbar-motion[data-orientation="vertical"] [data-tool-id] + .mesurer-toolbar-caret-anchor {
+  margin-top: -4px;
+}
+
+/* Carets point in the direction their menu opens: away from the docked edge. */
+.mesurer-toolbar-motion[data-column-side="left"] .mesurer-toolbar-caret {
+  transform: rotate(-90deg);
+}
+
+.mesurer-toolbar-motion[data-column-side="right"] .mesurer-toolbar-caret {
+  transform: rotate(90deg);
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-chrome {
+  right: 0;
+  bottom: auto;
+  width: auto;
+  height: 100%;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-chrome,
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-clip,
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-surface {
+  transform-origin: 50% 0;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-minimize-stage,
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-minimize-slot[data-slot="expanded"] {
+  width: auto;
+  height: var(--msr-expanded-size, auto);
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-minimize-stage[data-minimized="true"] {
+  height: var(--msr-icon-size, auto);
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-minimize-stage[data-minimized="true"] .mesurer-toolbar-minimize-track {
+  transform: translateY(calc(-1 * var(--msr-expanded-size, 0px)));
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-stage,
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-slot[data-group="inspect"] {
+  width: auto;
+  height: var(--msr-inspect-size, auto);
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-stage[data-group="annotate"],
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-slot[data-group="annotate"] {
+  width: auto;
+  height: var(--msr-annotate-size, auto);
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-stage[data-group="annotate"] .mesurer-toolbar-tool-track {
+  transform: translateY(calc(-1 * var(--msr-inspect-size, 0px)));
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-divider {
+  width: auto;
+  height: 1px;
+  align-self: stretch;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-trailing {
+  border-radius: 0 0 9px 9px;
+}
+
+.mesurer-toolbar-motion[data-orientation="vertical"] .mesurer-toolbar-tool-switch[data-value="annotate"] .mesurer-toolbar-tool-switch-pill {
+  transform: translateY(30px);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .mesurer-toolbar-zone {
+    animation: none;
+  }
+
+  .mesurer-toolbar-container {
+    transition: none;
+  }
+
   .mesurer-toolbar-motion,
   .mesurer-toolbar-chrome,
   .mesurer-toolbar-tool-track,

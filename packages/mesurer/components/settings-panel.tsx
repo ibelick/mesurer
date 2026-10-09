@@ -18,7 +18,7 @@ import { SliderControl } from "./slider-control"
 import { CheckIcon } from "./icons"
 import { SettingsButton } from "./settings-button"
 import { Tooltip, useTooltip } from "./tooltip"
-import type { GuideStyle, InfoCardMode, RulerSettings, ScreenshotSettings, ThemeMode } from "../core/persistence"
+import { TOOLBAR_DOCKS, type GuideStyle, type InfoCardMode, type RulerSettings, type ScreenshotSettings, type ThemeMode, type ToolbarDock } from "../core/persistence"
 import { TEXT_FONT_OPTIONS, type TextFont, type TextStyleSettings } from "../core/text-style"
 import type { ToolMode } from "../core/types"
 import { getReleaseChannel } from "../core/extension-install"
@@ -114,6 +114,10 @@ type SettingsPanelProps = {
     setShortcutsEnabled: Dispatch<SetStateAction<boolean>>
     theme: ThemeMode
     setTheme: Dispatch<SetStateAction<ThemeMode>>
+    toolbarDock: ToolbarDock
+    setToolbarDock: Dispatch<SetStateAction<ToolbarDock>>
+    toolbarAutoHide: boolean
+    setToolbarAutoHide: Dispatch<SetStateAction<boolean>>
     onMinimize: () => void
     onResetSettings: () => void
     onClearWorkspace: () => void
@@ -121,6 +125,7 @@ type SettingsPanelProps = {
 }
 
 const COLOR_FORMATS: ColorPickerFormat[] = ["hex", "rgb", "hsl", "oklch"]
+const TOOLBAR_DOCK_LABELS: Record<ToolbarDock, string> = { free: "Free", snap: "Snap to edges" }
 const GUIDE_PATTERNS: Array<{ value: GuideStyle["pattern"]; label: string }> = [
   { value: "solid", label: "Solid" },
   { value: "dashed", label: "Dashed" },
@@ -403,6 +408,10 @@ export function SettingsPanel({
     setShortcutsEnabled,
     theme,
     setTheme,
+    toolbarDock,
+    setToolbarDock,
+    toolbarAutoHide,
+    setToolbarAutoHide,
     onMinimize,
     onResetSettings,
     onClearWorkspace,
@@ -684,6 +693,18 @@ export function SettingsPanel({
             <option value="dark">Dark</option>
           </select>
         </label>
+        <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
+          <span>Dock</span>
+          <select aria-label="Toolbar dock" value={toolbarDock} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:capitalize msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setToolbarDock(event.target.value as ToolbarDock)}>
+            {TOOLBAR_DOCKS.map((dock) => (
+              <option key={dock} value={dock}>{TOOLBAR_DOCK_LABELS[dock]}</option>
+            ))}
+          </select>
+        </label>
+        {/* Only a toolbar glued to an edge can hide, so the option comes with snap mode. */}
+        {toolbarDock === "snap" ? (
+          <div className="msr:col-span-2"><SettingsSwitch label="Auto-hide" checked={toolbarAutoHide} onChange={setToolbarAutoHide} /></div>
+        ) : null}
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Toolbar</span>
           <SettingsButton

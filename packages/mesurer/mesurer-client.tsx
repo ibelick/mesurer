@@ -500,6 +500,10 @@ export function MesurerClient({
     setLastToolMode: setSettingsLastToolMode,
     toolbarPosition: settingsToolbarPosition,
     setToolbarPosition: setSettingsToolbarPosition,
+    toolbarDock: settingsToolbarDock,
+    setToolbarDock: setSettingsToolbarDock,
+    toolbarAutoHide: settingsToolbarAutoHide,
+    setToolbarAutoHide: setSettingsToolbarAutoHide,
     colorPickerFormats: settingsColorFormats,
     setColorPickerFormats: setSettingsColorFormats,
     colorPickerClickFormat: settingsColorClickFormat,
@@ -1826,6 +1830,8 @@ export function MesurerClient({
         eventTarget: ownerWindow,
         initialPosition: settingsToolbarPosition ?? initialState?.toolbarPosition ?? { x: 16, y: 16 },
         onPositionChange: setSettingsToolbarPosition,
+        dock: settingsToolbarDock,
+        autoHide: settingsToolbarAutoHide,
         minimized,
         onInteract: activateToolbar,
         onRestore: restoreToolbar,
@@ -1862,7 +1868,6 @@ export function MesurerClient({
               formats={settingsColorFormats}
               favoriteFormat={settingsColorClickFormat}
               onClose={closeColorPicker}
-              anchored={!(screenRecording.recording || Boolean(screenRecording.video))}
             />
           ),
         },
@@ -1999,6 +2004,10 @@ export function MesurerClient({
                 setShortcutsEnabled: setSettingsShortcutsEnabled,
                 theme: settingsTheme,
                 setTheme: setSettingsTheme,
+                toolbarDock: settingsToolbarDock,
+                setToolbarDock: setSettingsToolbarDock,
+                toolbarAutoHide: settingsToolbarAutoHide,
+                setToolbarAutoHide: setSettingsToolbarAutoHide,
                 onMinimize: minimizeMesurer,
                 onResetSettings: resetSettings,
                 onClearWorkspace: clearWorkspace,

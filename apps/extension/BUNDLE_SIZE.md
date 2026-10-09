@@ -1,7 +1,7 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **211 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **217 KiB**. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -17,6 +17,17 @@ Measured baselines for `feat/inspect-motion`:
 | Immediate JS detection: synchronous baseline and first-mutation confirmation | 207.0 KiB | 207 KiB |
 | Torph recognition: classify managed roots/glyphs before their next cycle, with selection-scoped state | 207.0 KiB | 207.5 KiB |
 | Generic review fixes: remove vendor detection, narrow preview properties, resolve stylesheet variables, and project transformed iframe geometry | 210.2 KiB | 211 KiB |
+| Toolbar snap: optional glue to screen edges with a drag preview, vertical toolbar layout, and edge-aware surfaces and tooltips (before: 210.2 KiB, after: 212.9 KiB) | 212.9 KiB | 213 KiB |
+| Toolbar snap motion: orientation fade, arc glide, release catch-up, and light edge glow (before: 212.9 KiB, after: 213.0 KiB) | 213.0 KiB | 214 KiB |
+| Toolbar snap continuity: magnetic approach, resisting release, and cached glue size (before: 213.0 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
+| Toolbar carets, shared anchored-surface placement for menus and the screenshot card (before: 213.2 KiB, after: 213.2 KiB) | 213.2 KiB | 214 KiB |
+| Toolbar axis motion: vertical mode switch and minimize, centered resize in snap mode, and the orientation swing (before: 213.2 KiB, after: 214.1 KiB) | 214.1 KiB | 215 KiB |
+| Toolbar held drag: the dragged toolbar stays under the pointer through glue, turn and release (before: 214.1 KiB, after: 214.4 KiB) | 214.4 KiB | 215 KiB |
+| Toolbar corners: recording card side, corner glue, and open/minimize from the held corner (before: 214.4 KiB, after: 215.2 KiB) | 215.2 KiB | 216 KiB |
+| Toolbar zones: pointer zones, kept orientation, saved placement, and auto-hide (before: 215.2 KiB, after: 215.8 KiB) | 215.8 KiB | 216 KiB |
+| Toolbar drop: square drop zones, turning against a wall, and the auto-hide delay (before: 215.8 KiB, after: 216.0 KiB) | 216.0 KiB | 217 KiB |
+| Toolbar polish: auto-hide while in use, saved placement on resize, and resumed swings (before: 216.0 KiB, after: 216.4 KiB) | 216.4 KiB | 217 KiB |
+| Toolbar corners: corner zones, the lit drop zone, and settling on the nearest spot (before: 216.4 KiB, after: 216.9 KiB) | 216.9 KiB | 217 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds
@@ -42,3 +53,36 @@ record the before/after compressed measurements here, and explain the change.
 Prefer removing duplication or moving optional work out of the content script
 before increasing it. The build reports remaining headroom so growth stays
 visible during local development and CI.
+
+The toolbar dock adds the snap-to-edge glue, the vertical toolbar layout, and
+edge-aware floating surfaces and tooltips. Before: 210.2 KiB; after: 212.9 KiB.
+The remaining code is distinct branches rather than duplication, so the limit is
+raised to 213 KiB (about 0.1 KiB headroom) instead of trimming behavior.
+
+The snap motion (orientation fade, arc glide, release catch-up) adds about 0.1 KiB.
+The limit is raised to 214 KiB (about 1.0 KiB headroom after this change). Trimming
+the remaining code was not possible without removing behavior.
+
+The continuity change adds about 0.2 KiB; the toolbar caret layout adds about 0.1 KiB (about 0.8 KiB headroom remaining).
+
+The axis motion (vertical mode switch and minimize, centered resize in snap mode, and
+the orientation swing that replaces the fade) adds about 0.9 KiB. The limit is raised to
+215 KiB (about 0.9 KiB headroom after this change).
+
+The held drag (pointer-anchored glue and release) adds about 0.3 KiB (about 0.6 KiB headroom remaining).
+
+The recording card's toolbar side and held drag capture add about 0.4 KiB; corner glue and
+opening and minimizing from the held corner add about 0.4 KiB. The limit is raised to
+216 KiB (about 0.8 KiB headroom after this change).
+
+The pointer zones, the orientation a free toolbar keeps, the saved placement and auto-hide add
+about 0.6 KiB (about 0.2 KiB headroom remaining).
+
+The square drop zones, the turn of a toolbar pushed into a wall and the auto-hide delay add
+about 0.2 KiB. The limit is raised to 217 KiB (about 1.0 KiB headroom after this change).
+
+Keeping an auto-hidden toolbar out while it is in use, saving the placement on resize and
+resuming an interrupted swing add about 0.4 KiB (about 0.6 KiB headroom remaining).
+
+The corner zones, the drop zone that lights up and settling on the nearest spot add about
+0.5 KiB (about 0.1 KiB headroom remaining).
