@@ -562,21 +562,6 @@ export const getTargetElement = (
   })
 }
 
-export const getShiftClickTarget = (
-  point: Point,
-  overlayNode: HTMLDivElement | null,
-  ownerDocument: Document = document,
-) => {
-  const overlayHost = getOverlayHost(overlayNode)
-  const elements = readElementsFromPoint(point, overlayNode, ownerDocument)
-  for (let i = elements.length - 1; i >= 0; i -= 1) {
-    const element = getDeepestElementAt(elements[i], point)
-    if (!isSelectableElement(element, overlayNode, overlayHost)) continue
-    return element
-  }
-  return null
-}
-
 export const getSnappedClickTarget = (
   point: Point,
   overlayNode: HTMLDivElement | null,
@@ -674,16 +659,6 @@ export const getCycledClickTarget = (
     },
     mode: cycleModes[index >= 0 ? index : 0] ?? "default",
   }
-}
-
-export const getElementsInRect = (
-  rect: Rect,
-  overlayNode: HTMLDivElement | null,
-  ownerDocument: Document = document,
-): Element[] => {
-  const entries = getSelectionEntries(rect, overlayNode, ownerDocument)
-  if (entries.length === 0) return []
-  return pickMultiTargets(rect, entries)
 }
 
 export const getSelectionEntries = (

@@ -10,7 +10,6 @@ import {
 } from "./core/persistence";
 import { DEFAULT_TEXT_STYLE } from "./core/text-style";
 import { resolveMesurerFeatures } from "./core/features";
-import type { ThemeMode } from "./core/persistence";
 
 export type { MesurerProps } from "./mesurer-client";
 

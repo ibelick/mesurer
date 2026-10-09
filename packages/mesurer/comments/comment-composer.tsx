@@ -113,7 +113,7 @@ export function CommentComposer({
           type="button"
           aria-label={actionLabel ?? (ariaLabel === "Comment" ? "Send comment" : "Send reply")}
           disabled={!canSubmit}
-          className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc] msr:disabled:cursor-default msr:disabled:opacity-40"
+          className="msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:bg-accent msr:text-white msr:disabled:cursor-default msr:disabled:opacity-40"
           onClick={submit}
         >
           <SendIcon />

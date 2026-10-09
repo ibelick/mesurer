@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useContext, useMemo, useState, type ReactNode } from "react"
 import { isConnectedElement, readInspectBoxSpacing, resolveInspectLayoutElement } from "../core/dom"
 import type { LayoutDetailPart } from "../core/layout-details"
 import { getElementSelector } from "../core/selector"
@@ -129,9 +129,13 @@ export function InspectInfoCard({
   const showCssToggle = !embedded && (cssParts.length > INSPECT_CSS_VISIBLE_ROWS || cssExpanded)
   const hasBodyContent = visibleCssParts.length > 0 || Boolean(typography)
 
-  useEffect(() => {
+  // Another element starts collapsed again. Reset while rendering, so it is never shown expanded
+  // for a frame first.
+  const [shownFor, setShownFor] = useState({ element, id: measurement?.id })
+  if (shownFor.element !== element || shownFor.id !== measurement?.id) {
+    setShownFor({ element, id: measurement?.id })
     setCssExpanded(false)
-  }, [element, measurement?.id])
+  }
 
   const dimensions = `${formatValue(displayRect.width)} x ${formatValue(displayRect.height)}`
   const copyValue = async (value: string) => {
@@ -150,7 +154,7 @@ export function InspectInfoCard({
       <div
         ref={setCardRef}
         data-mesurer-inspect-info-card
-        className={cn("msr:pointer-events-auto msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-white msr:shadow-floating")}
+        className={cn("msr:pointer-events-auto msr:flex msr:flex-col msr:overflow-visible msr:py-2 msr:text-[10px] msr:text-ink-900 msr:select-text", embedded ? "msr:relative msr:w-full" : "msr:absolute msr:z-50 msr:w-60 msr:max-w-[min(100vw-16px,15rem)] msr:rounded-lg msr:bg-surface msr:shadow-floating")}
         style={{ pointerEvents: "auto", userSelect: "text", WebkitUserSelect: "text", touchAction: "auto", zIndex: embedded ? undefined : 50 }}
         onPointerDown={(event) => event.stopPropagation()}
         onPointerMove={(event) => event.stopPropagation()}

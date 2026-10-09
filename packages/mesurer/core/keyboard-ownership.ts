@@ -36,7 +36,7 @@ const MESURER_BRIDGED_KEYS = new Set([
   "x",
 ])
 
-const MESURER_MODIFIED_KEYS = new Set([",", "a", "z"])
+const MESURER_MODIFIED_KEYS = new Set([",", "a", "k", "z"])
 
 export const getMesurerToolGroupShortcut = ({
   key,
@@ -84,7 +84,7 @@ export const isMesurerKeyboardBridgeKey = (
         !modifiers.shiftKey) ||
       (MESURER_MODIFIED_KEYS.has(key.toLowerCase()) &&
         (modifiers.ctrlKey || modifiers.metaKey) &&
-        (key.toLowerCase() === "z" || !modifiers.shiftKey)))
+        (["k", "z"].includes(key.toLowerCase()) || !modifiers.shiftKey)))
   )
 }
 
@@ -204,6 +204,7 @@ export const isBrowserReservedChord = (event: KeyboardEvent) => {
     event.getModifierState("Control")
   if (!hasMod) return false
   const key = event.key.toLowerCase()
+  if (key === "k" && !event.altKey) return false
   return key !== "z" && key !== "a" && key !== ","
 }
 
@@ -215,16 +216,6 @@ export const setMesurerKeyboardOwned = (document: Document, owned: boolean) => {
 
 export const isMesurerKeyboardOwned = (eventTarget: Window) =>
   eventTarget.document.documentElement.hasAttribute(MESURER_KEYBOARD_ATTR)
-
-export const getMesurerPageWindow = (view: Window | null) => {
-  if (!view) return null
-  try {
-    if (view.frameElement) return view.parent
-  } catch {
-    return view
-  }
-  return view
-}
 
 export const isPageTextEntry = (node: EventTarget | null) => {
   if (!(node instanceof Element) || isInsideMesurer(node)) return false
@@ -247,10 +238,4 @@ export const findMesurerTypingTarget = (view: Window) => {
     if (typing) return typing
   }
   return null
-}
-
-export const blurPageFocus = (eventTarget: Window) => {
-  const active = getDeepActiveElement(eventTarget)
-  if (!active || isInsideMesurer(active)) return
-  if (active instanceof HTMLElement) active.blur()
 }

@@ -135,51 +135,6 @@ export function visibleSelectionSlice(
   }
 }
 
-type RegionCropTrack = MediaStreamTrack & {
-  cropTo?: (cropTarget: unknown) => Promise<void>
-}
-
-type CropTargetFactory = {
-  fromElement: (element: Element) => Promise<unknown>
-}
-
-/** Invisible element whose box is the recorded region. Chrome follows it across resizes. */
-export function createRecordingCropTarget(
-  ownerDocument: Document,
-  rect: ScreenshotRect,
-): HTMLElement {
-  const target = ownerDocument.createElement("div")
-  target.setAttribute("data-mesurer-recording-crop", "")
-  target.setAttribute("aria-hidden", "true")
-  target.style.position = "fixed"
-  target.style.left = `${rect.left}px`
-  target.style.top = `${rect.top}px`
-  target.style.width = `${rect.width}px`
-  target.style.height = `${rect.height}px`
-  target.style.margin = "0"
-  target.style.padding = "0"
-  target.style.border = "0"
-  target.style.pointerEvents = "none"
-  target.style.background = "transparent"
-  target.style.opacity = "0"
-  ownerDocument.body.append(target)
-  return target
-}
-
-/**
- * Ask Chrome to crop the current-tab capture to `element`.
- * The crop tracks the element when the window is resized, so the recorded
- * zone stays on the selection without remapping the capture frame.
- */
-export async function cropTrackToElement(track: MediaStreamTrack, element: Element): Promise<boolean> {
-  const cropTo = (track as RegionCropTrack).cropTo
-  const CropTarget = (globalThis as { CropTarget?: CropTargetFactory }).CropTarget
-  if (!cropTo || !CropTarget) return false
-  const cropTarget = await CropTarget.fromElement(element)
-  await cropTo.call(track, cropTarget)
-  return true
-}
-
 export function screenshotRectToVideoCrop(
   rect: ScreenshotRect,
   videoWidth: number,

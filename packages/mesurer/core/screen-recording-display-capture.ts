@@ -1,9 +1,6 @@
 import type { ScreenshotRect } from "./screenshot"
 import {
-  createRecordingCropTarget,
-  cropTrackToElement,
   placeScreenshotRectInVideo,
-  visibleSelectionSlice,
   type CaptureViewportMetrics,
 } from "./screen-recording-crop"
 import { requestDisplayMediaStream } from "./screen-recording-export"
@@ -17,8 +14,6 @@ export type DisplayRecordingCapture = {
   source: HTMLVideoElement
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
-  cropTarget: HTMLElement | null
-  regionLocked: boolean
   captureTrack: MediaStreamTrack
   captureStream: MediaStream
 }
@@ -41,45 +36,6 @@ export const nextPresentedVideoFrame = (video: HTMLVideoElement, ownerWindow: Wi
       return
     }
     ownerWindow.requestAnimationFrame(() => finish())
-  })
-
-/**
- * Region capture changes the frame size, and the first frame at that size is
- * often the previous picture scaled into the new box. Wait until two presented
- * frames agree on the cropped size so the recording does not open on that frame.
- */
-export const waitForRegionCropDimensions = (
-  video: HTMLVideoElement,
-  rect: ScreenshotRect,
-  ownerWindow: Window,
-) =>
-  new Promise<void>((resolve) => {
-    const ratio = ownerWindow.devicePixelRatio || 1
-    const expectedWidth = Math.max(1, Math.round(rect.width * ratio))
-    const expectedHeight = Math.max(1, Math.round(rect.height * ratio))
-    const ready = () =>
-      Math.abs(video.videoWidth - expectedWidth) <= Math.max(4, expectedWidth * 0.08) &&
-      Math.abs(video.videoHeight - expectedHeight) <= Math.max(4, expectedHeight * 0.08)
-    let stableFrames = 0
-    let settled = false
-    const finish = () => {
-      if (settled) return
-      settled = true
-      ownerWindow.clearTimeout(timer)
-      resolve()
-    }
-    const watch = () => {
-      if (settled) return
-      if (ready()) stableFrames += 1
-      else stableFrames = 0
-      if (stableFrames >= 2) {
-        finish()
-        return
-      }
-      void nextPresentedVideoFrame(video, ownerWindow).then(watch)
-    }
-    const timer = ownerWindow.setTimeout(finish, 500)
-    watch()
   })
 
 export const openCanvasCaptureStream = (canvas: HTMLCanvasElement) => {
@@ -119,20 +75,8 @@ export async function openDisplayRecordingCapture(
     })
   }
 
-  const cropTarget = createRecordingCropTarget(ownerDocument, rect)
-  let regionLocked = false
-  try {
-    regionLocked = await cropTrackToElement(track, cropTarget)
-  } catch {
-    regionLocked = false
-  }
-  if (!regionLocked) {
-    cropTarget.remove()
-  } else {
-    await waitForRegionCropDimensions(source, rect, ownerWindow)
-  }
-
-  const pixelRatio = ownerWindow.devicePixelRatio || 1
+  // Crop the captured pixels, not the browser surface. Chrome's cropTo() can
+  // change the live page's rendering scale and reflow text when capture starts.
   const initialCrop = placeScreenshotRectInVideo(
     rect,
     source.videoWidth,
@@ -140,12 +84,8 @@ export async function openDisplayRecordingCapture(
     getViewport(),
   )
   const canvas = ownerDocument.createElement("canvas")
-  canvas.width = regionLocked
-    ? Math.max(1, Math.round(rect.width * pixelRatio))
-    : initialCrop.sw
-  canvas.height = regionLocked
-    ? Math.max(1, Math.round(rect.height * pixelRatio))
-    : initialCrop.sh
+  canvas.width = initialCrop.sw
+  canvas.height = initialCrop.sh
   canvas.setAttribute("aria-hidden", "true")
   canvas.style.cssText = HIDDEN_MEDIA_STYLE
   ownerDocument.body.append(canvas)
@@ -158,12 +98,10 @@ export async function openDisplayRecordingCapture(
     source,
     canvas,
     context,
-    cropTarget: regionLocked ? cropTarget : null,
-    regionLocked,
     captureTrack: null as unknown as MediaStreamTrack,
     captureStream: null as unknown as MediaStream,
   }
-  if (!regionLocked) await nextPresentedVideoFrame(source, ownerWindow)
+  await nextPresentedVideoFrame(source, ownerWindow)
   paintDisplayRecordingFrame(prepared, rect, getViewport)
   const { capture, captureTrack } = openCanvasCaptureStream(canvas)
   prepared.captureTrack = captureTrack
@@ -180,65 +118,40 @@ export function paintDisplayRecordingFrame(
   rect: ScreenshotRect,
   getViewport: () => CaptureViewportMetrics,
 ) {
-  const { source, canvas, context, regionLocked, cropTarget, captureTrack } = capture
+  const { source, canvas, context, captureTrack } = capture
   if (source.videoWidth <= 0 || source.videoHeight <= 0) return
 
-  if (regionLocked && cropTarget) {
-    const box = cropTarget.getBoundingClientRect()
-    const slice = visibleSelectionSlice(box, getViewport())
-    if (!slice.visible) {
-      context.fillStyle = "#000"
-      context.fillRect(0, 0, canvas.width, canvas.height)
-    } else if (slice.dw >= 0.999 && slice.dh >= 0.999) {
-      context.drawImage(source, 0, 0, canvas.width, canvas.height)
-    } else {
-      context.fillStyle = "#000"
-      context.fillRect(0, 0, canvas.width, canvas.height)
-      context.drawImage(
-        source,
-        0,
-        0,
-        source.videoWidth,
-        source.videoHeight,
-        slice.dx * canvas.width,
-        slice.dy * canvas.height,
-        slice.dw * canvas.width,
-        slice.dh * canvas.height,
-      )
-    }
-  } else {
-    const placed = placeScreenshotRectInVideo(
-      rect,
-      source.videoWidth,
-      source.videoHeight,
-      getViewport(),
+  const placed = placeScreenshotRectInVideo(
+    rect,
+    source.videoWidth,
+    source.videoHeight,
+    getViewport(),
+  )
+  const coversFrame =
+    placed.dx <= 0.001 &&
+    placed.dy <= 0.001 &&
+    placed.dw >= 0.999 &&
+    placed.dh >= 0.999
+  const destX = coversFrame ? 0 : placed.dx * canvas.width
+  const destY = coversFrame ? 0 : placed.dy * canvas.height
+  const destW = coversFrame ? canvas.width : placed.dw * canvas.width
+  const destH = coversFrame ? canvas.height : placed.dh * canvas.height
+  if (!coversFrame) {
+    context.fillStyle = "#000"
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+  if (destW >= 1 && destH >= 1 && placed.dw > 0 && placed.dh > 0) {
+    context.drawImage(
+      source,
+      placed.sx,
+      placed.sy,
+      placed.sw,
+      placed.sh,
+      destX,
+      destY,
+      destW,
+      destH,
     )
-    const coversFrame =
-      placed.dx <= 0.001 &&
-      placed.dy <= 0.001 &&
-      placed.dw >= 0.999 &&
-      placed.dh >= 0.999
-    const destX = coversFrame ? 0 : placed.dx * canvas.width
-    const destY = coversFrame ? 0 : placed.dy * canvas.height
-    const destW = coversFrame ? canvas.width : placed.dw * canvas.width
-    const destH = coversFrame ? canvas.height : placed.dh * canvas.height
-    if (!coversFrame) {
-      context.fillStyle = "#000"
-      context.fillRect(0, 0, canvas.width, canvas.height)
-    }
-    if (destW >= 1 && destH >= 1 && placed.dw > 0 && placed.dh > 0) {
-      context.drawImage(
-        source,
-        placed.sx,
-        placed.sy,
-        placed.sw,
-        placed.sh,
-        destX,
-        destY,
-        destW,
-        destH,
-      )
-    }
   }
 
   const requestFrame =

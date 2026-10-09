@@ -110,13 +110,6 @@ const appendFrame = (output: number[], width: number, height: number, pixels: Ui
   writeSubBlocks(output, encodeLzw(pixels))
 }
 
-export function encodeGifFrames(width: number, height: number, frames: Uint8Array[], delay = Math.max(1, Math.round(100 / GIF_FRAME_RATE))): Uint8Array {
-  const output = startGif(width, height)
-  for (const pixels of frames) appendFrame(output, width, height, pixels, delay)
-  output.push(0x3b)
-  return new Uint8Array(output)
-}
-
 export async function encodeGifClip(ownerDocument: Document, sourceUrl: string, startTime: number, endTime: number, scale: number): Promise<Blob> {
   const source = ownerDocument.createElement("video")
   source.muted = true

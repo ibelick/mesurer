@@ -1,11 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
+import { useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent } from "react"
 import type { CommentThread } from "./types"
 import { CloseIcon, MoreIcon } from "../components/icons"
 import { CommentDeleteConfirmation, readDeleteAnchor } from "./comment-delete-confirmation"
 import { CommentOverflowMenu } from "./comment-overflow-menu"
 import { CommentComposer } from "./comment-composer"
 import { CommentIconButton } from "./comment-icon-button"
+import { CommentResolveIcon } from "./comment-resolve-icon"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { copyCommentSelector } from "./export"
 
@@ -98,9 +100,14 @@ export function CommentThreadCard({
   const [cardAnchor, setCardAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
   const [threadMenuAnchor, setThreadMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
   const [messageMenuAnchor, setMessageMenuAnchor] = useState<ReturnType<typeof readDeleteAnchor> | null>(null)
-  useEffect(() => {
-    if (!ownerWindow || (!threadOverflowOpen && !overflowOpenId)) return
-    const handleOutsidePointerDown = (event: Event) => {
+  // A press outside the overflow menus closes them.
+  usePageListener({
+    active: threadOverflowOpen || overflowOpenId !== null,
+    view: ownerWindow,
+    target: () => ownerWindow?.document,
+    types: "pointerdown",
+    phase: "capture",
+    onEvent: (event) => {
       const isMenuEvent = event.composedPath().some((target) =>
         typeof (target as Element).matches === "function" &&
         (target as Element).matches("[data-mesurer-comment-overflow-menu], [data-mesurer-comment-actions]"),
@@ -110,10 +117,8 @@ export function CommentThreadCard({
       setOverflowOpenId(null)
       setThreadMenuAnchor(null)
       setMessageMenuAnchor(null)
-    }
-    ownerWindow.document.addEventListener("pointerdown", handleOutsidePointerDown, true)
-    return () => ownerWindow.document.removeEventListener("pointerdown", handleOutsidePointerDown, true)
-  }, [overflowOpenId, ownerWindow, threadOverflowOpen])
+    },
+  })
   useLayoutEffect(() => {
     const node = overlay.overlayRef.current
     if (!node || (!deleteConfirmationOpen && !messageDeleteConfirmationId)) return
@@ -125,7 +130,7 @@ export function CommentThreadCard({
       data-mesurer-comment-popover
       data-mesurer-comment-ui
       ref={overlay.overlayRef}
-      className={`mesurer-comment-card msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-white msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
+      className={`mesurer-comment-card msr:pointer-events-auto msr:absolute msr:cursor-default msr:w-64 msr:rounded-lg msr:bg-surface msr:p-3 msr:pt-8 msr:text-[12px] msr:text-ink-900 msr:shadow-floating ${nudge ? "mesurer-comment-nudge" : ""}`}
       style={{ paddingTop: 40 }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         outsideAttemptRef.current = false
@@ -190,10 +195,7 @@ export function CommentThreadCard({
           className={comment.status === "resolved" ? "msr:text-ink-700" : "msr:text-ink-500"}
           onClick={() => onToggleResolved(comment.id)}
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" className="msr:block">
-            <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-            <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <CommentResolveIcon resolved={comment.status === "resolved"} size={14} />
         </CommentIconButton>
         <CommentIconButton
           label="Close comment"

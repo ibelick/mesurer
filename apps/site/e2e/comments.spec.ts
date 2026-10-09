@@ -234,7 +234,8 @@ test("resolves a comment from the comments list", async ({ page }) => {
 
 test("shows every comment and opens a thread from the list", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
-  await activateComments(page);
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  await expect(page.getByRole("button", { name: "Select and inspect tools (1)" })).toHaveAttribute("aria-pressed", "true");
 
   await page.mouse.click(620, 480);
   await page.getByRole("textbox", { name: "Comment" }).fill("First feedback.");
@@ -266,7 +267,7 @@ test("shows every comment and opens a thread from the list", async ({ page }) =>
   await panel.getByText("First feedback.", { exact: true }).click();
   await expect(panel).toBeVisible();
   await expect(page.getByRole("button", { name: "Comments (M)" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Annotate tools (2)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Select and inspect tools (1)" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-mesurer-comment-popover]")).toContainText("First feedback.");
   await page.getByRole("button", { name: "Comment menu" }).click();
   await expect(panel).toHaveCount(0);
@@ -330,6 +331,84 @@ test("resolves all comments from the comments list menu", async ({ page }) => {
   await panel.getByRole("button", { name: "Comment list actions" }).click();
   await page.getByRole("menuitemradio", { name: "Resolved" }).click();
   await expect(panel.getByRole("button", { name: "Reopen comment" })).toBeVisible();
+});
+
+for (const action of ["button", "Control+Shift+k", "Meta+Shift+k"] as const) {
+  test(`resolves all comments using ${action}`, async ({ page }) => {
+    await page.goto("/e2e/fixtures/guide-overlay.html");
+    await activateComments(page);
+    for (const [x, y, text] of [[620, 480, "First feedback."], [300, 560, "Second feedback."]] as const) {
+      await page.mouse.click(x, y);
+      await page.getByRole("textbox", { name: "Comment" }).fill(text);
+      await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+    }
+    await page.getByRole("button", { name: "Comment menu" }).click();
+    await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+    const panel = page.getByRole("dialog", { name: "Comments" });
+    const resolve = panel.getByRole("button", { name: "Resolve all comments" });
+    await expect(resolve).toBeEnabled();
+    await expect(resolve.locator("svg circle")).toHaveCount(1);
+    await expect(panel.getByRole("button", { name: "Copy comments", exact: true })).toBeVisible();
+    await resolve.hover();
+    const tooltip = page.getByRole("tooltip").filter({ hasText: "Resolve all comments" });
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText(/⌘\s*⇧\s*K|Ctrl\s*\+\s*Shift\s*\+\s*K/);
+    // Resolving applies to every thread, including those hidden by search.
+    await panel.getByRole("searchbox", { name: "Search comments" }).fill("First");
+    if (action === "button") {
+      await resolve.click();
+    } else {
+      await page.keyboard.press(action);
+    }
+    await expect(resolve).toBeDisabled();
+    await expect(resolve.locator("svg circle")).toHaveCount(0);
+    await panel.getByRole("searchbox", { name: "Search comments" }).fill("");
+    await expect(panel).toContainText("No open comments.");
+    await panel.getByRole("button", { name: "Comment list actions" }).click();
+    await page.getByRole("menuitemradio", { name: "Resolved", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Reopen comment" })).toHaveCount(2);
+    await expect(resolve.locator("svg circle")).toHaveCount(1);
+  });
+}
+
+test("shows comment command feedback on the marketing site", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Show Mesurer toolbar" }).click();
+  await page.getByRole("button", { name: "Comments (M)" }).click();
+  await clickCenter(page, page.locator("h1").first());
+  await page.getByRole("textbox", { name: "Comment", exact: true }).fill("Marketing feedback.");
+  await page.getByRole("textbox", { name: "Comment", exact: true }).press("Enter");
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  await page.keyboard.press("Meta+k");
+  await expect(panel.getByRole("button", { name: "Comments copied", exact: true })).toBeVisible();
+  await page.keyboard.press("Meta+Shift+k");
+  await expect(panel.getByRole("button", { name: "Resolve all comments" }).locator("svg circle")).toHaveCount(0);
+  await expect(panel).toContainText("No open comments.");
+});
+
+test("shows copy checkmark feedback for the keyboard command", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  await activateComments(page);
+  await page.mouse.click(620, 480);
+  await page.getByRole("textbox", { name: "Comment" }).fill("Copy feedback.");
+  await page.getByRole("textbox", { name: "Comment" }).press("Enter");
+  await page.getByRole("button", { name: "Comment menu" }).click();
+  await page.getByRole("menuitem", { name: /Show all comments/ }).click();
+  const panel = page.getByRole("dialog", { name: "Comments" });
+  const copy = panel.getByRole("button", { name: "Copy comments", exact: true });
+  const originalIcon = await copy.locator("svg").innerHTML();
+  await page.keyboard.press("ControlOrMeta+k");
+  const copied = panel.getByRole("button", { name: "Comments copied", exact: true });
+  await expect(copied).toBeVisible();
+  expect(await copied.locator("svg").innerHTML()).not.toBe(originalIcon);
+  await expect(copy).toBeVisible();
+  await expect(copy.locator("svg")).toHaveJSProperty("innerHTML", originalIcon);
+  await copy.click();
+  await expect(copied).toBeVisible();
 });
 
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {

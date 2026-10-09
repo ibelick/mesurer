@@ -1,36 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
+import { useTimeout } from "./use-timeout"
 
-export const CAPTURE_TOAST_MS = 2500
+const CAPTURE_TOAST_MS = 2500
 
 export function useCaptureErrorToast(ownerWindow: Window) {
-  const timeoutRef = useRef<number | null>(null)
   const [error, setError] = useState(false)
+  const { start, clear } = useTimeout(ownerWindow)
 
   const dismissError = useCallback(() => {
-    if (timeoutRef.current !== null) {
-      ownerWindow.clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
-    }
+    clear()
     setError(false)
-  }, [ownerWindow])
+  }, [clear])
 
   const flashError = useCallback(() => {
     setError(true)
-    if (timeoutRef.current !== null) {
-      ownerWindow.clearTimeout(timeoutRef.current)
-    }
-    timeoutRef.current = ownerWindow.setTimeout(() => {
-      timeoutRef.current = null
-      setError(false)
-    }, CAPTURE_TOAST_MS)
-  }, [ownerWindow])
-
-  useEffect(
-    () => () => {
-      if (timeoutRef.current !== null) ownerWindow.clearTimeout(timeoutRef.current)
-    },
-    [ownerWindow],
-  )
+    start(() => setError(false), CAPTURE_TOAST_MS)
+  }, [start])
 
   return { error, flashError, dismissError }
 }

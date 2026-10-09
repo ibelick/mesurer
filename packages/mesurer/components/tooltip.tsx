@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -12,6 +11,7 @@ import {
 import { createPortal } from "react-dom"
 import { cn } from "../core/utils"
 import { clampOverlayPosition } from "../core/overlay-position"
+import { useTimeout } from "../hooks/use-timeout"
 
 const TOOLTIP_DELAY_MS = 800
 
@@ -150,32 +150,15 @@ export function Tooltip({
 export function useTooltip() {
   const [visibleTooltipId, setVisibleTooltipId] = useState<string | null>(null)
   const [copiedTooltipId, setCopiedTooltipId] = useState<string | null>(null)
-  const timerRef = useRef<number | null>(null)
-  const copiedTimerRef = useRef<number | null>(null)
+  const { start: startTimer, clear: clearTimer } = useTimeout(window)
+  const { start: startCopiedTimer, clear: clearCopiedTimer } = useTimeout(window)
   const instantRef = useRef(false)
   const [tooltipInstant, setTooltipInstant] = useState(false)
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current === null) return
-    window.clearTimeout(timerRef.current)
-    timerRef.current = null
-  }, [])
-
-  const clearCopiedTimer = useCallback(() => {
-    if (copiedTimerRef.current === null) return
-    window.clearTimeout(copiedTimerRef.current)
-    copiedTimerRef.current = null
-  }, [])
 
   const clearCopiedTooltip = useCallback(() => {
     clearCopiedTimer()
     setCopiedTooltipId(null)
   }, [clearCopiedTimer])
-
-  useEffect(() => () => {
-    clearTimer()
-    clearCopiedTimer()
-  }, [clearCopiedTimer, clearTimer])
 
   const onTooltipEnter = useCallback((id: string, instant = false) => {
     clearTimer()
@@ -188,23 +171,18 @@ export function useTooltip() {
     }
 
     setTooltipInstant(false)
-    timerRef.current = window.setTimeout(() => {
+    startTimer(() => {
       setVisibleTooltipId(id)
       instantRef.current = true
-      timerRef.current = null
     }, TOOLTIP_DELAY_MS)
-  }, [clearCopiedTooltip, clearTimer, copiedTooltipId])
+  }, [clearCopiedTooltip, clearTimer, copiedTooltipId, startTimer])
 
   const onTooltipCopied = useCallback((id: string) => {
     clearTimer()
-    clearCopiedTimer()
     setVisibleTooltipId(null)
     setCopiedTooltipId(id)
-    copiedTimerRef.current = window.setTimeout(() => {
-      copiedTimerRef.current = null
-      setCopiedTooltipId(null)
-    }, 1200)
-  }, [clearCopiedTimer, clearTimer])
+    startCopiedTimer(() => setCopiedTooltipId(null), 1200)
+  }, [clearTimer, startCopiedTimer])
 
   const onTooltipLeave = useCallback(() => {
     clearTimer()

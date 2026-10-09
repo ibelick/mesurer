@@ -88,7 +88,7 @@ export const TextTransformFrame = ({
   >
     {showControls ? (
       <div
-        className="msr:absolute msr:left-1/2 msr:top-0 msr:w-px msr:-translate-x-1/2 msr:-translate-y-full msr:bg-[#0d99ff]"
+        className="msr:absolute msr:left-1/2 msr:top-0 msr:w-px msr:-translate-x-1/2 msr:-translate-y-full msr:bg-accent"
         style={{ height: 12 + handleOffset }}
       />
     ) : null}

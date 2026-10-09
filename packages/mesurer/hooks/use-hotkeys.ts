@@ -92,6 +92,7 @@ type HotkeyOptions = {
   onScreenshot: () => void
   onScreenRecord: () => void
   onCopyComments: () => void | Promise<boolean>
+  onResolveAllComments: () => void
   onCloseScreenshot: () => void
   isScreenshotActive: () => boolean
   isScreenRecording: () => boolean
@@ -239,15 +240,20 @@ export const useHotkeys = (options: HotkeyOptions) => {
         event.ctrlKey ||
         event.getModifierState("Meta") ||
         event.getModifierState("Control")
-      const isCopyComments =
+      const isCommentsShortcut =
         current.shortcutsEnabled &&
         hasPrimaryModifier &&
+        !event.altKey &&
         event.key.toLowerCase() === "k"
-      if (isCopyComments) {
+      if (isCommentsShortcut) {
         if (!current.hasComments()) return
         event.preventDefault()
         event.stopImmediatePropagation()
-        current.onCopyComments()
+        if (event.shiftKey) {
+          current.onResolveAllComments()
+        } else {
+          current.onCopyComments()
+        }
         return
       }
       if (current.commentDraftActive) return

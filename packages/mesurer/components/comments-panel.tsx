@@ -1,14 +1,16 @@
 import type { CommentFilter, CommentThread } from "../comments/types"
 import type { RefObject } from "react"
 import { createPortal } from "react-dom"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { CommentDeleteConfirmation, readDeleteAnchor, type DeleteAnchorRect } from "../comments/comment-delete-confirmation"
-import { addMesurerCaptureListener } from "../core/keyboard-gate"
 import { cn } from "../core/utils"
 import { TextInput } from "./text-input"
 import { CheckIcon, CopyIcon, MoreIcon } from "./icons"
 import { MenuItem } from "./menu"
 import { CommentIconButton } from "../comments/comment-icon-button"
+import { CommentResolveIcon } from "../comments/comment-resolve-icon"
+import { useCommentsFeedback } from "../hooks/use-comments-feedback"
+import { usePageListener } from "../hooks/use-page-listener"
 import { useToolbarTooltip } from "../hooks/use-toolbar-tooltip"
 import { surfaceStyle, type FloatingSurfacePlacement } from "../hooks/use-floating-surface-placement"
 
@@ -36,6 +38,7 @@ export function CommentsPanel({
   onResolveAll,
   ownerWindow,
   copyShortcut,
+  resolveShortcut,
   onDelete,
   onToggleResolved,
   panelRef,
@@ -49,11 +52,12 @@ export function CommentsPanel({
   unresolvedIds: ReadonlySet<string>
   selectedId: string | null
   onSelect: (id: string) => void
-  onCopy: () => void | Promise<void>
+  onCopy: () => void | Promise<boolean>
   onDeleteAll: () => void
   onResolveAll: () => void
   ownerWindow: Window
   copyShortcut: string
+  resolveShortcut: string
   onDelete: (id: string) => void
   onToggleResolved: (id: string) => void
   panelRef: RefObject<HTMLDivElement | null>
@@ -64,6 +68,7 @@ export function CommentsPanel({
   onStatusFilterChange: (filter: CommentFilter) => void
 }) {
   const orderedComments = [...comments].sort((a, b) => b.updatedAt - a.updatedAt)
+  const hasOpenComments = comments.some((comment) => comment.status === "open")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [commentMenuPosition, setCommentMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [commentMenuAnchor, setCommentMenuAnchor] = useState<DeleteAnchorRect | null>(null)
@@ -72,7 +77,8 @@ export function CommentsPanel({
   const [listMenuPosition, setListMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const copied = useCommentsFeedback(ownerWindow, "copied")
+  const resolved = useCommentsFeedback(ownerWindow, "resolved")
   const [searchQuery, setSearchQuery] = useState("")
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const statusFilteredComments = statusFilter === "all"
@@ -87,28 +93,14 @@ export function CommentsPanel({
     panelRef.current?.closest("[data-mesurer-root]") ?? ownerWindow.document.body
   const tooltipGroup = useToolbarTooltip()
 
-  useEffect(() => {
-    let copiedTimeout: number | null = null
-    const handleCopied = () => {
-      setCopied(true)
-      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
-      copiedTimeout = ownerWindow.setTimeout(() => setCopied(false), 1800)
-    }
-    ownerWindow.addEventListener("mesurer:comments-copied", handleCopied)
-    return () => {
-      if (copiedTimeout !== null) ownerWindow.clearTimeout(copiedTimeout)
-      ownerWindow.removeEventListener("mesurer:comments-copied", handleCopied)
-    }
-  }, [ownerWindow])
-
-  useEffect(() => {
-    if (!openMenuId && !deleteId && !deleteAllOpen) return
-    const ownerDocument = panelRef.current?.ownerDocument
-    const ownerView = ownerDocument?.defaultView
-    if (!ownerDocument || !ownerView) return
-    const handlePointerDown = (event: Event) => {
-      const pointerEvent = event as PointerEvent
-      const path = pointerEvent.composedPath()
+  // A press outside closes the row menu, and the delete confirmations unless it is on one.
+  usePageListener({
+    active: Boolean(openMenuId || deleteId || deleteAllOpen),
+    view: () => panelRef.current?.ownerDocument.defaultView,
+    target: () => panelRef.current?.ownerDocument,
+    types: "pointerdown",
+    onEvent: (event) => {
+      const path = event.composedPath()
       const clickedMenu = path.some((target) => {
         if (!target || typeof target !== "object" || !("getAttribute" in target)) return false
         return (target as Element).getAttribute("data-mesurer-comment-actions") !== null
@@ -124,9 +116,8 @@ export function CommentsPanel({
         setDeleteAllOpen(false)
         setDeleteAllAnchor(null)
       }
-    }
-    return addMesurerCaptureListener(ownerView, ownerDocument, "pointerdown", handlePointerDown)
-  }, [deleteAllOpen, deleteId, openMenuId, panelRef])
+    },
+  })
 
   return (
     <div
@@ -134,7 +125,7 @@ export function CommentsPanel({
       role="dialog"
       aria-label="Comments"
       className={cn(
-        "mesurer-menu-surface msr:right-0 msr:z-[100] msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-white msr:p-0 msr:shadow-floating",
+        "mesurer-menu-surface msr:right-0 msr:z-[100] msr:flex msr:w-72 msr:flex-col msr:rounded-lg msr:bg-surface msr:p-0 msr:shadow-floating",
         fixed ? "msr:fixed" : "msr:absolute",
         openMenuId || deleteId || deleteAllOpen ? "msr:overflow-visible" : "msr:overflow-hidden",
         !fixed && (placement.side === "bottom" ? "msr:top-full msr:mt-2" : "msr:bottom-full msr:mb-2"),
@@ -155,22 +146,33 @@ export function CommentsPanel({
       <div className="msr:flex msr:min-h-0 msr:flex-1 msr:flex-col msr:py-1">
       <div className="msr:flex msr:h-8 msr:shrink-0 msr:items-center msr:justify-between msr:gap-2 msr:pl-3 msr:pr-2">
         <h2 className="msr:text-[11px] msr:font-semibold msr:text-ink-500">Comments</h2>
-        <CommentIconButton
-          label={copied ? "Comments copied" : "Copy comments"}
-          tooltip={copied ? "Copied" : "Copy comments"}
-          shortcut={copied ? undefined : copyShortcut}
-          tooltipId="copy-comments"
-          tooltipGroup={tooltipGroup}
-          className="msr:size-6"
-          wrapperClassName="msr:h-6 msr:w-6"
-          onClick={async () => {
-            await onCopy()
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 1800)
-          }}
-        >
-          {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-        </CommentIconButton>
+        <div className="msr:flex msr:items-center msr:gap-1">
+          <CommentIconButton
+            label="Resolve all comments"
+            tooltip={resolved ? "Comments resolved" : "Resolve all comments"}
+            shortcut={resolved ? undefined : resolveShortcut}
+            tooltipId="resolve-all-comments"
+            tooltipGroup={tooltipGroup}
+            className="msr:size-6"
+            wrapperClassName="msr:h-6 msr:w-6"
+            disabled={!hasOpenComments}
+            onClick={onResolveAll}
+          >
+            {resolved ? <CheckIcon size={12} /> : <CommentResolveIcon />}
+          </CommentIconButton>
+          <CommentIconButton
+            label={copied ? "Comments copied" : "Copy comments"}
+            tooltip={copied ? "Copied" : "Copy comments"}
+            shortcut={copied ? undefined : copyShortcut}
+            tooltipId="copy-comments"
+            tooltipGroup={tooltipGroup}
+            className="msr:size-6"
+            wrapperClassName="msr:h-6 msr:w-6"
+            onClick={() => { void onCopy() }}
+          >
+            {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+          </CommentIconButton>
+        </div>
       </div>
       <div className="msr:shrink-0 msr:pl-3 msr:pr-2 msr:pb-2">
         <div className="msr:relative msr:flex msr:items-center msr:gap-1.5">
@@ -256,10 +258,7 @@ export function CommentsPanel({
                           onToggleResolved(comment.id)
                         }}
                       >
-                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" className="msr:block">
-                          <circle cx="8" cy="8" r="5.5" fill={comment.status === "resolved" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.25" />
-                          <path d="m5.2 8 1.8 1.8 3.8-4" stroke={comment.status === "resolved" ? "var(--msr-surface)" : "currentColor"} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <CommentResolveIcon resolved={comment.status === "resolved"} />
                       </CommentIconButton>
                       <CommentIconButton
                         data-mesurer-comment-actions
@@ -304,7 +303,7 @@ export function CommentsPanel({
           aria-label="Comment actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+             className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-32 msr:-translate-y-full msr:rounded-md msr:bg-surface msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "8rem", top: commentMenuPosition.top, right: commentMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -317,7 +316,7 @@ export function CommentsPanel({
           aria-label="Comment list actions"
           data-mesurer-comment-actions
           data-mesurer-comment-ui
-            className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-white msr:p-1 msr:shadow-floating"
+            className="mesurer-comment-overflow-menu msr:pointer-events-auto msr:fixed msr:z-[100] msr:w-40 msr:rounded-md msr:bg-surface msr:p-1 msr:shadow-floating"
            style={{ position: "fixed", zIndex: 120, pointerEvents: "auto", width: "10rem", top: listMenuPosition.top, right: listMenuPosition.right }}
           onPointerDown={(event) => event.stopPropagation()}
         >

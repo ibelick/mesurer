@@ -152,13 +152,13 @@ export function SettingsSwitch({ label, checked, onChange }: {
          data-checked={checked ? "true" : "false"}
         className={cn(
           "mesurer-switch-track msr:flex msr:h-[14px] msr:w-[26px] msr:shrink-0 msr:items-center msr:rounded-full msr:border msr:p-px msr:transition-colors",
-          checked ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]" : "msr:border-ink-200 msr:bg-ink-50",
+          checked ? "msr:border-accent msr:bg-accent" : "msr:border-ink-200 msr:bg-ink-50",
         )}
       >
         <span
            className={cn(
              "mesurer-control-thumb msr:block msr:size-[10px] msr:shrink-0 msr:rounded-full msr:transition-transform",
-             "mesurer-switch-thumb msr:bg-white",
+             "mesurer-switch-thumb msr:bg-surface",
            )}
            data-checked={checked ? "true" : "false"}
            style={{
@@ -305,7 +305,7 @@ function FormatMultiSelect({
          onBlur={(event) => {
            if (!containerRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false)
          }}
-         className="mesurer-settings-select msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+         className="mesurer-settings-select msr:relative msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:pr-6 msr:text-left msr:text-[11px] msr:text-ink-700 msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
@@ -332,7 +332,7 @@ function FormatMultiSelect({
           id={listboxId}
           aria-label="Color formats"
           aria-multiselectable="true"
-            className={`mesurer-settings-select-menu msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-white msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
+            className={`mesurer-settings-select-menu msr:absolute msr:left-0 msr:right-0 msr:z-10 msr:rounded-control msr:bg-surface msr:p-1 msr:shadow-floating ${menuSide === "bottom" ? "msr:top-full msr:mt-1" : "msr:bottom-full msr:mb-1"}`}
         >
           {formats.map((format, formatIndex) => {
             const selected = selectedFormats.includes(format)
@@ -532,7 +532,7 @@ export function SettingsPanel({
                   aria-checked={selected}
                   className={cn(
                      "msr:relative msr:flex msr:h-6 msr:min-w-0 msr:flex-1 msr:items-center msr:justify-center msr:rounded-control msr:border msr:px-1 msr:focus-visible:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)]",
-                    selected ? "msr:border-[#0d99ff] msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
+                    selected ? "msr:border-accent msr:bg-[#0d99ff]/10" : "msr:border-ink-200 msr:bg-ink-50 msr:hover:bg-ink-100",
                   )}
                   onClick={() => setGuideStyle((style) => ({ ...style, pattern: value }))}
                   onMouseEnter={() => patternTooltip.onTooltipEnter(tooltipId)}
@@ -573,7 +573,7 @@ export function SettingsPanel({
             <select
               aria-label="Font"
               value={textSettings.font}
-              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
               onChange={(event) =>
                 setTextSettings((style) => ({ ...style, font: event.target.value as TextFont }))
               }
@@ -599,7 +599,7 @@ export function SettingsPanel({
           <select
             aria-label="Info card mode"
             value={infoCardMode}
-            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+            className="msr:h-6 msr:w-full msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
             onChange={(event) => setInfoCardMode(event.target.value as InfoCardMode)}
           >
             <option value="click">Click</option>
@@ -617,7 +617,7 @@ export function SettingsPanel({
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Copy</span>
           <span className="msr:relative msr:block msr:w-full">
-            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
+            <select value={colorClickFormat} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setColorClickFormat(event.target.value as ColorPickerFormat)}>
               {COLOR_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}
             </select>
             <span aria-hidden="true" className="msr:pointer-events-none msr:absolute msr:right-2 msr:top-1/2 msr:size-1.5 msr:-translate-y-1/2 msr:rotate-45 msr:border-r msr:border-b msr:border-ink-500" />
@@ -669,7 +669,7 @@ export function SettingsPanel({
             <select
               aria-label="Capture"
               value={screenshotSettings.shareMode}
-              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+              className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
               onChange={(event) =>
                 setScreenshotSettings((settings) => ({
                   ...settings,
@@ -687,7 +687,7 @@ export function SettingsPanel({
         <div className="msr:col-span-2"><SettingsSwitch label="Shortcuts" checked={shortcutsEnabled} onChange={setShortcutsEnabled} /></div>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Appearance</span>
-          <select aria-label="Appearance" value={theme} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setTheme(event.target.value as ThemeMode)}>
+          <select aria-label="Appearance" value={theme} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setTheme(event.target.value as ThemeMode)}>
             <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -695,7 +695,7 @@ export function SettingsPanel({
         </label>
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Dock</span>
-          <select aria-label="Toolbar dock" value={toolbarDock} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:text-[11px] msr:capitalize msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setToolbarDock(event.target.value as ToolbarDock)}>
+          <select aria-label="Toolbar dock" value={toolbarDock} className="msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:text-[11px] msr:capitalize msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]" onChange={(event) => setToolbarDock(event.target.value as ToolbarDock)}>
             {TOOLBAR_DOCKS.map((dock) => (
               <option key={dock} value={dock}>{TOOLBAR_DOCK_LABELS[dock]}</option>
             ))}

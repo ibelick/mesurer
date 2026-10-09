@@ -5,6 +5,7 @@ import { CommentHoverCard } from "./comment-hover-card"
 import { CommentThreadCard } from "./comment-thread-card"
 import { CommentComposer } from "./comment-composer"
 import { useOverlayPosition } from "../hooks/use-overlay-position"
+import { useTimeout } from "../hooks/use-timeout"
 import { getRectFromDom } from "../core/dom"
 import { COMMENT_CHROME_SELECTOR, eventPathHits, isRectEqual } from "./dom"
 import { addMesurerCaptureListener } from "../core/keyboard-gate"
@@ -126,14 +127,8 @@ export function CommentsLayer({
   const [draftNudge, setDraftNudge] = useState(false)
   const draftOutsideAttemptRef = useRef(false)
   const selectedOutsidePointerDownRef = useRef<() => boolean>(() => false)
-  const hoverTimeoutRef = useRef<number | null>(null)
   const ownerWindow = ownerDocument.defaultView
-  useEffect(
-    () => () => {
-      if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
-    },
-    [ownerWindow],
-  )
+  const { start: startHoverTimeout, clear: showHover } = useTimeout(ownerWindow)
   const visibleComments = comments.filter((comment) =>
     comment.id === selectedId || commentFilter === "all" || comment.status === commentFilter,
   )
@@ -153,12 +148,12 @@ export function CommentsLayer({
   const previewComment = movingComment ?? hovered
   const previewPoint = movingPoint ?? hoveredPoint
   const previewGroup = previewComment ? [previewComment] : []
-  useEffect(() => {
-    if (!draft || !draftText.trim()) {
-      draftOutsideAttemptRef.current = false
-      setDraftNudge(false)
-    }
-  }, [draft, draftText])
+  // An empty draft has nothing to lose, so its nudge is dropped. Done while rendering: it is
+  // only state, and it never shows for a frame on a draft that was just emptied.
+  if (!draft || !draftText.trim()) {
+    draftOutsideAttemptRef.current = false
+    if (draftNudge) setDraftNudge(false)
+  }
 
   useEffect(() => {
     if (!draft) {
@@ -178,12 +173,8 @@ export function CommentsLayer({
     }
   }, [draft?.element, ownerWindow])
 
-  const showHover = () => {
-    if (hoverTimeoutRef.current !== null) ownerWindow?.clearTimeout(hoverTimeoutRef.current)
-  }
-  const hideHover = () => {
-    if (ownerWindow) hoverTimeoutRef.current = ownerWindow.setTimeout(() => setHoveredId(null), 120)
-  }
+  // Leaving a comment hides its preview a moment later; coming back before then keeps it.
+  const hideHover = () => startHoverTimeout(() => setHoveredId(null), 120)
   const draftOverlay = useOverlayPosition({
     ownerWindow,
     position: draft
@@ -275,12 +266,12 @@ export function CommentsLayer({
         <div
           data-mesurer-comment-draft-target
           data-mesurer-comment-ui
-          className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8"
+          className="msr:pointer-events-none msr:absolute msr:border msr:border-accent msr:bg-accent/8"
           style={draftRect ?? draft.target.rect}
         />
       ) : null}
       {hoverRect && !draft && (movingId || (!hoveredId && !selectedId)) ? (
-        <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-[#0d99ff] msr:bg-[#0d99ff]/8" style={hoverRect} />
+        <div data-mesurer-comment-highlight data-mesurer-comment-ui className="msr:pointer-events-none msr:absolute msr:border msr:border-accent msr:bg-accent/8" style={hoverRect} />
       ) : null}
 
       {visibleComments.map((comment, index) => {
@@ -309,7 +300,7 @@ export function CommentsLayer({
             data-mesurer-comment-pin
             data-mesurer-comment-ui
             aria-label={`Comment ${index + 1}`}
-             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-[#0d99ff] msr:text-white" : "msr:bg-[#0d99ff] msr:text-white msr:hover:bg-[#087dcc]"}`}
+             className={`msr:pointer-events-auto msr:absolute msr:flex msr:size-6 msr:items-center msr:justify-center msr:rounded-full msr:border-2 msr:border-white msr:text-[11px] msr:font-semibold msr:outline-none ${unresolved ? "msr:bg-ink-400 msr:text-white" : active ? "msr:bg-accent msr:text-white" : "msr:bg-accent msr:text-white"}`}
             style={{
               ...markerStyleWithOffset(
                 point,
@@ -391,7 +382,7 @@ export function CommentsLayer({
             ref={draftOverlay.overlayRef}
             data-mesurer-comment-popover
             data-mesurer-comment-ui
-             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-white msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
+             className={`msr:pointer-events-auto msr:absolute msr:z-[1] msr:w-64 msr:rounded-lg msr:bg-surface msr:p-2 msr:shadow-floating ${draftNudge ? "mesurer-comment-nudge" : ""}`}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <CommentComposer

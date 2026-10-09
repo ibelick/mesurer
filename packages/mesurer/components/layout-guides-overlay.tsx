@@ -66,7 +66,7 @@ export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, 
   const visible = guides.filter((guide) => guide.visible)
   if (visible.length === 0) return null
   return (
-    <div className="mesurer-layout-guides" data-mesurer-layout-guides aria-hidden="true">
+    <div className="msr:pointer-events-none msr:absolute msr:inset-0 msr:z-[2] msr:overflow-hidden" data-mesurer-layout-guides aria-hidden="true">
       {visible.map((guide) => {
         const fill = fillFor(guide)
         if (guide.kind === "grid") {
@@ -74,7 +74,7 @@ export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, 
           return (
             <div
               key={guide.id}
-              className="mesurer-layout-guides-grid"
+              className="msr:pointer-events-none msr:absolute msr:inset-0"
               data-mesurer-layout-band
               style={{
                 backgroundImage: `linear-gradient(to right, ${fill} 1px, transparent 1px), linear-gradient(to bottom, ${fill} 1px, transparent 1px)`,
@@ -84,7 +84,7 @@ export const LayoutGuidesOverlay = memo(function LayoutGuidesOverlay({ enabled, 
           )
         }
         return (
-          <div key={guide.id} className="mesurer-layout-guides-layer" style={axisStyle(guide)}>
+          <div key={guide.id} className="msr:pointer-events-none msr:absolute msr:inset-0" style={axisStyle(guide)}>
             {tracks(guide.count).map((index) => (
               <div
                 key={index}

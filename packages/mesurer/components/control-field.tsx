@@ -5,7 +5,7 @@ import { cn } from "../core/utils"
 export const SETTINGS_COLUMNS = "msr:grid-cols-[78px_150px]"
 
 export const settingsSelectClassName =
-  "mesurer-settings-select msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-white msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
+  "mesurer-settings-select msr:h-6 msr:w-full msr:appearance-none msr:rounded-control msr:border msr:border-ink-200 msr:bg-surface msr:px-1.5 msr:pr-6 msr:text-[11px] msr:outline-none msr:focus:shadow-[inset_0_0_0_1px_var(--msr-accent)]"
 
 export function SettingsSelectCaret() {
   return (

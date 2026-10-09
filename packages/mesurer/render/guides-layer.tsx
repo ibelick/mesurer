@@ -4,6 +4,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 import type { Guide, OpenMenu } from "../core/types"
+import { usePageListener } from "../hooks/use-page-listener"
 import type { GuideStyle } from "../core/persistence"
 import { MenuItem, MenuSurface } from "../components/menu"
 import { GuideLine, GuidePreviewLine } from "./guide-line"
@@ -61,30 +62,27 @@ export function GuidesLayer({
     if (!pointerEvents || draggingId) setOpenMenu(null)
   }, [draggingId, pointerEvents, setOpenMenu])
 
-  useEffect(() => {
-    if (!menu) return
-    const close = (event: PointerEvent) => {
-      const clickedMenu = event.composedPath().some(
-        (target) =>
-          target instanceof Element &&
-          target.hasAttribute("data-mesurer-guide-menu"),
-      )
-      if (clickedMenu) return
+  // The guide's menu closes on Escape, and on a press anywhere outside it.
+  usePageListener({
+    active: menu !== null,
+    view: menu?.ownerWindow,
+    types: ["pointerdown", "keydown"],
+    phase: "capture",
+    onEvent: (event) => {
+      if (event.type === "keydown") {
+        if ((event as KeyboardEvent).key !== "Escape") return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      } else if (
+        event.composedPath().some(
+          (target) => target instanceof Element && target.hasAttribute("data-mesurer-guide-menu"),
+        )
+      ) {
+        return
+      }
       setOpenMenu(null)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      setOpenMenu(null)
-    }
-    menu.ownerWindow.addEventListener("pointerdown", close, true)
-    menu.ownerWindow.addEventListener("keydown", handleKeyDown, true)
-    return () => {
-      menu.ownerWindow.removeEventListener("pointerdown", close, true)
-      menu.ownerWindow.removeEventListener("keydown", handleKeyDown, true)
-    }
-  }, [menu, setOpenMenu])
+    },
+  })
 
   const handleContextMenu = (guide: Guide, event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault()

@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import type { CommentThread, DistanceOverlay, Guide, Measurement, OpenMenu, Rect, TextAnnotation, ToolMode } from "../core/types";
+import type { CommentThread, DistanceOverlay, Guide, Measurement, OpenMenu, Rect, ToolMode } from "../core/types";
 import type { MesurerStoredWorkspace } from "../core/persistence";
 import type { LayoutGuide } from "../core/layout-guides";
 import { useDragState } from "./use-drag-state";

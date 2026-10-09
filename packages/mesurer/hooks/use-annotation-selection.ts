@@ -552,22 +552,18 @@ export const useAnnotationSelection = ({
 
   const groupRotateSnapshotRef = useRef<GroupRotateSnapshot | null>(null)
   const groupResizeSnapshotRef = useRef<GroupResizeSnapshot | null>(null)
-  const groupSelectionKeyRef = useRef("")
   const [groupRotateFrame, setGroupRotateFrame] = useState<GroupFrame | null>(null)
   groupRotateFrameRef.current = groupRotateFrame
 
-  useLayoutEffect(() => {
-    const key = getSelectionKey(selectedArrowIds, selectedPenStrokeIds, selectedTextIds)
-    const selectionChanged =
-      groupSelectionKeyRef.current && groupSelectionKeyRef.current !== key
-    const hasActiveTransform =
-      groupRotateSnapshotRef.current || groupResizeSnapshotRef.current
-
-    if (selectionChanged && !hasActiveTransform) {
-      setGroupRotateFrame(null)
-    }
-    groupSelectionKeyRef.current = key
-  }, [selectedArrowIds, selectedPenStrokeIds, selectedTextIds])
+  // Another selection starts from an unrotated frame, unless a transform is under way. Done
+  // while rendering, so the old frame is never drawn around the new selection.
+  const selectionKey = getSelectionKey(selectedArrowIds, selectedPenStrokeIds, selectedTextIds)
+  const [frameSelectionKey, setFrameSelectionKey] = useState(selectionKey)
+  if (frameSelectionKey !== selectionKey) {
+    setFrameSelectionKey(selectionKey)
+    const hasActiveTransform = groupRotateSnapshotRef.current || groupResizeSnapshotRef.current
+    if (frameSelectionKey && !hasActiveTransform) setGroupRotateFrame(null)
+  }
 
   const moveSelectedAnnotations = useCallback((dx: number, dy: number) => {
     setGroupRotateFrame((frame) =>

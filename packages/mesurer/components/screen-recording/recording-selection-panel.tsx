@@ -1,7 +1,7 @@
-import type { ScreenshotRect } from "../core/screenshot"
-import { ControlNumberInput, SettingsFieldRow } from "./control-field"
-import { RecordIcon } from "./icons"
-import { SettingsButton } from "./settings-button"
+import type { ScreenshotRect } from "../../core/screenshot"
+import { ControlNumberInput, SettingsFieldRow } from "../control-field"
+import { RecordIcon } from "../icons"
+import { SettingsButton } from "../settings-button"
 
 type RecordingSelectionPanelProps = {
   rect: ScreenshotRect
@@ -32,7 +32,7 @@ export function RecordingSelectionPanel({
     <div
       role="dialog"
       aria-label="Recording region"
-      className="mesurer-menu-surface msr:pointer-events-auto msr:absolute msr:z-[90] msr:box-border msr:w-[220px] msr:overflow-hidden msr:rounded-wide-card msr:bg-white msr:p-2 msr:shadow-floating"
+      className="mesurer-menu-surface msr:pointer-events-auto msr:absolute msr:z-[90] msr:box-border msr:w-[220px] msr:overflow-hidden msr:rounded-wide-card msr:bg-surface msr:p-2 msr:shadow-floating"
       style={{ left, top, transform: "translateX(-50%)" }}
       onPointerDown={stopBubble}
       onClick={stopBubble}

@@ -53,6 +53,24 @@ test("bridges shifted tool group shortcuts after an overlay interaction", async 
   );
 });
 
+test("bridges comment commands when focus stays on the page", async ({ page }) => {
+  await page.goto("about:blank");
+  await page.addScriptTag({ path: extensionGate });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute("data-mesurer-keyboard-owned", "1");
+    const commands: boolean[] = [];
+    Object.assign(window, { commentCommands: commands });
+    window.addEventListener("message", (event) => {
+      if (event.data?.type === "__MESURER_KEYBOARD_BRIDGE__" && event.data.eventType === "keydown" && event.data.key.toLowerCase() === "k") {
+        commands.push(event.data.shiftKey);
+      }
+    });
+  });
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.press("ControlOrMeta+Shift+k");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { commentCommands: boolean[] }).commentCommands)).toEqual([false, true]);
+});
+
 test("selects cross-group tools after using Settings", async ({ page }) => {
   await page.addInitScript({ path: extensionGate });
   await page.goto("/e2e/fixtures/guide-overlay.html");

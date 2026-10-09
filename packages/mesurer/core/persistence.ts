@@ -70,8 +70,6 @@ export const DEFAULT_SCREENSHOT_SETTINGS: ScreenshotSettings = {
   shareMode: "screenshot",
 }
 
-export const DEFAULT_TOOLBAR_POSITION = { x: 16, y: 16 }
-
 export type MesurerStoredSettings = {
   lastToolMode?: PersistentToolMode
   toolbarPosition?: ToolbarPlacement

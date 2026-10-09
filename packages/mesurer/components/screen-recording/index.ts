@@ -1,0 +1,5 @@
+export { ScreenRecordingEditor } from "./screen-recording-editor"
+export { ScreenRecordingTimer } from "./screen-recording-timer"
+export { RecordingSelectionPanel } from "./recording-selection-panel"
+export { TOOLBAR_SIDE_ATTRIBUTE } from "./extension-recording-frame"
+export { PauseIcon, PlayIcon, PlayerIconButton } from "./player-controls"

@@ -20,15 +20,6 @@ export const readToolbarMotionTiming = (motion: HTMLElement) =>
       `${TOOLBAR_MOTION_FALLBACK_MS}ms ease`,
   )
 
-export const transformScaleX = (value: string) => {
-  if (!value || value === "none") return 1
-  try {
-    return new DOMMatrix(value).a
-  } catch {
-    return 1
-  }
-}
-
 // The toolbar lays out along one axis: x when horizontal, y when docked left/right.
 // Motion code reads sizes and writes transforms through this descriptor.
 export type ToolbarAxis = {

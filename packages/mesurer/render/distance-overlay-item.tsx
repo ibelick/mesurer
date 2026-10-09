@@ -101,7 +101,7 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
                 }}
               />
               <MeasureTag
-                className="msr:-translate-x-1/2 msr:bg-ink-900/90"
+                className="msr:-translate-x-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
                 interactive={Boolean(onRemove)}
                 style={{
                   left:
@@ -129,7 +129,7 @@ export const DistanceOverlayItem = memo(function DistanceOverlayItem({
                 }}
               />
               <MeasureTag
-                className="msr:-translate-y-1/2 msr:bg-ink-900/90"
+                className="msr:-translate-y-1/2 msr:bg-ink-900/90 msr:dark:bg-black/90 msr:dark:text-white"
                 interactive={Boolean(onRemove)}
                 style={{
                   left: segment.x + labelOffset,

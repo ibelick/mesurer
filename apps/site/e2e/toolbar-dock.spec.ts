@@ -1206,3 +1206,39 @@ test("auto-hide leaves a toolbar that was just opened in view", async ({ page })
   await page.mouse.move(620, 520, { steps: 4 });
   await expect.poll(y).toBe(-34);
 });
+
+test("a surface opened while the toolbar is auto-hidden sits against it once it is out, not on top of it", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const toolbar = page.locator(".mesurer-toolbar-motion");
+  await expect(toolbar).toBeVisible();
+  await setDock(page, "snap");
+  await page.getByRole("button", { name: /Settings/ }).first().click();
+  await page.getByRole("switch", { name: "Auto-hide" }).click();
+  await page.keyboard.press("Escape");
+
+  for (const spot of EDGE_SPOTS) {
+    // Out to be grabbed, glued to the edge, then left alone until it hides.
+    const shown = await toolbar.boundingBox();
+    if (shown && (shown.y < 0 || shown.x < 0 || shown.x + shown.width > 1100 || shown.y + shown.height > 700)) {
+      await page.mouse.move(Math.max(4, Math.min(1096, shown.x + shown.width / 2)), Math.max(4, Math.min(696, shown.y + shown.height / 2)), { steps: 4 });
+    }
+    await expect.poll(async () => {
+      const box = await toolbar.boundingBox();
+      return box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= 1100 && box.y + box.height <= 700;
+    }).toBe(true);
+    const bar = await glueTo(page, toolbar, spot);
+    await page.mouse.move(550, 350, { steps: 4 });
+    await expect.poll(async () => JSON.stringify(await toolbar.boundingBox())).not.toBe(JSON.stringify(bar));
+    await page.waitForTimeout(400);
+
+    // Opened from the keyboard, with the bar still out of view.
+    await page.keyboard.press("Control+,");
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await expect(settings).toBeVisible();
+    await expect.poll(() => toolbar.boundingBox()).toEqual(bar);
+    await page.waitForTimeout(400);
+    expectAgainstBar(spot[0], bar, await settings.boundingBox(), `settings on ${spot[0]}`);
+    await page.keyboard.press("Escape");
+    await expect(settings).toHaveCount(0);
+  }
+});

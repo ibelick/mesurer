@@ -3,8 +3,6 @@ export {
   tabCaptureRectToVideoCrop,
   placeScreenshotRectInVideo,
   visibleSelectionSlice,
-  createRecordingCropTarget,
-  cropTrackToElement,
   screenshotRectToVideoCrop,
   type CaptureViewportMetrics,
   type VideoCropRect,
@@ -32,6 +30,5 @@ export {
   nextPresentedVideoFrame,
   paintDisplayRecordingFrame,
   runDisplayRecordingDrawLoop,
-  waitForRegionCropDimensions,
   type DisplayRecordingCapture,
 } from "./screen-recording-display-capture"
