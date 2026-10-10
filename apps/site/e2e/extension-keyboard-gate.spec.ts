@@ -226,10 +226,11 @@ test("extension keyboard gate isolates Mesurer and bridges page-editor shortcuts
 
   expect(result.owned.editorEvents).toBe(1);
   expect(result.afterToolbar.pageListenerEvents).toBe(0);
-  expect(result.owned.pageListenerEvents).toBe(1);
+  // A key typed in Mesurer's own editor is kept from the page's listeners.
+  expect(result.owned.pageListenerEvents).toBe(0);
   expect(result.pageInputEvents).toBe(0);
   expect(result.bridgedEvents).toBe(4);
-  expect(result.releasedPageListenerEvents).toBe(2);
+  expect(result.releasedPageListenerEvents).toBe(1);
 });
 
 test("extension keyboard gate does not let page menus dismiss from toolbar clicks", async ({

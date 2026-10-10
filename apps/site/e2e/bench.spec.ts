@@ -360,6 +360,8 @@ for (const angle of [0, 12]) {
     await expect(selected).toBeVisible();
     const selectedBox = (await selected.boundingBox())!;
     expect(Math.max(Math.abs(selectedBox.x - expected.x), Math.abs(selectedBox.y - expected.y), Math.abs(selectedBox.width - expected.width), Math.abs(selectedBox.height - expected.height))).toBeLessThan(3);
+    // A playing motion shows its values in the motion player, behind its own Show Inspect toggle.
+    await page.getByRole("button", { name: "Show Inspect" }).click();
     await expect(page.locator("[data-mesurer-inspect-info-card]")).toContainText("opacity");
   });
 }
@@ -474,21 +476,28 @@ test("comment draft follows an animated target", async ({ page }) => {
   await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
   const composer = page.getByRole("textbox", { name: "Comment" });
   await expect(composer).toBeVisible();
-  const composerBox = await composer.boundingBox();
   const draft = page.locator("[data-mesurer-comment-draft-target]");
   await expect(draft).toBeVisible();
-  expect(composerBox).not.toBeNull();
-  if (!composerBox) return;
+  // The composer moves with the target, so what must hold still is its offset from the draft.
+  const offset = async () => {
+    const draftBox = await draft.boundingBox();
+    const composerBox = await composer.boundingBox();
+    if (!draftBox || !composerBox) return null;
+    return { x: composerBox.x - draftBox.x, y: composerBox.y - draftBox.y };
+  };
+  const start = await offset();
+  expect(start).not.toBeNull();
+  if (!start) return;
   await expect.poll(async () => {
     const draftBox = await draft.boundingBox();
     const currentTargetBox = await target.boundingBox();
-    const currentComposerBox = await composer.boundingBox();
-    if (!draftBox || !currentTargetBox || !currentComposerBox) return Number.POSITIVE_INFINITY;
+    const current = await offset();
+    if (!draftBox || !currentTargetBox || !current) return Number.POSITIVE_INFINITY;
     return Math.max(
       Math.abs(draftBox.x - currentTargetBox.x),
       Math.abs(draftBox.y - currentTargetBox.y),
-      Math.abs(composerBox.x - currentComposerBox.x),
-      Math.abs(composerBox.y - currentComposerBox.y),
+      Math.abs(current.x - start.x),
+      Math.abs(current.y - start.y),
     );
   }, { timeout: 2_000 }).toBeLessThan(4);
 });
