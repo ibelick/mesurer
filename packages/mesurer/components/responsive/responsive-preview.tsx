@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { trackOwnFrame } from "../../core/document-tree"
-import { holdPreviewSideEffects } from "../../core/preview-guard"
+import { guardPreviewFrame } from "../../core/preview-guard"
 import type { LayoutGuide } from "../../core/layout-guides"
 import type { PreviewGuide } from "../../core/responsive"
 import {
@@ -89,7 +89,19 @@ export function ResponsivePreview({
   // Mesurer's tools reach into the page's frames, and this one is told to them: it is not found
   // by looking through the page when Mesurer sits outside it.
   const frameRef = useRef<HTMLIFrameElement | null>(null)
-  useEffect(() => (frameRef.current ? trackOwnFrame(frameRef.current) : undefined), [])
+  // What the page reports about the visit is held back in the frame, so one visit is not counted
+  // once for each preview. From the layout on, so the page is caught on its way in rather than
+  // once it has loaded.
+  useLayoutEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const untrack = trackOwnFrame(frame)
+    const unguard = guardPreviewFrame(frame)
+    return () => {
+      untrack()
+      unguard()
+    }
+  }, [])
 
   const [dragging, setDragging] = useState(false)
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -221,9 +233,6 @@ export function ResponsivePreview({
                 /* Not readable. */
               }
               setRefused(!readable)
-              // The page's writes and beacons are held back here, as in the page itself they are not.
-              const view = event.currentTarget.contentWindow
-              if (readable && view) holdPreviewSideEffects(view)
             }}
             className="msr:block msr:border-0 msr:bg-white"
             style={{

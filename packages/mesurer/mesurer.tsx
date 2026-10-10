@@ -11,6 +11,7 @@ import {
 import { DEFAULT_TEXT_STYLE } from "./core/text-style";
 import { resolveMesurerFeatures } from "./core/features";
 import { isResponsivePreview } from "./core/responsive";
+import { holdPreviewSideEffects } from "./core/preview-guard";
 
 export type { MesurerProps } from "./mesurer-client";
 
@@ -55,7 +56,12 @@ export function MesurerUnstyled({
   if (!hydrated) return null;
   // A page loaded in the responsive preview is there to be looked at: Mesurer stays out of it,
   // or it would open a preview of its own.
-  if (isResponsivePreview(window)) return null;
+  if (isResponsivePreview(window)) {
+    // What it reports about the visit is held from here as well, which is as early as this page
+    // can do it itself.
+    holdPreviewSideEffects(window);
+    return null;
+  }
 
   return (
     <MesurerClient

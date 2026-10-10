@@ -319,19 +319,24 @@ test("inspects an element inside a preview, at the size it has there, and keeps 
   await expect.poll(() => card.innerText()).not.toBe(first);
 });
 
-test("holds back a write from a preview, so the page's request is sent once, not once per preview", async ({ page }) => {
+test("holds back what a preview reports about the visit, and lets it load and save as the page does", async ({ page }) => {
+  const sent: string[] = [];
+  await page.route("**/__mesurer-probe/*", (route) => {
+    sent.push(new URL(route.request().url()).pathname.split("/").pop()!);
+    return route.fulfill({ status: 200, body: "ok" });
+  });
   const inspector = await open(page);
   await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
-  // The probe runs inside the preview's own window, where the page's requests are held back.
-  const sent = await page.frameLocator("iframe[data-mesurer-responsive-frame]").first().locator("html").evaluate(async () => {
-    try {
-      await window.fetch("/__mesurer-write-probe", { method: "POST", body: "x" });
-      return "sent";
-    } catch (error) {
-      return error instanceof TypeError ? "held" : "error";
-    }
+  // The probes run inside the preview's own window, where its reports are held back.
+  const result = await page.frameLocator("iframe[data-mesurer-responsive-frame]").first().locator("html").evaluate(async () => {
+    const beacon = navigator.sendBeacon("/__mesurer-probe/beacon", "x");
+    const report = await window.fetch("/__mesurer-probe/report", { method: "POST", body: "x", keepalive: true });
+    const write = await window.fetch("/__mesurer-probe/write", { method: "POST", body: "x" });
+    return { beacon, report: report.status, write: write.status };
   });
-  expect(sent).toBe("held");
+  // The page is told its reports went, so it does not try again another way; only the write did.
+  expect(result).toEqual({ beacon: true, report: 204, write: 200 });
+  expect(sent).toEqual(["write"]);
 });
 
 test("puts the page's annotations away while the previews are open, and leaves for a tool that draws on the page", async ({ page }) => {
