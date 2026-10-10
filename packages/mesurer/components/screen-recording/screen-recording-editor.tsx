@@ -1,3 +1,4 @@
+/// <reference path="../../core/build.ts" />
 import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { listenPointerDrag } from "../../core/pointer-drag"
 import { cn, formatValue } from "../../core/utils"
@@ -54,7 +55,9 @@ export function ScreenRecordingEditor(props: ScreenRecordingEditorProps) {
     return <ExtensionRecordingFrame playerUrl={props.playerUrl} onDiscard={props.onDiscard} />
   }
 
-  return <StandardScreenRecordingEditor {...props} />
+  // The extension always plays a recording in its own page, through the frame above: the editor
+  // itself is left out of its content script.
+  return globalThis.__MESURER_EXTENSION__ ? null : <StandardScreenRecordingEditor {...props} />
 }
 
 function StandardScreenRecordingEditor({ url, duration, onDiscard, onExport, ownerDocument, fillFrame }: ScreenRecordingEditorProps) {

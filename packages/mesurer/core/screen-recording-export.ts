@@ -148,6 +148,7 @@ export async function reencodeVideoClip(
       if (stopped) return
       stopped = true
       source.removeEventListener("timeupdate", onTimeUpdate)
+      source.removeEventListener("ended", finish)
       source.pause()
       try {
         recorder.stop()
@@ -181,12 +182,17 @@ export async function reencodeVideoClip(
     recorder.onerror = () => reject(new Error("Could not trim recording"))
 
     source.addEventListener("timeupdate", onTimeUpdate)
+    // The recording may end before the clip's end: its length is timed by the clock, and can run
+    // a little past the last frame. With no more frames or time updates to come, nothing else
+    // would end the clip.
+    source.addEventListener("ended", finish)
 
     recorder.start(100)
     void source.play().then(
       () => drawFrame(),
       () => {
         source.removeEventListener("timeupdate", onTimeUpdate)
+        source.removeEventListener("ended", finish)
         reject(new Error("Could not trim recording"))
       },
     )

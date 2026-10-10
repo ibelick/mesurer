@@ -1,3 +1,4 @@
+/// <reference path="../core/build.ts" />
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { useCaptureErrorToast } from "./use-capture-error-toast"
 import {
@@ -377,6 +378,9 @@ export const useScreenRecording = ({ ownerDocument, ownerWindow, onPrepare, exte
     endTime: number,
     options: RecordingExportOptions = {},
   ): Promise<RecordingExportResult> => {
+    // In the extension a recording is trimmed and exported in its own page, never from here:
+    // the encoders are left out of its content script.
+    if (globalThis.__MESURER_EXTENSION__) throw new Error("Recordings are exported from their own page")
     if (!video || endTime <= startTime) throw new Error("Invalid trim range")
     const format = options.format ?? "webm"
     const scale = Math.min(3, Math.max(1, options.scale ?? 1))
