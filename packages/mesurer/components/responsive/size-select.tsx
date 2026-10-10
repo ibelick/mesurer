@@ -43,6 +43,9 @@ export function SizeSelect({
         className={settingsSelectClassName}
         onPointerDown={stop}
         onChange={(event) => {
+          // Let go of the keyboard: a menu left in focus takes the next letter as a search for
+          // one of its sizes, so a tool's shortcut would pick a device instead.
+          event.currentTarget.blur()
           const chosen = event.currentTarget.value
           if (chosen.startsWith(BREAKPOINT)) return onSelect({ width: Number(chosen.slice(BREAKPOINT.length)) })
           const device = RESPONSIVE_DEVICES.find((candidate) => candidate.id === chosen)

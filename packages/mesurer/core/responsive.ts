@@ -137,3 +137,21 @@ export const moveItem = <Item,>(items: readonly Item[], from: number, to: number
 // How much a size has to shrink to fit in the room there is. Never grows it.
 export const responsiveFitScale = (size: ResponsiveSize, room: ResponsiveSize) =>
   Math.min(1, Math.max(0, room.width) / size.width, Math.max(0, room.height) / size.height)
+
+// What is selected in the previews (their guides) is removed by the same Delete that removes what
+// is selected on the page. A preview with a selection says here how to remove it.
+const previewSelections = new Set<() => void>()
+
+export const onRemovePreviewSelection = (remove: () => void) => {
+  previewSelections.add(remove)
+  return () => {
+    previewSelections.delete(remove)
+  }
+}
+
+// Removes what is selected in the previews, and tells whether there was anything.
+export const removePreviewSelection = () => {
+  const removes = [...previewSelections]
+  for (const remove of removes) remove()
+  return removes.length > 0
+}

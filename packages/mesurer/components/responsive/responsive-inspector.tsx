@@ -48,6 +48,7 @@ const Divider = () => <span className="msr:mx-1 msr:h-4 msr:w-px msr:shrink-0 ms
 export function ResponsiveInspector({
   layoutGuides,
   guidesActive,
+  altPressed,
   guideOrientation,
   wanted,
   commented,
@@ -61,6 +62,8 @@ export function ResponsiveInspector({
   layoutGuides: LayoutGuide[]
   /** The guides tool is in use: the previews' guides can be drawn and moved. */
   guidesActive: boolean
+  /** Alt is held, which measures from the previews' guides as it does from the page's. */
+  altPressed: boolean
   guideOrientation: "horizontal" | "vertical"
   onClose: () => void
 }) {
@@ -214,6 +217,7 @@ export function ResponsiveInspector({
               guides={preview.guides}
               comments={commented.filter((size) => size.width === preview.width).length}
               guidesActive={guidesActive}
+              altPressed={altPressed}
               guideOrientation={guideOrientation}
               onGuides={(guides) => setGuides(preview.id, guides)}
               scale={scale}

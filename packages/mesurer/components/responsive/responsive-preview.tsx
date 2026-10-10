@@ -44,6 +44,7 @@ export function ResponsivePreview({
   guides,
   comments,
   guidesActive,
+  altPressed,
   guideOrientation,
   onGuides,
   scale,
@@ -65,6 +66,7 @@ export function ResponsivePreview({
   /** How many comments were left at this preview's width, which go from view with it. */
   comments: number
   guidesActive: boolean
+  altPressed: boolean
   guideOrientation: "horizontal" | "vertical"
   onGuides: (guides: PreviewGuide[]) => void
   scale: number
@@ -261,6 +263,7 @@ export function ResponsivePreview({
           size={size}
           scale={scale}
           active={guidesActive}
+          altPressed={altPressed}
           orientation={guideOrientation}
           getDocument={() => frameRef.current?.contentDocument ?? null}
           onChange={onGuides}

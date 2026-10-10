@@ -25,7 +25,11 @@ export function ZoomSelect({
         value={value ?? ""}
         className={settingsSelectClassName}
         onPointerDown={stop}
-        onChange={(event) => onChange(event.currentTarget.value ? Number(event.currentTarget.value) : null)}
+        onChange={(event) => {
+          // Let go of the keyboard, so the next key is a shortcut and not a search in this menu.
+          event.currentTarget.blur()
+          onChange(event.currentTarget.value ? Number(event.currentTarget.value) : null)
+        }}
       >
         <option value="">{auto}</option>
         {ZOOMS.map((zoom) => (

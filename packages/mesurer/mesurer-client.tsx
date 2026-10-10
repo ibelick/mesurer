@@ -43,6 +43,7 @@ import { useXray } from "./hooks/use-xray";
 import { useArrowsPointer } from "./hooks/use-arrows-pointer";
 import { usePenPointer } from "./hooks/use-pen-pointer";
 import { copyCommentsForAgent, useCommentPointer } from "./comments";
+import { removePreviewSelection } from "./core/responsive";
 import { createLayoutGuide, type LayoutGuide } from "./core/layout-guides";
 import { getRectFromPoints } from "./core/geometry";
 import { attachPinnedGuideTarget } from "./core/distances";
@@ -1239,7 +1240,9 @@ export function MesurerClient({
     colorPicker,
     undo,
     redo,
-    removeSelected,
+    // Over the previews, Delete is for what is selected in them: the page's own annotations are
+    // put away, and are not removed from behind them.
+    removeSelected: responsiveOpen ? removePreviewSelection : removeSelected,
     selectAllAnnotations,
     setEnabled: setEnabledPersisted,
     setRulersVisible,
@@ -1401,7 +1404,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", guideOrientation, wanted: wantedPreview, commented: previewCommentSizes } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", altPressed, guideOrientation, wanted: wantedPreview, commented: previewCommentSizes } : null}
       overlay={{
         enabled,
         pageLayers: !responsiveOpen,

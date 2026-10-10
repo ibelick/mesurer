@@ -4,6 +4,7 @@ import { getDistanceOverlay } from "../../core/distances"
 import { getBodyElementsCached } from "../../core/dom"
 import { getHoveredGuide, getSelectedGuide } from "../../core/option-measurements"
 import { DEFAULT_GUIDE_STYLE } from "../../core/persistence"
+import { onRemovePreviewSelection } from "../../core/responsive"
 import type { DistanceOverlay, Guide, Rect } from "../../core/types"
 import { cn } from "../../core/utils"
 import { DistanceOverlayItem } from "../../render/distance-overlay-item"
@@ -51,6 +52,7 @@ export function PreviewGuides({
   size,
   scale,
   active,
+  altPressed,
   orientation,
   getDocument,
   onChange,
@@ -61,6 +63,8 @@ export function PreviewGuides({
   /** How much smaller than its own pixels the preview is drawn. */
   scale: number
   active: boolean
+  /** Alt is held: the distances are measured where the pointer is. */
+  altPressed: boolean
   /** The orientation of a guide made by pressing on empty space. */
   orientation: Guide["orientation"]
   /** The preview's document, whose elements guides snap to and measure against. */
@@ -280,33 +284,24 @@ export function PreviewGuides({
     commitDraft()
   }
 
-  // Keys: Delete removes the selection, Escape clears it, and Alt measures. Alt pressed or let go
-  // re-measures where the pointer is, without it having to move.
+  // The keys are Mesurer's, not read here: in the extension they do not reach a listener of this
+  // layer's own. Delete removes the selection through the same shortcut as on the page, which
+  // also leaves it alone while something is being typed.
   useEffect(() => {
-    const view = layerRef.current?.ownerDocument.defaultView
-    if (!active || !view) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Alt" && !event.repeat && lastPoint.current) schedule(lastPoint.current, true)
-      if (event.key === "Escape") setSelected([])
-      if ((event.key === "Delete" || event.key === "Backspace") && selected.length > 0) {
-        event.preventDefault()
-        draft.current = null
-        onChangeRef.current(shownRef.current.filter((guide) => !selected.includes(guide.id)))
-        setSelected([])
-      }
-    }
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key === "Alt") clearDistances()
-    }
-    view.addEventListener("keydown", onKeyDown)
-    view.addEventListener("keyup", onKeyUp)
-    view.addEventListener("blur", clearDistances)
-    return () => {
-      view.removeEventListener("keydown", onKeyDown)
-      view.removeEventListener("keyup", onKeyUp)
-      view.removeEventListener("blur", clearDistances)
-    }
-  }, [active, selected, orientation, scale])
+    if (!active || selected.length === 0) return
+    return onRemovePreviewSelection(() => {
+      draft.current = null
+      onChangeRef.current(shownRef.current.filter((guide) => !selected.includes(guide.id)))
+      setSelected([])
+    })
+  }, [active, selected])
+
+  // Alt pressed or let go re-measures where the pointer is, without it having to move.
+  useEffect(() => {
+    if (!active) return
+    if (altPressed && lastPoint.current) schedule(lastPoint.current, true)
+    else clearDistances()
+  }, [active, altPressed])
 
   // Leaving the tool drops the hover, any selection, and anything still in progress.
   useEffect(() => {
