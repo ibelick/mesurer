@@ -53,7 +53,21 @@ const ensureOffscreen = () => {
   return offscreenReady;
 };
 
+// Mesurer's stylesheet, read once from the file it ships as. The content script is handed it
+// instead of carrying a copy of its own.
+let styles: Promise<string> | null = null;
+const readStyles = () => {
+  styles ??= fetch(chrome.runtime.getURL("mesurer.css"))
+    .then((response) => response.text())
+    .catch((error) => {
+      styles = null;
+      throw error;
+    });
+  return styles;
+};
+
 const inject = async (tabId: number, boot: ExtensionBoot) => {
+  const css = await readStyles();
   await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
@@ -63,11 +77,15 @@ const inject = async (tabId: number, boot: ExtensionBoot) => {
   await chrome.scripting.executeScript({
     target: { tabId },
     injectImmediately: true,
-    func: (mode: ExtensionBoot) => {
-      (globalThis as typeof globalThis & { __MESURER_BOOT__?: ExtensionBoot }).__MESURER_BOOT__ =
-        mode;
+    func: (mode: ExtensionBoot, css: string) => {
+      const extensionGlobal = globalThis as typeof globalThis & {
+        __MESURER_BOOT__?: ExtensionBoot;
+        __MESURER_STYLES__?: string;
+      };
+      extensionGlobal.__MESURER_BOOT__ = mode;
+      extensionGlobal.__MESURER_STYLES__ = css;
     },
-    args: [boot],
+    args: [boot, css],
   });
   await chrome.scripting.executeScript({
     target: { tabId },

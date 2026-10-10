@@ -1,5 +1,6 @@
 import { createRoot, type Root } from "react-dom/client";
-import { Mesurer } from "mesurer";
+import { MesurerUnstyled } from "../../../packages/mesurer/mesurer";
+import { ensureMesurerStyles } from "../../../packages/mesurer/runtime/style-inject";
 import type { MesurerPersistence } from "mesurer";
 import {
   destroyHost,
@@ -7,7 +8,7 @@ import {
   recoverHost,
   setHostInvalidatedHandler,
 } from "./host";
-import { BOOT_KEY, RECORDING_ABORT_MESSAGE, RECORDING_PREPARED_MESSAGE, RECORDING_PREPARE_MESSAGE, RECORDING_READY_MESSAGE, RECORDING_STARTED_MESSAGE, RECORDING_START_MESSAGE, RECORDING_STOP_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
+import { BOOT_KEY, STYLES_KEY, RECORDING_ABORT_MESSAGE, RECORDING_PREPARED_MESSAGE, RECORDING_PREPARE_MESSAGE, RECORDING_READY_MESSAGE, RECORDING_STARTED_MESSAGE, RECORDING_START_MESSAGE, RECORDING_STOP_MESSAGE, SESSION_MESSAGE, type ExtensionBoot } from "./messages";
 import { createExtensionPersistence } from "./storage";
 import { captureVisibleTabPng } from "./capture-visible-tab";
 
@@ -28,6 +29,7 @@ type ExtensionState = {
 type ExtensionGlobal = typeof globalThis & {
   [STATE_KEY]?: ExtensionState;
   [BOOT_KEY]?: ExtensionBoot;
+  [STYLES_KEY]?: string;
 };
 
 const extensionGlobal = globalThis as ExtensionGlobal;
@@ -230,9 +232,12 @@ const mount = async () => {
     const recordingPlayer = typeof chrome !== "undefined" && chrome.runtime?.getURL
       ? chrome.runtime.getURL("recording-player.html")
       : undefined;
+    // The stylesheet ships once, as mesurer.css: the background reads it and hands it over
+    // before this script runs, rather than it being built into the script as well.
+    ensureMesurerStyles(extensionGlobal[STYLES_KEY] ?? "", shadowRoot);
     state.root = createRoot(container);
     state.root.render(
-      <Mesurer
+      <MesurerUnstyled
         portalTarget={shadowRoot}
         persistence={state.persistence}
         persistSession

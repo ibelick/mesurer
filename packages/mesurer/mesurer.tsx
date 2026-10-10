@@ -14,7 +14,9 @@ import { isResponsivePreview } from "./core/responsive";
 
 export type { MesurerProps } from "./mesurer-client";
 
-export default function Mesurer({
+// Mesurer without its stylesheet, for a host that brings it another way: the extension ships it
+// as a file, and would otherwise carry it a second time inside its script.
+export function MesurerUnstyled({
   highlightColor = "oklch(0.62 0.18 255)",
   guideColor = "oklch(0.63 0.26 29.23)",
   arrowColor = "oklch(0.63 0.26 29.23)",
@@ -48,10 +50,6 @@ export default function Mesurer({
 }: MesurerProps) {
   const resolvedPortalTarget =
     portalTarget ?? (typeof document !== "undefined" ? document.body : undefined);
-
-  if (typeof document !== "undefined" && resolvedPortalTarget) {
-    ensureMesurerStyles(MESURER_STYLES, resolvedPortalTarget);
-  }
 
   const hydrated = useHydrated();
   if (!hydrated) return null;
@@ -93,4 +91,11 @@ export default function Mesurer({
       portalTarget={resolvedPortalTarget ?? document.body}
     />
   );
+}
+
+export default function Mesurer(props: MesurerProps) {
+  if (typeof document !== "undefined") {
+    ensureMesurerStyles(MESURER_STYLES, props.portalTarget ?? document.body);
+  }
+  return <MesurerUnstyled {...props} />;
 }

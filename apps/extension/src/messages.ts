@@ -13,6 +13,7 @@ export const OFFSCREEN_RECORDING_PREPARE_MESSAGE = "mesurer:offscreen-recording-
 export const OFFSCREEN_RECORDING_STOP_MESSAGE = "mesurer:offscreen-recording-stop";
 export const OFFSCREEN_RECORDING_ABORT_MESSAGE = "mesurer:offscreen-recording-abort";
 export const BOOT_KEY = "__MESURER_BOOT__";
+export const STYLES_KEY = "__MESURER_STYLES__";
 
 export type ExtensionBoot = "toggle" | "restore";
 

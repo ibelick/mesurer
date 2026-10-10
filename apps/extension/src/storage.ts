@@ -2,7 +2,7 @@ import {
   isPagedWorkspaceStore,
   normalizeStoredSettings,
   normalizeStoredWorkspace,
-} from "mesurer";
+} from "../../../packages/mesurer/core/persistence";
 import type {
   MesurerPersistence,
   MesurerPersistenceSnapshot,
