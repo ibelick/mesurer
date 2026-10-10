@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react"
@@ -57,6 +58,9 @@ export function GuidesLayer({
   onRemoveGuides,
 }: GuidesLayerProps) {
   const menu = openMenu?.type === "guide-context" ? openMenu : null
+  // The window the menu was opened in. Kept in a ref, not in the menu state: React's development
+  // build reads through state and props, and a window from another origin stops it.
+  const menuWindow = useRef<Window | null>(null)
 
   useEffect(() => {
     if (!pointerEvents || draggingId) setOpenMenu(null)
@@ -65,7 +69,7 @@ export function GuidesLayer({
   // The guide's menu closes on Escape, and on a press anywhere outside it.
   usePageListener({
     active: menu !== null,
-    view: menu?.ownerWindow,
+    view: () => (menu ? menuWindow.current : null),
     types: ["pointerdown", "keydown"],
     phase: "capture",
     onEvent: (event) => {
@@ -88,12 +92,12 @@ export function GuidesLayer({
     event.preventDefault()
     event.stopPropagation()
     const ownerWindow = event.currentTarget.ownerDocument.defaultView ?? window
+    menuWindow.current = ownerWindow
     setOpenMenu({
       type: "guide-context",
       ids: selectedIds.includes(guide.id) ? selectedIds : [guide.id],
       x: Math.min(event.clientX, ownerWindow.innerWidth - 132),
       y: Math.min(event.clientY, ownerWindow.innerHeight - 42),
-      ownerWindow,
     })
   }
 

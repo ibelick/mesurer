@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { trackOwnFrame } from "../../core/document-tree"
+import { holdPreviewSideEffects } from "../../core/preview-guard"
 import type { LayoutGuide } from "../../core/layout-guides"
 import type { PreviewGuide } from "../../core/responsive"
 import {
@@ -19,9 +20,10 @@ import { SizeSelect, sizeName } from "./size-select"
 // The narrowest a preview's header gets, so its controls always fit above a small frame.
 const HEADER_MIN_WIDTH = 272
 
-// Everything a page needs, except leave to take the whole tab somewhere else.
-const FRAME_SANDBOX =
-  "allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads"
+// The page runs in the frame, and the frame stays on the page's own origin so the tools can read it.
+// That makes this no security boundary; it only keeps a preview from acting outside itself: no new
+// windows, no form submits, no downloads, and no dialogs that would stop the page.
+const FRAME_SANDBOX = "allow-scripts allow-same-origin"
 
 type ResizeAxis = "width" | "height" | "both"
 
@@ -219,6 +221,9 @@ export function ResponsivePreview({
                 /* Not readable. */
               }
               setRefused(!readable)
+              // The page's writes and beacons are held back here, as in the page itself they are not.
+              const view = event.currentTarget.contentWindow
+              if (readable && view) holdPreviewSideEffects(view)
             }}
             className="msr:block msr:border-0 msr:bg-white"
             style={{

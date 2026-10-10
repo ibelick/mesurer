@@ -12,8 +12,8 @@ const scrollerFor = (start: Element | null, axis: Axis, delta: number): Element 
   const view = start?.ownerDocument.defaultView
   if (!view) return null
   const overflowOf = (style: CSSStyleDeclaration) => (axis === "x" ? style.overflowX : style.overflowY)
-  for (let node = start; node; node = node.parentElement ?? (node.getRootNode() as Partial<ShadowRoot>).host ?? null) {
-    const page = node.ownerDocument
+  for (let node: Element | null = start; node; node = node.parentElement ?? (node.getRootNode() as Partial<ShadowRoot>).host ?? null) {
+    const page: Document = node.ownerDocument
     let style = view.getComputedStyle(node)
     let scrolls = overflowOf(style) === "auto" || overflowOf(style) === "scroll"
     // The page itself scrolls unless it is told not to, and its body may be what tells it.

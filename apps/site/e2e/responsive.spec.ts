@@ -272,7 +272,7 @@ test("reopens with the previews as they were left", async ({ page }) => {
   await expect.poll(() => frameSize(page, 1)).toEqual({ width: 744, height: 1133 });
 });
 
-test("inspects an element inside a preview, at the size it has there", async ({ page }) => {
+test("inspects an element inside a preview, at the size it has there, and keeps inspecting", async ({ page }) => {
   const inspector = await open(page);
   await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
   await expect.poll(() => frameSize(page)).toEqual({ width: 1280, height: 800 });
@@ -304,9 +304,34 @@ test("inspects an element inside a preview, at the size it has there", async ({ 
   await page.mouse.click(point.x, point.y);
   const card = page.locator("[data-mesurer-inspect-info-card]");
   await expect(card).toBeVisible();
-  // And the card tells the size it has on that screen, not the size it is drawn at.
+  // The card tells the size it has on that screen, not the size it is drawn at.
   await expect(card).toContainText(`${real.width} x ${real.height}`);
   await expect(card).not.toContainText(`${Math.round(drawn.width)} x ${Math.round(drawn.height)}`);
+  const first = await card.innerText();
+
+  // A second click, on another element of the same preview, selects that one: the first click
+  // does not leave the previews inert.
+  const field = (await page.frameLocator("iframe[data-mesurer-responsive-frame]").first().getByTestId("page-field").boundingBox())!;
+  const other = { x: field.x + field.width / 2, y: field.y + field.height / 2 };
+  await page.mouse.move(other.x, other.y, { steps: 4 });
+  await page.mouse.click(other.x, other.y);
+  await expect(card).toBeVisible();
+  await expect.poll(() => card.innerText()).not.toBe(first);
+});
+
+test("holds back a write from a preview, so the page's request is sent once, not once per preview", async ({ page }) => {
+  const inspector = await open(page);
+  await inspector.getByRole("combobox", { name: "Size", exact: true }).selectOption({ label: "Laptop" });
+  // The probe runs inside the preview's own window, where the page's requests are held back.
+  const sent = await page.frameLocator("iframe[data-mesurer-responsive-frame]").first().locator("html").evaluate(async () => {
+    try {
+      await window.fetch("/__mesurer-write-probe", { method: "POST", body: "x" });
+      return "sent";
+    } catch (error) {
+      return error instanceof TypeError ? "held" : "error";
+    }
+  });
+  expect(sent).toBe("held");
 });
 
 test("puts the page's annotations away while the previews are open, and leaves for a tool that draws on the page", async ({ page }) => {
@@ -349,13 +374,11 @@ test("puts the page's annotations away while the previews are open, and leaves f
   await expect(notes).toHaveCount(1);
 });
 
-test("leaves the previews for the guides and the rulers, which measure the page", async ({ page }) => {
+test("keeps the previews open for the guides, and leaves them for the rulers, which measure the page", async ({ page }) => {
   const inspector = await open(page);
   await page.keyboard.press("g");
-  await expect(inspector).toHaveCount(0);
-
-  await page.keyboard.press("b");
   await expect(inspector).toBeVisible();
+
   await page.getByRole("button", { name: "Guide orientation menu" }).click();
   await page.getByRole("menuitem", { name: "Rulers" }).click();
   await expect(inspector).toHaveCount(0);

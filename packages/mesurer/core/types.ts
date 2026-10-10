@@ -200,7 +200,7 @@ export type OpenMenu =
   | { type: "comments"; panel: boolean }
   | { type: "guide-orientation" }
   | { type: "capture" }
-  | { type: "guide-context"; ids: string[]; x: number; y: number; ownerWindow: Window }
+  | { type: "guide-context"; ids: string[]; x: number; y: number }
   | { type: "layout-guides" }
   | null
 

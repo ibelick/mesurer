@@ -36,6 +36,11 @@ const createPreview = (size: ResponsiveSize): Preview => ({ id: nextPreviewId++,
 // The previews and their zoom as they were last left, for the next time the tool opens on this page.
 let lastPreviews: Preview[] = [createPreview(DEFAULT_RESPONSIVE_DEVICE)]
 let lastZoom: number | null = null
+// The page the previews were last left on. Guides are in that page's coordinates, so they are only
+// brought back on the same page.
+let lastPage = ""
+const pageKey = () => `${location.origin}${location.pathname}`
+const withoutGuides = (items: Preview[]) => items.map((preview) => ({ ...preview, guides: [] }))
 
 const Divider = () => <span className="msr:mx-1 msr:h-4 msr:w-px msr:shrink-0 msr:bg-ink-200" aria-hidden="true" />
 
@@ -59,7 +64,7 @@ export function ResponsiveInspector({
   guideOrientation: "horizontal" | "vertical"
   onClose: () => void
 }) {
-  const [previews, setPreviews] = useState(lastPreviews)
+  const [previews, setPreviews] = useState(() => (lastPage === pageKey() ? lastPreviews : withoutGuides(lastPreviews)))
   // The scale the previews are drawn at, or none for the one that fits them in the window.
   const [zoom, setZoom] = useState(lastZoom)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -109,6 +114,7 @@ export function ResponsiveInspector({
   useEffect(() => {
     lastPreviews = previews
     lastZoom = zoom
+    lastPage = pageKey()
     if (previews.length > countRef.current) rowRef.current?.scrollTo({ left: rowRef.current.scrollWidth })
     countRef.current = previews.length
   }, [previews, zoom])
