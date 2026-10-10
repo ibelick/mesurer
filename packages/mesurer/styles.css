@@ -173,11 +173,7 @@
   box-shadow: var(--msr-shadow-select-menu);
 }
 
-.mesurer-root .mesurer-comment-overflow-menu {
-  background-color: var(--msr-comment-menu-surface) !important;
-  box-shadow: var(--msr-shadow-comment-menu);
-}
-
+.mesurer-root .mesurer-comment-overflow-menu,
 .mesurer-root .mesurer-comment-delete-confirmation {
   background-color: var(--msr-comment-menu-surface) !important;
   box-shadow: var(--msr-shadow-comment-menu);
