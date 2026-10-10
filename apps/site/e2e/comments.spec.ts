@@ -411,6 +411,16 @@ test("shows copy checkmark feedback for the keyboard command", async ({ page, co
   await expect(copied).toBeVisible();
 });
 
+test("switches Comments on and off with M", async ({ page }) => {
+  await page.goto("/e2e/fixtures/guide-overlay.html");
+  const comments = page.getByRole("button", { name: "Comments (M)" });
+  await expect(comments).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("m");
+  await expect(comments).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("m");
+  await expect(comments).toHaveAttribute("aria-pressed", "false");
+});
+
 test("copies concise comments with DOM context to the agent clipboard", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/e2e/fixtures/guide-overlay.html");

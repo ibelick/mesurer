@@ -78,7 +78,7 @@ Props are the defaults. Saved settings override them; **Use defaults** restores 
 
 | Shortcut               | Action                                                |
 | ---------------------- | ----------------------------------------------------- |
-| `M`                    | Toggle Mesurer on/off.                                |
+| `M`                    | Toggle Comments mode.                                 |
 | `I`                    | Toggle Inspect mode.                                  |
 | `S`                    | Toggle Select mode for annotations.                   |
 | `A`                    | Toggle Typography mode.                               |

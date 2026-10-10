@@ -1,5 +1,5 @@
 const shortcuts = [
-  { keys: "M", description: "Toggle Mesurer on/off" },
+  { keys: "M", description: "Toggle Comments mode" },
   { keys: "I", description: "Toggle Inspect mode" },
   { keys: "S", description: "Toggle Select mode for annotations" },
   { keys: "A", description: "Toggle Typography mode" },

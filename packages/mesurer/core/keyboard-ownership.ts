@@ -27,6 +27,7 @@ const MESURER_BRIDGED_KEYS = new Set([
   "g",
   "h",
   "i",
+  "m",
   "n",
   "p",
   "r",

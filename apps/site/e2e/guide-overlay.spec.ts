@@ -1253,7 +1253,7 @@ test("screenshot settings support download-only capture", async ({ page }) => {
     .toMatch(/^mesurer-.*\.png$/);
 });
 
-test("disabling Mesurer closes screenshot selection", async ({ page }) => {
+test("switching to Comments closes screenshot selection", async ({ page }) => {
   await page.goto("/e2e/fixtures/guide-overlay.html");
   await expect(page.getByRole("button", { name: "Screenshot (C)" })).toBeVisible();
   await page.keyboard.press("c");

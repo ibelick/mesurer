@@ -318,10 +318,6 @@ export const useHotkeys = (options: HotkeyOptions) => {
         return
       }
 
-      if (event.key.toLowerCase() === "m") {
-        current.setEnabled((prev) => !prev)
-      }
-
       const key = event.key.toLowerCase()
       const toolGroupShortcut = getMesurerToolGroupShortcut(event)
       if (event.key === "Alt") {
@@ -370,6 +366,18 @@ export const useHotkeys = (options: HotkeyOptions) => {
         current.onCloseScreenshot()
         if (key === "x") current.onToggleXray()
         else current.onToggleRulers()
+        return
+      }
+
+      if (key === "m") {
+        // From either tool group: Comments sits beside them, not in one.
+        event.preventDefault()
+        current.onInteract()
+        current.setEnabled(true)
+        current.clearTransientState()
+        current.onCloseColorPicker()
+        current.onCloseScreenshot()
+        current.setToolMode((prev) => (prev === "comments" ? "none" : "comments"))
         return
       }
 

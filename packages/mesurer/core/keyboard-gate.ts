@@ -11,7 +11,7 @@ import {
   MESURER_KEYBOARD_ATTR,
 } from "./keyboard-ownership"
 
-const INSTALLED = "__MESURER_KEYBOARD_GATE_V9__"
+const INSTALLED = "__MESURER_KEYBOARD_GATE_V10__"
 
 type GateWindow = Window & { [INSTALLED]?: boolean }
 
@@ -103,6 +103,25 @@ export const installKeyboardGate = (
       (node) => node instanceof Element && node.id === isolationHostId,
     )
 
+  // What is typed in Mesurer stays in Mesurer. A page's own shortcuts were listening before this
+  // gate was there, so they are not kept out below, and they see a key typed in Mesurer's shadow
+  // tree as pressed on its host, not in a text field: one bound to that key (`g`, where many
+  // sites' shortcuts start) takes the letter. The key is stopped as it leaves the host, once
+  // Mesurer has had it.
+  const sealedHosts = new WeakSet<Element>()
+  const keepTypingInMesurer = (event: Event) => {
+    const host = event.composedPath().find(
+      (node): node is Element => node instanceof Element && node.id === isolationHostId,
+    )
+    if (!host || sealedHosts.has(host)) return
+    sealedHosts.add(host)
+    for (const type of ["keydown", "keypress", "keyup"]) {
+      nativeAddEventListener.call(host, type, (typed) => {
+        if (isTypingInMesurer(typed as KeyboardEvent, view)) typed.stopPropagation()
+      })
+    }
+  }
+
   const bridgeKey = (event: KeyboardEvent) => {
     view.postMessage(
       {
@@ -129,6 +148,7 @@ export const installKeyboardGate = (
     if (mesurerEvent) {
       if (isolateMesurerEvents && !isIsolatedMesurerEvent(event)) return
       if (!isolateMesurerEvents || isTypingInMesurer(event as KeyboardEvent, view)) {
+        if (isolateMesurerEvents) keepTypingInMesurer(event)
         return
       }
       if (event instanceof KeyboardEvent && isMesurerKeyboardBridgeKey(event.key, event)) {
