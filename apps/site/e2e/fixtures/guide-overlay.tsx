@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { captureCommentTarget, resolveCommentTarget } from "../../../../packages/mesurer/comments/dom";
 import { createActiveTabRegistry } from "../../../extension/src/active-tabs";
+import { STYLES_KEY } from "../../../extension/src/messages";
+import { MESURER_STYLES } from "../../../../packages/mesurer/styles.generated";
 
 export type ActiveTabTestApi = {
   createActiveTabRegistry: typeof createActiveTabRegistry;
@@ -178,4 +180,7 @@ function Fixture() {
 }
 
 createRoot(document.getElementById("root")!).render(<Fixture />);
+// The extension's background hands the content script Mesurer's stylesheet. There is none here,
+// so this page does it: without it Mesurer comes up unstyled, and nothing on it can be pressed.
+Object.assign(globalThis, { [STYLES_KEY]: MESURER_STYLES });
 await import("../../../extension/src/content");
