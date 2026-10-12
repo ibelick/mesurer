@@ -52,7 +52,7 @@ function App() {
 | `guideHighlightEnabled` | Highlights guides when they are hovered or selected. Default `true`.          |
 | `hoverHighlightEnabled` | Disables hover highlight and deselects on click when `false`.                 |
 | `layoutDetailsEnabled`  | Shows gap and padding under selected dimensions. Default `true`.              |
-| `persistOnReload`       | Persists workspace state across reloads when `true`.                          |
+| `persistOnReload`       | Persists workspace state across reloads; defaults to `true`.                  |
 | `shortcutsEnabled`      | Enables global keyboard shortcuts when `true`. Default `true`.                |
 | `persistKey`            | Optional workspace storage key; default workspaces are isolated per browser tab. |
 | `portalTarget`          | Optional element or shadow root used as the overlay portal mount target.      |

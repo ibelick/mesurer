@@ -24,7 +24,7 @@ const props: { name: string; description: ReactNode }[] = [
   { name: "guideHighlightEnabled", description: "Highlights guides when hovered or selected" },
   { name: "hoverHighlightEnabled", description: "Enables hover highlighting in Inspect mode" },
   { name: "layoutDetailsEnabled", description: "Shows gap and padding details under selected dimensions" },
-  { name: "persistOnReload", description: "Persists workspace state across reloads" },
+  { name: "persistOnReload", description: "Persists workspace state across reloads; on by default" },
   { name: "shortcutsEnabled", description: "Enables global keyboard shortcuts" },
   { name: "persistKey", description: "Optional key for isolating persisted workspaces" },
   { name: "portalTarget", description: "Element or shadow root where the overlay is mounted" },

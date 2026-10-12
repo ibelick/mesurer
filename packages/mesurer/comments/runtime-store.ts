@@ -112,6 +112,10 @@ export class CommentRuntimeStore {
   }
 
   resolve(id: string, target: CommentTarget) {
+    // Asked for by name, it is looked for from the start: one that has gone unfound for a while
+    // (left in a preview since closed) is by now only tried every few seconds, and would be
+    // that slow to show once its preview is back.
+    this.retryDelays.delete(id)
     const element = resolveCommentTarget(target, this.ownerDocument)
     this.attach(id, target, element)
   }

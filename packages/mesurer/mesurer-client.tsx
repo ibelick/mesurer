@@ -746,6 +746,8 @@ export function MesurerClient({
   const [responsiveOpen, setResponsiveOpen] = useState(false);
   // The size of the preview a comment being looked at was left in, for the previews to show.
   const [wantedPreview, setWantedPreview] = useState<{ width: number; height: number } | null>(null);
+  // The comment to bring into view once the element it is on is found.
+  const revealCommentRef = useRef<string | null>(null);
   const toggleResponsive = useCallback(() => {
     // What is selected belongs to where it was selected: the page, or a preview that is closing.
     clearSelection();
@@ -1330,6 +1332,20 @@ export function MesurerClient({
     scheduleGuideDragHold,
     clearGuideDragHold,
   });
+  // A comment picked from the list before what it is on was there (its preview still loading) is
+  // brought into view as soon as it is found.
+  useEffect(() => {
+    const id = revealCommentRef.current
+    if (!id) return
+    if (id !== selectedCommentId) {
+      revealCommentRef.current = null
+      return
+    }
+    const element = commentRuntime.getElement(id)
+    if (!element?.isConnected || !element.ownerDocument.defaultView) return
+    revealCommentRef.current = null
+    element.scrollIntoView({ block: "center", inline: "center" })
+  }, [commentRuntime, commentRuntimeSnapshot, selectedCommentId])
   // A comment is shown where it was left: on the page, or over the previews while the one it
   // was left in is open.
   const overlayComments = comments.filter((comment) =>
@@ -1337,7 +1353,6 @@ export function MesurerClient({
       ? Boolean(comment.target.preview) && !commentRuntimeSnapshot.unresolvedIds.has(comment.id)
       : !comment.target.preview,
   )
-  const previewCommentSizes = comments.flatMap(({ target }) => (target.preview && target.viewport ? [target.viewport] : []))
   const overlayInteractive = enabled && !settingsOpen && !minimized
   const movingGroupRect = (() => {
     if (!selectionIsGroup) return null
@@ -1404,7 +1419,7 @@ export function MesurerClient({
       }}
       layoutGuides={layoutGuides}
       layoutGuidesVisible={layoutGuidesVisible}
-      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", altPressed, guideOrientation, wanted: wantedPreview, commented: previewCommentSizes } : null}
+      responsive={responsiveOpen ? { onClose: toggleResponsive, guidesActive: toolMode === "guides", altPressed, guideOrientation, wanted: wantedPreview } : null}
       overlay={{
         enabled,
         pageLayers: !responsiveOpen,
@@ -1713,7 +1728,10 @@ export function MesurerClient({
             if (target?.preview && target.viewport) setWantedPreview({ ...target.viewport })
             setToolMode("comments")
             setSelectedCommentId(id)
-            commentRuntime.getElement(id)?.scrollIntoView({ block: "center", inline: "center" })
+            const element = commentRuntime.getElement(id)
+            // Not there yet when its preview is only now being opened: shown once it is found.
+            if (element?.isConnected && element.ownerDocument.defaultView) element.scrollIntoView({ block: "center", inline: "center" })
+            else revealCommentRef.current = id
           },
            onDelete: deleteComment,
            onDeleteAll: deleteAllComments,

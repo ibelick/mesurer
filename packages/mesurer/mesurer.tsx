@@ -24,7 +24,7 @@ export function MesurerUnstyled({
   guideHighlightEnabled = true,
   hoverHighlightEnabled = true,
   layoutDetailsEnabled = true,
-  persistOnReload = false,
+  persistOnReload = true,
   persistSession = false,
   shortcutsEnabled = true,
   theme = "system",

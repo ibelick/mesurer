@@ -12,6 +12,3 @@ const iconButtonBase =
   "msr:flex msr:size-6 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-control msr:outline-none msr:focus-visible:shadow-[inset_0_0_0_1px_var(--msr-accent)] msr:disabled:pointer-events-none msr:disabled:opacity-40"
 
 export const iconButton = `${iconButtonBase} msr:text-ink-500 msr:hover:bg-ink-100 msr:hover:text-ink-900`
-
-// One that is about to take something away, and is waiting to be pressed again.
-export const dangerIconButton = `${iconButtonBase} msr:bg-[var(--msr-danger-solid-bg)] msr:text-[var(--msr-danger-solid-text)] msr:hover:bg-[var(--msr-danger-solid-hover)]`

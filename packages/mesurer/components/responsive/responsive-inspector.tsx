@@ -51,11 +51,8 @@ export function ResponsiveInspector({
   altPressed,
   guideOrientation,
   wanted,
-  commented,
   onClose,
 }: {
-  /** The sizes of the previews the comments were left in, one for each comment. */
-  commented: readonly ResponsiveSize[]
   /** A size one of the previews is to have: a comment left at it is being looked at. */
   wanted?: ResponsiveSize | null
   /** The layout guides that are showing, drawn in each preview at its own size. */
@@ -215,7 +212,6 @@ export function ResponsiveInspector({
               breakpoints={breakpoints}
               layoutGuides={layoutGuides}
               guides={preview.guides}
-              comments={commented.filter((size) => size.width === preview.width).length}
               guidesActive={guidesActive}
               altPressed={altPressed}
               guideOrientation={guideOrientation}
