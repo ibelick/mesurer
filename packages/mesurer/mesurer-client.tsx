@@ -273,6 +273,7 @@ export function MesurerClient({
   const ownerDocument = portalTarget.ownerDocument ?? document;
   const ownerWindow = ownerDocument.defaultView ?? window;
   const platformAuth = usePlatformAuth(ownerWindow, platformEnvironment);
+  const { prepareReview: prepareReviewOnPlatform, publishReview: publishReviewToPlatform } = platformAuth;
   const {
     pageKey,
     appliedPageKeyRef,
@@ -639,13 +640,27 @@ export function MesurerClient({
     if (savingReviewRef.current) return;
     savingReviewRef.current = true;
     setReviewSaveStatus("saving");
-    // The review's tab is opened now, while the press allows it, and says what it is waiting
-    // for. This page goes to the background behind it, where the capture carries on.
+    // Kept on the platform, where this site is connected to it and no host keeps reviews itself.
+    const publishToPlatform = !publishReview && platformEnvironment ? publishReviewToPlatform : undefined;
+    // The review's tab is opened now, while the press allows it. This page goes to the
+    // background behind it, where the capture carries on.
     const reviewWindow = ownerWindow.open("", "_blank");
-    if (reviewWindow) {
+    if (publishToPlatform) {
+      // The platform authorizes this one review in that same tab (a browser opens one window
+      // for a press), then keeps the tab waiting: it says so itself, and the review opens in it.
+      const ready = await prepareReviewOnPlatform(reviewWindow ?? undefined).catch(() => false);
+      if (!ready) {
+        reviewWindow?.close();
+        setReviewSaveStatus("error");
+        savingReviewRef.current = false;
+        return;
+      }
+    } else if (reviewWindow) {
       reviewWindow.opener = null;
-      (showReviewLoading ?? showDefaultReviewLoading)(reviewWindow);
     }
+    // Says what the tab is waiting for, where it is still this site's blank page: not one the
+    // platform has taken, which cannot be written to and says it already.
+    if (reviewWindow) (showReviewLoading ?? showDefaultReviewLoading)(reviewWindow);
     const now = Date.now();
     try {
       const pageId = ownerWindow.location.href;
@@ -753,7 +768,15 @@ export function MesurerClient({
       })();
       // Demo-only UUID route: the viewer is stored locally and is not cross-browser shareable.
       let reviewUrl = new URL(`/${reviewId}`, ownerWindow.location.href).href;
-      if (publishReview) reviewUrl = await publishReview({ id: reviewId, html: ephemeral.html, state: ephemeral.state, screenshot: capture.blob });
+      const publication = {
+        id: reviewId,
+        html: ephemeral.html,
+        state: ephemeral.state,
+        screenshot: capture.blob,
+        ...(capture.live ? { live: capture.live } : null),
+      };
+      if (publishReview) reviewUrl = await publishReview(publication);
+      else if (publishToPlatform) reviewUrl = await publishToPlatform(publication);
       else await saveReviewViewer(ownerWindow, reviewId, ephemeral.html);
       reviewWindow?.location.replace(reviewUrl);
       URL.revokeObjectURL(ephemeral.url);
@@ -794,6 +817,9 @@ export function MesurerClient({
     captureDom,
     createReviewViewer,
     publishReview,
+    prepareReviewOnPlatform,
+    publishReviewToPlatform,
+    platformEnvironment,
     showReviewLoading,
     commentRuntimeSnapshot.rects,
   ]);

@@ -7,6 +7,11 @@ export type ReviewPublication = {
   html: string
   state: ReviewState
   screenshot: Blob
+  /**
+   * The page as an SVG document that loads, from their own address, the images the picture
+   * could not include. Present only when there are some.
+   */
+  live?: string
 }
 
 export type PlatformReviewPublisherOptions = {
@@ -15,6 +20,8 @@ export type PlatformReviewPublisherOptions = {
   /** What allows this one review to be kept: asked for each time, used once. */
   getCapability: () => Promise<string>
   fetch?: typeof fetch
+  /** Calls the upload off. */
+  signal?: AbortSignal
 }
 
 const MAX_TITLE = 300
@@ -24,8 +31,8 @@ const MAX_TITLE = 300
  * state as JSON and the picture as a file, and comes back as the address it is seen at.
  */
 export const createPlatformReviewPublisher =
-  ({ apiOrigin, getCapability, fetch: send = fetch }: PlatformReviewPublisherOptions) =>
-  async ({ state, screenshot }: ReviewPublication) => {
+  ({ apiOrigin, getCapability, fetch: send = fetch, signal }: PlatformReviewPublisherOptions) =>
+  async ({ state, screenshot, live }: ReviewPublication) => {
     const version = state.versions[state.versions.length - 1]
     if (!version) throw new Error("Review has no page version")
     const { url: pageUrl, title, viewport } = version.snapshot
@@ -43,10 +50,12 @@ export const createPlatformReviewPublisher =
       }),
     )
     form.set("screenshot", screenshot, "screenshot")
+    if (live) form.set("live", new Blob([live], { type: "image/svg+xml" }), "live.svg")
     const response = await send(`${apiOrigin.replace(/\/+$/, "")}/api/toolbar/share`, {
       method: "POST",
       headers: { Authorization: `Bearer ${await getCapability()}`, "Idempotency-Key": state.review.id },
       body: form,
+      signal,
     })
     const body: unknown = await response.json().catch(() => null)
     const address = typeof body === "object" && body !== null && "url" in body ? body.url : undefined

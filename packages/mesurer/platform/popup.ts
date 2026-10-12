@@ -16,12 +16,15 @@ export const createAuthorizationUrl = ({
   declaredOrigin,
   grantId,
   state,
+  then,
 }: {
   callbackOrigin: string
   challenge: string
   declaredOrigin: string
   grantId?: string
   state: string
+  /** What follows the authorization. For a review, its window is kept and waits for it. */
+  then?: "review"
 }) => {
   const url = new URL("/toolbar/authorize", callbackOrigin)
   url.search = new URLSearchParams({
@@ -31,6 +34,7 @@ export const createAuthorizationUrl = ({
     callbackOrigin,
     declaredOrigin,
     ...(grantId ? { grantId } : {}),
+    ...(then ? { then } : {}),
   }).toString()
   return url
 }

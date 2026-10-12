@@ -24,6 +24,8 @@ export const usePlatformAuth = (ownerWindow: Window, environment: PlatformEnviro
     state,
     connect: client?.connect ?? (async () => null),
     createTestReviewLink: client?.createTestReviewLink ?? (async (_comments: CommentThread[] = []) => null),
+    prepareReview: client?.prepareReview ?? (async (_reviewWindow?: Window) => false),
+    publishReview: client?.publishReview,
     canCreateTestReviewLink: state.status === "connected" && state.share.status !== "creating",
     hasSavedGrant: client?.hasSavedGrant() ?? false,
     disconnect: client?.disconnect ?? (() => undefined),
