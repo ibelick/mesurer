@@ -31,7 +31,7 @@ const props: { name: string; description: ReactNode }[] = [
   { name: "persistence", description: "Custom storage adapter for settings and workspace state" },
   { name: "onPersistenceError", description: "Called when persistence is unavailable or a write fails" },
   { name: "captureVisibleTab", description: "Provides a visible-tab PNG for Screenshot capture" },
-  { name: "features", description: "Enable or disable Screenshot, Rulers, and Settings" },
+  { name: "features", description: "Enable or disable Screenshot, Rulers, Settings, and Responsive" },
   { name: "initialState", description: "Set initial workspace data and toolbar state; saved state wins" },
   { name: "snapEnabled", description: "Snap selection to nearby elements" },
   { name: "snapGuidesEnabled", description: "Snap guides to other guides" },

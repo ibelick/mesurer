@@ -35,14 +35,15 @@ This generates the extension files in `apps/extension/dist`.
 - Video recording uses Chrome tab capture. Press `V` or choose **Screen record** from the capture menu, then drag over the region to record. The sharing bar appears before selection so the selected region matches the captured tab.
 - Stop recording to open the video editor. You can play the clip, trim its start and end, choose an export scale and format, and download the result. Recordings are limited to 60 seconds.
 - WebM and GIF export are available in the editor; MP4 export depends on browser WebCodecs support.
-- Use the grouped Select &amp; Inspect and Annotate toolbars to access Inspect, Select, Comments, Guides, Rulers, Arrows, Pen, Text, Typography, X-ray, Sample color, and Screenshot.
+- Use the grouped Select &amp; Inspect and Annotate toolbars to access Inspect, Select, Comments, Guides, Rulers, Arrows, Pen, Text, Typography, X-ray, Responsive, Sample color, and Screenshot.
 - Configure column, row, and pixel grid guides, including their style and alignment.
+- Press `B` to preview the page at several screen sizes side by side, from named devices or the page's own breakpoints. Inspect, Comments, Guides, X-ray, and layout guides work inside the previews. A site that forbids being shown in a frame cannot be previewed.
 - Use Comments to pin threads to live elements, add replies, move comment targets, and copy structured feedback for an agent. Press `Cmd/Ctrl + K` to copy all comments.
 - Resolve, reopen, edit, and search comment threads from the Comments panel.
 - Select annotations to move, resize, rotate, delete, or edit them. Use Undo and Redo to review annotation changes.
 - Switch between light and dark themes in Settings.
 - Open Settings to configure selection, guide, ruler, arrow, text, color, format, and persistence behavior.
-- Keyboard commands include `M` to toggle Mesurer, `I` to Inspect, `S` to select annotations, `A` for Typography, `D` for Arrows, `N` for Pen, `T` for Text, `1` and `2` to switch tool groups, `P` for the color sampler, `C` for Screenshot, `V` for video recording, `G` for Guides, `X` for X-ray, `R` for rulers, `H` for horizontal guide orientation, and `Cmd/Ctrl + K` to copy comments.
+- Keyboard commands include `M` for Comments, `I` to Inspect, `S` to select annotations, `A` for Typography, `D` for Arrows, `N` for Pen, `T` for Text, `1` and `2` to switch tool groups, `P` for the color sampler, `C` for Screenshot, `V` for video recording, `G` for Guides, `L` for layout guides, `B` for the responsive previews, `X` for X-ray, `R` for rulers, `H` for horizontal guide orientation, and `Cmd/Ctrl + K` to copy comments.
 - Hold `Alt` for distance overlays. Press `Option + S` (`Alt + S` on Windows/Linux) to pin the current distance. Press `Esc` to close panels, cancel interactions, or deselect the active tool; press it again to minimize Mesurer. Use Backspace/Delete to remove selected annotations, `Cmd/Ctrl + A` to select all annotations, `Cmd/Ctrl + Z` to undo, `Cmd/Ctrl + Shift + Z` to redo, and `Cmd/Ctrl + ,` to open Settings.
 - Use Clear workspace in Settings to remove guides, measurements, arrows, pen strokes, and text annotations for the current tab.
 - Chrome internal pages (like `chrome://`) are not supported by extensions.

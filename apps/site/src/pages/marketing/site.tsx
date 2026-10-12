@@ -5,6 +5,7 @@ import {
   CameraIcon,
   ChatCircleIcon,
   CursorIcon,
+  DevicesIcon,
   GridFourIcon,
   GearIcon,
   EyedropperIcon,
@@ -185,6 +186,11 @@ export function HomeContent() {
       icon: <GridFourIcon size={16} weight="light" />,
       title: "X-ray mode",
       description: "Reveal the structure of every element",
+    },
+    {
+      icon: <DevicesIcon size={16} weight="light" />,
+      title: "Responsive",
+      description: "Preview the page at several screen sizes side by side",
     },
     {
       icon: <GearIcon size={16} weight="light" />,
