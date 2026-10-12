@@ -43,6 +43,19 @@ const underPointer = (event: WheelEvent, frames: Iterable<HTMLIFrameElement>) =>
   return { element: null, drawn: 1 }
 }
 
+// With no tool in hand a wheel turned over a preview goes to the page in it, and never reaches
+// the row: a wheel in a frame is not heard outside it, and a page that does not scroll sideways
+// (or forbids the scroll to carry on past it) keeps the row where it is. So a sideways turn
+// there is the row's, as it is with a tool in hand, and up and down stays the page's.
+export const passFrameWheelOn = (event: WheelEvent, row: Element | null) => {
+  if (event.ctrlKey || !row || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return
+  const delta = event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? row.clientWidth : 1)
+  if (!delta || !hasRoom(row, "x", delta)) return
+  // Kept from the page, and from the browser, which would go back a page in the history.
+  event.preventDefault()
+  row.scrollBy({ left: delta, behavior: "instant" })
+}
+
 // With a tool in hand the pointer is the tool's, over the previews too, and a wheel turned there
 // never reaches the page in one, nor the row of them. It is passed on: up and down to what
 // scrolls under the pointer in that preview and past its end to the row, sideways the other

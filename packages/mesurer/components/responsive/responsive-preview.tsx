@@ -47,6 +47,7 @@ export function ResponsivePreview({
   altPressed,
   guideOrientation,
   onGuides,
+  onWheel,
   scale,
   order,
   onResize,
@@ -69,6 +70,8 @@ export function ResponsivePreview({
   altPressed: boolean
   guideOrientation: "horizontal" | "vertical"
   onGuides: (guides: PreviewGuide[]) => void
+  /** A wheel was turned over the page in this preview, where it is not heard from outside. */
+  onWheel: (event: WheelEvent) => void
   scale: number
   /** Where it stands in the row. The row is reordered without moving a frame, which would reload it. */
   order: number
@@ -91,6 +94,8 @@ export function ResponsivePreview({
   // Mesurer's tools reach into the page's frames, and this one is told to them: it is not found
   // by looking through the page when Mesurer sits outside it.
   const frameRef = useRef<HTMLIFrameElement | null>(null)
+  const onWheelRef = useRef(onWheel)
+  onWheelRef.current = onWheel
   // What the page reports about the visit is held back in the frame, so one visit is not counted
   // once for each preview. From the layout on, so the page is caught on its way in rather than
   // once it has loaded.
@@ -99,9 +104,21 @@ export function ResponsivePreview({
     if (!frame) return
     const untrack = trackOwnFrame(frame)
     const unguard = guardPreviewFrame(frame)
+    // Each page the frame shows is listened to once, as it loads. Not passive: a wheel that is
+    // the row's is kept from the page.
+    const heard = new WeakSet<Document>()
+    const listen = () => {
+      const page = frame.contentDocument
+      if (!page || heard.has(page)) return
+      heard.add(page)
+      page.addEventListener("wheel", (event) => onWheelRef.current(event), { passive: false })
+    }
+    frame.addEventListener("load", listen)
+    listen()
     return () => {
       untrack()
       unguard()
+      frame.removeEventListener("load", listen)
     }
   }, [])
 

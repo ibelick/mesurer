@@ -15,7 +15,7 @@ import { CloseIcon } from "../icons/close"
 import { ResponsivePreview } from "./responsive-preview"
 import { iconButton, stop, surface } from "./shared"
 import { SizeSelect, type SizeChoice } from "./size-select"
-import { passWheelOn } from "./wheel"
+import { passFrameWheelOn, passWheelOn } from "./wheel"
 import { ZoomSelect, percent } from "./zoom-select"
 
 type Preview = ResponsiveSize & { id: number; guides: PreviewGuide[] }
@@ -220,6 +220,7 @@ export function ResponsiveInspector({
               altPressed={altPressed}
               guideOrientation={guideOrientation}
               onGuides={(guides) => setGuides(preview.id, guides)}
+              onWheel={(event) => passFrameWheelOn(event, rowRef.current)}
               scale={scale}
               order={previews.indexOf(preview)}
               onResize={(size) => resize(preview.id, size)}
