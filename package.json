@@ -21,7 +21,10 @@
     "dev:site": "pnpm --filter mesurer-site dev",
     "dev:pkg": "pnpm --filter mesurer dev",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "build:codex": "pnpm --filter mesurer-codex build",
+    "test:codex": "pnpm --filter mesurer-codex test",
+    "package:codex": "pnpm --filter mesurer-codex package"
   },
   "devDependencies": {
     "husky": "^9.1.7"
