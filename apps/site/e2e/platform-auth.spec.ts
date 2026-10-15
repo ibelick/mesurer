@@ -75,8 +75,8 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
       status: 201,
       contentType: "application/json",
       body: JSON.stringify({
-        shareId: `shr_test-link-${shareRequests}`,
-        url: `https://mesurer.dev/share/shr_test-link-${shareRequests}`,
+        shareId: `testLink000${shareRequests}`,
+        url: `https://mesurer.dev/s/testLink000${shareRequests}`,
         project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
       }),
     });
@@ -116,7 +116,7 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
   await expect(status).toContainText("ada@example.com");
   await expect(status).toContainText("Analytical Engine");
   await page.getByRole("button", { name: "Create test review link" }).click();
-  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_test-link-1");
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/s/testLink0001");
   const repeatPopupPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Create another test review link" }).click();
   const repeatPopup = await repeatPopupPromise;
@@ -130,7 +130,7 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
       data: { type: "mesurer:authorization", code: "second-authorization-code-123456789012345678", state },
     }));
   }, { state: repeatState });
-  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_test-link-2");
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/s/testLink0002");
   expect(shareRequests).toBe(2);
   const expectedChallenge = await page.evaluate(async (verifier) => {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
@@ -284,7 +284,7 @@ test("reuses a saved grant through the Mesurer popup after reload", async ({ pag
   await page.route("https://api.mesurer.dev/api/toolbar/share", (route) => route.fulfill({
     status: 201,
     contentType: "application/json",
-    body: JSON.stringify({ url: "https://mesurer.dev/share/shr_reused-grant" }),
+    body: JSON.stringify({ url: "https://mesurer.dev/s/reusedGrant1" }),
   }));
 
   await page.goto(AUTH_PAGE);
@@ -307,7 +307,7 @@ test("reuses a saved grant through the Mesurer popup after reload", async ({ pag
   }, { state: authorizationUrl.searchParams.get("state") });
 
   await expect(page.locator('[data-mesurer-platform-status="connected"]')).toContainText("Ada Lovelace");
-  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/share/shr_reused-grant");
+  await expect(page.getByRole("link", { name: "Open test review link" })).toHaveAttribute("href", "https://mesurer.dev/s/reusedGrant1");
 });
 
 test("rejects a callback with the wrong state", async ({ page }) => {

@@ -27,11 +27,11 @@ describe("createPlatformReviewPublisher", () => {
       getCapability: async () => "capability",
       fetch: async (url, init) => {
         sent.push({ url: String(url), init: init ?? {} })
-        return new Response(JSON.stringify({ url: "https://app.example.com/share/shr_1" }), { status: 201 })
+        return new Response(JSON.stringify({ url: "https://app.example.com/s/k7Qm2xPa9fRt" }), { status: 201 })
       },
     })
 
-    await expect(publish(publication)).resolves.toBe("https://app.example.com/share/shr_1")
+    await expect(publish(publication)).resolves.toBe("https://app.example.com/s/k7Qm2xPa9fRt")
     expect(sent[0].url).toBe("https://api.example.com/api/toolbar/share")
     expect(sent[0].init.headers).toMatchObject({ Authorization: "Bearer capability" })
     const form = sent[0].init.body as FormData
