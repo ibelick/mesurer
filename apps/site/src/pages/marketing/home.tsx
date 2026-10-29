@@ -1,8 +1,8 @@
 import Hero from "./hero";
-import ProductCarousel from "./product-carousel";
 import MarketingFooter from "./footer";
 import AgentWorkflow from "./agent-workflow";
 import BrowserSection from "./browser-section";
+import PlatformCard from "./platform-card";
 import FinalCta from "./final-cta";
 import SocialProof from "./social-proof";
 import PageMetadata from "../../components/page-metadata";
@@ -12,11 +12,10 @@ const description = "Inspect, annotate, and direct changes on any live interface
 
 export default function MarketingPage() {
   return (
-    <main id="overview" className="min-h-screen pb-0 pt-20">
+    <main id="overview" className="min-h-screen px-3 pb-0">
       <PageMetadata title={title} description={description} />
-      <div className="mx-auto flex flex-col gap-20 px-5">
+      <div className="mx-auto flex flex-col">
         <Hero />
-        <ProductCarousel />
         <AgentWorkflow
           id="design-workflow-title"
           title="Design closer to production"
@@ -38,7 +37,7 @@ export default function MarketingPage() {
         />
         <AgentWorkflow
           id="agent-workflow-title"
-          title="Collaborate better with your team and agents"
+          title="Collaborate with your agents"
           description="Stop describing what you have in mind, show it instead. Mesurer helps you interact faster and in a more effective way with your coding agents."
           cards={[
             {
@@ -50,12 +49,13 @@ export default function MarketingPage() {
               image: "https://assets.querrel.com/mesurer/annotations.webp?v=5",
             },
             {
-              title: "Screenshot-paste",
+              title: "Screenshots and recording",
               image: "https://assets.querrel.com/mesurer/screenshot.webp?v=2",
             },
           ]}
         />
         <BrowserSection />
+        <PlatformCard />
         <SocialProof />
         <FinalCta />
       </div>

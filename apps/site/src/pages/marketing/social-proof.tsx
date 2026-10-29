@@ -53,20 +53,20 @@ const testimonials: Testimonial[] = [
 
 export default function SocialProof() {
   return (
-    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 overflow-hidden px-5" aria-label="Testimonials">
-      <div className="mx-auto max-w-6xl">
-        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
+    <section className="relative mx-auto w-full max-w-7xl overflow-hidden pt-32 pb-64" aria-label="Testimonials">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
           {testimonials.map((testimonial) => (
             <a
               key={testimonial.name}
               href={testimonial.url}
               target="_blank"
               rel="noreferrer"
-              className="flex h-full min-h-[180px] flex-col rounded-md border border-border p-5"
+              className="flex h-full min-h-[180px] flex-col rounded-xl border border-border p-5"
             >
               <article className="flex h-full flex-col">
                 <blockquote className="grow overflow-hidden">
-                  <p className="line-clamp-5 text-pretty text-base leading-relaxed text-strong">{testimonial.quote}</p>
+                  <p className="body-md line-clamp-5 text-pretty text-strong">{testimonial.quote}</p>
                 </blockquote>
                 <div className="mt-3 flex items-center gap-3">
                   <img
@@ -79,7 +79,7 @@ export default function SocialProof() {
                     loading="lazy"
                     decoding="async"
                   />
-                  <span className="text-sm text-strong">
+                  <span className="body-sm text-strong">
                     {testimonial.name}
                     <span className="block text-muted">{testimonial.handle}</span>
                   </span>

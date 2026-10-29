@@ -49,7 +49,7 @@ export default function PropList() {
     <div className="site-props -mx-2 flex flex-col border-t border-border [&>div]:flex-col [&>div]:gap-2 [&>div>div:first-child]:break-words sm:[&>div]:flex-row sm:[&>div]:items-start sm:[&>div]:justify-between sm:[&>div]:gap-8 [&>div>div:last-child]:max-w-none [&>div>div:last-child]:text-left sm:[&>div>div:last-child]:max-w-[60%] sm:[&>div>div:last-child]:text-right">
       {props.map((prop) => (
         <div key={prop.name} className="flex items-start justify-between gap-8 border-b border-border px-2 py-2">
-          <div className="font-mono text-strong">
+          <div className="body-md text-strong">
             <code className="code">{prop.name}</code>
           </div>
           <div className="max-w-[60%] text-right text-balance text-muted">{prop.description}</div>

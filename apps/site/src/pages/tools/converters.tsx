@@ -17,13 +17,13 @@ import { CopyCode, Field, NumberField, Output, Panel, useQueryState } from "./ui
 function Swatch({ color, value, onPick }: { color: string | null; value: Rgb | null; onPick: (hex: string) => void }) {
   return (
     <label
-      className="relative block size-10 shrink-0 cursor-pointer rounded-md border border-black/10 transition-shadow hover:shadow-[0_0_0_3px_var(--color-subtle)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-strong"
+      className="relative block size-10 shrink-0 cursor-pointer rounded-md border border-border-strong transition-shadow hover:shadow-[0_0_0_3px_var(--color-subtle)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-strong"
       title="Pick a color"
       // A see-through colour is shown over a chequerboard.
       style={{
         backgroundImage: color
-          ? `linear-gradient(${color}, ${color}), repeating-conic-gradient(#e5e5e5 0 25%, #fff 0 50%)`
-          : "repeating-linear-gradient(45deg, #f0f0f0 0 4px, #fff 4px 8px)",
+          ? `linear-gradient(${color}, ${color}), repeating-conic-gradient(#E5E5E5 0 25%, #fff 0 50%)`
+          : "repeating-linear-gradient(45deg, #FAFAFA 0 4px, #fff 4px 8px)",
         backgroundSize: "auto, 10px 10px",
       }}
     >
@@ -46,7 +46,7 @@ const colorTable = (from: "rgb" | "hex") => (
       const cells = [<CopyCode>{hex}</CopyCode>, <CopyCode>{rgb}</CopyCode>];
       return [
         <span className="flex items-center gap-2">
-          <span className="size-4 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: hex }} aria-hidden="true" />
+          <span className="size-4 shrink-0 rounded-full border border-border-strong" style={{ backgroundColor: hex }} aria-hidden="true" />
           {name}
         </span>,
         ...(from === "rgb" ? cells.reverse() : cells),

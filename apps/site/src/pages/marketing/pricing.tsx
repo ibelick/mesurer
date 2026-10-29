@@ -75,13 +75,13 @@ const plans: Plan[] = [
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-labelledby="pricing-title">
-      <div className="mx-auto max-w-6xl">
+    <section id="pricing" className="relative mx-auto w-full max-w-7xl mt-24" aria-labelledby="pricing-title">
+      <div className="mx-auto max-w-7xl">
         <div className="max-w-xl">
-          <h2 id="pricing-title" className="text-balance text-[22px] font-medium leading-[1.2] text-strong">
+          <h2 id="pricing-title" className="type-h2 text-balance text-strong">
             Choose how you build with Mesurer.
           </h2>
-          <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
+          <p className="body-md mt-2 text-pretty text-muted">
             Start free, then scale your reviews, projects, and team when you are ready.
           </p>
         </div>
@@ -97,19 +97,19 @@ export default function Pricing() {
                 aria-labelledby={`${plan.id}-plan-title`}
               >
                 <div className="flex-1">
-                  <h3 id={`${plan.id}-plan-title`} className="text-base font-medium text-strong">
+                  <h3 id={`${plan.id}-plan-title`} className="type-h3 text-strong">
                     {plan.name}
                   </h3>
                   <p className="mt-3 flex items-baseline text-strong">
-                    <span className="text-3xl font-medium tracking-tight">{plan.price}</span>
-                    {plan.cadence && <span className="ml-1 text-sm text-muted">{plan.cadence}</span>}
+                    <span className="type-h2">{plan.price}</span>
+                    {plan.cadence && <span className="body-sm ml-1 text-muted">{plan.cadence}</span>}
                   </p>
-                  <p className="mt-4 min-h-10 text-sm leading-relaxed text-muted">{plan.description}</p>
-                  {plan.includes && <p className="mt-6 text-sm font-medium text-strong">{plan.includes}</p>}
+                  <p className="body-sm mt-4 min-h-10 text-muted">{plan.description}</p>
+                  {plan.includes && <p className="body-sm-emphasis mt-6 text-strong">{plan.includes}</p>}
 
                   <ul className="mt-5 flex flex-col gap-3" aria-label={`${plan.name} features`}>
                     {features.map((feature) => (
-                      <li key={feature.id} className="flex items-start gap-2 text-sm text-muted">
+                      <li key={feature.id} className="body-sm flex items-start gap-2 text-muted">
                         <CheckIcon aria-hidden="true" weight="bold" className="mt-0.5 size-4 shrink-0 text-strong" />
                         <span>{feature.label}</span>
                       </li>

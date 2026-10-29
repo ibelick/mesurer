@@ -30,7 +30,7 @@ const shortcuts = [
 function KeyLabel({ keys }: { keys: string | readonly string[] }) {
   const values = typeof keys === "string" ? [keys] : keys;
   return (
-    <div className="font-mono text-strong">
+    <div className="body-md text-strong">
       {values.map((key, index) => (
         <span key={key}>
           {index > 0 ? <span className="px-1 text-muted">/</span> : null}

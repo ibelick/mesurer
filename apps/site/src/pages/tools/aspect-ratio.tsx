@@ -80,7 +80,7 @@ function Calculator() {
             key={preset.ratio}
             type="button"
             aria-pressed={label === preset.ratio}
-            className={`h-8 rounded-full border px-3 font-mono text-[13px] transition-colors ${
+            className={`body-sm h-8 rounded-full border px-3 transition-colors ${
               label === preset.ratio ? "border-strong bg-strong text-bg" : "border-border text-strong hover:bg-subtle"
             }`}
             onClick={() => {
@@ -105,8 +105,8 @@ function Calculator() {
             <span className="pb-2.5 text-muted" aria-hidden="true">×</span>
             <NumberField label="New height" min={1} value={newHeight} onValue={(value) => setTarget({ side: "height", value })} />
           </div>
-          <label className="flex w-fit items-center gap-2 text-[13px] text-muted">
-            <input type="checkbox" checked={whole} onChange={(event) => setWhole(event.target.checked)} className="accent-[#111]" />
+          <label className="body-sm flex w-fit items-center gap-2 text-muted">
+            <input type="checkbox" checked={whole} onChange={(event) => setWhole(event.target.checked)} className="accent-strong" />
             Whole pixels
           </label>
         </div>

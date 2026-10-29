@@ -75,13 +75,13 @@ function Generator() {
 
   return (
     <Panel className="flex flex-col gap-5">
-      <div className="flex h-56 overflow-hidden rounded-lg border border-black/10 max-sm:h-80 max-sm:flex-col">
+      <div className="flex h-56 overflow-hidden rounded-lg border border-border-strong max-sm:h-80 max-sm:flex-col">
         {swatches.map((swatch, at) => (
           <div key={at} className="group relative flex min-h-0 min-w-0 flex-1" style={{ backgroundColor: swatch.hex, color: inkOn(swatch.hex) }}>
             <button
               type="button"
               aria-label={`Copy ${swatch.hex}`}
-              className="flex flex-1 cursor-pointer items-end justify-center pb-4 font-mono text-[13px] outline-none focus-visible:underline max-sm:items-center max-sm:pb-0"
+              className="body-sm flex flex-1 cursor-pointer items-end justify-center pb-4 outline-none focus-visible:underline max-sm:items-center max-sm:pb-0"
               onClick={() => {
                 void navigator.clipboard?.writeText(swatch.hex).then(() => setCopied(at));
               }}
@@ -91,7 +91,7 @@ function Generator() {
             <button
               type="button"
               aria-pressed={swatch.locked}
-              className={`absolute top-2 left-1/2 -translate-x-1/2 rounded-full px-2 py-1 text-[12px] outline-none transition-opacity focus-visible:opacity-100 focus-visible:underline group-hover:opacity-100 max-sm:left-auto max-sm:right-2 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:translate-x-0 ${
+              className={`body-sm absolute top-2 left-1/2 -translate-x-1/2 rounded-full px-2 py-1 outline-none transition-opacity focus-visible:opacity-100 focus-visible:underline group-hover:opacity-100 max-sm:left-auto max-sm:right-2 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:translate-x-0 ${
                 swatch.locked ? "opacity-100" : "opacity-0 max-sm:opacity-60 [@media(hover:none)]:opacity-60"
               }`}
               onClick={() => setSwatches((previous) => previous.map((entry, index) => (index === at ? { ...entry, locked: !entry.locked } : entry)))}
@@ -104,12 +104,12 @@ function Generator() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="h-9 rounded-full bg-strong px-4 text-[14px] font-medium text-bg transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+          className="body-sm-emphasis h-9 rounded-full bg-strong px-4 text-bg transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
           onClick={roll}
         >
           Generate
         </button>
-        <span className="text-[13px] text-muted max-sm:hidden">or press Space</span>
+        <span className="body-sm text-muted max-sm:hidden">or press Space</span>
         <span className="ml-auto flex gap-2">
           <CopyButton value={swatches.map((swatch) => swatch.hex).join(", ")} label="Copy HEX" />
           <CopyButton value={css} label="Copy CSS" />

@@ -23,7 +23,7 @@ export default function DocPage({
         {nav}
         <section className="flex flex-col gap-6" aria-labelledby="doc-title">
           <div className="flex flex-col gap-2">
-            <h1 id="doc-title" className="font-[450] text-strong">
+            <h1 id="doc-title" className="type-h1 text-strong">
               {title}
             </h1>
             <p className="text-muted">{description}</p>
