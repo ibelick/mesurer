@@ -25,21 +25,21 @@ export default function AgentWorkflow({
   cards?: ReadonlyArray<{ title: string; description?: string; image?: string }>;
 }) {
   return (
-    <section className="relative left-1/2 mt-24 w-screen -translate-x-1/2 px-5" aria-labelledby={id}>
-      <div className="mx-auto max-w-6xl">
-        <div className="flex max-w-none flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <h2 id={id} className="max-w-xl text-balance text-[22px] font-medium leading-[1.2] text-strong">
+    <section className="relative mx-auto w-full max-w-7xl py-32" aria-labelledby={id}>
+      <div className="mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-8">
+          <h2 id={id} className="type-h2 w-full max-w-xl text-balance text-strong">
             {title}
           </h2>
-          <p className="max-w-xl text-pretty text-base leading-normal text-muted lg:text-right">{description}</p>
+          <p className="body-md ml-auto w-full max-w-xl text-pretty text-muted lg:text-right">{description}</p>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-4 lg:mt-20 lg:grid-cols-3">
           {sectionCards.map((card) => (
-            <article key={card.title} className="flex min-w-0 flex-col rounded-[16px] bg-[#fafafa] p-2">
+            <article key={card.title} className="flex min-w-0 flex-col rounded-sm bg-subtle p-2">
               <div className="flex flex-col px-4 pb-5 pt-4">
-                <h3 className="text-base font-medium text-strong">{card.title}</h3>
-                {card.description ? <p className="mt-2 text-sm leading-relaxed text-muted">{card.description}</p> : null}
+                <h3 className="text-sm-emphasis text-secondary">{card.title}</h3>
+                {card.description ? <p className="body-sm mt-2 text-muted">{card.description}</p> : null}
               </div>
               <div className="aspect-[4/3] overflow-hidden bg-transparent">
                 {card.image ? (

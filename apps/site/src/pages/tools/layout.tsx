@@ -37,25 +37,25 @@ export function Breadcrumb({ current }: { current?: string }) {
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium text-strong">{title}</h2>
+      <h2 className="type-h2 text-strong">{title}</h2>
       <div className="flex flex-col gap-3 text-pretty text-muted">{children}</div>
     </section>
   );
 }
 
-/** A worked sum, or anything else set in fixed-width type. */
+/** A worked sum or code example, preserving whitespace. */
 export function Formula({ children }: { children: string }) {
-  return <pre className="m-0 overflow-x-auto rounded-md bg-subtle px-3 py-2 font-mono text-[13px] text-strong">{children}</pre>;
+  return <pre className="body-sm m-0 overflow-x-auto rounded-md bg-subtle px-3 py-2 text-strong">{children}</pre>;
 }
 
 export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-[14px]">
+      <table className="body-sm w-full border-collapse text-left">
         <thead>
           <tr>
             {head.map((cell) => (
-              <th key={cell} scope="col" className="border-b border-border py-2 pr-4 font-[450] text-strong">{cell}</th>
+              <th key={cell} scope="col" className="body-sm-emphasis border-b border-border py-2 pr-4 text-strong">{cell}</th>
             ))}
           </tr>
         </thead>
@@ -63,7 +63,7 @@ export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
           {rows.map((row, index) => (
             <tr key={index}>
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="border-b border-border py-2 pr-4 align-middle text-neutral-600">{cell}</td>
+                <td key={cellIndex} className="border-b border-border py-2 pr-4 align-middle text-secondary">{cell}</td>
               ))}
             </tr>
           ))}
@@ -87,7 +87,7 @@ export function MesurerCta({ children }: { children: ReactNode }) {
       />
       <div className="relative flex max-w-sm flex-col items-start gap-5">
         <div className="flex flex-col gap-1">
-          <h2 id="tool-cta-title" className="font-medium text-strong">Mesurer</h2>
+          <h2 id="tool-cta-title" className="type-h2 text-strong">Mesurer</h2>
           <p className="m-0 text-pretty text-muted">{children}</p>
         </div>
         <nav className="flex flex-wrap items-center gap-3" aria-label="Get Mesurer">
@@ -137,7 +137,7 @@ function FaqList({ faq }: { faq: Faq[] }) {
       {faq.map(({ question, answer }) => (
         <details key={question} className="group border-b border-border">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-strong outline-none focus-visible:underline [&::-webkit-details-marker]:hidden">
-            <h3 className="m-0 text-[15px] font-normal">{question}</h3>
+            <h3 className="type-h3 m-0">{question}</h3>
             <span className="relative size-3 shrink-0 text-muted" aria-hidden="true">
               <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-current" />
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-current transition-transform duration-150 group-open:rotate-90" />
@@ -150,8 +150,8 @@ function FaqList({ faq }: { faq: Faq[] }) {
   );
 }
 
-const headingClassName = "text-balance text-[22px] font-medium leading-tight text-strong";
-const ledeClassName = "m-0 mt-2 max-w-xl text-pretty text-[22px] leading-tight text-muted";
+const headingClassName = "type-h1 text-balance text-strong";
+const ledeClassName = "body-md m-0 mt-2 max-w-xl text-pretty text-muted";
 
 export default function ToolPage({
   slug,
@@ -227,12 +227,12 @@ export default function ToolPage({
         {tool}
         {children}
         <section className="flex flex-col gap-3">
-          <h2 className="font-medium text-strong">Questions</h2>
+          <h2 className="type-h2 text-strong">Questions</h2>
           <FaqList faq={faq} />
         </section>
         <MesurerCta>{cta}</MesurerCta>
         <section className="flex flex-col gap-3">
-          <h2 className="font-medium text-strong">More tools</h2>
+          <h2 className="type-h2 text-strong">More tools</h2>
           <OtherTools current={slug} />
         </section>
       </div>

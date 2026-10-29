@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 export const inputClassName =
-  "h-10 w-full min-w-0 rounded-md border border-border bg-bg px-3 font-mono text-[14px] text-strong outline-none transition-colors placeholder:text-muted hover:border-neutral-300 focus:border-strong aria-invalid:border-red-500";
+  "body-sm h-10 w-full min-w-0 rounded-md border border-border bg-bg px-3 text-strong outline-none transition-colors placeholder:text-muted hover:border-border-strong focus:border-strong aria-invalid:border-gray-dark";
 
 export function CopyButton({
   value,
@@ -23,7 +23,7 @@ export function CopyButton({
     <button
       type="button"
       aria-label={`${label} ${value}`}
-      className={`h-7 shrink-0 rounded-md px-2.5 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong ${
+      className={`body-sm h-7 shrink-0 rounded-md px-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong ${
         inset
           ? "absolute top-1/2 right-1.5 -translate-y-1/2 bg-bg text-muted hover:text-strong"
           : "border border-border text-strong hover:bg-subtle"
@@ -48,7 +48,7 @@ export function CopyCode({ children }: { children: string }) {
   return (
     <button
       type="button"
-      className="code group relative cursor-pointer border-0 transition-colors hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
+      className="code group relative cursor-pointer border-0 transition-colors hover:bg-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong"
       onClick={() => {
         void navigator.clipboard?.writeText(children).then(() => setCopied(true));
       }}
@@ -56,7 +56,7 @@ export function CopyCode({ children }: { children: string }) {
       {children}
       <span
         role="status"
-        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-strong px-2 py-1 font-sans text-[12px] text-bg opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+        className="body-sm pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-strong px-2 py-1 text-bg opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
       >
         {copied ? "Copied" : "Click to copy"}
       </span>
@@ -68,8 +68,8 @@ export function CopyCode({ children }: { children: string }) {
 export function Output({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-4 border-t border-border py-3">
-      <span className="w-14 shrink-0 text-[13px] text-muted">{label}</span>
-      <output className="min-w-0 flex-1 truncate font-mono text-[14px] text-strong">{value}</output>
+      <span className="body-sm w-14 shrink-0 text-muted">{label}</span>
+      <output className="body-sm min-w-0 flex-1 truncate text-strong">{value}</output>
       <CopyButton value={value} />
     </div>
   );
@@ -82,7 +82,7 @@ export function Field({
 }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-      <span className="text-[13px] text-muted">{label}</span>
+      <span className="body-sm text-muted">{label}</span>
       <input {...props} className={`${inputClassName} ${className}`} />
     </label>
   );

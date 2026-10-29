@@ -97,7 +97,7 @@ export default function Changelog() {
       {changelogBlocks.map((block, index) => {
         if (block.type === "h2") {
           return (
-            <h2 key={index} className="font-medium text-strong">
+            <h2 key={index} className="type-h2 text-strong">
               {renderInlineMarkdown(block.text)}
             </h2>
           );
@@ -105,7 +105,7 @@ export default function Changelog() {
 
         if (block.type === "h3") {
           return (
-            <h3 key={index} className="font-[450] text-strong">
+            <h3 key={index} className="type-h3 text-strong">
               {renderInlineMarkdown(block.text)}
             </h3>
           );

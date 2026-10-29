@@ -33,7 +33,7 @@ function CodeField({ label, value, onCommit }: { label: string; value: string; o
   const id = useId();
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[13px] text-muted">{label}</label>
+      <label htmlFor={id} className="body-sm text-muted">{label}</label>
       {/* The button to copy the code is inside the field, at its end. */}
       <div className="relative">
         <input
@@ -144,7 +144,7 @@ function Picker() {
           onKeyDown={nudge}
         >
           <span
-            className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0_/_30%),0_1px_3px_rgb(0_0_0_/_30%)]"
+            className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_#454545,0_1px_3px_#454545]"
             style={{ left: `${hsv.s}%`, top: `${100 - hsv.v}%`, backgroundColor: hex }}
           />
         </div>
@@ -160,7 +160,7 @@ function Picker() {
         {canSample ? (
           <button
             type="button"
-            className="h-9 w-fit rounded-full border border-border px-3.5 text-[14px] text-strong transition-colors hover:bg-subtle"
+            className="body-sm h-9 w-fit rounded-full border border-border px-3.5 text-strong transition-colors hover:bg-subtle"
             onClick={() => {
               const Sampler = (window as EyeDropperWindow).EyeDropper;
               if (!Sampler) return;
@@ -214,7 +214,7 @@ function Picker() {
       </div>
 
       <div className="flex flex-col gap-2 sm:col-span-2">
-        <div className="flex overflow-hidden rounded-lg border border-black/10" role="group" aria-label="Shades">
+        <div className="flex overflow-hidden rounded-lg border border-border-strong" role="group" aria-label="Shades">
           {shades.map((shade) => (
             <button
               key={shade}
@@ -234,9 +234,9 @@ function Picker() {
           { name: "White text", text: "#FFFFFF", ratio: onWhite },
           { name: "Black text", text: "#000000", ratio: onBlack },
         ].map(({ name, text, ratio }) => (
-          <div key={name} className="flex items-center justify-between gap-3 rounded-lg border border-black/10 px-3 py-2" style={{ backgroundColor: hex, color: text }}>
+          <div key={name} className="flex items-center justify-between gap-3 rounded-lg border border-border-strong px-3 py-2" style={{ backgroundColor: hex, color: text }}>
             <span>{name}</span>
-            <span className="font-mono text-[13px]">
+            <span className="body-sm">
               {ratio.toFixed(2)}:1 · {grade(ratio)}
             </span>
           </div>

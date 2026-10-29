@@ -16,7 +16,7 @@ export default function NotFoundPage() {
         </a>
         <section className="flex flex-1 flex-col items-center justify-center gap-12">
           {/* The digits drawn as outlines, dashed the way Mesurer outlines a selected element. */}
-          <h1 id="not-found-title" aria-label="Page not found" className="w-full max-w-[560px] select-none">
+          <h1 id="not-found-title" aria-label="Page not found" className="type-h1 w-full max-w-[560px] select-none">
             <svg aria-hidden="true" viewBox="0 0 640 252" className="block h-auto w-full overflow-visible">
               <defs>
                 <text id={`${id}-digits`} x="320" y="242" textAnchor="middle" fontSize="330" fontWeight="500">
@@ -29,11 +29,11 @@ export default function NotFoundPage() {
                   <use href={`#${id}-digits`} fill="black" />
                 </mask>
               </defs>
-              <use href={`#${id}-digits`} fill="#0d99ff" fillOpacity="0.1" />
+              <use href={`#${id}-digits`} fill="#1F78FF" fillOpacity="0.1" />
               <use
                 href={`#${id}-digits`}
                 fill="none"
-                stroke="#0d99ff"
+                stroke="#1F78FF"
                 strokeWidth="3"
                 strokeDasharray="6 5"
                 vectorEffect="non-scaling-stroke"

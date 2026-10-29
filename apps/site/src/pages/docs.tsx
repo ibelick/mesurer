@@ -45,7 +45,7 @@ function GettingStarted() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <img src="/chrome.svg" alt="" draggable={false} className="size-5" />
-          <h2 className="font-[450] text-strong">Chrome extension</h2>
+          <h2 className="type-h2 text-strong">Chrome extension</h2>
         </div>
         <p className="text-pretty text-muted">Inspect and capture any interface directly in your browser.</p>
         <a
@@ -60,7 +60,7 @@ function GettingStarted() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <img src="/npm.svg" alt="" draggable={false} className="size-5" />
-          <h2 className="font-[450] text-strong">npm package</h2>
+          <h2 className="type-h2 text-strong">npm package</h2>
         </div>
         <p className="text-pretty text-muted">Add Mesurer to your development environment.</p>
         <InstallCommand>npm install mesurer</InstallCommand>
@@ -105,7 +105,7 @@ function DocsLayout({
             </div>
           </aside>
           <article className="min-w-0 max-w-2xl flex-1" aria-labelledby="doc-title">
-            <h1 id="doc-title" className="font-[450] text-strong">
+            <h1 id="doc-title" className="type-h1 text-strong">
               {title}
             </h1>
             <div className="mt-8">{children}</div>

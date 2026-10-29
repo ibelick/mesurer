@@ -119,7 +119,7 @@ const drawn = async (file: File, kind: Kind, option: number, to: Output) => {
     if (!context) throw new Error("The image could not be drawn.");
     // A JPG has no see-through parts: what would be is white.
     if (to === "jpg") {
-      context.fillStyle = "#fff";
+      context.fillStyle = "#FFFFFF";
       context.fillRect(0, 0, width, height);
     }
     context.drawImage(image, 0, 0);
@@ -197,7 +197,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
     <Panel className="flex flex-col gap-5">
       <label
         className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-10 text-center transition-colors has-[:focus-visible]:border-strong ${
-          over ? "border-strong bg-subtle" : "border-neutral-300 hover:bg-subtle"
+          over ? "border-strong bg-subtle" : "border-border-strong hover:bg-subtle"
         }`}
         onDragOver={(event: DragEvent) => {
           event.preventDefault();
@@ -211,7 +211,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
         }}
       >
         <span className="text-strong">Drop {noun} files here, or click to choose</span>
-        <span className="text-[13px] text-muted">Converted in your browser. Nothing is uploaded.</span>
+        <span className="body-sm text-muted">Converted in your browser. Nothing is uploaded.</span>
         <input
           type="file"
           accept={accept}
@@ -225,21 +225,21 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
       </label>
 
       {skipped > 0 ? (
-        <p className="m-0 text-[13px] text-red-600" role="status">
+        <p className="body-sm m-0 text-gray-dark" role="status">
           {skipped === 1 ? "1 file was" : `${skipped} files were`} left out: not {noun}.
         </p>
       ) : null}
 
       {option ? (
         <div className="flex items-center gap-3">
-          <span className="text-[13px] text-muted">{option.label}</span>
+          <span className="body-sm text-muted">{option.label}</span>
           <div className="flex gap-1.5" role="group" aria-label={option.label}>
             {option.values.map((value) => (
               <button
                 key={value}
                 type="button"
                 aria-pressed={scale === value}
-                className={`h-8 rounded-full border px-3 font-mono text-[13px] transition-colors ${
+                className={`body-sm h-8 rounded-full border px-3 transition-colors ${
                   scale === value ? "border-strong bg-strong text-bg" : "border-border text-strong hover:bg-subtle"
                 }`}
                 onClick={() => {
@@ -262,9 +262,9 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
           {items.map((item) => (
             <li key={item.id} className="flex items-center gap-3 border-t border-border py-3">
               <span
-                className="size-10 shrink-0 rounded-md border border-black/10 bg-contain bg-center bg-no-repeat"
+                className="size-10 shrink-0 rounded-md border border-border-strong bg-contain bg-center bg-no-repeat"
                 style={{
-                  backgroundImage: `${item.result ? `url(${item.result.url}), ` : ""}repeating-conic-gradient(#e5e5e5 0 25%, #fff 0 50%)`,
+                  backgroundImage: `${item.result ? `url(${item.result.url}), ` : ""}repeating-conic-gradient(#E5E5E5 0 25%, #FFFFFF 0 50%)`,
                   backgroundSize: "contain, 10px 10px",
                   backgroundRepeat: "no-repeat, repeat",
                 }}
@@ -272,7 +272,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-strong">{outName(item.file.name)}</span>
-                <span className="text-[13px] text-muted" role="status">
+                <span className="body-sm text-muted" role="status">
                   {item.result
                     ? `${item.result.width} × ${item.result.height} · ${bytes(item.result.size)}`
                     : item.result === false
@@ -284,7 +284,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
                 <a
                   href={item.result.url}
                   download={outName(item.file.name)}
-                  className="inline-flex h-7 shrink-0 items-center rounded-md border border-border px-2.5 text-[13px] text-strong transition-colors hover:bg-subtle"
+                  className="body-sm inline-flex h-7 shrink-0 items-center rounded-md border border-border px-2.5 text-strong transition-colors hover:bg-subtle"
                 >
                   Download
                 </a>
@@ -292,7 +292,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
               <button
                 type="button"
                 aria-label={`Remove ${item.file.name}`}
-                className="h-7 shrink-0 rounded-md px-1.5 text-[13px] text-muted transition-colors hover:text-strong"
+                className="body-sm h-7 shrink-0 rounded-md px-1.5 text-muted transition-colors hover:text-strong"
                 onClick={() => setItems((previous) => previous.filter((entry) => entry.id !== item.id))}
               >
                 Remove
@@ -305,7 +305,7 @@ function Converter({ kind, to = "png" }: { kind: Kind; to?: Output }) {
       {done.length > 1 ? (
         <button
           type="button"
-          className="h-9 w-fit rounded-full bg-strong px-4 text-[14px] font-medium text-bg transition-opacity hover:opacity-90"
+          className="body-sm-emphasis h-9 w-fit rounded-full bg-strong px-4 text-bg transition-opacity hover:opacity-90"
           onClick={() => {
             for (const item of done) {
               if (!item.result) continue;

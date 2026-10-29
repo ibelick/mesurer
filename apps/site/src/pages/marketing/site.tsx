@@ -59,10 +59,10 @@ export function Header({
       <div className="flex flex-wrap items-center gap-3">
         {linkToHome ? (
           <a href="/" className="text-strong">
-            <span className="font-medium leading-tight">Mesurer</span>
+            <span className="body-md-emphasis">Mesurer</span>
           </a>
         ) : (
-          <span className="font-medium leading-tight text-strong">Mesurer</span>
+          <span className="body-md-emphasis text-strong">Mesurer</span>
         )}
         <a
           href="https://www.npmjs.com/package/mesurer"
@@ -92,10 +92,10 @@ export function Header({
       </div>
       {showDescription && (
         <div className="flex max-w-2xl flex-col gap-2">
-          <h2 className="leading-tight text-strong">
+          <h2 className="type-h2 text-strong">
             Inspect, annotate, and give feedback on any live interface
           </h2>
-          <p className="leading-relaxed text-muted">
+          <p className="body-md text-muted">
             Mesurer runs directly where you build. Share feedback with your
             agents and your team.
           </p>
@@ -203,13 +203,13 @@ export function HomeContent() {
   return (
     <>
       <div id="features" className="flex flex-col gap-4">
-        <p className="font-[450] text-strong">Features</p>
+        <p className="body-md-emphasis text-strong">Features</p>
         <div className="flex flex-col gap-2">
           {features.map((feature) => (
             <div key={feature.title} className="flex items-center gap-1">
               <span className="text-medium text-strong">{feature.icon}</span>
               <p>
-                <span className="font-[450] text-strong">{feature.title}</span>{" "}
+                <span className="body-md-emphasis text-strong">{feature.title}</span>{" "}
                 <span className="text-muted">- {feature.description}</span>
               </p>
             </div>
@@ -218,40 +218,40 @@ export function HomeContent() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <p className="font-[450] text-strong">How to use</p>
+        <p className="body-md-emphasis text-strong">How to use</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+          <div className="rounded-[var(--radius)] border border-border bg-gradient-to-b from-bg to-subtle p-6">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
               <img src="/chrome.svg" alt="" draggable={false} className="h-6 w-6" />
             </div>
-            <p className="mt-3 text-[15px] font-medium text-strong">
+            <p className="body-md-emphasis mt-3 text-strong">
               Chrome extension
             </p>
-            <p className="mt-1 text-[15px] font-normal text-muted">
+            <p className="body-md mt-1 text-muted">
               Inspect and capture any interface directly in your browser.
             </p>
             <a
               href="https://chromewebstore.google.com/detail/mesurer/icmjafcffhpcnadkmmklegommbcekcac"
               target="_blank"
               rel="noreferrer"
-              className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
+              className="body-md-emphasis mt-3 inline-flex text-muted transition-colors hover:text-strong"
             >
               Add to Chrome
             </a>
           </div>
-          <div className="rounded-[var(--radius)] border border-[#EDEDED] bg-gradient-to-b from-[#FFF] to-[#FCFCFC] p-6">
+          <div className="rounded-[var(--radius)] border border-border bg-gradient-to-b from-bg to-subtle p-6">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] text-strong">
               <img src="/npm.svg" alt="" draggable={false} className="h-5 w-5" />
             </div>
-            <p className="mt-3 text-[15px] font-medium text-strong">
+            <p className="body-md-emphasis mt-3 text-strong">
               npm package
             </p>
-            <p className="mt-1 text-[15px] font-normal text-muted">
+            <p className="body-md mt-1 text-muted">
               Add Mesurer directly to your development environment.
             </p>
             <a
               href="#installation"
-              className="mt-3 inline-flex text-[15px] font-medium text-muted transition-colors hover:text-strong"
+              className="body-md-emphasis mt-3 inline-flex text-muted transition-colors hover:text-strong"
             >
               Install package
             </a>
@@ -260,7 +260,7 @@ export function HomeContent() {
       </div>
 
       <div id="installation" className="flex flex-col gap-4">
-        <p className="font-[450] text-strong">Installation</p>
+        <p className="body-md-emphasis text-strong">Installation</p>
         <InstallCommand>npm install mesurer</InstallCommand>
         <p>Then render the component alongside your application:</p>
         <CodeBlock as="pre">{`import { Mesurer } from "mesurer";
@@ -276,12 +276,12 @@ function App() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <p className="font-[450] text-strong">Props</p>
+        <p className="body-md-emphasis text-strong">Props</p>
         <PropList />
       </div>
 
       <div id="commands" className="flex flex-col gap-4">
-        <p className="font-[450] text-strong">Commands</p>
+        <p className="body-md-emphasis text-strong">Commands</p>
         <ShortcutList />
       </div>
     </>

@@ -8,23 +8,21 @@ const sameDocumentUrl = (url: URL) =>
   url.origin === window.location.origin &&
   !FULL_PAGE_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
 
-const scrollInstant: ScrollIntoViewOptions = { behavior: "instant", block: "start" };
-
-const jumpToHash = (hash: string) => {
+const jumpToHash = (hash: string, behavior: ScrollBehavior) => {
   if (hash && hash !== "#") {
     const target = document.getElementById(decodeURIComponent(hash.slice(1)));
     if (target) {
-      target.scrollIntoView(scrollInstant);
+      target.scrollIntoView({ behavior, block: "start" });
       return;
     }
   }
-  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  window.scrollTo({ top: 0, left: 0, behavior });
 };
 
-const scrollAfterNavigate = (hash: string) => {
+const scrollAfterNavigate = (hash: string, behavior: ScrollBehavior) => {
   window.requestAnimationFrame(() => {
-    jumpToHash(hash);
-    window.requestAnimationFrame(() => jumpToHash(hash));
+    jumpToHash(hash, behavior);
+    window.requestAnimationFrame(() => jumpToHash(hash, behavior));
   });
 };
 
@@ -32,11 +30,11 @@ export function useClientPath() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
 
   useEffect(() => {
-    const sync = (scroll: boolean) => {
+    const sync = (scroll: boolean, behavior: ScrollBehavior = "instant") => {
       startTransition(() => {
         setPath(normalizePath(window.location.pathname));
       });
-      if (scroll) scrollAfterNavigate(window.location.hash);
+      if (scroll) scrollAfterNavigate(window.location.hash, behavior);
     };
 
     const onPopState = () => sync(true);
@@ -55,7 +53,7 @@ export function useClientPath() {
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       event.preventDefault();
       if (next !== current) window.history.pushState({}, "", next);
-      sync(true);
+      sync(true, anchor.dataset.scrollBehavior === "smooth" ? "smooth" : "instant");
     };
 
     window.addEventListener("popstate", onPopState);

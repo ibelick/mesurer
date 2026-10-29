@@ -49,22 +49,21 @@ export default function ProductCarousel() {
 
   return (
     <section
-      className="relative left-1/2 mt-12 w-screen -translate-x-1/2"
+      className="relative left-1/2 mt-20 w-screen -translate-x-1/2"
       aria-label="Product screenshots"
       aria-roledescription="carousel"
     >
-      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-clip [touch-action:pan-x_pan-y] overscroll-x-none scroll-smooth pb-1">
-        <div aria-hidden="true" className="w-[calc(6%-1rem)] shrink-0 sm:w-[calc(12%-1rem)] lg:w-[calc(18%-1rem)]" />
+      <div ref={carouselRef} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex snap-x snap-mandatory gap-10 overflow-x-auto overflow-y-clip [touch-action:pan-x_pan-y] overscroll-x-none scroll-smooth pb-1">
         {slides.map((slide, index) => (
           <figure
             key={slide.title}
             ref={(element) => {
               slideRefs.current[index] = element;
             }}
-            className="w-[88%] shrink-0 snap-center sm:w-[76%] lg:w-[64%]"
+            className={`w-[1000px] shrink-0 snap-center ${index === 0 ? "ml-[max(12px,calc((100vw-1280px)/2))]" : ""}`}
             aria-label={`${slide.title} screenshot`}
           >
-            <div className="aspect-[16/10] overflow-hidden rounded-[12px] bg-subtle">
+            <div className="relative h-[625px] w-[1000px] overflow-hidden rounded-md bg-subtle">
               <img
                 draggable={false}
                 src={slide.image}
@@ -76,17 +75,17 @@ export default function ProductCarousel() {
                 decoding="async"
                 fetchPriority={index === 0 ? "high" : undefined}
               />
+              <figcaption className="body-sm absolute inset-x-0 bottom-10 z-10 px-6 text-center">
+                <span className="text-strong">{slide.title}.</span>{" "}
+                <span className="text-muted">{slide.description}</span>
+              </figcaption>
             </div>
-            <figcaption className="mt-3 text-center text-sm">
-              <span className="text-strong">{slide.title}.</span>{" "}
-              <span className="text-muted">{slide.description}</span>
-            </figcaption>
           </figure>
         ))}
-        <div aria-hidden="true" className="w-[calc(6%-1rem)] shrink-0 sm:w-[calc(12%-1rem)] lg:w-[calc(18%-1rem)]" />
+        <div aria-hidden="true" className="w-[max(12px,calc((100vw-1280px)/2))] shrink-0" />
       </div>
 
-      <div className="mx-auto mt-6 flex w-full max-w-2xl justify-end gap-2 px-5">
+      <div className="mx-auto mt-6 flex w-full max-w-7xl justify-end gap-2">
         <button
           type="button"
           aria-label="Previous product video"
