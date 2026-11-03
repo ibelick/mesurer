@@ -1,15 +1,16 @@
 import type { CapturedReviewImage } from "./types"
+import { liveImageDocument, type ImageLayer } from "./live-images"
 
 // What stands in for an image that could not be drawn. `id` makes each one distinct, so the
 // image it stands for can be found again in the capture.
 const placeholderSvg = (id: number | string = "") =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" preserveAspectRatio="none" data-image="${id}">` +
-  `<rect width="40" height="40" fill="#94a3b8" fill-opacity=".07"/>` +
-  `<path d="M0 0L40 40M40 0L0 40" stroke="#64748b" stroke-opacity=".14" stroke-width=".5"/></svg>`
+  `<rect width="40" height="40" fill="#94a3b8" fill-opacity=".07"/></svg>`
 
 const FALLBACK_IMAGE_URL = `data:image/svg+xml,${encodeURIComponent(placeholderSvg())}`
 const CSS_IMAGE_PROPERTIES = ["background-image", "mask-image", "border-image-source", "list-style-image", "content"]
 const CSS_URL = /url\(\s*(["']?)(.*?)\1\s*\)/g
+
 
 // A page may show images its own scripts cannot read: another origin's, served without CORS
 // headers. Drawing them takes a host that can fetch them some other way.
@@ -18,6 +19,8 @@ const CSS_URL = /url\(\s*(["']?)(.*?)\1\s*\)/g
 export type DomCaptureOptions = {
   /** Reads one image CORS blocks, as a data URL. Nothing, or a rejection, keeps its address. */
   loadImage?: (url: string) => Promise<string | undefined>
+  /** Omits private fields from the captured clone as well as hiding them on the live page. */
+  maskPrivate?: boolean
 }
 
 const dataUrlResponse = (dataUrl: string) => {
@@ -32,11 +35,31 @@ const dataUrlResponse = (dataUrl: string) => {
 // included.
 const pageImageUrls = (root: Element, ownerWindow: Window) => {
   const urls = new Set<string>()
-  const add = (value: string | null | undefined) => {
+  const layers: ImageLayer[] = []
+  const add = (value: string | null | undefined, element?: Element, fit: ImageLayer["fit"] = "none") => {
     if (!value) return
     try {
       const url = new URL(value, ownerWindow.location.href)
-      if (url.protocol === "http:" || url.protocol === "https:") urls.add(url.href)
+      if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) return
+      urls.add(url.href)
+      if (!element) return
+      const rect = element.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+      let left = rect.left, right = rect.right, top = rect.top, bottom = rect.bottom
+      let parent = element.parentElement ?? (element.getRootNode() as ShadowRoot).host ?? null
+      while (parent && parent !== ownerWindow.document.documentElement && parent !== ownerWindow.document.body) {
+        const style = ownerWindow.getComputedStyle(parent)
+        const bounds = parent.getBoundingClientRect()
+        if (style.overflowX !== "visible") { left = Math.max(left, bounds.left); right = Math.min(right, bounds.right) }
+        if (style.overflowY !== "visible") { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom) }
+        parent = parent.parentElement ?? (parent.getRootNode() as ShadowRoot).host ?? null
+      }
+      if (right <= left || bottom <= top) return
+      const clipped = left > rect.left || right < rect.right || top > rect.top || bottom < rect.bottom
+      layers.push({
+        url: url.href, x: rect.left + ownerWindow.scrollX, y: rect.top + ownerWindow.scrollY, width: rect.width, height: rect.height, fit,
+        ...(clipped ? { clip: { x: left + ownerWindow.scrollX, y: top + ownerWindow.scrollY, width: right - left, height: bottom - top } } : {}),
+      })
     } catch {
       /* Not an address. */
     }
@@ -46,14 +69,17 @@ const pageImageUrls = (root: Element, ownerWindow: Window) => {
     if (pseudo && /^(?:none|normal)$/.test(style.content)) return
     for (const property of CSS_IMAGE_PROPERTIES) {
       const value = style.getPropertyValue(property)
-      if (value.includes("url(")) for (const match of value.matchAll(CSS_URL)) add(match[2])
+      if (value.includes("url(")) for (const match of value.matchAll(CSS_URL)) add(match[2], property === "background-image" || property === "content" ? element : undefined, "slice")
     }
   }
   const visit = (element: Element) => {
+    if (element.matches("[data-mesurer-private], input, textarea, select, iframe, frame, [contenteditable]:not([contenteditable='false'])")) return
+    const style = ownerWindow.getComputedStyle(element)
+    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return
     const tag = element.localName
-    if (tag === "img") add((element as HTMLImageElement).currentSrc || (element as HTMLImageElement).src)
-    if (tag === "video") add(element.getAttribute("poster"))
-    if (tag === "image") add(element.getAttribute("href") ?? element.getAttribute("xlink:href"))
+    if (tag === "img") add((element as HTMLImageElement).currentSrc || (element as HTMLImageElement).src, element, style.objectFit === "cover" ? "slice" : style.objectFit === "contain" || style.objectFit === "scale-down" ? "meet" : "none")
+    if (tag === "video") add(element.getAttribute("poster"), element, "meet")
+    if (tag === "image") add(element.getAttribute("href") ?? element.getAttribute("xlink:href"), element, "meet")
     for (const candidate of element.getAttribute("srcset")?.split(",") ?? []) add(candidate.trim().split(/\s+/)[0])
     addStyled(element)
     addStyled(element, "::before")
@@ -62,7 +88,7 @@ const pageImageUrls = (root: Element, ownerWindow: Window) => {
     for (const child of element.children) visit(child)
   }
   visit(root)
-  return urls
+  return { urls, layers }
 }
 
 // For the length of a capture, a fetch for one of the page's images that fails (CORS, for an
@@ -99,24 +125,6 @@ const routeBlockedFetches = (images: Set<string>, { loadImage }: DomCaptureOptio
   }
 }
 
-// The capture as a document of its own, each placeholder given back the address of the image it
-// stands for. Opened in a frame, it loads those images itself: a page may show an image it is
-// not allowed to read.
-const liveDocument = (rawUrl: string, kept: Map<string, string>) => {
-  let svg = decodeURIComponent(rawUrl.slice(rawUrl.indexOf(",") + 1))
-  let restored = 0
-  for (const [placeholder, url] of kept) {
-    const parts = svg.split(placeholder)
-    if (parts.length === 1) continue
-    restored++
-    const address = url.replace(/"/g, "%22").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    svg = parts.join(address)
-  }
-  if (!restored) return undefined
-  // It fills the frame it is opened in, whatever that frame's size.
-  return svg.replace(/^<svg\b([^>]*?)\swidth="[^"]*"\sheight="[^"]*"/, '<svg$1 width="100%" height="100%"')
-}
-
 
 // A whole page at a screen's full density is a very large picture: slow to draw and to encode,
 // and heavy to keep and to send. So a capture is drawn at twice its size at most, and at less
@@ -131,7 +139,7 @@ const QUALITY = 0.9
 export const captureDocumentWithSnapdom = async (
   ownerDocument: Document,
   ownerWindow: Window,
-  { loadImage }: DomCaptureOptions = {},
+  { loadImage, maskPrivate = false }: DomCaptureOptions = {},
 ): Promise<CapturedReviewImage> => {
   const { snapdom } = await import("@zumer/snapdom")
   const root = ownerDocument.documentElement
@@ -139,12 +147,17 @@ export const captureDocumentWithSnapdom = async (
   const height = Math.max(root.scrollHeight, ownerDocument.body?.scrollHeight ?? 0, ownerWindow.innerHeight)
   const density = Math.min(ownerWindow.devicePixelRatio || 1, MAX_DENSITY, Math.sqrt(MAX_PIXELS / (width * height)))
   const format = Math.max(width, height) * density <= MAX_WEBP_SIDE ? "webp" : "jpeg"
-  const blocked = routeBlockedFetches(pageImageUrls(root, ownerWindow), { loadImage })
+  const images = pageImageUrls(root, ownerWindow)
+  const blocked = routeBlockedFetches(images.urls, { loadImage })
   const result = await Promise.resolve().then(() => snapdom(root, {
     dpr: density,
     clip: { x: 0, y: 0, width, height },
     exclude: "[data-mesurer-comments-layer], .mesurer-color-picker, .mesurer-screenshot-preview, [aria-label='Screenshot selection']",
     excludeMode: "remove",
+    ...(maskPrivate ? {
+      filter: (element: Element) => !element.matches("input, textarea, select, [contenteditable]:not([contenteditable='false']), iframe, frame, [data-mesurer-private]"),
+      filterMode: "hide" as const,
+    } : {}),
     format,
     quality: QUALITY,
     backgroundColor: "#ffffff",
@@ -166,7 +179,7 @@ export const captureDocumentWithSnapdom = async (
   }
   // A browser that cannot write the format asked for gives a PNG, which is taken as it comes.
   const blob = await result.toBlob({ format, quality: QUALITY })
-  const live = blocked.kept.size ? liveDocument(String(await result.toRaw()), blocked.kept) : undefined
+  const live = blocked.kept.size ? liveImageDocument(images.layers, blocked.kept.values(), width, height) : undefined
   const bitmap = await createImageBitmap(blob)
   const size = { width: bitmap.width, height: bitmap.height }
   bitmap.close()

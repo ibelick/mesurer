@@ -7,7 +7,7 @@ Object.assign(window, { __testCaptureReviewSnapshot: captureReviewSnapshot })
 const includeComment = new URL(window.location.href).searchParams.has("comment")
 
 createRoot(document.getElementById("root")!).render(
-  <Mesurer initialState={includeComment ? {
+  <Mesurer features={new URL(window.location.href).searchParams.has("default") ? undefined : { review: true }} initialState={includeComment ? {
     comments: [{
       id: "platform-auth-comment",
       target: {

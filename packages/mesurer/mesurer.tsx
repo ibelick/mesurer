@@ -110,8 +110,9 @@ export function MesurerUnstyled({
       showReviewLoading={showReviewLoading}
       extensionRecording={extensionRecording}
       extensionRecordingPlayer={extensionRecordingPlayer}
-      features={resolveMesurerFeatures({ review: platform !== false, ...features })}
+      features={resolveMesurerFeatures(features)}
       platformEnvironment={platform === false ? null : platform?.environment ?? "production"}
+      enableReviewOnConnect={features?.review !== false && !globalThis.__MESURER_NO_REVIEW__}
       initialState={{ ...restoredReviewState, ...initialState }}
       portalTarget={resolvedPortalTarget ?? document.body}
     />

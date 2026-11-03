@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { ReviewState } from "./model"
 import { createPlatformReviewPublisher } from "./platform"
+import { liveImageDocument } from "./capture/live-images"
 
 const state: ReviewState = {
   schemaVersion: 1,
@@ -64,7 +65,7 @@ describe("createPlatformReviewPublisher", () => {
     await expect(publish(publication)).rejects.toThrow("invalid review link")
   })
 
-  it("omits URL secrets, DOM fingerprints, live SVG and ambient credentials", async () => {
+  it("omits URL secrets, DOM fingerprints, arbitrary live markup and ambient credentials", async () => {
     const sensitiveUrl = "https://example.com/pricing?token=secret#private"
     const sensitive: ReviewState = {
       ...state,
@@ -85,7 +86,7 @@ describe("createPlatformReviewPublisher", () => {
         return new Response(JSON.stringify({ url: "https://mesurer.dev/s/review" }), { status: 201 })
       },
     })
-    await publish({ ...publication, state: sensitive, live: "<svg>secret</svg>" })
+    await publish({ ...publication, state: sensitive })
     const form = request?.body as FormData
     const body = JSON.parse(String(form.get("review")))
     expect(JSON.stringify(body)).not.toContain("secret")
@@ -93,6 +94,11 @@ describe("createPlatformReviewPublisher", () => {
     expect(body.state.page.id).toBe(body.pageUrl)
     expect(body.state.versions[0].domContext.fingerprints).toEqual({})
     expect(form.has("live")).toBe(false)
+    await expect(publish({ ...publication, state: sensitive, live: "<svg>secret</svg>" })).rejects.toThrow("Could not prepare the page's images")
     expect(request).toMatchObject({ credentials: "omit", redirect: "error" })
+    const image = liveImageDocument([{ url: "https://images.example/photo?a=1&b=2", x: 10, y: 20, width: 30, height: 40, fit: "meet" }], ["https://images.example/photo?a=1&b=2"], 100, 200)
+    expect(image).toContain('href="https://images.example/photo"')
+    expect(image).not.toContain("?a=1")
+    expect(image).not.toContain("foreignObject")
   })
 })

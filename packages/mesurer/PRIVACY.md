@@ -67,7 +67,7 @@ Screenshots and recordings are processed locally and are copied to the local cli
 
 Saving a hosted review captures the page, potentially including content outside the visible viewport, and uploads that picture along with its title, page address and selected comments and annotations. Check the page for sensitive information before confirming. Query strings and fragments are removed from the page address; the path and page title may still contain sensitive information. Anyone with the link can view the review. The npm toolbar runs in the host page, so scripts on that page can access its data and interfere with its operation.
 
-For hosted reviews, form fields, editable areas, frames and elements marked `data-mesurer-private` are hidden during capture. This is not complete redaction: sensitive text, images, canvases, closed shadow trees and other content may still be captured. Review the page before sharing.
+For hosted reviews, form fields, editable areas, frames and elements marked `data-mesurer-private` are hidden in the screenshot. When a picture cannot include some images, the review also uploads their addresses and positions to display them; it does not upload the page's HTML. Query strings and fragments are removed from these image addresses, so images that require them may not appear. This is not complete redaction: screenshots and image paths may still contain sensitive information, and image hosts may receive requests from people viewing the review. Review the page before sharing.
 
 Removing the toolbar connection from the browser removes its locally saved grant identifier; it does not revoke the platform grant. Manage access and revoke shared links on the platform. Revocation cannot erase content already downloaded or cached by someone who viewed it.
 
@@ -76,6 +76,8 @@ Video recordings are stored temporarily in the extension's local IndexedDB stora
 ## Data sharing and retention
 
 Mesurer shares hosted project and review content only as needed to provide a feature you request, such as a review link or project invitation. Anyone with access to a shared review link may be able to view the content included in that review.
+
+New hosted review links expire 30 days after creation. Older links keep their existing expiration settings. You can also revoke or delete a link sooner.
 
 Hosted data is retained while needed to provide the service, maintain account records, resolve disputes, and meet legal obligations. You may contact us to ask about your data or request deletion, subject to applicable legal and operational requirements.
 

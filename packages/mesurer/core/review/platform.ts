@@ -1,4 +1,5 @@
 import type { ReviewState } from "./model"
+import { sanitizeLiveImageDocument } from "./capture/live-images"
 
 // A review as it is handed over once saved: its state, placed on the picture of the page, that
 // picture, and the page that shows both on its own.
@@ -56,12 +57,12 @@ const safeState = (state: ReviewState): ReviewState => {
 }
 
 /**
- * Keeps saved reviews on the Mesurer platform. A review goes up as a form of two parts, its
- * state as JSON and the picture as a file, and comes back as the address it is seen at.
+ * Keeps saved reviews on the Mesurer platform: its state, picture, and optional live image
+ * layer go up together, and it comes back as the address it is seen at.
  */
 export const createPlatformReviewPublisher =
   ({ apiOrigin, getCapability, fetch: send = fetch, signal }: PlatformReviewPublisherOptions) =>
-  async ({ state, screenshot }: ReviewPublication) => {
+  async ({ state, screenshot, live }: ReviewPublication) => {
     state = safeState(state)
     const version = state.versions[state.versions.length - 1]
     if (!version) throw new Error("Review has no page version")
@@ -80,6 +81,9 @@ export const createPlatformReviewPublisher =
       }),
     )
     form.set("screenshot", screenshot, "screenshot")
+    const imageLayer = live ? sanitizeLiveImageDocument(live) : undefined
+    if (live && !imageLayer) throw new Error("Could not prepare the page's images for this review. Please try again.")
+    if (imageLayer) form.set("live", new Blob([imageLayer], { type: "image/svg+xml" }), "live.svg")
     const response = await send(`${apiOrigin.replace(/\/+$/, "")}/api/toolbar/share`, {
       method: "POST",
       headers: { Authorization: `Bearer ${await getCapability()}`, "Idempotency-Key": state.review.id },

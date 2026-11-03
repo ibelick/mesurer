@@ -60,6 +60,41 @@ const maskPrivateNodes = (ownerDocument: Document) => {
   }
 }
 
+// A full-page capture includes content that has never entered the viewport. Ask the browser to
+// load lazy images before measuring it, including images whose auto width is zero until decoded.
+const prepareLazyImages = (ownerDocument: Document, ownerWindow: Window) => {
+  const images: Array<{ node: HTMLImageElement; loading: string }> = []
+  const visit = (root: Document | ShadowRoot) => {
+    for (const node of root.querySelectorAll<HTMLImageElement>('img[loading="lazy" i]')) {
+      if (node.closest("[data-mesurer-private]")) continue
+      images.push({ node, loading: node.getAttribute("loading") ?? "lazy" })
+      node.setAttribute("loading", "eager")
+    }
+    for (const node of root.querySelectorAll("*")) {
+      if (node.shadowRoot && !node.closest("[data-mesurer-private]")) visit(node.shadowRoot)
+    }
+  }
+  visit(ownerDocument)
+  const ready = async () => {
+    if (!images.length) return
+    let timeout = 0
+    try {
+      await Promise.race([
+        Promise.all(images.map(({ node }) => node.decode().catch(() => undefined))),
+        new Promise<void>((resolve) => { timeout = ownerWindow.setTimeout(resolve, 8_000) }),
+      ])
+    } finally {
+      ownerWindow.clearTimeout(timeout)
+    }
+  }
+  const restore = () => {
+    for (const { node, loading } of images) {
+      if (node.getAttribute("loading") === "eager") node.setAttribute("loading", loading)
+    }
+  }
+  return { ready, restore }
+}
+
 // Waits for Mesurer's own layers, just hidden, to be painted away. The page is in the background
 // by now, behind the tab its review will open in, and a page there is given no frame: a short
 // wait stands in for one, so saving does not stop until the page is come back to.
@@ -87,7 +122,9 @@ export const captureReviewSnapshot = async ({
 }: ReviewSnapshotCaptureOptions): Promise<ReviewSnapshotCapture> => {
   const restore = hideNodesForCapture(getCaptureNodes(overlay))
   const restorePrivate = maskPrivate ? maskPrivateNodes(ownerDocument) : () => {}
+  const lazyImages = prepareLazyImages(ownerDocument, ownerWindow)
   try {
+    await lazyImages.ready()
     await waitForPaint(ownerWindow)
     const capture = captureVisibleTab ?? (() => captureVisibleTabPng(ownerDocument, ownerWindow))
     const domCapture = captureDom === false
@@ -95,7 +132,7 @@ export const captureReviewSnapshot = async ({
       : captureDom ?? (__MESURER_SNAPDOM_CAPTURE__
       ? async (document: Document, window: Window) => {
           const { captureDocumentWithSnapdom } = await import("./capture/snapdom")
-          return captureDocumentWithSnapdom(document, window)
+          return captureDocumentWithSnapdom(document, window, { maskPrivate })
         }
       : undefined)
     let captured: CapturedReviewImage | null = null
@@ -123,6 +160,7 @@ export const captureReviewSnapshot = async ({
       } : { origin: { x: ownerWindow.scrollX, y: ownerWindow.scrollY }, scale: 1 }),
     }
   } finally {
+    lazyImages.restore()
     restorePrivate()
     restore()
   }

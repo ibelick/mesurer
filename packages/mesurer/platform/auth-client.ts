@@ -3,7 +3,7 @@ import type { CommentThread } from "../core/types"
 import { getPlatformConfig } from "./config"
 import { createPkce, randomBase64Url } from "./pkce"
 import { createAuthorizationUrl, waitForAuthorization } from "./popup"
-import { isGrantStorageKey, readGrantId, removeGrantId, writeGrantId } from "./storage"
+import { isGrantStorageKey, readGrantId, readSavedConnection, removeGrantId, writeGrantId, writeSavedConnection } from "./storage"
 import { createTestReviewPayload } from "./review-payload"
 import { createPlatformReviewPublisher, type ReviewPublication } from "../core/review/platform"
 import { PlatformAuthError, type PlatformAuthState, type PlatformEnvironment } from "./types"
@@ -39,6 +39,8 @@ export class PlatformAuthClient {
   constructor(ownerWindow: Window, environment: PlatformEnvironment) {
     this.ownerWindow = ownerWindow
     this.environment = environment
+    const saved = readSavedConnection(ownerWindow, environment)
+    if (saved) this.state = { status: "connected", share: { status: "idle" }, restored: true, ...saved }
   }
 
   getState = () => this.state
@@ -127,6 +129,7 @@ export class PlatformAuthClient {
         user: connection.user,
         project: connection.project,
       }
+      writeSavedConnection(this.ownerWindow, this.environment, identity)
       this.setState({ status: "connected", share: { status: "idle" }, ...identity })
       return identity
     } catch (error) {

@@ -5,7 +5,7 @@ export type MesurerFeatures = {
   settings?: boolean
   responsive?: boolean
   /**
-   * Saving a review. Enabled by default when the platform is enabled.
+   * Saving a review. Disabled by default while the platform beta focuses on authentication.
    */
   review?: boolean
 }

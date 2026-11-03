@@ -75,7 +75,7 @@ const createViewerHtml = (encodedPayload: string) => `<!doctype html>
     main { padding: 24px; }
     .stage { position: relative; width: min(100%, 1440px); margin: 0 auto; overflow: hidden; background: white; box-shadow: 0 12px 40px rgba(24,24,27,.12); }
     .stage img { display: block; width: 100%; height: auto; }
-    .stage .live { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: white; pointer-events: none; }
+    .stage .live { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; pointer-events: none; }
     .annotations { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
     .layout-guides { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
     .layout-guide { position: absolute; display: grid; pointer-events: none; }

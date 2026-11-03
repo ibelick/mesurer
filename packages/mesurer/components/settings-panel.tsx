@@ -104,10 +104,10 @@ type SettingsPanelProps = {
   platform?: {
     state: PlatformAuthState
     connect: () => Promise<unknown>
-    createTestReviewLink: () => Promise<string | null>
-    canCreateTestReviewLink: boolean
-    hasSavedGrant: boolean
     disconnect: () => void
+    onSaveReview?: () => void | Promise<void>
+    reviewSaveStatus: "idle" | "saving" | "saved" | "error"
+    reviewSaveError: string | null
   }
   general: {
     persistOnReload: boolean
@@ -126,73 +126,48 @@ type SettingsPanelProps = {
     /** Absent where saving a review is not offered. */
     onSaveReview?: () => void | Promise<void>
     reviewSaveStatus: "idle" | "saving" | "saved" | "error"
+    reviewSaveError: string | null
   }
 }
 
-function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestReviewLink, hasSavedGrant, disconnect }: NonNullable<SettingsPanelProps["platform"]>) {
+function PlatformSettings({ state, connect, disconnect, onSaveReview, reviewSaveStatus, reviewSaveError }: NonNullable<SettingsPanelProps["platform"]>) {
   if (state.status === "connected") {
     return (
-      <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="connected">
-        <div className="msr:grid msr:gap-0.5 msr:text-[11px] msr:leading-4 msr:text-ink-700">
-          <strong className="msr:font-medium msr:text-ink-900">{state.user.name}</strong>
-          <span className="msr:break-all">{state.user.email}</span>
-          <span>Project: {state.project.name}</span>
+      <div className="msr:col-span-2 msr:grid msr:gap-1" data-mesurer-platform-status="connected">
+        <div className="msr:flex msr:min-w-0 msr:items-center msr:gap-2 msr:py-1">
+          <span aria-hidden="true" className="msr:flex msr:size-8 msr:shrink-0 msr:items-center msr:justify-center msr:rounded-full msr:bg-ink-100 msr:text-[12px] msr:font-medium msr:text-ink-700">
+            {state.user.name.trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="msr:grid msr:min-w-0 msr:gap-0.5 msr:text-[11px] msr:leading-4">
+            <strong className="msr:truncate msr:font-medium msr:text-ink-900">{state.user.name}</strong>
+            <span className="msr:break-all msr:text-ink-700">{state.user.email}</span>
+            {state.restored ? <span className="msr:text-ink-700">Saved connection</span> : null}
+          </div>
         </div>
-        <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700">
-          A test link uploads the page address, title and current comments. Anyone with the link can view them.
-        </p>
-        {state.share.status === "creating" ? (
-          <p className="msr:text-[11px] msr:leading-4 msr:text-ink-700" role="status">
-            Creating test review link...
-          </p>
+        <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
+          <span>Project</span>
+          <span className="msr:min-w-0 msr:truncate msr:text-right msr:text-[11px]" title={state.project.name}>{state.project.name}</span>
+        </div>
+        {onSaveReview ? (
+          <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
+            <span>Review</span>
+            <SettingsButton
+              aria-label="Save review"
+              className="msr:justify-self-end"
+              disabled={reviewSaveStatus === "saving"}
+              onClick={() => void onSaveReview()}
+            >
+              {reviewSaveStatus === "saving" ? "Saving..." : reviewSaveStatus === "saved" ? "Saved" : reviewSaveStatus === "error" ? "Try again" : "Save"}
+            </SettingsButton>
+          </div>
         ) : null}
-        {state.share.status === "created" ? (
-          <>
-            <a className="msr:justify-self-start msr:text-[11px] msr:font-medium msr:text-accent-700 msr:underline" href={state.share.url} rel="noreferrer" target="_blank">
-              Open test review link
-            </a>
-          </>
-        ) : null}
-        {state.share.status === "error" ? (
-          <>
-            <p className="msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">
-              {state.share.error.message}
-            </p>
-          </>
-        ) : null}
-        <SettingsButton
-          aria-busy={state.share.status === "creating"}
-          className="msr:justify-self-start"
-          disabled={!canCreateTestReviewLink}
-          onClick={() => void createTestReviewLink()}
-        >
-          {state.share.status === "creating"
-            ? "Creating test review link..."
-            : state.share.status === "created"
-              ? "Create another test review link"
-              : state.share.status === "error"
-                ? "Try test review link again"
-                : "Create test review link"}
-        </SettingsButton>
-        <SettingsButton className="msr:justify-self-start" onClick={disconnect}>
-          Remove connection from this browser
-        </SettingsButton>
-      </div>
-    )
-  }
-
-  if (state.status === "disconnected" && hasSavedGrant) {
-    return (
-      <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="disconnected">
-        <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700">
-          Your saved Mesurer consent will be reused to create a review link. A test link uploads the page address, title and current comments; anyone with the link can view them.
-        </p>
-        <SettingsButton className="msr:justify-self-start" onClick={() => void createTestReviewLink()}>
-          Create test review link
-        </SettingsButton>
-        <SettingsButton className="msr:justify-self-start" onClick={disconnect}>
-          Remove saved Mesurer connection
-        </SettingsButton>
+        {reviewSaveStatus === "error" && reviewSaveError ? <p className="msr:break-words msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">{reviewSaveError}</p> : null}
+        <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
+          <span>Auth</span>
+          <SettingsButton aria-label="Remove connection from this browser" className="msr:justify-self-end" onClick={disconnect}>
+            Disconnect
+          </SettingsButton>
+        </div>
       </div>
     )
   }
@@ -200,22 +175,26 @@ function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestR
   const connecting = state.status === "connecting"
   return (
     <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status={state.status}>
-      <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700" role={connecting ? "status" : undefined}>
-        {connecting ? "Waiting for Mesurer authorization..." : "Connect your Mesurer account and choose a project for this site."}
-      </p>
+      {connecting ? <p className="msr:text-[11px] msr:leading-4 msr:text-ink-700" role="status">Waiting for authorization...</p> : null}
       {state.status === "error" ? (
         <p className="msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">
           {state.error.message}
         </p>
       ) : null}
-      <SettingsButton
-        aria-busy={connecting}
-        className="msr:justify-self-start"
-        disabled={connecting}
-        onClick={() => void connect()}
-      >
-        {connecting ? "Connecting..." : state.status === "error" ? "Try again" : "Connect to Mesurer"}
-      </SettingsButton>
+      {state.status !== "error" && reviewSaveStatus === "error" && reviewSaveError ? (
+        <p className="msr:break-words msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">{reviewSaveError}</p>
+      ) : null}
+      <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
+        <span>Auth</span>
+        <SettingsButton
+          aria-busy={connecting}
+          className="msr:justify-self-end"
+          disabled={connecting}
+          onClick={() => void connect()}
+        >
+          {connecting ? "Connecting..." : state.status === "error" ? "Try again" : "Connect to Mesurer"}
+        </SettingsButton>
+      </div>
     </div>
   )
 }
@@ -513,6 +492,7 @@ export function SettingsPanel({
     onClearWorkspace,
     onSaveReview,
     reviewSaveStatus,
+    reviewSaveError,
   } = general
   const { settings: screenshotSettings, setSettings: setScreenshotSettings } = camera
   const { settings: rulerSettings, setSettings: setRulerSettings } = rulers
@@ -738,12 +718,11 @@ export function SettingsPanel({
       {!globalThis.__MESURER_EXTENSION__ && platform ? (
         <>
           <SectionDivider />
-          <SettingsSection id="platform" title="Platform" ariaLabel="Mesurer platform settings">
+          <SettingsSection id="platform" title="Platform Beta" ariaLabel="Mesurer platform beta settings">
             <PlatformSettings {...platform} />
           </SettingsSection>
         </>
       ) : null}
-
       <SectionDivider />
       <SettingsSection id="general" title="General" ariaLabel="General settings">
         <label className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
@@ -811,6 +790,7 @@ export function SettingsPanel({
             </SettingsButton>
           </div>
         ) : null}
+        {onSaveReview && reviewSaveStatus === "error" && reviewSaveError ? <p className="msr:col-span-2 msr:break-words msr:text-[11px] msr:leading-4 msr:text-[var(--msr-danger-text)]" role="alert">{reviewSaveError}</p> : null}
         <div className={`msr:col-span-2 msr:grid msr:h-8 ${SETTINGS_COLUMNS} msr:items-center msr:gap-0 msr:text-[12px] msr:text-ink-700`}>
           <span>Version</span>
           <span className="msr:justify-self-end msr:font-mono msr:text-[11px] msr:tabular-nums msr:text-ink-700">

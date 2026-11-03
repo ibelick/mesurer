@@ -223,6 +223,7 @@ export function MesurerClient({
   extensionRecordingPlayer,
   features,
   platformEnvironment,
+  enableReviewOnConnect,
   initialState,
   reviewState,
 }: Required<
@@ -269,6 +270,7 @@ export function MesurerClient({
     textStyle: TextStyleSettings;
     features: ResolvedMesurerFeatures;
     platformEnvironment: PlatformEnvironment | null;
+    enableReviewOnConnect: boolean;
   }) {
   const ownerDocument = portalTarget.ownerDocument ?? document;
   const ownerWindow = ownerDocument.defaultView ?? window;
@@ -621,8 +623,11 @@ export function MesurerClient({
   selectedTextIdsRef.current = selectedTextIds;
   const savingReviewRef = useRef(false);
   const [reviewSaveStatus, setReviewSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [reviewSaveError, setReviewSaveError] = useState<string | null>(null);
   useEffect(() => {
-    setReviewSaveStatus("idle");
+    // A workspace update can happen while capture is running. Do not clear its progress or
+    // dismiss an error before the user has had a chance to read it.
+    setReviewSaveStatus((status) => status === "saved" ? "idle" : status);
   }, [arrows, comments, guides, measurements, penStrokes, textAnnotations]);
   // Closing or leaving the tab while a review is saved loses it: the browser asks first.
   useEffect(() => {
@@ -639,16 +644,23 @@ export function MesurerClient({
     if (globalThis.__MESURER_NO_REVIEW__) return;
     if (savingReviewRef.current) return;
     if (!publishReview && platformEnvironment && !ownerWindow.confirm(
-      "Save this review to Mesurer? A screenshot of the full page, its title, address and visible annotations and comments will be uploaded. Form fields and frames are hidden, but other sensitive content may still appear. Anyone with the link can view them. Check the page before continuing.",
+      "Save this review to Mesurer? A screenshot of the full page, its title, address and visible annotations and comments will be uploaded. If needed to show images, their addresses are also uploaded and may be requested when someone views the review. Query strings are removed, so some images may not appear. The screenshot and image paths may contain sensitive information. Anyone with the link can view it for 30 days. Check the page before continuing.",
     )) return;
     savingReviewRef.current = true;
+    setReviewSaveError(null);
     setReviewSaveStatus("saving");
     // Kept on the platform, where this site is connected to it and no host keeps reviews itself.
     const publishToPlatform = !publishReview && platformEnvironment ? publishReviewToPlatform : undefined;
     // The review's tab is opened now, while the press allows it. This page goes to the
     // background behind it, where the capture carries on.
-    const reviewWindow = ownerWindow.open("", "_blank");
+    let reviewWindow: Window | null;
+    try {
+      reviewWindow = ownerWindow.open("", "_blank");
+    } catch {
+      reviewWindow = null;
+    }
     if (!reviewWindow) {
+      setReviewSaveError("Allow popups to save a review.");
       setReviewSaveStatus("error");
       savingReviewRef.current = false;
       return;
@@ -659,6 +671,7 @@ export function MesurerClient({
       const ready = await prepareReviewOnPlatform(reviewWindow ?? undefined).catch(() => false);
       if (!ready) {
         reviewWindow?.close();
+        setReviewSaveError("Could not authorize the review. Connect to Mesurer and try again.");
         setReviewSaveStatus("error");
         savingReviewRef.current = false;
         return;
@@ -668,9 +681,9 @@ export function MesurerClient({
     }
     // Says what the tab is waiting for, where it is still this site's blank page: not one the
     // platform has taken, which cannot be written to and says it already.
-    if (reviewWindow) (showReviewLoading ?? showDefaultReviewLoading)(reviewWindow);
     const now = Date.now();
     try {
+      if (reviewWindow) (showReviewLoading ?? showDefaultReviewLoading)(reviewWindow);
       const pageId = ownerWindow.location.href;
       const versionId = `local-version-${now}`;
       const commentPins = overlayRef.current?.querySelectorAll<HTMLElement>("[data-mesurer-comment-pin]");
@@ -793,6 +806,7 @@ export function MesurerClient({
     } catch (error) {
       reviewWindow?.close();
       console.error("[Mesurer] Could not save review", error);
+      setReviewSaveError(error instanceof Error ? error.message : "Could not save the review. Please try again.");
       setReviewSaveStatus("error");
     } finally {
       savingReviewRef.current = false;
@@ -2122,7 +2136,9 @@ export function MesurerClient({
               }}
               platform={platformEnvironment ? {
                 ...platformAuth,
-                createTestReviewLink: () => platformAuth.createTestReviewLink(comments),
+                onSaveReview: features.review || enableReviewOnConnect ? saveReview : undefined,
+                reviewSaveStatus,
+                reviewSaveError,
               } : undefined}
               general={{
                 persistOnReload: settings.persistOnReload,
@@ -2138,8 +2154,9 @@ export function MesurerClient({
                 onMinimize: minimizeMesurer,
                 onResetSettings: resetSettings,
                 onClearWorkspace: clearWorkspace,
-                onSaveReview: features.review ? saveReview : undefined,
+                onSaveReview: features.review && (!platformEnvironment || platformAuth.state.status !== "connected") ? saveReview : undefined,
                 reviewSaveStatus,
+                reviewSaveError,
               }}
             />
           ),
