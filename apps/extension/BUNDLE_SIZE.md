@@ -1,7 +1,8 @@
 # Extension content-script size budget
 
 `scripts/report-size.mjs` measures the built `content.js` with gzip level 9 and
-fails the extension build above **218 KiB**. Site-only Motion/React fixtures are
+fails the extension build above **219 KiB**, or **220 KiB** for the optional
+`MESURER_REVIEW=1` test build. Site-only Motion/React fixtures are
 not part of this bundle.
 
 Measured baselines for `feat/inspect-motion`:
@@ -33,6 +34,8 @@ Measured baselines for `feat/inspect-motion`:
 | Content script trim: the stylesheet read from the shipped mesurer.css instead of a second copy in the script, and the in-page recording editor and encoders left out (before: 225.2 KiB, after: 207.1 KiB) | 207.1 KiB | 207.5 KiB |
 | Pen tool: ink drawn as smooth, variable-width strokes, a marker, an eraser that rubs out part of a stroke, the tray of pens with their widths and colours, and a colour picker (before: 207.1 KiB, after: to be recorded from the next build) | 216.9 KiB | 217 KiB |
 | Text notes: a background per note, a text style menu on the Text tool, and review notes keeping their own style (before: 216.9 KiB, after: 217.9 KiB) | 217.9 KiB | 218 KiB |
+| Platform integration: keep npm authentication out of the extension; shared integration plumbing remains (normal build) | 218.1 KiB | 219 KiB |
+| Review-enabled test build, including review capture and publication plumbing | 219.3 KiB | 220 KiB |
 
 The additional approximately 2.0 KiB implements the review's correctness and
 resource-safety fixes. The final stylesheet and iframe hardening adds

@@ -87,6 +87,8 @@ export const exchangeAuthorizationCode = async ({
         callbackOrigin,
       }),
       signal,
+      credentials: "omit",
+      redirect: "error",
     })
   } catch (error) {
     if (signal.aborted && signal.reason instanceof PlatformAuthError) throw signal.reason
@@ -127,6 +129,8 @@ export const createTestReviewLink = async ({
       },
       body: JSON.stringify(payload),
       signal,
+      credentials: "omit",
+      redirect: "error",
     })
   } catch (error) {
     if (signal.aborted && signal.reason instanceof PlatformAuthError) throw signal.reason
@@ -145,7 +149,7 @@ export const createTestReviewLink = async ({
   }
   try {
     const url = new URL(result.url)
-    if (!/^https?:$/.test(url.protocol)) throw new Error()
+    if (url.origin !== new URL(apiOrigin).origin || !url.pathname.startsWith("/s/")) throw new Error()
     return url.toString()
   } catch {
     throw new PlatformAuthError("share_failed", "Mesurer returned an invalid test review link.")

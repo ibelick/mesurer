@@ -65,6 +65,12 @@ Captures are initiated by you and contain only the region you select. In the Chr
 
 Screenshots and recordings are processed locally and are copied to the local clipboard, stored temporarily in local extension storage, or downloaded locally according to your actions. Mesurer does not upload or externally process these captures unless you explicitly share them through a hosted platform feature.
 
+Saving a hosted review captures the page, potentially including content outside the visible viewport, and uploads that picture along with its title, page address and selected comments and annotations. Check the page for sensitive information before confirming. Query strings and fragments are removed from the page address; the path and page title may still contain sensitive information. Anyone with the link can view the review. The npm toolbar runs in the host page, so scripts on that page can access its data and interfere with its operation.
+
+For hosted reviews, form fields, editable areas, frames and elements marked `data-mesurer-private` are hidden during capture. This is not complete redaction: sensitive text, images, canvases, closed shadow trees and other content may still be captured. Review the page before sharing.
+
+Removing the toolbar connection from the browser removes its locally saved grant identifier; it does not revoke the platform grant. Manage access and revoke shared links on the platform. Revocation cannot erase content already downloaded or cached by someone who viewed it.
+
 Video recordings are stored temporarily in the extension's local IndexedDB storage so they can be previewed, trimmed, and exported. Recordings remain on the device and are not uploaded. They can be removed through the recording editor or by clearing the browser's extension storage.
 
 ## Data sharing and retention

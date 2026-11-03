@@ -638,6 +638,9 @@ export function MesurerClient({
     // Nothing below is built into a build that does not save reviews.
     if (globalThis.__MESURER_NO_REVIEW__) return;
     if (savingReviewRef.current) return;
+    if (!publishReview && platformEnvironment && !ownerWindow.confirm(
+      "Save this review to Mesurer? A screenshot of the full page, its title, address and visible annotations and comments will be uploaded. Form fields and frames are hidden, but other sensitive content may still appear. Anyone with the link can view them. Check the page before continuing.",
+    )) return;
     savingReviewRef.current = true;
     setReviewSaveStatus("saving");
     // Kept on the platform, where this site is connected to it and no host keeps reviews itself.
@@ -645,6 +648,11 @@ export function MesurerClient({
     // The review's tab is opened now, while the press allows it. This page goes to the
     // background behind it, where the capture carries on.
     const reviewWindow = ownerWindow.open("", "_blank");
+    if (!reviewWindow) {
+      setReviewSaveStatus("error");
+      savingReviewRef.current = false;
+      return;
+    }
     if (publishToPlatform) {
       // The platform authorizes this one review in that same tab (a browser opens one window
       // for a press), then keeps the tab waiting: it says so itself, and the review opens in it.
@@ -751,6 +759,7 @@ export function MesurerClient({
         overlay: overlayRef.current,
         captureVisibleTab,
         captureDom,
+        maskPrivate: Boolean(publishToPlatform),
       });
       const capturedAt = ownerWindow.performance.now();
       const ephemeral = await (createReviewViewer ?? createDefaultReviewViewer)(state, capture, ownerWindow);

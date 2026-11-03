@@ -26,13 +26,43 @@ export type PlatformReviewPublisherOptions = {
 
 const MAX_TITLE = 300
 
+// URLs may contain reset links, access tokens or customer data. A shared review only needs
+// the page path. Keep IDs and references consistent when they are derived from that URL.
+export const privatePageUrl = (value: string) => {
+  const url = new URL(value)
+  url.username = ""
+  url.password = ""
+  url.search = ""
+  url.hash = ""
+  return url.href
+}
+
+const safeState = (state: ReviewState): ReviewState => {
+  const originalId = state.page.id
+  const pageId = originalId === state.page.url ? privatePageUrl(state.page.url) : originalId
+  return {
+    ...state,
+    page: { ...state.page, id: pageId, url: privatePageUrl(state.page.url) },
+    versions: state.versions.map((version) => ({
+      ...version,
+      pageId: version.pageId === originalId ? pageId : version.pageId,
+      snapshot: { ...version.snapshot, url: privatePageUrl(version.snapshot.url) },
+      // Fingerprints can include captured HTML, text, attributes and form values. They are
+      // unnecessary for a picture-based shared review and should stay on the user's device.
+      domContext: { fingerprints: {} },
+    })),
+    review: { ...state.review, pageId: state.review.pageId === originalId ? pageId : state.review.pageId },
+  }
+}
+
 /**
  * Keeps saved reviews on the Mesurer platform. A review goes up as a form of two parts, its
  * state as JSON and the picture as a file, and comes back as the address it is seen at.
  */
 export const createPlatformReviewPublisher =
   ({ apiOrigin, getCapability, fetch: send = fetch, signal }: PlatformReviewPublisherOptions) =>
-  async ({ state, screenshot, live }: ReviewPublication) => {
+  async ({ state, screenshot }: ReviewPublication) => {
+    state = safeState(state)
     const version = state.versions[state.versions.length - 1]
     if (!version) throw new Error("Review has no page version")
     const { url: pageUrl, title, viewport } = version.snapshot
@@ -50,15 +80,26 @@ export const createPlatformReviewPublisher =
       }),
     )
     form.set("screenshot", screenshot, "screenshot")
-    if (live) form.set("live", new Blob([live], { type: "image/svg+xml" }), "live.svg")
     const response = await send(`${apiOrigin.replace(/\/+$/, "")}/api/toolbar/share`, {
       method: "POST",
       headers: { Authorization: `Bearer ${await getCapability()}`, "Idempotency-Key": state.review.id },
       body: form,
       signal,
+      credentials: "omit",
+      redirect: "error",
     })
     const body: unknown = await response.json().catch(() => null)
     const address = typeof body === "object" && body !== null && "url" in body ? body.url : undefined
-    if (!response.ok || typeof address !== "string") throw new Error(`Review not saved (${response.status})`)
-    return address
+    if (!response.ok) {
+      const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
+        ? body.error
+        : `Review not saved (${response.status})`
+      throw new Error(message)
+    }
+    if (typeof address !== "string") throw new Error("Mesurer returned an invalid review link")
+    const url = new URL(address)
+    if (url.origin !== new URL(apiOrigin).origin || !url.pathname.startsWith("/s/")) {
+      throw new Error("Mesurer returned an invalid review link")
+    }
+    return url.href
   }

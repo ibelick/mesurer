@@ -8,8 +8,7 @@ export type PlatformConfig = {
 const PLATFORM_CONFIG: Record<PlatformEnvironment, PlatformConfig> = {
   production: {
     callbackOrigin: "https://mesurer.dev",
-    // TODO: Verify that api.mesurer.dev is provisioned and configured before production release.
-    apiOrigin: "https://api.mesurer.dev",
+    apiOrigin: "https://mesurer.dev",
   },
   development: {
     callbackOrigin: "http://localhost:5174",

@@ -139,7 +139,7 @@ function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestR
           <span>Project: {state.project.name}</span>
         </div>
         <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700">
-          Create a test review link with the current comments.
+          A test link uploads the page address, title and current comments. Anyone with the link can view them.
         </p>
         {state.share.status === "creating" ? (
           <p className="msr:text-[11px] msr:leading-4 msr:text-ink-700" role="status">
@@ -175,7 +175,7 @@ function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestR
                 : "Create test review link"}
         </SettingsButton>
         <SettingsButton className="msr:justify-self-start" onClick={disconnect}>
-          Sign out from toolbar
+          Remove connection from this browser
         </SettingsButton>
       </div>
     )
@@ -185,7 +185,7 @@ function PlatformSettings({ state, connect, createTestReviewLink, canCreateTestR
     return (
       <div className="msr:col-span-2 msr:grid msr:gap-2" data-mesurer-platform-status="disconnected">
         <p className="msr:text-pretty msr:text-[11px] msr:leading-4 msr:text-ink-700">
-          Your saved Mesurer consent will be reused to create a review link.
+          Your saved Mesurer consent will be reused to create a review link. A test link uploads the page address, title and current comments; anyone with the link can view them.
         </p>
         <SettingsButton className="msr:justify-self-start" onClick={() => void createTestReviewLink()}>
           Create test review link
@@ -735,7 +735,7 @@ export function SettingsPanel({
         <div className="msr:col-span-2"><SettingsSwitch label="Edge reveal" checked={rulerSettings.edgeReveal} onChange={(edgeReveal) => setRulerSettings((settings) => ({ ...settings, edgeReveal }))} /></div>
       </SettingsSection>
 
-      {platform ? (
+      {!globalThis.__MESURER_EXTENSION__ && platform ? (
         <>
           <SectionDivider />
           <SettingsSection id="platform" title="Platform" ariaLabel="Mesurer platform settings">

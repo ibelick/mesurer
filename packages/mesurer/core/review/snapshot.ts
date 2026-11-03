@@ -15,6 +15,7 @@ export type ReviewSnapshotCaptureOptions = {
   overlay: HTMLElement | null
   captureVisibleTab?: () => Promise<Blob>
   captureDom?: DomCapture | false
+  maskPrivate?: boolean
 }
 
 export type ReviewSnapshotCapture = {
@@ -36,6 +37,28 @@ const getCaptureNodes = (overlay: HTMLElement | null) => [
   overlay?.querySelector<HTMLElement>(".mesurer-screenshot-preview") ?? null,
   overlay?.querySelector<HTMLElement>("[aria-label='Screenshot selection']") ?? null,
 ]
+
+// Hide editable fields and explicitly private regions without changing their layout. Frames are
+// masked whole because their contents may be cross-origin. This is defense in depth, not a
+// substitute for reviewing the page; ordinary text, images and closed shadow roots may be private.
+const maskPrivateNodes = (ownerDocument: Document) => {
+  const masked: Array<{ node: HTMLElement; value: string; priority: string }> = []
+  const visit = (root: Document | ShadowRoot) => {
+    for (const node of root.querySelectorAll<HTMLElement>("input, textarea, select, [contenteditable]:not([contenteditable='false']), iframe, frame, [data-mesurer-private]")) {
+      masked.push({ node, value: node.style.getPropertyValue("opacity"), priority: node.style.getPropertyPriority("opacity") })
+      node.style.setProperty("opacity", "0", "important")
+    }
+    for (const element of root.querySelectorAll("*")) if (element.shadowRoot) visit(element.shadowRoot)
+  }
+  visit(ownerDocument)
+  return () => {
+    for (const { node, value, priority } of masked) {
+      if (node.style.getPropertyValue("opacity") !== "0" || node.style.getPropertyPriority("opacity") !== "important") continue
+      if (value) node.style.setProperty("opacity", value, priority)
+      else node.style.removeProperty("opacity")
+    }
+  }
+}
 
 // Waits for Mesurer's own layers, just hidden, to be painted away. The page is in the background
 // by now, behind the tab its review will open in, and a page there is given no frame: a short
@@ -60,8 +83,10 @@ export const captureReviewSnapshot = async ({
   overlay,
   captureVisibleTab,
   captureDom,
+  maskPrivate = false,
 }: ReviewSnapshotCaptureOptions): Promise<ReviewSnapshotCapture> => {
   const restore = hideNodesForCapture(getCaptureNodes(overlay))
+  const restorePrivate = maskPrivate ? maskPrivateNodes(ownerDocument) : () => {}
   try {
     await waitForPaint(ownerWindow)
     const capture = captureVisibleTab ?? (() => captureVisibleTabPng(ownerDocument, ownerWindow))
@@ -98,6 +123,7 @@ export const captureReviewSnapshot = async ({
       } : { origin: { x: ownerWindow.scrollX, y: ownerWindow.scrollY }, scale: 1 }),
     }
   } finally {
+    restorePrivate()
     restore()
   }
 }

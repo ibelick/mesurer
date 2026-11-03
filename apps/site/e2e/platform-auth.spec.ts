@@ -24,12 +24,117 @@ const capturePopup = async (page: Page) => {
   });
 };
 
+test("cancelling the privacy warning does not open a popup or upload a review", async ({ page }) => {
+  await page.goto(AUTH_PAGE);
+  await page.getByRole("button", { name: /Settings/ }).click();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Anyone with the link");
+    return dialog.dismiss();
+  });
+  let opened = false;
+  page.on("popup", () => { opened = true; });
+  await page.getByRole("button", { name: "Save review" }).click();
+  await expect(page.getByRole("button", { name: "Save review" })).toHaveText("Save");
+  expect(opened).toBe(false);
+});
+
+test("private fields and frames are masked during capture and restored after failure", async ({ page }) => {
+  await page.goto(AUTH_PAGE);
+  const result = await page.evaluate(async () => {
+    const input = document.createElement("input");
+    input.value = "private";
+    input.style.setProperty("opacity", "0.5", "important");
+    const frame = document.createElement("iframe");
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const privateNode = document.createElement("div");
+    privateNode.setAttribute("data-mesurer-private", "");
+    shadow.append(privateNode);
+    document.body.append(input, frame, host);
+    const capture = (window as Window & { __testCaptureReviewSnapshot: (options: object) => Promise<unknown> }).__testCaptureReviewSnapshot;
+    let during: string[] = [];
+    try {
+      await capture({
+        ownerDocument: document, ownerWindow: window, overlay: null, maskPrivate: true,
+        captureDom: async () => {
+          during = [input.style.opacity, frame.style.opacity, privateNode.style.opacity];
+          throw new Error("capture failed");
+        },
+        captureVisibleTab: async () => { throw new Error("fallback failed"); },
+      });
+    } catch { /* Check cleanup on failure. */ }
+    return { during, input: input.style.opacity, priority: input.style.getPropertyPriority("opacity"), frame: frame.style.opacity, privateNode: privateNode.style.opacity };
+  });
+  expect(result).toEqual({ during: ["0", "0", "0"], input: "0.5", priority: "important", frame: "", privateNode: "" });
+});
+
+test("the captured image does not include masked fields or marked regions", async ({ page }) => {
+  await page.goto(AUTH_PAGE);
+  const pixels = await page.evaluate(async () => {
+    const box = document.createElement("div");
+    box.style.cssText = "position:absolute;top:0;left:0;width:180px;height:60px;background:white;z-index:2147483647";
+    box.innerHTML = '<input style="position:absolute;left:0;top:0;width:60px;height:60px;background:rgb(255,0,0);border:0"><div data-mesurer-private style="position:absolute;left:60px;top:0;width:60px;height:60px;background:rgb(255,0,0)"></div><div style="position:absolute;left:120px;top:0;width:60px;height:60px;background:rgb(255,0,0)"></div>';
+    document.body.append(box);
+    const capture = (window as Window & { __testCaptureReviewSnapshot: (options: object) => Promise<{ blob: Blob }> }).__testCaptureReviewSnapshot;
+    const result = await capture({ ownerDocument: document, ownerWindow: window, overlay: null, maskPrivate: true });
+    const bitmap = await createImageBitmap(result.blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d")!;
+    context.drawImage(bitmap, 0, 0);
+    const pixel = (x: number) => [...context.getImageData(x * devicePixelRatio, 30 * devicePixelRatio, 1, 1).data];
+    return [pixel(30), pixel(90), pixel(150)];
+  });
+  expect(pixels[0][1]).toBeGreaterThan(200);
+  expect(pixels[1][1]).toBeGreaterThan(200);
+  expect(pixels[2][1]).toBeLessThan(50);
+});
+
+test("saves a review through the production platform", async ({ page }) => {
+  await interceptAuthorizationPage(page);
+  await capturePopup(page);
+  await page.route("https://mesurer.dev/api/oauth/token", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      capability: CAPABILITY, expiresIn: 120, grantId: GRANT_ID,
+      user: { id: "user-1", name: "Ada Lovelace", email: "ada@example.com", image: null },
+      project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
+    }),
+  }));
+  let uploaded = false;
+  await page.route("https://mesurer.dev/api/toolbar/share", async (route) => {
+    expect(await route.request().headerValue("authorization")).toBe(`Bearer ${CAPABILITY}`);
+    expect(await route.request().headerValue("content-type")).toContain("multipart/form-data");
+    uploaded = true;
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ url: "https://mesurer.dev/s/testReview01" }) });
+  });
+  await page.goto(AUTH_PAGE);
+  await page.getByRole("button", { name: /Settings/ }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Save review" }).click();
+  const popup = await popupPromise;
+  await popup.waitForURL(/^https:\/\/mesurer\.dev\/toolbar\/authorize/);
+  const state = new URL(popup.url()).searchParams.get("state");
+  await page.evaluate((state) => {
+    const authWindow = window as Window & { __mesurerAuthPopup?: Window };
+    window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://mesurer.dev", source: authWindow.__mesurerAuthPopup ?? null,
+      data: { type: "mesurer:authorization", code: "valid-authorization-code-12345678901234567890", state },
+    }));
+  }, state);
+  await expect(popup).toHaveURL("https://mesurer.dev/s/testReview01", { timeout: 30_000 });
+  expect(uploaded).toBe(true);
+});
+
 test("Settings connects and signs out of the Mesurer platform", async ({ page }) => {
   const codeVerifiers: string[] = [];
   let shareRequests = 0;
   await interceptAuthorizationPage(page);
   await capturePopup(page);
-  await page.route("https://api.mesurer.dev/api/oauth/token", async (route) => {
+  await page.route("https://mesurer.dev/api/oauth/token", async (route) => {
     const body = route.request().postDataJSON() as Record<string, unknown>;
     expect(body.clientId).toBe("mesurer-npm-toolbar");
     expect(body.callbackOrigin).toBe("https://mesurer.dev");
@@ -47,13 +152,13 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
       }),
     });
   });
-  await page.route("https://api.mesurer.dev/api/toolbar/share", async (route) => {
+  await page.route("https://mesurer.dev/api/toolbar/share", async (route) => {
     shareRequests += 1;
     expect(await route.request().headerValue("authorization")).toBe(`Bearer ${CAPABILITY}`);
     const body = route.request().postDataJSON() as Record<string, unknown>;
     expect(body).toEqual({
       version: 1,
-      pageUrl: "http://127.0.0.1:4173/e2e/fixtures/platform-auth.html?comment=1",
+      pageUrl: "http://127.0.0.1:4173/e2e/fixtures/platform-auth.html",
       origin: "http://127.0.0.1:4173",
       title: "Platform authentication fixture",
       viewport: { width: 1280, height: 720 },
@@ -147,7 +252,7 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
     values: expect.not.arrayContaining([CAPABILITY]),
   });
 
-  await page.getByRole("button", { name: "Sign out from toolbar" }).click();
+  await page.getByRole("button", { name: "Remove connection from this browser" }).click();
   await expect(page.locator('[data-mesurer-platform-status="disconnected"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect to Mesurer" })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("mesurer-toolbar-grant"))).toBeNull();
@@ -156,7 +261,7 @@ test("Settings connects and signs out of the Mesurer platform", async ({ page })
 test("disconnects stale identity without deleting a replacement grant", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
-  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
+  await page.route("https://mesurer.dev/api/oauth/token", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -201,7 +306,7 @@ test("disconnects stale identity without deleting a replacement grant", async ({
 test("accepts a callback from a popup that closes immediately", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
-  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
+  await page.route("https://mesurer.dev/api/oauth/token", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -237,7 +342,7 @@ test("reuses a grant and rejects an untrusted callback", async ({ page }) => {
   await capturePopup(page);
   await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
   let tokenRequests = 0;
-  await page.route("https://api.mesurer.dev/api/oauth/token", async (route) => {
+  await page.route("https://mesurer.dev/api/oauth/token", async (route) => {
     tokenRequests += 1;
     await route.abort();
   });
@@ -270,7 +375,7 @@ test("reuses a saved grant through the Mesurer popup after reload", async ({ pag
   await page.addInitScript((grantId) => localStorage.setItem("mesurer-toolbar-grant", grantId), GRANT_ID);
   await interceptAuthorizationPage(page);
   await capturePopup(page);
-  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
+  await page.route("https://mesurer.dev/api/oauth/token", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
@@ -281,7 +386,7 @@ test("reuses a saved grant through the Mesurer popup after reload", async ({ pag
       project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Analytical Engine" },
     }),
   }));
-  await page.route("https://api.mesurer.dev/api/toolbar/share", (route) => route.fulfill({
+  await page.route("https://mesurer.dev/api/toolbar/share", (route) => route.fulfill({
     status: 201,
     contentType: "application/json",
     body: JSON.stringify({ url: "https://mesurer.dev/s/reusedGrant1" }),
@@ -333,7 +438,7 @@ test("rejects a callback with the wrong state", async ({ page }) => {
 test("rejects a malformed token response", async ({ page }) => {
   await interceptAuthorizationPage(page);
   await capturePopup(page);
-  await page.route("https://api.mesurer.dev/api/oauth/token", (route) => route.fulfill({
+  await page.route("https://mesurer.dev/api/oauth/token", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({

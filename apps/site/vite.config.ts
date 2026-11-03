@@ -52,16 +52,13 @@ const npmDownloads = async (): Promise<number | null> => {
   }
 };
 
-export default defineConfig(async ({ command }) => ({
+export default defineConfig(async () => ({
   plugins: [tailwindcss(), react(), localReviews()],
   define: {
     __MESURER_DOWNLOADS__: JSON.stringify(await npmDownloads()),
     __MESURER_SNAPDOM_CAPTURE__: "true",
     // The test pages run the extension's content script from source, with saving a review on.
     __MESURER_REVIEW__: "true",
-    // The built site has no saving of reviews: what only it needs is compiled out. The dev
-    // server keeps it, for the tests.
-    ...(command === "build" ? { "globalThis.__MESURER_NO_REVIEW__": "true" } : null),
   },
   resolve: {
     alias: {

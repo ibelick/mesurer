@@ -27,11 +27,11 @@ describe("createPlatformReviewPublisher", () => {
       getCapability: async () => "capability",
       fetch: async (url, init) => {
         sent.push({ url: String(url), init: init ?? {} })
-        return new Response(JSON.stringify({ url: "https://app.example.com/s/k7Qm2xPa9fRt" }), { status: 201 })
+        return new Response(JSON.stringify({ url: "https://api.example.com/s/k7Qm2xPa9fRt" }), { status: 201 })
       },
     })
 
-    await expect(publish(publication)).resolves.toBe("https://app.example.com/s/k7Qm2xPa9fRt")
+    await expect(publish(publication)).resolves.toBe("https://api.example.com/s/k7Qm2xPa9fRt")
     expect(sent[0].url).toBe("https://api.example.com/api/toolbar/share")
     expect(sent[0].init.headers).toMatchObject({ Authorization: "Bearer capability" })
     const form = sent[0].init.body as FormData
@@ -52,6 +52,47 @@ describe("createPlatformReviewPublisher", () => {
       getCapability: async () => "capability",
       fetch: async () => new Response(JSON.stringify({ error: "Capability is invalid" }), { status: 401 }),
     })
-    await expect(publish(publication)).rejects.toThrow("Review not saved (401)")
+    await expect(publish(publication)).rejects.toThrow("Capability is invalid")
+  })
+
+  it("rejects a link outside the platform", async () => {
+    const publish = createPlatformReviewPublisher({
+      apiOrigin: "https://mesurer.dev",
+      getCapability: async () => "capability",
+      fetch: async () => new Response(JSON.stringify({ url: "https://example.com/s/fake" }), { status: 201 }),
+    })
+    await expect(publish(publication)).rejects.toThrow("invalid review link")
+  })
+
+  it("omits URL secrets, DOM fingerprints, live SVG and ambient credentials", async () => {
+    const sensitiveUrl = "https://example.com/pricing?token=secret#private"
+    const sensitive: ReviewState = {
+      ...state,
+      page: { ...state.page, id: sensitiveUrl, url: sensitiveUrl },
+      versions: state.versions.map((version) => ({
+        ...version, pageId: sensitiveUrl,
+        snapshot: { ...version.snapshot, url: sensitiveUrl },
+        domContext: { fingerprints: { field: { tagName: "input", attributes: { value: "secret" }, bounds: { left: 0, top: 0, width: 10, height: 10 } } } },
+      })),
+      review: { ...state.review, pageId: sensitiveUrl },
+    }
+    let request: RequestInit | undefined
+    const publish = createPlatformReviewPublisher({
+      apiOrigin: "https://mesurer.dev",
+      getCapability: async () => "capability",
+      fetch: async (_url, init) => {
+        request = init
+        return new Response(JSON.stringify({ url: "https://mesurer.dev/s/review" }), { status: 201 })
+      },
+    })
+    await publish({ ...publication, state: sensitive, live: "<svg>secret</svg>" })
+    const form = request?.body as FormData
+    const body = JSON.parse(String(form.get("review")))
+    expect(JSON.stringify(body)).not.toContain("secret")
+    expect(body.pageUrl).toBe("https://example.com/pricing")
+    expect(body.state.page.id).toBe(body.pageUrl)
+    expect(body.state.versions[0].domContext.fingerprints).toEqual({})
+    expect(form.has("live")).toBe(false)
+    expect(request).toMatchObject({ credentials: "omit", redirect: "error" })
   })
 })

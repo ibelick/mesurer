@@ -1,5 +1,8 @@
 import { createRoot } from "react-dom/client"
 import { Mesurer } from "mesurer"
+import { captureReviewSnapshot } from "../../../../packages/mesurer/core/review/snapshot"
+
+Object.assign(window, { __testCaptureReviewSnapshot: captureReviewSnapshot })
 
 const includeComment = new URL(window.location.href).searchParams.has("comment")
 

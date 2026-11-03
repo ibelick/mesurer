@@ -5,8 +5,7 @@ export type MesurerFeatures = {
   settings?: boolean
   responsive?: boolean
   /**
-   * Saving a review. Off unless asked for: reviews are not kept anywhere yet but on the machine
-   * they are saved from, so the Save button is not shown to everyone.
+   * Saving a review. Enabled by default when the platform is enabled.
    */
   review?: boolean
 }

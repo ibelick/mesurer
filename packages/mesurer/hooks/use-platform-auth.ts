@@ -9,7 +9,7 @@ const getDisconnected = () => disconnected
 
 export const usePlatformAuth = (ownerWindow: Window, environment: PlatformEnvironment | null) => {
   const client = useMemo(
-    () => environment ? new PlatformAuthClient(ownerWindow, environment) : null,
+    () => !globalThis.__MESURER_EXTENSION__ && environment ? new PlatformAuthClient(ownerWindow, environment) : null,
     [environment, ownerWindow],
   )
   const state = useSyncExternalStore(
