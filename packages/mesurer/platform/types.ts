@@ -1,4 +1,4 @@
-export type PlatformEnvironment = "production" | "development"
+export type PlatformEnvironment = "production" | "staging" | "development"
 
 export type PlatformUser = {
   id: string

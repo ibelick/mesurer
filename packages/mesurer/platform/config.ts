@@ -10,6 +10,10 @@ const PLATFORM_CONFIG: Record<PlatformEnvironment, PlatformConfig> = {
     callbackOrigin: "https://mesurer.dev",
     apiOrigin: "https://mesurer.dev",
   },
+  staging: {
+    callbackOrigin: "https://mesurer-web-staging.ibelick.workers.dev",
+    apiOrigin: "https://mesurer-web-staging.ibelick.workers.dev",
+  },
   development: {
     callbackOrigin: "http://localhost:5174",
     // The platform's web app, which hands /api on to the development API the team shares
