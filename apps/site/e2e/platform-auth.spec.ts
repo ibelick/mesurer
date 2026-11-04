@@ -24,6 +24,26 @@ const capturePopup = async (page: Page) => {
   });
 };
 
+test("saved connections link to first-party access management without an opener", async ({ page }) => {
+  await interceptAuthorizationPage(page);
+  await page.addInitScript(({ grantId }) => {
+    localStorage.setItem("mesurer-toolbar-grant", grantId);
+    localStorage.setItem("mesurer-toolbar-grant:connection", JSON.stringify({
+      grantId, user: { id: "user-1", name: "Ada", email: "ada@example.test", image: null },
+      project: { id: "9f7d95e9-cd44-4162-b12d-c964cab42aa7", name: "Project" },
+    }));
+  }, { grantId: GRANT_ID });
+  await page.goto(AUTH_PAGE);
+  await page.getByRole("button", { name: /Settings/ }).click();
+  await expect(page.getByText("Forget locally", { exact: true })).toBeVisible();
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Manage access" }).click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL("https://mesurer.dev/settings#connections");
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await expect(page.locator('[data-mesurer-platform-status="connected"]')).toBeVisible();
+});
+
 test("cancelling the privacy warning does not open a popup or upload a review", async ({ page }) => {
   await page.goto(AUTH_PAGE);
   await page.getByRole("button", { name: /Settings/ }).click();
@@ -129,7 +149,7 @@ test("saves a review through the production platform", async ({ page }) => {
   expect(uploaded).toBe(true);
 });
 
-test("Settings connects and signs out of the Mesurer platform", async ({ page }) => {
+test("Settings connects and forgets the local Mesurer connection", async ({ page }) => {
   const codeVerifiers: string[] = [];
   await interceptAuthorizationPage(page);
   await capturePopup(page);

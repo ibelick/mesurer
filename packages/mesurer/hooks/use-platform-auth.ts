@@ -29,5 +29,6 @@ export const usePlatformAuth = (ownerWindow: Window, environment: PlatformEnviro
     canCreateTestReviewLink: state.status === "connected" && state.share.status !== "creating",
     hasSavedGrant: client?.hasSavedGrant() ?? false,
     disconnect: client?.disconnect ?? (() => undefined),
+    manageConnections: client?.manageConnections ?? (() => undefined),
   }
 }

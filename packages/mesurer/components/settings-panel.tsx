@@ -105,6 +105,7 @@ type SettingsPanelProps = {
     state: PlatformAuthState
     connect: () => Promise<unknown>
     disconnect: () => void
+    manageConnections: () => void
     onSaveReview?: () => void | Promise<void>
     reviewSaveStatus: "idle" | "saving" | "saved" | "error"
     reviewSaveError: string | null
@@ -130,7 +131,7 @@ type SettingsPanelProps = {
   }
 }
 
-function PlatformSettings({ state, connect, disconnect, onSaveReview, reviewSaveStatus, reviewSaveError }: NonNullable<SettingsPanelProps["platform"]>) {
+function PlatformSettings({ state, connect, disconnect, manageConnections, onSaveReview, reviewSaveStatus, reviewSaveError }: NonNullable<SettingsPanelProps["platform"]>) {
   if (state.status === "connected") {
     return (
       <div className="msr:col-span-2 msr:grid msr:gap-1" data-mesurer-platform-status="connected">
@@ -165,9 +166,14 @@ function PlatformSettings({ state, connect, disconnect, onSaveReview, reviewSave
         <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
           <span>Auth</span>
           <SettingsButton aria-label="Remove connection from this browser" className="msr:justify-self-end" onClick={disconnect}>
-            Disconnect
+            Forget locally
           </SettingsButton>
         </div>
+        <div className={`msr:grid msr:min-h-8 ${SETTINGS_COLUMNS} msr:items-center msr:text-[12px] msr:text-ink-700`}>
+          <span>Site access</span>
+          <SettingsButton className="msr:justify-self-end" onClick={manageConnections}>Manage access</SettingsButton>
+        </div>
+        <p className="msr:text-[11px] msr:leading-4 msr:text-ink-700">Forgetting locally does not revoke permission. Manage access in Mesurer to revoke this site's connection.</p>
       </div>
     )
   }

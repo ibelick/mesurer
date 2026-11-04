@@ -152,6 +152,11 @@ export class PlatformAuthClient {
     removeGrantId(this.ownerWindow, this.environment)
   }
 
+  manageConnections = () => {
+    const { callbackOrigin } = getPlatformConfig(this.environment)
+    this.ownerWindow.open(new URL("/settings#connections", callbackOrigin).href, "_blank", "noopener,noreferrer")
+  }
+
   createTestReviewLink = async (comments: CommentThread[] = []) => {
     if (!await this.ensureShareCapability()) return null
     const connectedState = this.state
