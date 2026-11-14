@@ -3,29 +3,8 @@ import AgentPromptButton from "./components/agent-prompt-button";
 import { getPackageVersion } from "../../utils/get-package-version";
 
 const version = getPackageVersion();
-// Counted from npm when the site is built; the count of 13 October 2026 when npm cannot be reached.
-const DOWNLOAD_COUNT = (__MESURER_DOWNLOADS__ ?? 481_670).toLocaleString("en-US");
-const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
-
-function DigitReel({ digit, delay }: { digit: string; delay: number }) {
-  return (
-    <span className="inline-flex h-[1em] w-[1ch] shrink-0 overflow-hidden leading-none">
-      <span
-        className="mesurer-digit-reel flex flex-col leading-none"
-        style={{
-          ["--mesurer-digit-offset" as string]: `${-Number(digit)}em`,
-          animationDelay: `${delay}ms`,
-        }}
-      >
-        {DIGITS.map((value) => (
-          <span key={value} className="block h-[1em] w-[1ch] shrink-0 text-center leading-none">
-            {value}
-          </span>
-        ))}
-      </span>
-    </span>
-  );
-}
+// Counted from npm when the site is built; the count of 14 November 2026 when npm cannot be reached.
+const DOWNLOAD_COUNT = (__MESURER_DOWNLOADS__ ?? 839_290).toLocaleString("en-US");
 
 export default function Hero() {
   return (
@@ -53,16 +32,7 @@ export default function Hero() {
             v{version}
           </a>
           <span aria-hidden="true"> · </span>
-          <span className="inline-flex min-w-[7ch] items-center font-medium leading-none tabular-nums lining-nums text-strong">
-            {DOWNLOAD_COUNT.split("").map((character, index) =>
-              character === "," ? (
-                <span key={`separator-${index}`}>{character}</span>
-              ) : (
-                <DigitReel key={`digit-${index}`} digit={character} delay={index * 45} />
-              ),
-            )}
-          </span>
-          <span>downloads</span>
+          <span className="font-medium tabular-nums lining-nums text-strong">{DOWNLOAD_COUNT}</span> downloads
         </p>
       </div>
     </section>
