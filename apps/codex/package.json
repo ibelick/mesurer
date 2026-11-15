@@ -1,0 +1,24 @@
+{
+  "name": "mesurer-codex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --dir ../../packages/mesurer generate:styles && node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && playwright test",
+    "package": "pnpm build && node scripts/package.mjs"
+  },
+  "dependencies": {
+    "mesurer": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.2",
+    "tsup": "^8.5.0"
+  }
+}
