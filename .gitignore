@@ -5,6 +5,7 @@ dist/
 .DS_Store
 .turbo/
 .vite/
+.wrangler/
 coverage/
 test-results/
 playwright-report/

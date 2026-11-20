@@ -2,10 +2,9 @@ import { useLayoutEffect, useState } from "react";
 import Button from "./components/button";
 import AgentPromptButton from "./components/agent-prompt-button";
 import { getPackageVersion } from "../../utils/get-package-version";
-import { fetchNpmDownloads, readDownloadCache, writeDownloadCache } from "../../utils/npm-downloads";
 
 const version = getPackageVersion();
-// Until the browser has a newer count, and when npm cannot be reached. 936,536 is the total of 20 November 2026.
+// Until /downloads answers, and when that shared cache misses. 936,536 is the total of 20 November 2026.
 const FALLBACK_DOWNLOADS = __MESURER_DOWNLOADS__ ?? 936_536;
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
@@ -34,15 +33,14 @@ export default function Hero() {
   useLayoutEffect(() => {
     // The prerendered page stays on the build count so hydration matches it.
     if (window.__MESURER_PRERENDER__) return;
-    const cached = readDownloadCache();
-    if (cached != null) setDownloads(cached.total);
-    if (cached?.fresh) return;
     let cancelled = false;
-    void fetchNpmDownloads().then((total) => {
-      if (cancelled || total == null) return;
-      writeDownloadCache(total);
-      setDownloads(total);
-    });
+    void fetch("/downloads")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { total?: unknown } | null) => {
+        if (cancelled || typeof body?.total !== "number" || body.total <= 0) return;
+        setDownloads(body.total);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };

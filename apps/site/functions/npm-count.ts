@@ -1,37 +1,10 @@
-// The same npm total the site build counts. The browser keeps it for a day so the homepage
-// can move on without a new deploy, and asks again after that.
+// Every npm download of the package since it was first published. The npm API answers at most
+// 18 months per request, so the whole span is asked in parts.
 const DAY = 86_400_000;
-const CACHE_KEY = "mesurer.npm-downloads";
-
-type CachedDownloads = {
-  total: number;
-  at: number;
-};
 
 const day = (time: number) => new Date(time).toISOString().slice(0, 10);
 
-export function readDownloadCache(now = Date.now()): { total: number; fresh: boolean } | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as Partial<CachedDownloads>;
-    if (typeof cached.total !== "number" || typeof cached.at !== "number" || cached.total <= 0) return null;
-    return { total: cached.total, fresh: now - cached.at <= DAY };
-  } catch {
-    return null;
-  }
-}
-
-export function writeDownloadCache(total: number, now = Date.now()) {
-  try {
-    const cached: CachedDownloads = { total, at: now };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cached));
-  } catch {
-    // A private window or a full store still shows the total for this visit.
-  }
-}
-
-export async function fetchNpmDownloads(): Promise<number | null> {
+export async function npmDownloadTotal(): Promise<number | null> {
   try {
     const signal = AbortSignal.timeout(8000);
     const registry = await fetch("https://registry.npmjs.org/mesurer", { signal });
