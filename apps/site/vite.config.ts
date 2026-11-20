@@ -52,35 +52,28 @@ const npmDownloads = async (): Promise<number | null> => {
   }
 };
 
-export default defineConfig(async ({ command }) => {
-  const downloads = await npmDownloads();
-  // The weekly deploy sets this so a failed npm request cannot publish the fallback over a newer total.
-  if (downloads == null && process.env.MESURER_REQUIRE_DOWNLOADS === "1") {
-    throw new Error("npm downloads could not be counted; refusing to publish a stale homepage total.");
-  }
-  return {
-    plugins: [tailwindcss(), react(), localReviews()],
-    define: {
-      __MESURER_DOWNLOADS__: JSON.stringify(downloads),
-      __MESURER_SNAPDOM_CAPTURE__: "true",
-      // The test pages run the extension's content script from source, with saving a review on.
-      __MESURER_REVIEW__: "true",
-      // The built site has no saving of reviews: what only it needs is compiled out. The dev
-      // server keeps it, for the tests.
-      ...(command === "build" ? { "globalThis.__MESURER_NO_REVIEW__": "true" } : null),
+export default defineConfig(async ({ command }) => ({
+  plugins: [tailwindcss(), react(), localReviews()],
+  define: {
+    __MESURER_DOWNLOADS__: JSON.stringify(await npmDownloads()),
+    __MESURER_SNAPDOM_CAPTURE__: "true",
+    // The test pages run the extension's content script from source, with saving a review on.
+    __MESURER_REVIEW__: "true",
+    // The built site has no saving of reviews: what only it needs is compiled out. The dev
+    // server keeps it, for the tests.
+    ...(command === "build" ? { "globalThis.__MESURER_NO_REVIEW__": "true" } : null),
+  },
+  resolve: {
+    alias: {
+      mesurer: fileURLToPath(
+        new URL("../../packages/mesurer/index.ts", import.meta.url),
+      ),
     },
-    resolve: {
-      alias: {
-        mesurer: fileURLToPath(
-          new URL("../../packages/mesurer/index.ts", import.meta.url),
-        ),
-      },
-    },
-    optimizeDeps: {
-      exclude: ["mesurer"],
-    },
-    server: {
-      strictPort: true,
-    },
-  };
-});
+  },
+  optimizeDeps: {
+    exclude: ["mesurer"],
+  },
+  server: {
+    strictPort: true,
+  },
+}));

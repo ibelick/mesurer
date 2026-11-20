@@ -1,10 +1,12 @@
+import { useLayoutEffect, useState } from "react";
 import Button from "./components/button";
 import AgentPromptButton from "./components/agent-prompt-button";
 import { getPackageVersion } from "../../utils/get-package-version";
+import { fetchNpmDownloads, readDownloadCache, writeDownloadCache } from "../../utils/npm-downloads";
 
 const version = getPackageVersion();
-// Counted from npm when the site is built; the count of 20 November 2026 when npm cannot be reached.
-const DOWNLOAD_COUNT = (__MESURER_DOWNLOADS__ ?? 936_536).toLocaleString("en-US");
+// Until the browser has a newer count, and when npm cannot be reached. 936,536 is the total of 20 November 2026.
+const FALLBACK_DOWNLOADS = __MESURER_DOWNLOADS__ ?? 936_536;
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
 function DigitReel({ digit, delay }: { digit: string; delay: number }) {
@@ -28,6 +30,24 @@ function DigitReel({ digit, delay }: { digit: string; delay: number }) {
 }
 
 export default function Hero() {
+  const [downloads, setDownloads] = useState(FALLBACK_DOWNLOADS);
+  useLayoutEffect(() => {
+    // The prerendered page stays on the build count so hydration matches it.
+    if (window.__MESURER_PRERENDER__) return;
+    const cached = readDownloadCache();
+    if (cached != null) setDownloads(cached.total);
+    if (cached?.fresh) return;
+    let cancelled = false;
+    void fetchNpmDownloads().then((total) => {
+      if (cancelled || total == null) return;
+      writeDownloadCache(total);
+      setDownloads(total);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const downloadCount = downloads.toLocaleString("en-US");
   return (
     <section className="mx-auto mt-24 w-full max-w-2xl text-left" aria-labelledby="landing-title">
       <div className="flex max-w-[460px] flex-col">
@@ -53,8 +73,8 @@ export default function Hero() {
             v{version}
           </a>
           <span aria-hidden="true"> · </span>
-          <span className="inline-flex min-w-[7ch] items-center font-medium leading-none tabular-nums lining-nums text-strong">
-            {DOWNLOAD_COUNT.split("").map((character, index) =>
+          <span key={downloadCount} className="inline-flex min-w-[7ch] items-center font-medium leading-none tabular-nums lining-nums text-strong">
+            {downloadCount.split("").map((character, index) =>
               character === "," ? (
                 <span key={`separator-${index}`}>{character}</span>
               ) : (
